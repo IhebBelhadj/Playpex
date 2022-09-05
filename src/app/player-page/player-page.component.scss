@@ -1,0 +1,243 @@
+.playerPageContainer {
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  .moviePlayer {
+    background: black;
+    width: 100%;
+  }
+
+  .loading {
+    transform: translate(-50%  , -50%);
+    top: 50%;
+    left: 50%;
+    position: absolute;
+    display: block;
+    width: 130px;
+  }
+
+  .controls {
+    height: 79vh;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6 ) 49%, rgba(0,0,0,0) 65%);
+
+    //By default its hidden
+    display: none;
+    opacity: 0;
+    transform: translateY(200px);
+
+    .controlsContainer {
+      position: relative;
+      height: 100%;
+      width: 100%;
+
+      .wrapper {
+        position: absolute;
+        bottom: 55px;
+        height: max-content;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+
+
+        .infoSection {
+          width: 100%;
+          padding-left: 5%;
+          display: flex;
+          flex-direction: column;
+
+          .title {
+            font-family: 'NetflixBk';
+            opacity: .9;
+            font-size: 38px;
+            margin-bottom: 15px;
+          }
+
+          .infos {
+            font-family: 'Netflixlt';
+            font-size: 16px;
+            opacity: .6;
+            letter-spacing: 1px;
+          }
+        }
+
+        .timeSlider {
+          width : 95%;
+
+          .slider {
+            width: 100%;
+            height: 3px;
+            background: #2f2f2fbf;
+            margin-top: 50px;
+
+            .progress {
+              height: 100%;
+              width: 20%;
+              background: #FFC107;
+              position: relative;
+              border: none;
+              float: left;
+              .reachedDot{
+                position: absolute;
+                right: -7px;
+                top: -5px;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #fff;
+                display: none;
+              }
+
+            }
+
+            .focused {
+              .reachedDot {
+                display: block;
+              }
+            }
+          }
+
+          .timeInfo {
+            width: 98%;
+            padding-left: 1%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 18px;
+            font-family: 'Netflixlt';
+            opacity: .7;
+            font-size: 14px;
+          }
+        }
+
+        .options {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 95%;
+          margin-top: 50px;
+          opacity: .8;
+
+          .playbackOpt {
+            display: flex;
+            align-items: center;
+
+            .seekLeft {
+              transform: rotate(180deg);
+            }
+
+            .seekBtn {
+              padding: 12px;
+            }
+
+            .playBtn {
+              width: 60px;
+              height: 60px;
+              padding: 15px;
+              margin: 0 20px;
+
+              img {
+                transform: translateX(3px);
+              }
+            }
+          }
+
+          .ccBtn {
+            padding: 4px !important;
+          }
+
+
+          .optBtn {
+            border: none;
+            background: #00000000;
+            transition: all .15s;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+
+            img {
+              max-width: 100%;
+              opacity: .8;
+              filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%);
+            }
+          }
+
+          .focused {
+            background :#FFC107ff;
+
+            img {
+              filter: none;
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+
+  .sidePannel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    background: #000000f7;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transform: translateX(-200px);
+    opacity: 0;
+
+
+    .optionsTitle {
+      font-family: "netflixBd";
+      font-size: 20px;
+      padding: 10px;
+      margin-bottom: 25px;
+      margin-top: 15px;
+    }
+    .content {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      .stepper {
+
+        display: flex;
+
+        .level {
+          display: flex;
+          flex-direction: column;
+          width: 250px;
+
+          .controlsElem {
+            width: 23vw;
+            text-align: start;
+            background: none;
+            color: #fff;
+            font-family: 'NetflixBk';
+            padding: 21px;
+            border: none;
+            padding-left: 30px;
+          }
+        }
+      }
+    }
+  }
+
+}
+
+.hidden {
+  display: none !important;
+}

@@ -1,0 +1,41 @@
+<div class="menuContainer expended">
+
+  <div class="logo">
+    <img src="../../assets/icons/logo.svg" alt="">
+  </div>
+
+  <div class="tabs">
+    <button class="tabGroup element menuItem" data-destination="searchPage">
+      <div class="inner">
+        <img src="../../assets/icons/search.svg" alt="">
+        <span class="description">Search</span>
+      </div>
+    </button>
+    <button [class.active] = "currentUrl.includes('/movies')" class="tabGroup element menuItem" data-destination="moviesPage">
+      <div class="inner">
+        <img src="../../assets/icons/film.svg" alt="">
+        <span class="description">Movies</span>
+      </div>
+    </button>
+    <button class="tabGroup element menuItem" data-destination="showsPage">
+      <div class="inner">
+        <img src="../../assets/icons/tv.svg" alt="">
+        <span class="description">Tv shows</span>
+      </div>
+    </button>
+    <button class="tabGroup element menuItem" data-destination="watchPage">
+      <div class="inner">
+        <img src="../../assets/icons/list.svg" alt="">
+        <span class="description">Watch list</span>
+      </div>
+    </button>
+    <button class="tabGroup element menuItem" data-destination="settingsPage">
+      <div class="inner">
+        <img src="../../assets/icons/settings.svg" alt="">
+        <span class="description">Settings</span>
+      </div>
+    </button>
+  </div>
+
+
+</div>

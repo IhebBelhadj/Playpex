@@ -1,0 +1,187 @@
+.optionsMasterContainer {
+  min-height: 100vh;
+
+  .optionPannel {
+
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+
+    .option:first-child {
+      margin-left: 0;
+    }
+
+    .option {
+      background: none;
+      border: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin: 25px 6px;
+      opacity: .67;
+      .imgContainer {
+
+        background: rgb(28 28 28 / 72%);
+        border-radius: 5px;
+
+        img {
+          width: 26px;
+          padding: 15px 38px;
+          filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%);
+        }
+      }
+
+      span {
+        margin-top: 12px;
+        max-width: 50px;
+      }
+    }
+
+    .focused {
+      opacity: 1;
+      .imgContainer{
+
+        background: #fff;
+
+        img {
+          filter: none !important;
+        }
+      }
+    }
+
+  }
+
+  .sectionTitle {
+    font-family: 'netflixBk';
+    opacity: .9;
+  }
+
+  .castSlider {
+
+    .content {
+      display: flex;
+      margin-top: 50px;
+      //margin-bottom: 80px;
+      height: 230px;
+      transition: all .2s;
+    }
+    .cast {
+      .displayedElem {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin-right: 15px;
+        align-items: center;
+        background: none;
+        outline: none;
+        border: none;
+        color: #fff;
+        width: 140px;
+
+        .imgContainer {
+          overflow: hidden;
+          border-radius: 50%;
+          width: 130px;
+          height: 130px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          transition: .2s all;
+          background: rgb(103 103 103 / 35%);
+
+        }
+
+        .name {
+          font-family: 'netflixLt';
+          font-size: 16px;
+          text-align: center;
+          opacity: .7;
+          margin-top: 20px;
+          max-width: 95px;
+        }
+
+      }
+
+    }
+  }
+}
+
+.movieSlider {
+
+  .movie{
+    display: flex;
+    flex-direction: column;
+
+    .name {
+      font-family: 'netflixBk';
+      opacity: .75;
+      font-size: 16px;
+    }
+
+    .year {
+      font-family: 'netflixLt';
+      opacity: .4;
+      font-size: 14px;
+    }
+
+    .displayedElem {
+      background: rgb(103 103 103 / 35%);
+      width: 150px;
+      height: 230px;
+      padding: 0px;
+      margin-right: 21px;
+      margin-bottom: 25px;
+      border: none;
+      .imgContainer {
+        transition: all .2s;
+        img {
+          opacity: .7;
+          filter: saturate(.6);
+        }
+
+      }
+
+    }
+  }
+
+  .content {
+    display: flex;
+    transition: all .2s;
+  }
+
+}
+
+.optionsMasterContainer {
+  .casts {
+    .focused {
+      .imgContainer {
+        border: 3px solid #fff;
+        transform: scale(1.13);
+      }
+
+      .name {
+        opacity: 1!important;
+      }
+    }
+  }
+
+  .similar {
+    .focused {
+      .imgContainer {
+        transform: scale(1.13);
+
+        img {
+          filter: none !important;
+          opacity: 1!important;
+        }
+      }
+    }
+  }
+}
+
+
+.noOverflow {
+  overflow: hidden;
+}

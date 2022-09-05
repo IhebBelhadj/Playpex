@@ -1,0 +1,74 @@
+.masterContainer {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+  //background: linear-gradient(59deg, rgba(40,40,40,1) 0%, rgba(75,70,51,1) 49%, rgba(75,70,51,0) 100%);
+
+
+  .menu {
+    width: max-content;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    position: relative;
+    //justify-content: center;
+    //align-items: center;
+    margin: 0;
+
+  }
+}
+
+.background_img  {
+    position: fixed;
+    z-index: 3;
+    min-width: 100%;
+    min-height: 100vh;
+    top: 0;
+    filter: blur(5px) saturate(0.9) contrast(0.8) brightness(0.9);
+}
+
+.old_bg {
+  z-index: 2;
+  filter: blur(5px) ;
+}
+
+.background {
+  position: fixed;
+  z-index: 2;
+  min-width: 100%;
+  min-height: 100vh;
+  top: 0;
+  background: linear-gradient(38deg, rgba(0,0,0,1) 0%, rgba(52,47,43,1) 85%);
+
+}
+
+.overlay {
+  position: fixed;
+  z-index: 4;
+  height: 100vh;
+  width: 100%;
+  top: 0;
+  //background: linear-gradient(44deg, rgb(23 23 23) 0%, rgb(13 13 12) 25%, rgba(75, 70, 51, 0) 100%);
+  //background: linear-gradient(59deg, rgba(40,40,40,1) 0%, rgba(75,70,51,1) 49%, rgba(75,70,51,0) 100%);
+  background: linear-gradient(44deg, rgb(23, 23, 23) 0%, rgb(13 13 12 / 97%) 35%, rgba(75, 70, 51, 0) 100%);
+}
+
+.clock {
+  position: fixed;
+  top: 20px;
+  right: 32px;
+  z-index: 8;
+  font-family: 'NetflixBk';
+  letter-spacing: 1px;
+  font-size: 25px;
+  text-shadow: 1px 1px 2px #00000057;
+}
+
+.hide {
+  display: none !important;
+}
+
+

@@ -1,0 +1,64 @@
+/* You can add global styles to this file, and also import other style files */
+@font-face {
+  font-family: 'FuturaLt';
+  src: url('../src/assets/fonts/FutuLt.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'FuturaBk';
+  src: url('../src/assets/fonts/FuturaBk.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'FuturaBd';
+  src: url('../src/assets/fonts/FutuBd.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Monda';
+  src: url('../src/assets/fonts/Monda-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'NetflixBk';
+  src: url('../src/assets/fonts/NetflixSansRegular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'NetflixTh';
+  src: url('../src/assets/fonts/NetflixSansThin.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'NetflixBd';
+  src: url('../src/assets/fonts/NetflixSansBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Netflixlt';
+  src: url('../src/assets/fonts/NetflixSansLight.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Netflixlc';
+  src: url('../src/assets/fonts/NetflixSansIcon.ttf') format('truetype');
+}
+
+
+
+body {
+  margin: 0;
+  color: #fff;
+
+}
+
+:focus {
+  outline: none;
+}
+
+/*
+*{
+  cursor : none !important;
+}
+*/
+

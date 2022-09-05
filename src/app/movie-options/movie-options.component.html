@@ -1,0 +1,73 @@
+<div class="optionsMasterContainer">
+  <div class="optionPannel">
+    <button class="option focusable play lastSelected" data-sn-down =".casts .lastSelected">
+      <div class="imgContainer">
+        <img src="../../assets/icons/play.svg" alt="">
+      </div>
+      <span>Play</span>
+    </button>
+    <button class="option focusable trailer" data-sn-down =".casts .lastSelected">
+      <div class="imgContainer">
+        <img src="../../assets/icons/trailer.svg" alt="">
+      </div>
+      <span>Trailer</span>
+    </button>
+    <button class="option focusable addWatchlist" data-sn-down =".casts .lastSelected">
+      <div class="imgContainer">
+        <img src="../../assets/icons/bookmark.svg" alt="">
+      </div>
+      <span>Add to watchlist</span>
+    </button>
+    <button class="option focusable addWatched" data-sn-down =".casts .lastSelected">
+      <div class="imgContainer">
+        <img src="../../assets/icons/mark.svg" alt="">
+      </div>
+      <span>mark as watched</span>
+    </button>
+  </div>
+
+  <div class="casts">
+    <h3 class="sectionTitle">cast</h3>
+    <div class="castSlider">
+      <div class="content">
+        <div class="cast" *ngFor="let cast of casts ; let i=index" >
+          <button class="displayedElem focusable"
+          *ngIf="cast.profile_path"
+          [attr.data-index]="i"
+          data-sn-down =".similar .lastSelected"
+          data-sn-up =".optionPannel .lastSelected"
+          >
+            <div class="imgContainer">
+              <img src="{{profileImgBase + cast?.profile_path}}" alt="">
+            </div>
+            <div class="name">
+              {{cast?.name}}
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="similar">
+    <h3 class="sectionTitle">Similar titles to watch</h3>
+    <div class="movieSlider">
+      <div class="content">
+        <div class="movie" *ngFor="let movie of similar; let i=index">
+          <button class="displayedElem focusable"
+            *ngIf="movie.poster_path"
+            [attr.data-index]="i"
+            [attr.data-id]="movie.id"
+            data-sn-up =".casts .lastSelected"
+            >
+              <div class="imgContainer">
+                <img src="{{profileImgBase + movie?.poster_path}}" alt="">
+              </div>
+          </button>
+          <span class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
+          <span class="year">{{movie?.release_date| slice:0:4}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

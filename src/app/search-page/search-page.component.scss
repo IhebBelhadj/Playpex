@@ -1,0 +1,204 @@
+.overlay {
+  position: fixed;
+  z-index: 4;
+  height: 100vh;
+  width: 100%;
+  top: 0;
+  background: linear-gradient(44deg, rgb(23, 23, 23) 0%, rgb(13 13 12 / 97%) 35%, rgba(75, 70, 51, 0) 100%);
+}
+
+.background {
+  position: fixed;
+  z-index: 2;
+  min-width: 100%;
+  min-height: 100vh;
+  top: 0;
+  background: linear-gradient(38deg, rgba(0,0,0,1) 0%, rgba(52,47,43,1) 85%);
+
+}
+
+.searchContainer {
+  //margin: 50px;
+  padding: 40px 15px;
+  width: 100vw;
+  min-height: 100vh;
+  position: relative;
+  z-index: 5;
+
+  .keyboardContainer {
+    display: flex;
+    margin-top: 40px;
+
+    .numKeyboard {
+      display: none;
+    }
+
+    .charKeyboard {
+      display: grid;
+    }
+    .utilKeys {
+      display: flex;
+      flex-direction: column;
+      margin-left: 10px;
+
+      .keyboardBtn {
+        width: 70px;
+        height: 42px;
+        font-family: 'NetflixBk';
+        border: none;
+        background: rgba(0, 0, 0, 0.56);
+        color: #fff;
+        border-radius: 8px;
+        transition: all .2s;
+        margin-bottom: 10px;
+
+        img {
+          filter: invert(97%) sepia(100%) saturate(4%) hue-rotate(177deg) brightness(109%) contrast(99%);
+          width: 25px;
+        }
+      }
+
+      .focused {
+        background: #fff;
+        color: #000;
+        scale: 1.1;
+
+        img {
+          filter: none;
+        }
+      }
+
+      .switchCharKey {
+        display: none;
+      }
+    }
+
+
+  }
+}
+
+.keyboardGrid {
+
+  max-width: 300px;
+  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(6,1fr);
+
+
+  .keyboardBtn {
+    width: 42px;
+    height: 42px;
+    font-family: 'NetflixBk';
+    border: none;
+    background: rgba(0, 0, 0, 0.56);
+    color: #fff;
+    border-radius: 8px;
+    transition: all .2s;
+    font-size: 16px;
+  }
+
+  .focused {
+    background: #fff;
+    color: #000;
+    scale: 1.1;
+
+  }
+}
+.inputValue {
+  width: 100%;
+  font-size: 26px;
+  background: none;
+  border: none;
+  width: 700px;
+  color: #fff;
+  font-family: "NetflixBd";
+}
+.inputValue::placeholder{
+  font-family: 'netflixBk';
+  opacity: .6;
+  letter-spacing: 1px;
+  font-size: 22px;
+}
+
+.resultsWrapper {
+  margin-top: 90px;
+
+  .sectionTitle {
+    font-family: "netflixBk";
+    font-size: 16px;
+    letter-spacing: .25px;
+    opacity: .9;
+
+  }
+
+  .movieSlider {
+    margin-top: 30px;
+    .movie{
+
+      display: flex;
+      flex-direction: column;
+
+      .displayedElem {
+        background: rgb(103 103 103 / 35%);
+        width: 150px;
+        height: 230px;
+        padding: 0px;
+        margin-right: 21px;
+        margin-bottom: 25px;
+        border: none;
+        transition: all .2s;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        .name {
+          margin-top: 15px;
+          font-family: 'netflixBk';
+          opacity: .75;
+          font-size: 15px;
+        }
+
+        .year {
+          font-family: 'netflixLt';
+          opacity: .4;
+          font-size: 14px;
+          margin-top: 3px;
+        }
+
+        .imgContainer {
+          transition: all .2s;
+          display: contents;
+          overflow: hidden;
+          img {
+            display: block;
+            min-width: 100%;
+            min-height: 100%;
+            opacity: .7;
+            filter: saturate(.6);
+          }
+
+        }
+
+      }
+    }
+
+    .content {
+      display: flex;
+      transition: all .2s;
+    }
+
+    .focused {
+      transform: scale(1.13);
+      .imgContainer {
+        img {
+          filter: none !important;
+          opacity: 1!important;
+        }
+      }
+    }
+
+  }
+
+}
+
+

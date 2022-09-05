@@ -1,0 +1,74 @@
+
+.logo {
+  width: 50px;
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+
+.tabs {
+  width: 220px;
+}
+
+.tabGroup {
+  display: flex;
+  align-items: center;
+  padding: 11px;
+  margin: 19px 8px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  width: 170px;
+  opacity: .6;
+
+  span {
+    padding-left: 25px;
+    font-family: 'NetflixLt';
+    font-size : 15px
+  }
+
+  .inner {
+    border : none;
+    //width: 30px;
+    height: 35px;
+    background: none;
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: #fff;
+    img {
+      width: 20px !important;
+      filter: invert(99%) sepia(42%) saturate(0%) hue-rotate(253deg) brightness(105%) contrast(100%);
+      //transform: translate(-50% ,-50%);
+    }
+  }
+}
+
+.focused {
+  background: #fff;
+
+  .inner {
+    color: #000 !important;
+
+    img {
+      filter: none !important;
+    }
+  }
+}
+
+.active {
+
+  opacity: .9;
+  .inner {
+
+    color: #FFC107ff;
+
+    img {
+      filter: invert(80%) sepia(19%) saturate(2493%) hue-rotate(351deg) brightness(100%) contrast(104%);
+    }
+  }
+}
+
+.hide {
+  display: none !important;
+}

@@ -1,0 +1,8 @@
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100vh;
+  padding-left: 35px;
+  transition: all .2s;
+}

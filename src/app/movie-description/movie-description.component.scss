@@ -1,0 +1,67 @@
+.name {
+  font-family: "netflixBd";
+  font-size: 2.8rem;
+  margin-bottom: 0px;
+  max-width: 800px;
+}
+
+.movieDesciption {
+  max-width: 700px;
+  font-size: 1.2rem;
+  font-family: "NetflixBk";
+  line-height: 39px;
+  letter-spacing: 1px;
+  opacity: 0.62;
+  margin-top: 50px;
+}
+
+.infos {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.year {
+  font-family: 'Netflixlt';
+  font-size: 22px;
+  margin: 0;
+  margin-right: 15px;
+}
+
+.avalableQualities {
+
+  display: flex;
+
+  .quality {
+    font-family: 'netflixlt';
+    padding: 8px;
+    margin: 6px;
+    background: #1d1d1d9e;
+    border-radius: 5px;
+    font-size: 12px;
+    opacity: .7;
+    margin: 4px;
+  }
+}
+.imdb_score {
+  display: flex;
+  align-items: center;
+  font-family: 'NetflixBk';
+  margin-left: 12px;
+  opacity: .9;
+  background: #1515152e;
+  padding: 7px;
+  border-radius: 5px;
+
+
+  img {
+    display: block;
+    width: 40px;
+    margin-right: 10px;
+  }
+}
+
+.categories {
+  font-family: 'Netflixlt';
+  opacity: .6;
+}

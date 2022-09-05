@@ -1,0 +1,74 @@
+<div class="playerPageContainer">
+  <video class="moviePlayer" type="video/mp4" muted></video>
+  <img src="../../assets/icons/loading.svg" class="loading" >
+  <div class="controls">
+    <div class="controlsContainer">
+      <div class="wrapper">
+        <div class="infoSection">
+          <span class="title">{{movie?.original_title}}</span>
+          <span class="infos">{{year}} . {{runtime?.hh}} hr {{runtime?.min}} min</span>
+        </div>
+        <div class="timeSlider">
+          <div class="slider">
+            <button class="progress controlsElem"
+              data-sn-down =".playerPageContainer .playBtn">
+
+              <div class="reachedDot"></div>
+            </button>
+          </div>
+          <div class="timeInfo">
+            <span class="currentTime">00:00</span>
+            <span class="duration">00:00:00</span>
+        </div>
+        </div>
+        <div class="options">
+          <div class="subOpt">
+            <button class="optBtn controlsElem ccBtn"
+              data-sn-up =".playerPageContainer .timeSlider .progress">
+                <img src="../../assets/icons/caption.svg" alt="">
+            </button>
+          </div>
+          <div class="playbackOpt">
+            <button class="optBtn controlsElem seekLeft seekBtn"
+              disabled
+              data-sn-up =".playerPageContainer .timeSlider .progress">
+                <img src="../../assets/icons/rightSeek.svg" alt="">
+            </button>
+            <button class="optBtn controlsElem playBtn"
+              data-sn-up =".playerPageContainer .timeSlider .progress">
+                <img src="../../assets/icons/playSharp.svg" alt="">
+            </button>
+            <button class="optBtn controlsElem seekBtn"
+            disabled
+              data-sn-up =".playerPageContainer .timeSlider .progress">
+                <img src="../../assets/icons/rightSeek.svg" alt="">
+            </button>
+          </div>
+          <div class="settingsOpt">
+            <button class="optBtn controlsElem"
+              data-sn-up =".playerPageContainer .timeSlider .progress">
+                <img src="../../assets/icons/opts.svg" alt="">
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sidePannel" hidden>
+    <div class="optionsTitle">Subtitles</div>
+    <div class="content">
+      <div class="stepper">
+        <div class="level">
+          <button class="controlsElem" data-language="en">English</button>
+          <button class="controlsElem" data-language="fr">French</button>
+          <button class="controlsElem" data-language="ar">Arabic</button>
+          <button class="controlsElem" data-language="it">Italien</button>
+          <button class="controlsElem" data-language="de">Deutch</button>
+          <button class="controlsElem" data-language="es">Spanish</button>
+        </div>
+        <div class="level"></div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,7 @@
+{
+  "/api/*": {
+      "target": "https://yts.torrentbay.to",
+      "secure": false,
+      "logLevel": "debug"
+  }
+}

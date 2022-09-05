@@ -1,0 +1,96 @@
+<div class="searchContainer">
+  <input
+  name="searchBar"
+  ngModel
+  type="text"
+  class="inputValue"
+  #searchBar
+  (input)="onInputChange(searchBar)"
+  placeholder="Search movies and TV shows available on playpex..." >
+
+
+  <div class="keyboardContainer">
+    <div class="keyboardGrid charKeyboard">
+      <button class="keyboardBtn">A</button>
+      <button class="keyboardBtn">B</button>
+      <button class="keyboardBtn">C</button>
+      <button class="keyboardBtn">D</button>
+      <button class="keyboardBtn">E</button>
+      <button class="keyboardBtn">F</button>
+      <button class="keyboardBtn">G</button>
+      <button class="keyboardBtn">H</button>
+      <button class="keyboardBtn">I</button>
+      <button class="keyboardBtn">J</button>
+      <button class="keyboardBtn">K</button>
+      <button class="keyboardBtn">L</button>
+      <button class="keyboardBtn">M</button>
+      <button class="keyboardBtn">N</button>
+      <button class="keyboardBtn">O</button>
+      <button class="keyboardBtn">P</button>
+      <button class="keyboardBtn">Q</button>
+      <button class="keyboardBtn">R</button>
+      <button class="keyboardBtn">S</button>
+      <button class="keyboardBtn">T</button>
+      <button class="keyboardBtn">U</button>
+      <button class="keyboardBtn">V</button>
+      <button class="keyboardBtn">W</button>
+      <button class="keyboardBtn">X</button>
+      <button class="keyboardBtn">Y</button>
+      <button class="keyboardBtn">Z</button>
+    </div>
+    <div class="keyboardGrid numKeyboard">
+      <button class="keyboardBtn">0</button>
+      <button class="keyboardBtn">1</button>
+      <button class="keyboardBtn">2</button>
+      <button class="keyboardBtn">3</button>
+      <button class="keyboardBtn">4</button>
+      <button class="keyboardBtn">5</button>
+      <button class="keyboardBtn">6</button>
+      <button class="keyboardBtn">7</button>
+      <button class="keyboardBtn">8</button>
+      <button class="keyboardBtn">9</button>
+      <button class="keyboardBtn">&</button>
+      <button class="keyboardBtn">-</button>
+      <button class="keyboardBtn">_</button>
+      <button class="keyboardBtn">*</button>
+      <button class="keyboardBtn">'</button>
+    </div>
+    <div class="utilKeys">
+      <button data-fct="del" class="delKey keyboardBtn">
+        <img src="../../assets/icons/keyboardDelete.svg" alt="">
+      </button>
+      <button data-fct="space" class="spaceKey keyboardBtn">
+        <img src="../../assets/icons/spacebar.svg" alt="">
+      </button>
+      <button data-fct="num" class="switchNumKey keyboardBtn">&123</button>
+      <button data-fct="char" class="switchCharKey keyboardBtn">ABC</button>
+
+    </div>
+  </div>
+
+  <div class="resultsWrapper" *ngIf="searchedMovies">
+    <span class="sectionTitle">Movies with matching title</span>
+    <div class="movieSlider" >
+      <div class="content">
+        <div class="movie" *ngFor="let movie of searchedMovies; let i=index">
+          <button class="displayedElem focusable"
+            *ngIf="movie.poster_path"
+            [attr.data-index]="i"
+            [attr.data-id]="movie.id"
+            >
+              <div class="imgContainer">
+                <img src="{{movieImgBase + movie?.poster_path}}">
+              </div>
+
+              <span class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
+              <span class="year">{{movie?.release_date| slice:0:4}}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay"></div>
+<div class="background"></div>

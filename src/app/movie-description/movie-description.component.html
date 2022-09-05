@@ -1,0 +1,23 @@
+<h1 class="name">{{selectedMovie?.original_title}}</h1>
+<div class="infos">
+  <p class="year">{{year}}</p>
+  <div class="avalableQualities" *ngIf="availableQualities">
+    <div class="quality" *ngFor="let quality of availableQualities">
+      {{quality}}
+    </div>
+  </div>
+
+  <div class="imdb_score" *ngIf="selectedMovie.rating">
+    <img src="../../assets/icons/imdbsvg.svg" alt="">
+    {{selectedMovie?.rating}}
+  </div>
+
+</div>
+
+<div class="categories" *ngIf="selectedMovie">
+  <span *ngFor="let genre of selectedMovie.genres">{{genre}} . </span>
+</div>
+<p class="movieDesciption">
+  {{selectedMovie?.overview| slice:0:255 }}
+  <span *ngIf="selectedMovie.overview">...</span>
+</p>
