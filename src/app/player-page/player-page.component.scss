@@ -192,44 +192,88 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 250px;
+    width: 400px;
     background: #000000f7;
     display: flex;
     flex-direction: column;
     height: 100%;
     transform: translateX(-200px);
     opacity: 0;
+    backdrop-filter: blur(6px);
+    background: rgb(0 0 0 / 62%);
 
+    .loadingSubs {
+      display: flex;
+      align-items: center;
+      font-family: "netflixlt";
+      padding: 15px;
+      img {
+        width: 50px;
+      }
+    }
 
     .optionsTitle {
       font-family: "netflixBd";
       font-size: 20px;
       padding: 10px;
       margin-bottom: 25px;
-      margin-top: 15px;
+      margin-top: 25px;
     }
     .content {
       overflow: hidden;
       width: 100%;
       height: 100%;
-      .stepper {
+      margin-top: 50px;
 
-        display: flex;
 
-        .level {
-          display: flex;
-          flex-direction: column;
-          width: 250px;
+      .controlsElem {
+        width: 100%;
+        min-height: 120px;
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        font-family: "NetflixBk";
+        text-align: start;
+        line-height: 25px;
+        padding: 15px;
+        white-space: normal !important;
+        word-wrap: break-word;
 
-          .controlsElem {
-            width: 23vw;
-            text-align: start;
-            background: none;
-            color: #fff;
-            font-family: 'NetflixBk';
-            padding: 21px;
-            border: none;
-            padding-left: 30px;
+        .params {
+
+          span {
+            font-family: 'netflixBd';
+          }
+
+          .tick {
+            float: right;
+            display: none;
+            width: 20px;
+            filter: invert(98%) sepia(15%) saturate(30%) hue-rotate(203deg) brightness(120%) contrast(100%);
+
+          }
+        }
+      }
+
+      .selected {
+
+        .tick {
+          display: block !important;
+        }
+      }
+
+      .focused {
+        background: #FFC107;
+        color: #000000e7;
+
+
+        .params {
+          span {
+            color: #000;
+          }
+
+          .tick {
+            filter: none;
           }
         }
       }
@@ -240,4 +284,11 @@
 
 .hidden {
   display: none !important;
+}
+
+
+video::-webkit-media-text-track-display {
+  letter-spacing:  .4px;
+  font-family: 'NetflixLt';
+  font-size: 120%;
 }

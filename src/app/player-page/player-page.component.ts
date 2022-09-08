@@ -29,6 +29,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   year;
   playerSub:Subscription;
   controlsSub:Subscription;
+  lastSubFocused;
   serverUrl = "http://localhost:9000"
   trackers = [
     "udp://glotorrents.pw:6969/announce",
@@ -37,14 +38,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     "udp://tracker.openbittorrent.com:80",
     "udp://tracker.coppersurfer.tk:6969",
   ]
-  subtitles = {
-    "en" : [],
-    "fr" : [],
-    "ar" : [],
-    "it" : [],
-    "de" : [],
-    "es" : [],
-  }
+  subtitles;
 
   constructor(
     private movieService:MoviesService,
@@ -89,6 +83,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     })
 
+    window.addEventListener('sn:focused', (e)=>{
+
+      if(e.target['classList'].contains('subtitle')){
+        let active = document.activeElement as HTMLElement;
+        this.lastSubFocused = active.dataset['fileid'];
+      }
+
+    });
 
     this.year = this.movie.release_date.slice(0,4)
 
@@ -121,6 +123,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       }
 
     })
+
+
 
   }
 
@@ -157,7 +161,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   setupPlayer(){
-
+    this.moviePlayer = document.querySelector('.moviePlayer');
     this.setupNavigation();
     this.controlsSub = this.navigation.executeCommand().subscribe(instruction=>{
 
@@ -181,15 +185,36 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
             }
           }
 
+
+          if (document.activeElement.classList.contains('ccBtn')) {
+            this.showSidePanel();
+            this.fetchSubs();
+          }
+
+          if (document.activeElement.classList.contains('subtitle')) {
+            let active = document.activeElement as HTMLElement;
+            this.moviePlayer.innerHTML = `
+              <track src="http://localhost:9000/api/subtitles/download/${active.dataset['fileid']}" default srclang="${active.dataset['language']}">
+            `
+
+            document.querySelectorAll('.sidePannel .subtitle').forEach(subtitle => {
+              subtitle.classList.remove('selected')
+            });
+
+            document.querySelector(` [data-fileId = "${active.dataset['fileid']}"] `).classList.add('selected');
+          }
         }
 
       }
 
       if (instruction == "back") {
         console.log('back');
+        console.log(this.sidePannelVisible);
 
         if (!this.sidePannelVisible) {
           this.location.back();
+        }else {
+          this.hideSidePannel();
         }
       }
     })
@@ -209,10 +234,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
         this.hideControls();
       }
+
+
     })
 
 
-    this.moviePlayer = document.querySelector('.moviePlayer');
+
     this.moviePlayer.src = this.link;
     this.setupTimeSlider()
     this.moviePlayer.play();
@@ -302,23 +329,37 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let sideTl = gsap.timeline();
     sideTl.to('.playerPageContainer .sidePannel' , {x: -200 , duration : .2 })
     sideTl.to('.playerPageContainer .sidePannel' , {opacity : 0, duration : .2 , delay : -.15 , onComplete(){
-      this.sidePannelVisible = false;
+
       sidePannel['style']['display'] = "none";
     }})
+
+    this.sidePannelVisible = false;
+    let subBtn = document.querySelector('.ccBtn') as HTMLElement;
+    subBtn.focus({preventScroll : true});
+    this.navigation.updateNavigation('remove',{sectionId : 'subs'})
+
   }
 
-  showSidePaneel(){
+  showSidePanel(){
 
-    let sidePannel = document.querySelector('.playerPageContainer .controls') as HTMLElement;
+    let sidePannel = document.querySelector('.playerPageContainer .sidePannel') as HTMLElement;
 
     let sideTl = gsap.timeline();
 
     sidePannel['style']['display'] = "block";
+    sidePannel['style']['transform'] = 'translate(0% , 0%)';
 
-    sideTl.to('.playerPageContainer .controls' , {opacity : 1 , duration : .2 })
-    sideTl.to('.playerPageContainer .controls' , {x:0 , duration : .2 ,delay : -.15})
+    sideTl.to('.playerPageContainer .sidePannel' , {opacity : 1 , duration : .2 })
+    sideTl.to('.playerPageContainer .sidePannel' , {x:0 , duration : .2 ,delay : -.15})
+
 
     this.sidePannelVisible = true;
+
+    this.navigation.updateNavigation('add' , {
+      id: 'subs',
+      selector: '.playerPageContainer .sidePannel .controlsElem',
+      straightOnly: true,
+    })
   }
 
   setupTimeSlider(){
@@ -393,5 +434,24 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
   }
 
+
+  fetchSubs(){
+
+    if (!this.subtitles) {
+      this.subtitlesService.getSubtitles(this.movie['id']).subscribe(data=>{
+        this.subtitles = data['data']
+        setTimeout(()=>{
+          let firstSub = document.querySelector('.sidePannel .controlsElem') as HTMLElement;
+          firstSub.focus({preventScroll : true})
+        } , 100)
+
+      })
+    }else {
+
+      let lastSelected = document.querySelector(`[data-fileId =  "${this.lastSubFocused}"]`) as HTMLElement;
+      lastSelected.focus({preventScroll : true});
+
+    }
+  }
 
 }

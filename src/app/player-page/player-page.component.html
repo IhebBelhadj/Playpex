@@ -1,5 +1,5 @@
 <div class="playerPageContainer">
-  <video class="moviePlayer" type="video/mp4" muted></video>
+  <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted></video>
   <img src="../../assets/icons/loading.svg" class="loading" >
   <div class="controls">
     <div class="controlsContainer">
@@ -54,20 +54,26 @@
       </div>
     </div>
   </div>
-  <div class="sidePannel" hidden>
+  <div class="sidePannel">
     <div class="optionsTitle">Subtitles</div>
-    <div class="content">
-      <div class="stepper">
-        <div class="level">
-          <button class="controlsElem" data-language="en">English</button>
-          <button class="controlsElem" data-language="fr">French</button>
-          <button class="controlsElem" data-language="ar">Arabic</button>
-          <button class="controlsElem" data-language="it">Italien</button>
-          <button class="controlsElem" data-language="de">Deutch</button>
-          <button class="controlsElem" data-language="es">Spanish</button>
+    <div class="content" *ngIf="subtitles">
+      <button *ngFor="let subtitle of subtitles" class="controlsElem subtitle" [attr.data-fileId]="subtitle.attributes.files[0].file_id
+      " [attr.data-language]="subtitle.attributes.language">
+        <div class="name">{{subtitle.attributes.files[0].file_name}}</div>
+        <div class="params">
+          <div class="language">
+            <span>language : </span>
+            {{subtitle.attributes.language}}
+          </div>
+
+          <img class="tick" src="../../assets/icons/tick.svg" alt="">
         </div>
-        <div class="level"></div>
-      </div>
+      </button>
+    </div>
+
+    <div class="loadingSubs" *ngIf="!subtitles">
+      Fetching subtitles
+      <img src="../../assets/icons/loading_small.svg" alt="">
     </div>
   </div>
 
