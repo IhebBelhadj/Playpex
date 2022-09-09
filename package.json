@@ -20,6 +20,7 @@
     "@angular/router": "^14.0.0",
     "@types/gsap": "^3.0.0",
     "gsap": "^3.10.4",
+    "ngx-youtube-player": "^12.0.1",
     "rxjs": "~7.5.0",
     "spatial-navigation-js": "^1.0.0",
     "tslib": "^2.3.0",

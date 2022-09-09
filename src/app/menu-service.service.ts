@@ -7,7 +7,7 @@ import { Observable, Subject } from 'rxjs';
 export class MenuServiceService {
 
   private subject = new Subject<any>();
-
+  menuState = "expanded";
   constructor() { }
 
   sendInstruction(instruction: string) {

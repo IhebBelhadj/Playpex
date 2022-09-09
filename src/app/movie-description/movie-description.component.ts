@@ -14,6 +14,7 @@ export class MovieDescriptionComponent implements OnInit {
   movieDetails;
   availableQualities;
   year;
+  genres = [];
 
   ngOnInit(): void {
     this.moviesService.checkSelection().subscribe(movie=>{
@@ -27,6 +28,12 @@ export class MovieDescriptionComponent implements OnInit {
             this.availableQualities.push(torrent['quality'])
         });
       }
+
+      this.genres = [];
+      movie['genres'].forEach(el => {
+        this.genres.push(el['name'])
+      });
+
       if (this.selectedMovie.release_date) {
         this.year = this.selectedMovie.release_date.slice(0,4)
       }
@@ -48,6 +55,10 @@ export class MovieDescriptionComponent implements OnInit {
       if (this.selectedMovie.release_date) {
         this.year = this.selectedMovie.release_date.slice(0,4)
       }
+      this.genres = [];
+      movie['genres'].forEach(el => {
+        this.genres.push(el['name'])
+      });
       this.onMovieSelect(movie);
     })
   }

@@ -13,6 +13,7 @@ import { MovieOptionsComponent } from './movie-options/movie-options.component';
 import { ClockComponent } from './clock/clock.component';
 import { PlayerPageComponent } from './player-page/player-page.component';
 import { SearchPageComponent } from './search-page/search-page.component';
+import { YoutubeComponent } from './youtube/youtube.component';
 
 @NgModule({
   declarations: [
@@ -24,13 +25,14 @@ import { SearchPageComponent } from './search-page/search-page.component';
     MovieOptionsComponent,
     ClockComponent,
     PlayerPageComponent,
-    SearchPageComponent
+    SearchPageComponent,
+    YoutubeComponent,
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
-    HttpClientJsonpModule
+    HttpClientJsonpModule,
   ],
   providers: [
     MoviesService,

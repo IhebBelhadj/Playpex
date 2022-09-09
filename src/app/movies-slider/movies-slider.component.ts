@@ -20,6 +20,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private menuService:MenuServiceService ,
     private moviesService:MoviesService,
     private navigation:NavigationService,
+    private router:Router,
   ) { }
 
   ngOnInit(): void {
@@ -80,6 +81,24 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       }
 
     });
+
+    this.navigation.executeCommand().subscribe(instruction => {
+      if (this.router.url == "/movies/list" && instruction == "back") {
+        if (this.menuService.menuState == "collapsed") {
+          let currentlyActive = document.activeElement as HTMLElement;
+          this.moviesService.navigationData[currentlyActive.dataset['section']]['reached'] = 0;
+          this.updateNavigation();
+          this.menuService.sendInstruction('expand')
+
+          let menuElem = document.querySelector('.menuItem') as HTMLElement;
+          console.log(menuElem);
+          setTimeout(()=>{
+            menuElem.focus({preventScroll : true})
+          } , 10)
+        }
+      }
+
+    })
 
   }
 

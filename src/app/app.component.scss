@@ -3,7 +3,7 @@
   height: 100vh;
   width: 100%;
   overflow: hidden;
-  z-index: 5;
+  z-index: 6;
   position: relative;
   //background: linear-gradient(59deg, rgba(40,40,40,1) 0%, rgba(75,70,51,1) 49%, rgba(75,70,51,0) 100%);
 
@@ -71,4 +71,12 @@
   display: none !important;
 }
 
+.youtubePage {
+  z-index: 5;
+  position: fixed;
+  width: 100vw;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
 

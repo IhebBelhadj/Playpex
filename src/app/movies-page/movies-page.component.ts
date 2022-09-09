@@ -1,23 +1,33 @@
+import { MenuServiceService } from './../menu-service.service';
+import { Router } from '@angular/router';
+import { NavigationService } from './../navigation.service';
 import { MoviesSliderComponent } from './../movies-slider/movies-slider.component';
 
 import { MoviesService } from './../movies.service';
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import {Category , categories} from '../categories'
+import { mergeAll, mergeMap, switchMap, Subscription, map } from 'rxjs';
 
 @Component({
   selector: 'movies-page',
   templateUrl: './movies-page.component.html',
   styleUrls: ['./movies-page.component.scss']
 })
-export class MoviesPageComponent implements OnInit {
+export class MoviesPageComponent implements OnInit , OnDestroy {
 
   selectedMovie;
   _categories:Array<Category> = categories;
   movies = {};
   reachedPages = {};
-
+  selectedMovieSub:Subscription;
+  navigationSub:Subscription;
   @ViewChild(MoviesSliderComponent) moviesSlider:MoviesSliderComponent;
-  constructor(private moviesService:MoviesService) { }
+  constructor(
+    private moviesService:MoviesService,
+    private navigation:NavigationService,
+    private router:Router,
+    private menuService:MenuServiceService,
+  ) { }
 
 
 
@@ -43,25 +53,34 @@ export class MoviesPageComponent implements OnInit {
     }
 
 
-    this.moviesService.selectedMovie().subscribe((data)=>{
+    this.selectedMovieSub = this.moviesService.selectedMovie()
+    .pipe(
+      switchMap(data => {
+        if (this.movies[data.category][Number(data.index)]) {
+          this.selectedMovie = this.movies[data.category][Number(data.index)];
+        }
+        return this.moviesService.getTmdbMovieDetails(data.id)
+        .pipe(
+          switchMap(data => this.moviesService.getYTSMovieDetails(data['imdb_id'])
+          .pipe(
+            map(inner => ({tmdbData : data , ytsData : inner}))
+          ))
+        )
+      }))
+      .subscribe(dataGroup =>{
 
-      if (this.movies[data.category][Number(data.index)]) {
-        this.selectedMovie = this.movies[data.category][Number(data.index)];
-        this.moviesService.getTmdbMovieDetails(data.id).subscribe(tmdb_data =>{
-          let genres = [];
-          tmdb_data['genres'].forEach(el => {
-            genres.push(el['name'])
-          });
+          console.log(dataGroup);
 
-          this.selectedMovie.genres = genres;
-          this.selectedMovie.imdb_id = tmdb_data['imdb_id'];
+
+          this.selectedMovie.genres = dataGroup.tmdbData['genres'];
+          this.selectedMovie['torrents'] = dataGroup.ytsData['data']['movie']['torrents']
+          this.selectedMovie['mpa_rating'] = dataGroup.ytsData['data']['movie']['mpa_rating']
+          this.selectedMovie['rating'] = dataGroup.ytsData['data']['movie']['rating']
+          this.selectedMovie['runtime'] = dataGroup.ytsData['data']['movie']['runtime']
+          this.selectedMovie.imdb_id = dataGroup.tmdbData['imdb_id'];
           this.moviesService.assignSelection(this.selectedMovie);
 
-        })
-
-      }
-
-    })
+      })
 
     // On movie object update request(appending new movies , etc ...)
     this.moviesService.requestListener().subscribe(request => {
@@ -77,6 +96,11 @@ export class MoviesPageComponent implements OnInit {
 
     })
 
+
+  }
+
+  ngOnDestroy(): void {
+    this.selectedMovieSub.unsubscribe();
   }
 
   //Main method for getting movies from service

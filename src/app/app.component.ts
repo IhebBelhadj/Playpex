@@ -107,7 +107,8 @@ export class AppComponent implements AfterViewInit , OnInit{
           this.location.back();
         }
 
-        if (this._router.url == '/player') {
+        if (this._router.url == '/player' || this._router.url == '/movies/list') {
+
           this.navigation.addCommand('back');
         }
 

@@ -35,6 +35,9 @@ export class MenuComponent implements OnInit , AfterViewInit{
         case "navigate":
           this.navigate()
           break;
+        case "expand":
+          this.expendMenu();
+          break;
         default:
           break;
       }
@@ -74,6 +77,7 @@ export class MenuComponent implements OnInit , AfterViewInit{
 
   collapseMenu(){
     let menu = document.querySelector('.menuContainer');
+    this.menuService.menuState = "collapsed";
 
     if(menu.classList.contains("expended")){
       let menuTl = gsap.timeline();
@@ -92,6 +96,7 @@ export class MenuComponent implements OnInit , AfterViewInit{
 
   expendMenu(){
     let menu = document.querySelector('.menuContainer');
+    this.menuService.menuState = "expanded";
     if(!menu.classList.contains("expended")){
       let menuTl = gsap.timeline();
       document.querySelectorAll('.description').forEach(element => {

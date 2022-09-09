@@ -14,8 +14,8 @@
 
 </div>
 
-<div class="categories" *ngIf="selectedMovie">
-  <span *ngFor="let genre of selectedMovie.genres">{{genre}} . </span>
+<div class="categories" *ngIf="genres">
+  <span *ngFor="let genre of genres">{{genre}} . </span>
 </div>
 <p class="movieDesciption">
   {{selectedMovie?.overview| slice:0:255 }}
