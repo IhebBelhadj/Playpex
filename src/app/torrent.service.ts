@@ -17,4 +17,8 @@ export class TorrentService {
   getTorrent(hash:string){
     return this.http.get("http://localhost:9000/torrents/"+hash);
   }
+
+  deselectTorrent(hash){
+    return this.http.get("http://localhost:9000/torrents/"+hash+'/deselect')
+  }
 }

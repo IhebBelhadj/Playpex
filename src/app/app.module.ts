@@ -14,6 +14,8 @@ import { ClockComponent } from './clock/clock.component';
 import { PlayerPageComponent } from './player-page/player-page.component';
 import { SearchPageComponent } from './search-page/search-page.component';
 import { YoutubeComponent } from './youtube/youtube.component';
+import { NotificationHandlerComponent } from './notification-handler/notification-handler.component';
+import { SplashComponent } from './splash/splash.component';
 
 @NgModule({
   declarations: [
@@ -27,6 +29,8 @@ import { YoutubeComponent } from './youtube/youtube.component';
     PlayerPageComponent,
     SearchPageComponent,
     YoutubeComponent,
+    NotificationHandlerComponent,
+    SplashComponent,
   ],
   imports: [
     BrowserModule,

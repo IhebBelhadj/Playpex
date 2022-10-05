@@ -55,7 +55,7 @@
       <div class="content">
         <div class="movie" *ngFor="let movie of similar; let i=index">
           <button class="displayedElem focusable"
-            *ngIf="movie.poster_path"
+            *ngIf="movie.poster_path && movie.original_language == 'en'"
             [attr.data-index]="i"
             [attr.data-id]="movie.id"
             data-sn-up =".casts .lastSelected"
@@ -64,8 +64,8 @@
                 <img src="{{profileImgBase + movie?.poster_path}}" alt="">
               </div>
           </button>
-          <span class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
-          <span class="year">{{movie?.release_date| slice:0:4}}</span>
+          <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
+          <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="year">{{movie?.release_date| slice:0:4}}</span>
         </div>
       </div>
     </div>

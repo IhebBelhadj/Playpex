@@ -1,10 +1,14 @@
+<splash></splash>
 <div class="masterContainer">
   <menu class="menu"></menu>
+  <notification-handler></notification-handler>
   <router-outlet></router-outlet>
   <clock class="clock"></clock>
 </div>
 
-<youtube class="youtubePage"></youtube>
 <div class="overlay"></div>
-<img *ngIf="img_url" class="background_img" src="{{img_url}}">
+
+<img class="background_img newBackground" >
+<img class="background_img previousBackground">
+
 <div class="background"></div>

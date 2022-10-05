@@ -7,6 +7,7 @@ import { Observable, Subject } from 'rxjs';
 export class NavigationService {
 
   private subject = new Subject<any>();
+  private movieSliderSubject = new Subject<any>();
   private command = new Subject();
   private description = new Subject();
   routerCurrentMovieId;
@@ -42,6 +43,19 @@ export class NavigationService {
       onDescriptionUpdate():Observable<any> {
         return this.description.asObservable();
       }
+
+
+  // send events to control movie slider remotely
+
+  sendMovieSliderEvent(event){
+    console.log('in navigation event');
+
+    return this.movieSliderSubject.next(event)
+  }
+
+  getMovieSliderEvent(){
+    return this.movieSliderSubject.asObservable();
+  }
 
   constructor() { }
 }

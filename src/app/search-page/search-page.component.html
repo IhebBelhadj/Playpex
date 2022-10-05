@@ -6,7 +6,8 @@
   class="inputValue"
   #searchBar
   (input)="onInputChange(searchBar)"
-  placeholder="Search movies and TV shows available on playpex..." >
+  placeholder="Search movies and TV shows available on playpex..."
+  [value]="searchQuery">
 
 
   <div class="keyboardContainer">
@@ -68,7 +69,7 @@
     </div>
   </div>
 
-  <div class="resultsWrapper" *ngIf="searchedMovies">
+  <div class="resultsWrapper" *ngIf="(searchedMovies | json) != '{}'">
     <span class="sectionTitle">Movies with matching title</span>
     <div class="movieSlider" >
       <div class="content">

@@ -7,7 +7,7 @@
     </div>
   </div>
 
-  <div class="imdb_score" *ngIf="selectedMovie.rating">
+  <div class="imdb_score" *ngIf="selectedMovie?.rating">
     <img src="../../assets/icons/imdbsvg.svg" alt="">
     {{selectedMovie?.rating}}
   </div>
@@ -18,6 +18,6 @@
   <span *ngFor="let genre of genres">{{genre}} . </span>
 </div>
 <p class="movieDesciption">
-  {{selectedMovie?.overview| slice:0:255 }}
-  <span *ngIf="selectedMovie.overview">...</span>
+  {{fullDescription ?  selectedMovie?.overview:  shortDescription}}
+  <span *ngIf="selectedMovie?.overview && !fullDescription">...</span>
 </p>

@@ -23,6 +23,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private router:Router,
   ) { }
 
+
+
   ngOnInit(): void {
 
 
@@ -130,6 +132,13 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     })
 
     this.navigation.updateNavigation('makeFocusable' , {})
+    console.log(this.moviesService.navigationData);
+
+    this.navigation.getMovieSliderEvent().subscribe(e=>{
+
+      (document.querySelector('.sliderContainer .element') as HTMLElement).focus({preventScroll : true})
+
+    })
 
   }
 
@@ -192,6 +201,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   trackByCategory(index:Number , category: { key: any; }){
     return category.key
   }
+
+  unsorted(){}
 
 
 }

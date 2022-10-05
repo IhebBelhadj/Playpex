@@ -1,3 +1,4 @@
+import { SplashService } from './../splash.service';
 import { MenuServiceService } from './../menu-service.service';
 import { Router } from '@angular/router';
 import { NavigationService } from './../navigation.service';
@@ -27,6 +28,7 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     private navigation:NavigationService,
     private router:Router,
     private menuService:MenuServiceService,
+    private splashService:SplashService,
   ) { }
 
 
@@ -50,21 +52,38 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
         }
 
       })
+      this.splashService.splashExecuteCommand().subscribe(instruction=>{
+        if (instruction == "clearSplash") {
+          setTimeout(()=>{
+            this.navigation.sendMovieSliderEvent('focusFirst');
+          },300)
+        }
+      })
     }
 
 
     this.selectedMovieSub = this.moviesService.selectedMovie()
     .pipe(
+      map(data=>{
+        this.moviesService.assignSelection(this.selectedMovie);
+        return data;
+      }),
       switchMap(data => {
         if (this.movies[data.category][Number(data.index)]) {
           this.selectedMovie = this.movies[data.category][Number(data.index)];
         }
         return this.moviesService.getTmdbMovieDetails(data.id)
         .pipe(
+          map(data => {
+            this.selectedMovie.genres = data['genres'];
+            this.moviesService.assignSelection(this.selectedMovie);
+            return data;
+          }),
           switchMap(data => this.moviesService.getYTSMovieDetails(data['imdb_id'])
           .pipe(
             map(inner => ({tmdbData : data , ytsData : inner}))
           ))
+
         )
       }))
       .subscribe(dataGroup =>{
@@ -77,6 +96,7 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
           this.selectedMovie['mpa_rating'] = dataGroup.ytsData['data']['movie']['mpa_rating']
           this.selectedMovie['rating'] = dataGroup.ytsData['data']['movie']['rating']
           this.selectedMovie['runtime'] = dataGroup.ytsData['data']['movie']['runtime']
+          this.selectedMovie['trailer'] = dataGroup.ytsData['data']['movie']['yt_trailer_code']
           this.selectedMovie.imdb_id = dataGroup.tmdbData['imdb_id'];
           this.moviesService.assignSelection(this.selectedMovie);
 

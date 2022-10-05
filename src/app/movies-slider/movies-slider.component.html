@@ -1,7 +1,7 @@
 <div class="sliderContainer">
   <div class="overlay"></div>
   <div class="content">
-    <div class="section" *ngFor="let category of movies | keyvalue ; trackBy:trackByCategory ">
+    <div class="section" *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
       <h3 class="sectionTitle">{{category.key}}</h3>
       <div class="slider">
         <div class="container">

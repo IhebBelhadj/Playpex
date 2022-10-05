@@ -1,3 +1,4 @@
+import { YoutubeService } from './youtube.service';
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http'
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
@@ -15,8 +16,10 @@ export class MoviesService {
   private subject = new Subject<any>();
   private selector = new Subject();
 
+
   selectedmovie = new BehaviorSubject({});
   movies = new BehaviorSubject({});
+  searchData = new BehaviorSubject({});
   movieAppHistory = [];
 
   navigationData = {};
@@ -25,7 +28,9 @@ export class MoviesService {
 
 
 
-  constructor(private http:HttpClient) { }
+  constructor(
+    private http:HttpClient,
+    ) { }
 
 
   //****Tmdb API endpoints setup****
@@ -60,8 +65,13 @@ export class MoviesService {
     return this.http.get(`http://localhost:9000/api/movies/${id}`)
   }
 
+  getMovieVideos(tmdb_id){
+    return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}/videos?api_key=${this.tmdb_key}&language=en-US`)
+  }
 
-  // ****Observers for sharing data between components****
+
+
+  // ****RXJS Subjects for sharing data between components****
 
 
 
@@ -137,7 +147,6 @@ export class MoviesService {
 
           if (this.movieAppHistory[i]['id'] == id) {
             element = this.movieAppHistory[i];
-            //this.movieAppHistory = this.movieAppHistory.filter(movie=>{movie['id'] != id})
             break;
           }
 
@@ -145,6 +154,20 @@ export class MoviesService {
 
         return element;
       }
+
+// Keeps track of the search page results
+
+  updateSearchData(query , results){
+    this.searchData.next({
+      query:query,
+      results:results
+    });
+  }
+
+  deleteSearchData(){
+    this.searchData.next({});
+  }
+
 
 
 

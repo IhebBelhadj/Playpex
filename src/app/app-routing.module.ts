@@ -1,3 +1,4 @@
+import { YoutubeComponent } from './youtube/youtube.component';
 import { SearchPageComponent } from './search-page/search-page.component';
 import { PlayerPageComponent } from './player-page/player-page.component';
 import { MovieOptionsComponent } from './movie-options/movie-options.component';
@@ -7,7 +8,11 @@ import { RouterModule, Routes } from '@angular/router';
 import { MoviesPageComponent } from './movies-page/movies-page.component';
 
 const routes: Routes = [
-
+  {
+    path:'',
+    redirectTo : '/movies/list',
+    pathMatch : 'full',
+  },
   {
     path : 'movies' ,
     component : MoviesPageComponent,
@@ -29,6 +34,10 @@ const routes: Routes = [
   {
     path: 'search',
     component:SearchPageComponent
+  },
+  {
+    path: 'ytplayer/:id',
+    component : YoutubeComponent
   }
 ];
 

@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { MenuServiceService } from './../menu-service.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Location } from '@angular/common';
 
 @Component({
   selector: 'app-search-page',
@@ -17,6 +18,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
   searchedMovies;
   addedResNav = false;
   movieImgBase = "https://image.tmdb.org/t/p/w154";
+  searchQuery = "";
 
   horizontalScroll = {
     value : 0
@@ -26,12 +28,14 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     index : undefined
   };
 
+  focusListener;
   constructor(
     private navigation:NavigationService,
     private menuService:MenuServiceService,
     private backgroundService:BackgroundService,
     private moviesService:MoviesService,
     private router:Router,
+    private location:Location,
   ) { }
 
   ngOnInit(): void {
@@ -42,8 +46,26 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       this.menuService.sendInstruction('hide');
     } , 0)
 
+    this.searchQuery = this.moviesService.searchData.value['query'] || "";
+    this.searchedMovies = this.moviesService.searchData.value['results'] || {};
+
+    if (!this.addedResNav) {
+      this.addedResNav = true;
+      this.navigation.updateNavigation('add' , {
+        id: 'searches',
+        selector: '.resultsWrapper .displayedElem',
+        leaveFor : {
+          bottom : "@searches"
+        },
+        straightOnly: true,
+      })
+    }
+
+
     this.navSub = this.navigation.executeCommand().subscribe(instruction=>{
-      if (document.activeElement.classList.contains('keyboardBtn')) {
+      if (
+        document.activeElement.classList.contains('keyboardBtn') &&
+        instruction == "click") {
 
         let input = document.querySelector('.inputValue') as HTMLElement;
 
@@ -71,10 +93,17 @@ export class SearchPageComponent implements OnInit , OnDestroy {
         }
 
       }
+
+      if (
+        instruction == 'back' &&
+        this.router.url == "/search"
+      ) {
+        this.moviesService.updateSearchData("" , {})
+        this.location.back();
+      }
     })
 
     document.addEventListener('keydown' , (e)=>{
-      console.log('pressed in play');
 
       if (
         document.activeElement.parentElement.classList.contains('movie') &&
@@ -93,10 +122,13 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       }
     })
 
-    window.addEventListener('sn:focused', (e)=>{
+    this.focusListener = window.addEventListener('sn:focused', (e)=>{
+
+      if(!(this.router.url == "/search")) return;
+
       const node = e.target as HTMLElement;
 
-      if (node['parentElement']['classList'].contains('movie')) {
+      if (node['parentElement']['classList'].contains('movie') ) {
 
         this.sectionNavigationSetup(node ,
           '.movieSlider' ,
@@ -115,10 +147,19 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       this.navSub.unsubscribe();
     }
 
+    document.removeEventListener('sn:focused',this.focusListener);
     this.navigation.updateNavigation('remove' , {sectionId : 'keyboard'});
     this.navigation.updateNavigation('remove' , {sectionId : 'searches'});
 
     this.addedResNav = false;
+
+    this.horizontalScroll = {
+      value : 0
+    }
+
+    this.selectedMovie = {
+      index : undefined
+    };
   }
 
   setupNavigation(){
@@ -136,8 +177,8 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     if (e.value.length > 2) {
       this.moviesService.searchMovies(encodeURI(e.value)).subscribe(data=>{
         this.searchedMovies = data['results'];
-
-        if (!this.addedResNav) {
+        this.moviesService.updateSearchData(e.value , this.searchedMovies);
+        /*if (!this.addedResNav) {
           this.addedResNav = true;
           this.navigation.updateNavigation('add' , {
             id: 'searches',
@@ -147,7 +188,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
             },
             straightOnly: true,
           })
-        }
+        }*/
 
       })
     }
@@ -198,7 +239,6 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     },
     selectedItem
   ){
-
     let nodes = document.querySelectorAll(parentClass + ' .displayedElem');
 
     if (!selectedItem['index']) {

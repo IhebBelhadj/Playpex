@@ -1,3 +1,4 @@
+import { NotificationService } from './../notification.service';
 import { Location } from '@angular/common';
 import { SubtitlesService } from './../subtitles.service';
 import { NavigationService } from './../navigation.service';
@@ -19,6 +20,7 @@ import { Router } from '@angular/router';
 export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   magnetUrl;
+  torrentHash;
   movie;
   playerReady = false;
   controlsVisible = false;
@@ -29,7 +31,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   year;
   playerSub:Subscription;
   controlsSub:Subscription;
+  controlsEvent;
   lastSubFocused;
+  arrowKeyEvents;
   serverUrl = "http://localhost:9000"
   trackers = [
     "udp://glotorrents.pw:6969/announce",
@@ -48,6 +52,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private router:Router,
     private subtitlesService:SubtitlesService,
     private location:Location,
+    private notificationService:NotificationService
   ) { }
 
   ngOnInit(): void {
@@ -58,15 +63,18 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     this.runtime = this.timeObject(this.movie['runtime']*60);
 
+    let escClicked = false;
+
     //Moving through time on arrow presses
 
-    document.addEventListener('keydown' , (e)=>{
+    this.controlsEvent = document.addEventListener('keydown' , (e)=>{
+      if(this.router.url != "/player") return;
+
       if (
         e.key == "ArrowRight" &&
         document.activeElement.classList.contains('progress') &&
         this.controlsVisible &&
-        this.playerReady &&
-        this.router.url == "/player"
+        this.playerReady
       ) {
         this.seek("forward")
       }
@@ -74,11 +82,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         e.key == "ArrowLeft" &&
         document.activeElement.classList.contains('progress') &&
         this.controlsVisible &&
-        this.playerReady &&
-        this.router.url == "/player"
+        this.playerReady
 
       ){
         this.seek("backward")
+      }
+
+      if(e.key == "Escape" && !this.playerReady && !escClicked){
+        escClicked = true;
+        this.torrentService.deselectTorrent(this.torrentHash);
+        this.location.back();
       }
 
     })
@@ -96,13 +109,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     // get the magnet link
     this.magnetUrl = this.buildMagnet()
-
+    let reps = 0;
     this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
     .pipe(
       switchMap(data => this.torrentService.getTorrent(data['infoHash'] )),
-      repeat({delay : 2000})
+      repeat({delay : 4000})
     )
     .subscribe(data => {
+      reps += 1;
+      console.log(reps);
 
       if (data['files']) {
         this.playerSub.unsubscribe();
@@ -122,6 +137,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         });
       }
 
+
+      if (reps > 4) {
+        this.location.back();
+        this.playerSub.unsubscribe();
+        this.notificationService.sendNotification("error" , "Couldn't fetch metadata for the movie. Try again later");
+      }
     })
 
 
@@ -132,22 +153,25 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     this.menuService.sendInstruction('show');
     this.controlsVisible = false;
-    this.controlsSub.unsubscribe();
+    if (this.controlsSub) this.controlsSub.unsubscribe();
+
     if (this.playerSub) this.playerSub.unsubscribe();
 
-    this.moviePlayer.src = "";
-
+    if (this.moviePlayer) this.moviePlayer.src = "";
+    if (this.controlsEvent) document.removeEventListener('keydown' , this.controlsEvent);
     this.navigation.updateNavigation('remove' , {sectionId : 'timeSlider'})
     this.navigation.updateNavigation('remove' , {sectionId : 'optionPannel'})
+    if (this.arrowKeyEvents) removeEventListener('keydown' , this.arrowKeyEvents);
 
   }
 
   buildMagnet(){
+    console.log(this.movie);
 
-    let torrentHash = this.movie['torrents'][0].hash;
+    this.torrentHash = this.movie['torrents'][0].hash;
     let torrentName = this.movie['original_title'] + this.movie['torrents'][0].quality;
     let urlEncodedName = encodeURIComponent(torrentName)
-    let magnetUrl = `magnet:?xt=urn:btih:${torrentHash}&dn=${urlEncodedName}`
+    let magnetUrl = `magnet:?xt=urn:btih:${this.torrentHash}&dn=${urlEncodedName}`
     this.trackers.forEach(tracker=>{
       magnetUrl = magnetUrl.concat("&tr="+tracker);
     })
@@ -207,11 +231,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
       }
 
-      if (instruction == "back") {
+      if (instruction == "back" && this.playerReady) {
         console.log('back');
         console.log(this.sidePannelVisible);
-
         if (!this.sidePannelVisible) {
+          let desectionSub = this.torrentService.deselectTorrent(this.torrentHash.toLowerCase()).subscribe(()=>{
+            desectionSub.unsubscribe();
+          })
           this.location.back();
         }else {
           this.hideSidePannel();
@@ -220,7 +246,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     })
 
 
-    document.addEventListener('keydown' , (e)=>{
+    this.arrowKeyEvents = document.addEventListener('keydown' , (e)=>{
+      if(this.router.url != "/player") return;
 
       if (e.key == "ArrowDown" && !this.controlsVisible) {
         this.showControls();
