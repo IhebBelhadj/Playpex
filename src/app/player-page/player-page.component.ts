@@ -323,14 +323,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   pausePlayer(){
     this.moviePlayer.pause();
-    document.querySelector('.playBtn img')['src'] = "../../assets/icons/pause.svg";
+    document.querySelector('.playBtn img')['src'] = "assets/icons/pause.svg";
     document.querySelector('.playBtn img')['style']['transform'] = "translateX(1px)"
   }
 
   resumePlayer(){
     this.moviePlayer.play();
 
-    document.querySelector('.playBtn img')['src'] = "../../assets/icons/playSharp.svg";
+    document.querySelector('.playBtn img')['src'] = "assets/icons/playSharp.svg";
     document.querySelector('.playBtn img')['style']['transform'] = "translateX(3px)"
   }
 
