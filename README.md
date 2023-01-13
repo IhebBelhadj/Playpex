@@ -1,6 +1,4 @@
-# Playpex
-
-## What is playpex
+# <img src="https://i.ibb.co/wSwD1nB/logo-1.png" alt="Playpex logo" width="50"/> Playpex
 
 Playpex is a media streaming platform with a 10-foot user interface with spacial navigation
 
