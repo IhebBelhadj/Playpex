@@ -89,7 +89,7 @@ export class AppComponent implements AfterViewInit , OnInit{
         console.log('space pressed');
 
         if (document.activeElement.classList.contains('menuItem')) {
-          this.menuService.sendInstruction("navigate");
+          this.menuService.sendInstruction("navigate" , this);
         }
 
         switch (true) {
@@ -108,6 +108,8 @@ export class AppComponent implements AfterViewInit , OnInit{
 
       }
       if (e.key == "Escape") {
+
+        console.log(this.menuService.menuState);
 
         this.navigation.addCommand('back');
 

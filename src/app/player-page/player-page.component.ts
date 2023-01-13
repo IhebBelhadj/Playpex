@@ -56,7 +56,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   ) { }
 
   ngOnInit(): void {
-    this.menuService.sendInstruction('hide');
+    this.menuService.sendInstruction('hide' , this);
     document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
 
     this.movie = this.movieService.selectedmovie.value;
@@ -151,7 +151,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   ngOnDestroy(): void {
 
-    this.menuService.sendInstruction('show');
+    this.menuService.sendInstruction('show' , this);
     this.controlsVisible = false;
     if (this.controlsSub) this.controlsSub.unsubscribe();
 
@@ -234,13 +234,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       if (instruction == "back" && this.playerReady) {
         console.log('back');
         console.log(this.sidePannelVisible);
-        if (!this.sidePannelVisible) {
-          let desectionSub = this.torrentService.deselectTorrent(this.torrentHash.toLowerCase()).subscribe(()=>{
+        if (!this.sidePannelVisible && !this.controlsVisible) {
+          let desectionSub = this.torrentService.removeTorrent(this.torrentHash.toLowerCase()).subscribe(()=>{
             desectionSub.unsubscribe();
           })
           this.location.back();
         }else {
-          this.hideSidePannel();
+          if(this.sidePannelVisible) this.hideSidePannel();
+          else if(this.controlsVisible) this.hideControls();
         }
       }
     })

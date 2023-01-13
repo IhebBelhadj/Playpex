@@ -18,6 +18,6 @@
   <span *ngFor="let genre of genres">{{genre}} . </span>
 </div>
 <p class="movieDesciption">
-  {{fullDescription ?  selectedMovie?.overview:  shortDescription}}
-  <span *ngIf="selectedMovie?.overview && !fullDescription">...</span>
+  {{selectedMovie?.overview | slice:1:255}}
+  <span *ngIf="selectedMovie?.overview">...</span>
 </p>

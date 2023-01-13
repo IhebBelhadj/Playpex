@@ -19,7 +19,12 @@ export class MoviesService {
 
   selectedmovie = new BehaviorSubject({});
   movies = new BehaviorSubject({});
-  searchData = new BehaviorSubject({});
+  searchData = new BehaviorSubject({
+    query:"",
+    results:{},
+    lastFocused:undefined ,
+    sectionScroll : 0
+  });
   movieAppHistory = [];
 
   navigationData = {};
@@ -54,7 +59,11 @@ export class MoviesService {
 
 
   getTmdbMovieDetails(tmdb_id){
-    return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US`)
+    return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US` , {
+      headers : {
+        "Cache-Control": "no-store"
+      }
+    })
   }
 
   searchMovies(query:string){
@@ -157,15 +166,30 @@ export class MoviesService {
 
 // Keeps track of the search page results
 
-  updateSearchData(query , results){
+  updateSearchData(
+    query ,
+    results ,
+    focusData = {
+      index : undefined ,
+      sectionScroll : 0
+    }){
     this.searchData.next({
       query:query,
-      results:results
+      results:results,
+      lastFocused:focusData.index ,
+      sectionScroll : focusData.sectionScroll
     });
+    console.log(this.searchData.value);
+
   }
 
   deleteSearchData(){
-    this.searchData.next({});
+    this.searchData.next({
+      query:"",
+      results:{},
+      lastFocused:undefined ,
+      sectionScroll : 0
+    });
   }
 
 

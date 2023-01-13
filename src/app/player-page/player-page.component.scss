@@ -200,7 +200,7 @@
     transform: translateX(-200px);
     opacity: 0;
     backdrop-filter: blur(6px);
-    background: rgb(0 0 0 / 62%);
+    background: rgba(0 , 0 ,  0 ,  .62);
 
     .loadingSubs {
       display: flex;

@@ -100,6 +100,8 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
           this.selectedMovie.imdb_id = dataGroup.tmdbData['imdb_id'];
           this.moviesService.assignSelection(this.selectedMovie);
 
+      } , error => {
+        this.ngOnInit()
       })
 
     // On movie object update request(appending new movies , etc ...)

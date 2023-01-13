@@ -13,7 +13,7 @@ import { filter, map, Subscription } from 'rxjs';
 })
 export class MenuComponent implements OnInit , AfterViewInit{
   subscription: Subscription;
-  currentUrl:string = "";
+  currentUrl:string = "/movies/list";
   constructor(
     private menuService:MenuServiceService,
     private navigation:NavigationService,
@@ -48,7 +48,8 @@ export class MenuComponent implements OnInit , AfterViewInit{
 
   ngAfterViewInit(): void {
     console.log("init menu");
-
+    let menuMoviesBtn = document.querySelector('[data-destination="moviesPage"]') as HTMLElement;
+    menuMoviesBtn.classList.add('active');
   }
 
   ngOnInit(): void {

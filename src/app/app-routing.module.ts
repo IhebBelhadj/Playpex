@@ -1,3 +1,4 @@
+import { PowerPageComponent } from './power-page/power-page.component';
 import { YoutubeComponent } from './youtube/youtube.component';
 import { SearchPageComponent } from './search-page/search-page.component';
 import { PlayerPageComponent } from './player-page/player-page.component';
@@ -38,6 +39,10 @@ const routes: Routes = [
   {
     path: 'ytplayer/:id',
     component : YoutubeComponent
+  },
+  {
+    path : 'power',
+    component : PowerPageComponent
   }
 ];
 

@@ -23,7 +23,7 @@
       opacity: .67;
       .imgContainer {
 
-        background: rgb(28 28 28 / 72%);
+        background: rgba(28 ,28 ,28 ,.72);
         border-radius: 5px;
         height: 60px;
 
@@ -90,7 +90,7 @@
           align-items: center;
           justify-content: flex-start;
           transition: .2s all;
-          background: rgb(103 103 103 / 35%);
+          background: rgba(103 , 103 , 103 , .35);
 
         }
 
@@ -128,7 +128,7 @@
     }
 
     .displayedElem {
-      background: rgb(103 103 103 / 35%);
+      background: rgba(103, 103 ,103 ,.35);
       width: 150px;
       height: 230px;
       padding: 0px;

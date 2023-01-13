@@ -16,6 +16,9 @@ import { SearchPageComponent } from './search-page/search-page.component';
 import { YoutubeComponent } from './youtube/youtube.component';
 import { NotificationHandlerComponent } from './notification-handler/notification-handler.component';
 import { SplashComponent } from './splash/splash.component';
+import { DescritionViewerComponent } from './descrition-viewer/descrition-viewer.component';
+import { PowerPageComponent } from './power-page/power-page.component';
+import { RouterModule } from "@angular/router";
 
 @NgModule({
   declarations: [
@@ -31,12 +34,15 @@ import { SplashComponent } from './splash/splash.component';
     YoutubeComponent,
     NotificationHandlerComponent,
     SplashComponent,
+    DescritionViewerComponent,
+    PowerPageComponent,
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
     HttpClientJsonpModule,
+    RouterModule,
   ],
   providers: [
     MoviesService,

@@ -3,6 +3,7 @@ import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { MoviesService } from '../movies.service';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'movies-slider',
@@ -14,6 +15,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   scrolledAmount = 0;
   limit = 20;
   movies = {};
+  navSub:Subscription;
   imgBaseUrl = "https://image.tmdb.org/t/p/w342";
 
   constructor(
@@ -84,19 +86,25 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     });
 
-    this.navigation.executeCommand().subscribe(instruction => {
+    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       if (this.router.url == "/movies/list" && instruction == "back") {
         if (this.menuService.menuState == "collapsed") {
           let currentlyActive = document.activeElement as HTMLElement;
           this.moviesService.navigationData[currentlyActive.dataset['section']]['reached'] = 0;
           this.updateNavigation();
-          this.menuService.sendInstruction('expand')
+          this.menuService.sendInstruction('expand' , this)
 
           let menuElem = document.querySelector('.menuItem') as HTMLElement;
           console.log(menuElem);
           setTimeout(()=>{
             menuElem.focus({preventScroll : true})
           } , 10)
+        }else if (
+          this.menuService.menuState == "expanded" &&
+          document.activeElement.classList.contains("menuItem"))
+        {
+          this.navSub.unsubscribe();
+          this.router.navigateByUrl('/power');
         }
       }
 
@@ -182,7 +190,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
   sendMenuInstruction(instruction: string){
 
-    this.menuService.sendInstruction(instruction);
+    this.menuService.sendInstruction(instruction , this);
   }
 
   selectMovie(id: string , category: string , index: string){

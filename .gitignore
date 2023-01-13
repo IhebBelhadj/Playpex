@@ -40,3 +40,10 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+#streamer cache
+/server/streamingServer/torrents
+
+#Released build
+
+/playpex-win32-x64

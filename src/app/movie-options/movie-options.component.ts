@@ -6,6 +6,7 @@ import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
+import { MenuServiceService } from '../menu-service.service';
 
 @Component({
   selector: 'app-movie-options',
@@ -43,11 +44,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private moviesService:MoviesService,
     private router:Router,
     private notificationService:NotificationService,
-    private location:Location
+    private location:Location,
+    private menu:MenuServiceService,
   ) {
   }
 
   ngAfterViewInit(): void {
+
+    this.menu.sendInstruction('collapse' , this);
 
     //spacial navigation setup
 
@@ -74,7 +78,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.navigation.updateNavigation('focus' , {sectionId : 'options'})
 
     this.navigation.routerCurrentMovieId = this.activatedRoute.snapshot.params['id'];
-
+    this.menu
     // get page data
 
 
@@ -421,24 +425,36 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   handleNavEvents(){
     this.navigationSub = this.navigation.executeCommand().subscribe(instruction =>{
       if (instruction == "click" && this.router.url.includes('/movies/movie')) {
+        switch (true) {
+          case document.activeElement.classList.contains('play'):
+            if (!this.canPlay) return;
+            if (this.selectedMovie['torrents']) {
+              this.router.navigateByUrl("/player");
+            }else {
+              this.notificationService.sendNotification('error',"No streaming service found for the movie")
+            }
+            break;
+          case document.activeElement.classList.contains('trailer'):
+            if (!this.trailer) {
+              this.notificationService.sendNotification("error","No trailer found")
+              return;
+            }
 
-        if (document.activeElement.classList.contains('play') && this.canPlay) {
-          if (this.selectedMovie['torrents']) {
-            this.router.navigateByUrl("/player");
-          }
-          else {
-            this.notificationService.sendNotification('error',"No streaming service found for the movie")
-          }
+            this.showYtVid(this.trailer);
+
+            break;
+          case document.activeElement.classList.contains('addWatchlist'):
+            this.notificationService.sendNotification("error","Feature not available yet")
+          break;
+          case document.activeElement.classList.contains('addWatched'):
+            this.notificationService.sendNotification("error","Feature not available yet")
+          break;
+          default:
+            break;
         }
 
-        else if (document.activeElement.classList.contains('trailer')) {
-          if (!this.trailer) {
-            this.notificationService.sendNotification("error","No trailer found")
-            return;
-          }
 
-          this.showYtVid(this.trailer);
-        }
+
 
       }
 

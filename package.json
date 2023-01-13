@@ -3,17 +3,26 @@
   "version": "0.9.0",
   "main": "src/electron.js",
   "author": "Iheb Belhaj",
+  "keywords": [
+    "Playpex",
+    "Streamer",
+    "media",
+    "tv",
+    "movies",
+    "Media Player"
+  ],
   "description": "This is a media streaming App with a tv interface experience",
   "scripts": {
     "ng": "ng",
     "start": "ng serve -o",
-    "build": "ng build",
+    "build": "ng build --base-href ./",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "electron": "ng build –base-href ./ && electron .",
+    "electron": "ng build --base-href ./ && electron .",
     "forge-start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "electronBuild": "electron-builder"
   },
   "config": {
     "forge": {
@@ -47,6 +56,42 @@
       }
     }
   },
+
+  "build": {
+    "appId": "Playpex",
+    "files": [
+      "dist/playpex/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "src/*",
+      "src/electron.js",
+      "src/server/streamingServer/**/*",
+      "LICENSE.md",
+      "package.json",
+      "package-lock.json",
+      "e2e/",
+      "angular.json",
+      "karma.conf.js",
+      "tsconfig.json",
+      "tslint.json"
+
+    ],
+    "asar":true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "installerIcon": "favicon.ico",
+      "uninstallerIcon": "favicon.ico",
+      "uninstallDisplayName": "Playpex-unistaller",
+      "license": "licence.md",
+      "allowToChangeInstallationDirectory": true
+    }
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "^14.0.0",
@@ -59,13 +104,33 @@
     "@angular/router": "^14.0.0",
     "@types/gsap": "^3.0.0",
     "@types/youtube": "^0.0.47",
+    "axios": "^0.27.2",
+    "connect-multiparty": "^2.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "electron-compile": "^6.4.2",
+    "electron-shutdown-command": "^2.0.1",
     "electron-squirrel-startup": "^1.0.0",
+    "express": "^4.17.1",
     "gsap": "^3.10.4",
+    "lodash": "^4",
+    "mkdirp": "^0.5.5",
+    "morgan": "^1.10.0",
     "ngx-electron": "^2.2.0",
+    "nodemon": "^2.0.16",
+    "opensubtitles-api": "^5.1.2",
+    "pump": "^3.0.0",
+    "range-parser": "^1.2.0",
+    "read-torrent": "^1.3.1",
     "rxjs": "~7.5.0",
+    "serve-static": "^1.14.1",
+    "socket.io": "^2.4.1",
     "spatial-navigation-js": "^1.0.0",
+    "srt-to-vtt": "^1.1.3",
+    "subtitle": "^4.2.1",
+    "torrent-stream": "^1.2.1",
     "tslib": "^2.3.0",
+    "ytdl-core": "^4.11.2",
     "zone.js": "~0.11.4"
   },
   "devDependencies": {
@@ -75,7 +140,7 @@
     "@electron-forge/cli": "^6.0.0-beta.67",
     "@types/jasmine": "~4.0.0",
     "electron": "^21.1.0",
-    "electron-forge": "^5.2.0",
+    "electron-packager": "^16.0.0",
     "electron-prebuilt-compile": "2.0.0",
     "jasmine-core": "~4.1.0",
     "karma": "~6.3.0",
@@ -83,6 +148,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.0.0",
     "karma-jasmine-html-reporter": "~1.7.0",
-    "typescript": "~4.7.2"
+    "typescript": "~4.7.2",
+    "electron-builder": "^23.6.0"
   }
 }

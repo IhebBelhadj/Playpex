@@ -10,7 +10,9 @@ export class MenuServiceService {
   menuState = "expanded";
   constructor() { }
 
-  sendInstruction(instruction: string) {
+  sendInstruction(instruction: string , source) {
+    console.log(source);
+
     this.subject.next({ instruction: instruction });
   }
 

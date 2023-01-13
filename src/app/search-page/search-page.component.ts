@@ -1,7 +1,7 @@
 import { Router } from '@angular/router';
 import { MoviesService } from './../movies.service';
 import { BackgroundService } from './../background.service';
-import { Subscription } from 'rxjs';
+import { first, Subscription } from 'rxjs';
 import { MenuServiceService } from './../menu-service.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
@@ -27,7 +27,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
   selectedMovie = {
     index : undefined
   };
-
+  inputValue;
   focusListener;
   constructor(
     private navigation:NavigationService,
@@ -43,11 +43,29 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     let searchTab = document.querySelector('[data-destination="searchPage"]') as HTMLElement;
     searchTab.classList.remove('focused')
     setTimeout(()=>{
-      this.menuService.sendInstruction('hide');
+      this.menuService.sendInstruction('hide' , this);
     } , 0)
+    console.log(this.moviesService.searchData.value);
 
-    this.searchQuery = this.moviesService.searchData.value['query'] || "";
-    this.searchedMovies = this.moviesService.searchData.value['results'] || {};
+    this.searchQuery = this.moviesService.searchData.value['query'];
+    this.searchedMovies = this.moviesService.searchData.value['results'];
+
+    this.horizontalScroll = {value :this.moviesService.searchData.value['sectionScroll']};
+    console.log(this.horizontalScroll);
+
+    if (this.moviesService.searchData.value['lastFocused']) {
+      let index = this.moviesService.searchData.value['lastFocused'];
+      setTimeout(()=>{
+        let node = document.querySelector('[data-id="'+ index +'"]')as HTMLElement
+        node.focus({preventScroll : true})
+
+        let container = node.closest('.content') as HTMLElement;
+
+        this.updateSliderScrollX(container , this.horizontalScroll.value)
+
+      } , 200)
+    }
+
 
     if (!this.addedResNav) {
       this.addedResNav = true;
@@ -63,6 +81,8 @@ export class SearchPageComponent implements OnInit , OnDestroy {
 
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction=>{
+      if(!(this.router.url == "/search")) return;
+
       if (
         document.activeElement.classList.contains('keyboardBtn') &&
         instruction == "click") {
@@ -95,6 +115,39 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       }
 
       if (
+        instruction == "click" &&
+        document.activeElement.parentElement.classList.contains('movie')
+        ) {
+
+          let currentlySelected = document.activeElement as HTMLElement
+
+
+          this.moviesService.updateSearchData(
+            this.searchQuery ,
+            this.searchedMovies ,
+            {
+              index : currentlySelected.dataset['id'],
+              sectionScroll : this.horizontalScroll.value,
+            }
+
+          );
+
+          let tempSub = this.moviesService.getTmdbMovieDetails(currentlySelected.dataset['id'])
+            .pipe(first())
+            .subscribe(data=>{
+
+              tempSub.unsubscribe();
+              this.navSub.unsubscribe();
+
+
+              this.moviesService.addMovieToHistory(data);
+              this.router.navigateByUrl(`/movies/movie/${data['id']}`);
+            })
+
+
+      }
+
+      if (
         instruction == 'back' &&
         this.router.url == "/search"
       ) {
@@ -103,24 +156,6 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       }
     })
 
-    document.addEventListener('keydown' , (e)=>{
-
-      if (
-        document.activeElement.parentElement.classList.contains('movie') &&
-        e.key == " " &&
-        this.router.url == "/search"
-        ) {
-
-        let currentlySelected = document.activeElement as HTMLElement
-        let tempSub = this.moviesService.getTmdbMovieDetails(currentlySelected.dataset['id'])
-          .subscribe(data=>{
-            console.log(data);
-            this.moviesService.addMovieToHistory(data);
-            this.router.navigateByUrl(`/movies/movie/${data['id']}`);
-            tempSub.unsubscribe();
-          })
-      }
-    })
 
     this.focusListener = window.addEventListener('sn:focused', (e)=>{
 
@@ -142,7 +177,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.menuService.sendInstruction('show');
+    this.menuService.sendInstruction('show' , this);
     if (this.navSub) {
       this.navSub.unsubscribe();
     }
@@ -152,14 +187,6 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     this.navigation.updateNavigation('remove' , {sectionId : 'searches'});
 
     this.addedResNav = false;
-
-    this.horizontalScroll = {
-      value : 0
-    }
-
-    this.selectedMovie = {
-      index : undefined
-    };
   }
 
   setupNavigation(){
@@ -176,19 +203,10 @@ export class SearchPageComponent implements OnInit , OnDestroy {
   onInputChange(e){
     if (e.value.length > 2) {
       this.moviesService.searchMovies(encodeURI(e.value)).subscribe(data=>{
+        this.inputValue = e.value;
         this.searchedMovies = data['results'];
         this.moviesService.updateSearchData(e.value , this.searchedMovies);
-        /*if (!this.addedResNav) {
-          this.addedResNav = true;
-          this.navigation.updateNavigation('add' , {
-            id: 'searches',
-            selector: '.resultsWrapper .displayedElem',
-            leaveFor : {
-              bottom : "@searches"
-            },
-            straightOnly: true,
-          })
-        }*/
+
 
       })
     }
@@ -259,12 +277,11 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       if (Math.abs(rightDiff) < (3*screen.width/4) && !this.isInViewport(nodes[nodes.length -1])) {
 
         horizontalScrollAmount.value +=  node.offsetWidth;
-        console.log(container);
 
-        container.style.transform = `translateX(-${horizontalScrollAmount.value}px)`
+
+        this.updateSliderScrollX(container , horizontalScrollAmount.value)
 
       }
-      console.log(horizontalScrollAmount.value);
 
     }
 
@@ -276,15 +293,17 @@ export class SearchPageComponent implements OnInit , OnDestroy {
 
         horizontalScrollAmount.value -=  node.clientWidth;
         if (horizontalScrollAmount.value < 0) horizontalScrollAmount.value = 0;
-        console.log(container);
-
-        container.style.transform = `translateX(-${horizontalScrollAmount.value}px)`
+        this.updateSliderScrollX(container , horizontalScrollAmount.value)
       }
 
 
     }
 
     selectedItem['index'] = node.dataset['index'];
+  }
+
+  updateSliderScrollX(container:HTMLElement , value){
+    container.style.transform = `translateX(-${value}px)`
   }
 
   isInViewport(el) {

@@ -15,9 +15,10 @@ import { gsap ,Power1} from 'gsap'
 })
 export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
-  baseUrl = "http://localhost:9500/youtube/";
+  baseUrl = "http://localhost:9000/youtube/";
   video_id;
   player:HTMLVideoElement;
+  audioTrack:HTMLVideoElement;
   navigationSub:Subscription;
   canplay:boolean = false;
   playerPaused:boolean = false;
@@ -30,7 +31,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
     private router:Router,
   ) {
 
-    this.menuService.sendInstruction('hide');
+    this.menuService.sendInstruction('hide' , this);
   }
 
   ngOnInit(): void {
@@ -42,8 +43,13 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
   ngAfterViewInit(): void {
     this.player = document.querySelector(".ytPlayer");
+    this.audioTrack = document.querySelector(".audioTrack");
 
-    this.player.src=this.baseUrl+this.video_id;
+
+
+    this.player.src=this.baseUrl+this.video_id+"?type=video?quality=136";
+    this.audioTrack.src = this.baseUrl+this.video_id+"?type=audio";
+
     let durationDisp = document.querySelector(".ytContainer .duration") as HTMLElement;
     let currentDisp = document.querySelector(".ytContainer .currentTime") as HTMLElement;
     let slider = document.querySelector(".ytContainer .current") as HTMLElement;
@@ -64,6 +70,17 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
         slider.style.width = Math.floor(this.player.currentTime *100 /duration)+"%"
 
       })
+    })
+
+    this.player.addEventListener('timeupdate' , (e)=>{
+      var currentTime = this.player.currentTime;
+      this.audioTrack.currentTime = currentTime;
+
+      this.audioTrack.play();
+    })
+
+    this.player.addEventListener('pause' , (e)=>{
+      this.audioTrack.pause();
     })
 
     document.addEventListener('keydown' , (e)=>{
@@ -90,9 +107,10 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
   }
 
   ngOnDestroy(): void {
-    this.menuService.sendInstruction('show');
+    this.menuService.sendInstruction('show' , this);
     this.navigationSub.unsubscribe();
     this.player.src = "";
+    this.audioTrack.src = "";
   }
 
   timeDisplayString(duration){

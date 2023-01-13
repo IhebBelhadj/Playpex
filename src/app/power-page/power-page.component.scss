@@ -1,0 +1,35 @@
+.pageContainer {
+  background: rgb(17, 17, 17);
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 15;
+  padding-top: 50px;
+
+  .powerSection {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    .powerBtn {
+      width: 380px;
+      height: 60px;
+      background: #181818;
+      color: #d0d0d0;
+      font-size: 17px;
+      font-family: "netflixlt";
+      opacity: .8;
+      border-radius: 5px;
+      border: none;
+    }
+  }
+
+  .focused {
+    background: #fff !important;
+    opacity: 1 !important;
+    color: rgb(17, 17, 17) !important;
+    box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
+  }
+}
