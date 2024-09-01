@@ -2,7 +2,7 @@
 
 Playpex is a media streaming platform with a 10-foot user interface with spacial navigation
 
-![Playpex screenshot](https://i.ibb.co/kxmBzrZ/Screenshot-20221023-122226.png)
+![Playpex screenshot](https://lh3.google.com/u/0/d/1jK9GYpN7wBCWFx0oda4nn6M--ZgYxbe2)
 
 > Watch this Youtube video for [Playpex App Promo](https://www.youtube.com/watch?v=mj4EjDdVXTo)
 
@@ -47,7 +47,7 @@ You can build the app from scratch after cloning the app or download the compres
 ## Future updates
 
 * Adding remote controller app for mobile devices (cross platform using ionic )
-* Using redux for managing state
+* Using RXJS for managing state
 * Recreating module structure and implementing lazy loading to get a better app performance
 * Adding account logging and saving movies to watch later and track watched movies
 * Add Tv shows section and account management section
