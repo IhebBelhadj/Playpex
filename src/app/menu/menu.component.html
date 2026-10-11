@@ -17,7 +17,7 @@
         <span class="description">Movies</span>
       </div>
     </button>
-    <button class="tabGroup element menuItem" data-destination="showsPage">
+    <button [class.active] = "currentUrl.includes('/shows')" class="tabGroup element menuItem" data-destination="showsPage">
       <div class="inner">
         <img src="assets/icons/tv.svg" alt="">
         <span class="description">Tv shows</span>

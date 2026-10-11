@@ -1,5 +1,25 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { STREAMING_SERVER } from './server-config';
+
+export interface SubtitleProvider {
+  id: string;
+  name: string;
+  description: string;
+  supports: { movie: boolean, episode: boolean };
+  enabled: boolean;              // false when the provider needs an API key that isn't set
+}
+
+export interface Subtitle {
+  provider: string;
+  ref: string;                   // provider-specific id, passed back to /file
+  language: string;              // ISO 639-1
+  languageName: string;
+  name: string;
+}
+
+const PROVIDER_KEY = "playpex.subtitleProvider";
 
 @Injectable({
   providedIn: 'root'
@@ -8,13 +28,34 @@ export class SubtitlesService {
 
   constructor(private http:HttpClient) { }
 
-  getSubtitles(tmdb_id , languages?){
-    return this.http.get(`http://localhost:9000/api/subtitles/${tmdb_id}` ,
-    {
-    params : {
-      languages : languages?languages:"en,ar,de,es,fr,it"
+  getProviders():Observable<SubtitleProvider[]> {
+    return this.http.get<SubtitleProvider[]>(`${STREAMING_SERVER}/api/subtitles/providers`);
+  }
+
+  // query: movie or show IMDb id, plus season/episode for TV
+  search(provider:string , query:{imdbId:string, season?:number, episode?:number} , languages = "en,ar,de,es,fr,it")
+    :Observable<{provider:string, subtitles:Subtitle[], unsupported?:boolean}> {
+    let params: any = { provider, imdb_id: query.imdbId, languages };
+    if (query.season) {
+      params.season = query.season;
+      params.episode = query.episode;
     }
-    })
+    return this.http.get<any>(`${STREAMING_SERVER}/api/subtitles/search`, { params });
+  }
+
+  // WebVTT URL for <track src>
+  fileUrl(subtitle:Subtitle):string {
+    let params = new URLSearchParams({ provider: subtitle.provider, ref: subtitle.ref, lang: subtitle.language });
+    return `${STREAMING_SERVER}/api/subtitles/file?${params}`;
+  }
+
+  // The player remembers the provider picked last time
+  get preferredProvider():string {
+    try { return localStorage.getItem(PROVIDER_KEY); } catch (e) { return null; }
+  }
+
+  set preferredProvider(id:string) {
+    try { localStorage.setItem(PROVIDER_KEY, id); } catch (e) { }
   }
 
 }

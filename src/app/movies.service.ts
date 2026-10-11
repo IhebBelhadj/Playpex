@@ -1,7 +1,10 @@
 import { YoutubeService } from './youtube.service';
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http'
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { Catalog, MediaType } from './catalog';
+import { categories, showCategories } from './categories';
+import { STREAMING_SERVER } from './server-config';
 
 @Injectable({
   providedIn: 'root'
@@ -13,12 +16,14 @@ export class MoviesService {
   //Description of thes observable subjects is in the
   //method definitions below
 
-  private subject = new Subject<any>();
-  private selector = new Subject();
+  // Browsable sections; the home page/slider pick one via route data `media`
+  catalogs: { [media in MediaType]: Catalog } = {
+    movie: new Catalog('movie', categories, '/movies/list', '/movies/movie'),
+    tv: new Catalog('tv', showCategories, '/shows/list', '/shows/show'),
+  };
 
-
+  // Item shown in <movie-description>: a TMDB movie, or a TV show (media_type 'tv')
   selectedmovie = new BehaviorSubject({});
-  movies = new BehaviorSubject({});
   searchData = new BehaviorSubject({
     query:"",
     results:{},
@@ -26,8 +31,6 @@ export class MoviesService {
     sectionScroll : 0
   });
   movieAppHistory = [];
-
-  navigationData = {};
 
   private tmdb_key = "0067d3f9de200e949bc7f144b1ff83f1";
 
@@ -71,7 +74,20 @@ export class MoviesService {
   }
 
   getYTSMovieDetails(id){
-    return this.http.get(`http://localhost:9000/api/movies/${id}`)
+    return this.http.get(`${STREAMING_SERVER}/api/movies/${id}`)
+  }
+
+  // TV: details incl. imdb id (for torrents/subtitles) and trailers
+  getTvDetails(tmdb_id){
+    return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US&append_to_response=external_ids,videos`)
+  }
+
+  getTvSeason(tmdb_id, season_number){
+    return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?api_key=${this.tmdb_key}&language=en-US`)
+  }
+
+  catalogForUrl(url:string):Catalog {
+    return Object.values(this.catalogs).find(c => c.listUrl === url);
   }
 
   getMovieVideos(tmdb_id){
@@ -82,37 +98,6 @@ export class MoviesService {
 
   // ****RXJS Subjects for sharing data between components****
 
-
-
-  // keeping track of movies object which contains categories
-  //with arrays of movies
-      assignMovies(movies){
-        this.movies.next(movies);
-      }
-
-      checkMovies():Observable<any>{
-        return this.movies.asObservable();
-      }
-
-
-  // keeps track of movies object update requests like
-  // append new movies page when navigating through slider, etc ....
-      requestMovies(params) {
-        this.subject.next(params);
-      }
-
-      requestListener(): Observable<any> {
-        return this.subject.asObservable();
-      }
-
-  // keeps track of currently selected movie in movie slider
-      selectMovie(e){
-        this.selector.next(e);
-      }
-
-      selectedMovie(): Observable<any> {
-        return this.selector.asObservable();
-      }
 
 
   //Keeps track of the object movie that is going to be

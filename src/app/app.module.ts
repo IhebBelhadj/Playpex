@@ -18,6 +18,7 @@ import { NotificationHandlerComponent } from './notification-handler/notificatio
 import { SplashComponent } from './splash/splash.component';
 import { DescritionViewerComponent } from './descrition-viewer/descrition-viewer.component';
 import { PowerPageComponent } from './power-page/power-page.component';
+import { ShowOptionsComponent } from './show-options/show-options.component';
 import { RouterModule } from "@angular/router";
 
 @NgModule({
@@ -36,6 +37,7 @@ import { RouterModule } from "@angular/router";
     SplashComponent,
     DescritionViewerComponent,
     PowerPageComponent,
+    ShowOptionsComponent,
   ],
   imports: [
     BrowserModule,

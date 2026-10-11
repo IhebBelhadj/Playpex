@@ -61,6 +61,25 @@
   }
 }
 
+.quality {
+  font-family: 'netflixlt';
+  padding: 8px;
+  background: #1d1d1d9e;
+  border-radius: 5px;
+  font-size: 12px;
+  opacity: .7;
+  margin: 4px;
+}
+
+.tmdb_score {
+  font-family: 'NetflixBk';
+  margin-left: 12px;
+  opacity: .9;
+  background: #1515152e;
+  padding: 7px;
+  border-radius: 5px;
+}
+
 .categories {
   font-family: 'Netflixlt';
   opacity: .6;

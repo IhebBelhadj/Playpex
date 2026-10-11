@@ -7,6 +7,7 @@ import { NavigationService } from './../navigation.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
+import { PlaybackService } from '../playback.service';
 
 @Component({
   selector: 'app-movie-options',
@@ -37,6 +38,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   focusCastDistance;
   focusSimilarDistance;
   focusListener;
+  keydownListener;
 
   constructor(
     private navigation:NavigationService,
@@ -46,6 +48,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private notificationService:NotificationService,
     private location:Location,
     private menu:MenuServiceService,
+    private playback:PlaybackService,
   ) {
   }
 
@@ -89,7 +92,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.getPlayData();
     this.handleNavEvents();
 
-    document.addEventListener('keydown' , (e)=>{
+    this.keydownListener = (e)=>{
 
       if (
         document.activeElement.parentElement.classList.contains('movie') &&
@@ -108,7 +111,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
             tempSub.unsubscribe();
           })
       }
-    })
+    }
+    document.addEventListener('keydown' , this.keydownListener)
 
     this.activatedRoute.params.subscribe(params => {
 
@@ -135,7 +139,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
     //ON focus navigation update
 
-    this.focusListener = window.addEventListener('sn:focused', (e)=>{
+    this.focusListener = (e)=>{
       if (!this.router.url.includes('/movies/movie')) return;
       const node = e.target as HTMLElement;
       let pageContainer = node.closest('.pageContainer') as HTMLElement;
@@ -194,7 +198,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
       }
 
-    })
+    }
+    window.addEventListener('sn:focused', this.focusListener)
 
 
   }
@@ -213,7 +218,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.navigationSub.unsubscribe();
 
     this.navigation.routerCurrentMovieId = undefined;
-    document.removeEventListener('sn:focused', this.focusListener);
+    window.removeEventListener('sn:focused', this.focusListener);
+    document.removeEventListener('keydown', this.keydownListener);
     document.querySelector('.pageContainer')['style']['transform'] = `translateY(0px)`
   }
 
@@ -429,6 +435,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
           case document.activeElement.classList.contains('play'):
             if (!this.canPlay) return;
             if (this.selectedMovie['torrents']) {
+              this.playback.playMovie(this.selectedMovie);
               this.router.navigateByUrl("/player");
             }else {
               this.notificationService.sendNotification('error',"No streaming service found for the movie")

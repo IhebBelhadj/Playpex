@@ -25,11 +25,15 @@ function createWindow() {
         icon : 'favicon.ico'
     });
     win.setBackgroundColor('#000');
-    win.loadURL(url.format({
-        pathname: path.join(__dirname, '../dist/playpex/index.html'),
-        protocol: 'file',
-        slashes: true
-    }));
+    // Tell the UI which port the streaming server got (see src/app/server-config.ts)
+    server.ready.then(port => {
+        win.loadURL(url.format({
+            pathname: path.join(__dirname, '../dist/playpex/index.html'),
+            protocol: 'file',
+            slashes: true,
+            query: { streamer: port }
+        }));
+    });
     /*if (isDev()) {
         win.webContents.openDevTools()
     }*/

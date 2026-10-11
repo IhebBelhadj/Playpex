@@ -138,7 +138,7 @@ export class MenuComponent implements OnInit , AfterViewInit{
         this.router.navigateByUrl("/movies/list")
         break;
       case "showsPage":
-        this.router.navigateByUrl("/")
+        this.router.navigateByUrl("/shows/list")
         break;
       default:
         break;

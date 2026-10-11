@@ -17,6 +17,13 @@ export class NotificationHandlerComponent implements OnInit {
 
   ngOnInit(): void {
 
+    this.navigation.executeCommand().subscribe(instruction =>{
+      if (instruction == "click" && document.activeElement.classList.contains('okBtn')) {
+          (document.querySelector('.errorHandler') as HTMLElement).style.display = 'none';
+          this.navigation.updateNavigation('remove' , {sectionId : 'okBtn'});
+      }
+    })
+
     this.notificationService.getNotification().subscribe((notification)=>{
       if(notification.type == "error"){
         this.displayError = true;
@@ -36,13 +43,6 @@ export class NotificationHandlerComponent implements OnInit {
           okBtn.focus({preventScroll:true})
         } , 100)
 
-        this.navigation.executeCommand().subscribe(instruction =>{
-          if (instruction == "click" && document.activeElement.classList.contains('okBtn')) {
-              errorHandler.style.display = 'none';
-              this.navigation.updateNavigation('remove' , {sectionId : 'okBtn'});
-
-          }
-        })
         this.errorContent = notification.data;
       }
     })

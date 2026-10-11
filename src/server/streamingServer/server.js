@@ -17,7 +17,7 @@ var
 
 var server = http.createServer(api);
 socket(server);
-var port = process.STREAMER_PORT || 9000;
+var port = process.env.STREAMER_PORT || 9000;
 
 server.listen(port).on('error', function (e) {
   if (e.code !== 'EADDRINUSE' && e.code !== 'EACCES') {
@@ -28,6 +28,16 @@ server.listen(port).on('error', function (e) {
 }).on('listening', function () {
   console.log('streamer Listening on http://localhost:' + port);
 });
+
+// Resolves with the port actually bound (it moves up when 9000 is taken);
+// electron.js hands it to the UI
+module.exports = {
+  ready: new Promise(function (resolve) {
+    server.once('listening', function () {
+      resolve(server.address().port);
+    });
+  })
+};
 
 var socketServer = http.createServer();
 remoteSocket(socketServer);

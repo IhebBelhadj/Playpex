@@ -30,9 +30,7 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": [
-              "node_modules/spatial-navigation-js/spatial_navigation.js"
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {

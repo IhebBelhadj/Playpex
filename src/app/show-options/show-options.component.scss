@@ -1,0 +1,213 @@
+// Flex item of .pageContainer: without min-width 0 it grows to the full width
+// of the episodes row and the rows can't scroll
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.showOptionsContainer {
+  padding-bottom: 40px;
+
+  .optionPannel {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+
+    .option:first-child {
+      margin-left: 0;
+    }
+
+    .option {
+      background: none;
+      border: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin: 25px 6px;
+      opacity: .67;
+
+      .imgContainer {
+        background: rgba(28, 28, 28, .72);
+        border-radius: 5px;
+        height: 60px;
+
+        img {
+          width: 26px;
+          padding: 15px 38px;
+          filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%);
+        }
+      }
+
+      span {
+        margin-top: 12px;
+        max-width: 70px;
+      }
+    }
+
+    .focused {
+      opacity: 1;
+
+      .imgContainer {
+        background: #fff;
+
+        img {
+          filter: none !important;
+        }
+      }
+    }
+  }
+
+  .sectionTitle {
+    font-family: 'netflixBk';
+    opacity: .9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .count {
+      opacity: .6;
+    }
+
+    .loading {
+      width: 22px;
+    }
+  }
+
+  // Rows scroll with transform (no native scrolling in the 10-foot UI)
+  .rowViewport {
+    overflow: hidden;
+    padding: 8px 0 8px 4px;
+  }
+
+  .content {
+    position: relative;
+    display: flex;
+    transition: transform .2s;
+    // room for the focused card's scale/outline at the end of the row
+    padding-right: 24px;
+  }
+
+  .seasons {
+    .season {
+      flex: none;
+      background: rgba(28, 28, 28, .72);
+      color: #fff;
+      border: 2px solid transparent;
+      border-radius: 20px;
+      padding: 10px 22px;
+      margin-right: 12px;
+      font-family: 'NetflixBk';
+      font-size: 16px;
+      opacity: .7;
+      transition: all .15s;
+    }
+
+    .selected {
+      border-color: rgba(255, 255, 255, .6);
+      opacity: 1;
+    }
+
+    .focused {
+      background: #fff;
+      color: #000;
+      opacity: 1;
+    }
+  }
+
+  .episodes {
+    .episode {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      width: 270px;
+      margin-right: 20px;
+
+      .displayedElem {
+        padding: 0;
+        border: none;
+        background: none;
+        margin-bottom: 12px;
+      }
+
+      .imgContainer {
+        position: relative;
+        width: 270px;
+        height: 152px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: rgba(103, 103, 103, .35);
+        transition: transform .2s;
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: .7;
+          filter: saturate(.6);
+        }
+      }
+
+      .badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(0, 0, 0, .7);
+        color: #fff;
+        font-family: 'NetflixBk';
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+
+      .resolving {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, .65);
+        color: #fff;
+        font-family: 'NetflixBk';
+        font-size: 14px;
+
+        img {
+          width: 28px;
+          height: 28px;
+          opacity: 1;
+          filter: none;
+        }
+      }
+
+      .name {
+        font-family: 'netflixBk';
+        opacity: .8;
+        font-size: 16px;
+      }
+
+      .year {
+        font-family: 'netflixLt';
+        opacity: .45;
+        font-size: 14px;
+        margin-top: 4px;
+      }
+
+      .focused .imgContainer {
+        transform: scale(1.06);
+        outline: 3px solid #fff;
+
+        img {
+          opacity: 1;
+          filter: none;
+        }
+      }
+    }
+
+    .upcoming {
+      opacity: .5;
+    }
+  }
+}

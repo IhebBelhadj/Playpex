@@ -42,7 +42,7 @@ testem.log
 Thumbs.db
 
 #streamer cache
-/server/streamingServer/torrents
+/src/server/streamingServer/torrents/torrent_data
 
 #Released build
 

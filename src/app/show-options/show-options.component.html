@@ -1,0 +1,60 @@
+<div class="showOptionsContainer">
+  <div class="optionPannel">
+    <button class="option focusable play lastSelected" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+      <div class="imgContainer">
+        <img src="assets/icons/play.svg" alt="">
+      </div>
+      <span>Play {{selectedSeason ? 'S' + selectedSeason : ''}}</span>
+    </button>
+    <button class="option focusable trailer" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+      <div class="imgContainer">
+        <img src="assets/icons/trailer.svg" alt="">
+      </div>
+      <span>Trailer</span>
+    </button>
+  </div>
+
+  <div class="seasons" *ngIf="seasons.length">
+    <h3 class="sectionTitle">Seasons</h3>
+    <div class="rowViewport">
+      <div class="content">
+        <button class="season focusable"
+          *ngFor="let season of seasons"
+          [class.selected]="season.season_number === selectedSeason"
+          [attr.data-season]="season.season_number"
+          data-sn-up=".showOptionsContainer .optionPannel .lastSelected"
+          data-sn-down=".showOptionsContainer .episodes .lastSelected">
+          {{season.name}}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="episodes">
+    <h3 class="sectionTitle">
+      {{seasonName}}
+      <span class="count" *ngIf="episodes.length">· {{episodes.length}} episodes</span>
+      <img class="loading" *ngIf="loadingEpisodes" src="assets/icons/loading_small.svg" alt="">
+    </h3>
+    <div class="rowViewport">
+      <div class="content">
+        <div class="episode" *ngFor="let ep of episodes; let i = index" [class.upcoming]="ep.upcoming">
+          <button class="displayedElem focusable episodeBtn"
+            [attr.data-index]="i"
+            data-sn-up=".showOptionsContainer .seasons .lastSelected">
+            <div class="imgContainer">
+              <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
+              <span class="badge" *ngIf="ep.upcoming">Upcoming</span>
+              <div class="resolving" *ngIf="resolvingEpisode === ep.episode_number">
+                <img src="assets/icons/loading_small.svg" alt="">
+                <span>Finding torrents…</span>
+              </div>
+            </div>
+          </button>
+          <span class="name">E{{ep.episode_number}} · {{ep.name | slice:0:30}}{{ep.name?.length > 30 ? '…' : ''}}</span>
+          <span class="year">{{ep.air_date | slice:0:10}}{{ep.runtime ? ' · ' + ep.runtime + ' min' : ''}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

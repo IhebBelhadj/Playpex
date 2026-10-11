@@ -8,15 +8,14 @@ var rangeParser = require('range-parser'),
   express = require('express'),
   logger = require('morgan'),
   multipart = require('connect-multiparty'),
-  ytdl = require('ytdl-core'),
+  youtube = require('./youtube'),
+  episodes = require('./episodes'),
+  subtitles = require('./subtitles'),
   fs = require('fs'),
   store = require('./store'),
   progress = require('./progressbar'),
   stats = require('./stats'),
-  request = require('request'),
   api = express(),
-  srt2vtt = require('srt-to-vtt'),
-  ytdl = require('ytdl-core'),
   axios = require('axios').default;
 
 
@@ -180,6 +179,21 @@ api.get('/torrents/:infoHash/deselect', findTorrent, function (req, res) {
 
 
 
+// Players read a video's index before starting: MKV keeps it (Cues) at the end
+// of the file, which would otherwise download last. Fetch the tail alongside the
+// start the first time a file is streamed.
+var TAIL_BYTES = 2 * 1024 * 1024;
+
+function prefetchTail(file) {
+  if (file.tailPrefetched || file.length <= TAIL_BYTES * 2) {
+    return;
+  }
+  file.tailPrefetched = true;
+  var tail = file.createReadStream({ start: file.length - TAIL_BYTES, end: file.length - 1 });
+  tail.on('error', function () {});
+  tail.resume();
+}
+
 /*
     --MOST CRUSIAL PART
 */
@@ -191,9 +205,15 @@ api.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, re
   if (!file) {
     return res.sendStatus(404);
   }
+  // Download only the file being watched (season packs hold many episodes)
   torrent.files.forEach(function (f) {
-    f.select();
+    if (f === file) {
+      f.select();
+    } else {
+      f.deselect();
+    }
   });
+  prefetchTail(file);
 
   var range = req.headers.range;
 
@@ -233,251 +253,120 @@ api.get('/subtitles/:imdb_id', function (req, res) {
 
 })
 
-//yts api with cors setup
+//YTS movie API (torrents, rating, runtime). yts.mx stopped answering in 2026;
+//the API itself announces movies-api.accel.li as its new base URL.
 
+var YTS_MIRRORS = ['https://movies-api.accel.li', 'https://yts.lt', 'https://yts.ag'];
+
+function ytsGet(endpoint, params) {
+  var mirrors = YTS_MIRRORS.slice();
+
+  function attempt() {
+    var base = mirrors.shift();
+    return axios.get(base + '/api/v2/' + endpoint, { params: params, timeout: 15000 })
+      .catch(function (err) {
+        if (mirrors.length) {
+          return attempt();
+        }
+        throw err;
+      });
+  }
+
+  return attempt();
+}
 
 api.get('/api/movies', function (req, res) {
-  console.log(req.query)
-  axios.get('https://yts.mx/api/v2/list_movies.json' , {params : req.query})
+  ytsGet('list_movies.json', req.query)
   .then(function (response) {
-    // handle success
     res.json(response.data)
   })
-  .catch((err)=>{
-    console.log(err);
+  .catch(function (err) {
+    console.log('yts list: ' + err.message);
+    res.status(502).json({ error: err.message });
   })
 });
 
 api.get('/api/movies/:imdb_id', function (req, res) {
-  console.log(req.params.imdb_id)
-  axios.get('https://yts.mx/api/v2/movie_details.json' , {params : {imdb_id : req.params.imdb_id} })
+  ytsGet('movie_details.json', { imdb_id: req.params.imdb_id })
   .then(function (response) {
-    // handle success
     res.json(response.data)
   })
-  .catch((err)=>{
-    console.log(err);
+  .catch(function (err) {
+    console.log('yts details: ' + err.message);
+    res.status(502).json({ error: err.message });
   })
 });
 
-//Subtitles api
+//TV episode torrents (EZTV + TheRARBG), best match first
 
-api.get('/api/subtitles/:tmdb_id' , function(req , res) {
+api.get('/api/shows/:imdb_id/torrents', function (req, res) {
+  var season = parseInt(req.query.season, 10),
+      episode = parseInt(req.query.episode, 10);
 
-  var options = {
-    method: 'GET',
-    url: 'https://api.opensubtitles.com/api/v1/subtitles',
-    headers: {
-      'Content-Type': 'application/json',
-      'Api-Key': 'co8umXm6v33k9nrkvwRvMKbdQMkhRdiB'
-    },
-    params : {
-      tmdb_id : req.params.tmdb_id,
-      languages : req.query.languages,
-    }
-  };
-
-  axios.request(options).then(function (response) {
-    res.json(response.data)
-  }).catch(function (error) {
-    console.error(error);
-  });
-
-})
-
-
-
-api.get("/api/subtitles/download/:file_id" , function(req , res){
-
-  const options = {
-    method: 'POST',
-    url: 'https://api.opensubtitles.com/api/v1/download',
-    headers: {
-      'Accept' : "*/*",
-      'Content-Type': 'application/json',
-      'Api-Key': 'co8umXm6v33k9nrkvwRvMKbdQMkhRdiB'
-    },
-    data: {file_id: Number(req.params.file_id)}
-  };
-
-  axios.request(options).then(function (response) {
-    var link = response.data.link;
-
-    try {
-
-     res.setHeader("content-type", "text/vtt");
-
-      request(link)
-        .pipe(srt2vtt())
-        .pipe(res)
-
-    } catch (error) {
-      console.log(error);
-    }
-
-  }).catch(function (error) {
-    console.error(error);
-  });
-})
-
-
-//youtube streaming api
-
-var base_url = "http://www.youtube.com/watch?v=";
-
-function validateYTLink(req, res, next){
-  if (!ytdl.validateID(req.params.videoId)) {
-    res.sendStatus(404)
-  }
-  next();
-}
-
-
-api.all('/youtube/:videoId/:type',validateYTLink , async (req, res) => {
-
-
-  var
-    id = req.params.videoId,
-    type = req.params.type,
-    link = base_url+id,
-    params = {};
-
-
-  var info = await ytdl.getInfo(link);
-  var format;
-  var title = info.videoDetails.videoId;
-
-  if (type) {
-    if (type == 'video') {
-      params.quality = req.query.quality || "highestvideo";
-    }
-    else if (type == 'audio'){
-      params.quality = '140';
-      params.dlChunkSize = 0;
-      params.highWaterMark = 1024 * 1024 * 512;
-    }
-
-    try {
-
-      format = ytdl.chooseFormat(info.formats, params);
-      if (!format.contentLength) {
-        quality = "highestvideo";
-        format = ytdl.chooseFormat(info.formats, params);
-      }
-
-    } catch (error) {
-      res.sendStatus(404)
-    }
+  if (!(season >= 0) || !(episode >= 1)) {
+    return res.status(400).send({ error: 'season and episode are required' });
   }
 
-  else {
-    try {
-
-      format = ytdl.chooseFormat(info.formats, params);
-      if (!format.contentLength) {
-        quality = "highest";
-        format = ytdl.chooseFormat(info.formats, params);
-      }
-
-    } catch (error) {
-      res.sendStatus(404)
-    }
-  }
-
-
-
-  var totalSize = format.contentLength;
-  console.log(id);
-
-  var range = req.headers.range;
-  range = range && rangeParser(totalSize, range)[0];
-  res.setHeader('Accept-Ranges', 'bytes');
-  res.type(format.mimeType);
-  req.socket.setTimeout(3600000);
-
-  if (!range) {
-      res.setHeader('Content-Length', totalSize);
-      if (req.method === 'HEAD') {
-        return res.end();
-      }
-      return pump(ytdl(link , params), res);
-    }
-  res.statusCode = 206;
-  res.setHeader('Content-Length', range.end - range.start + 1);
-  res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + totalSize);
-  if (req.method === 'HEAD') {
-      return res.end();
-  }
-  params.range = {start : range.start , end : range.end}
-  pump(ytdl(link ,  params), res);
-
-
+  episodes.findEpisodeTorrents(req.params.imdb_id, req.query.title, season, episode)
+    .then(function (result) {
+      res.json(result);
+    })
+    .catch(function (error) {
+      console.error(error);
+      res.status(502).send({ error: error.message });
+    });
 });
 
-api.all('/youtube/:videoId/',validateYTLink , async (req, res) => {
+//Subtitles (see lib/subtitles: several providers, chosen by the player)
 
+api.get('/api/subtitles/providers', function (req, res) {
+  res.json(subtitles.list());
+});
 
-  var
-    id = req.params.videoId,
-    type = req.query.type,
-    link = base_url+id,
-    params = {};
-
-
-  var info = await ytdl.getInfo(link);
-  var format;
-  var title = info.videoDetails.videoId;
-
-  if (type == 'video') {
-    params.quality = req.query.quality || "highestvideo";
+// ?provider=&imdb_id=tt…&season=&episode=&languages=en,ar
+api.get('/api/subtitles/search', function (req, res) {
+  var imdbId = String(req.query.imdb_id || '');
+  if (!/^tt\d+$/.test(imdbId)) {
+    return res.status(400).json({ error: 'imdb_id (tt…) is required' });
   }
-  else if (type == 'audio'){
-    params.quality = '140';
-    params.dlChunkSize = 0;
-    params.highWaterMark || 1024 * 512;
-  }
-  else {
-
+  var query = { imdbId: imdbId };
+  if (req.query.season && req.query.episode) {
+    query.season = parseInt(req.query.season, 10);
+    query.episode = parseInt(req.query.episode, 10);
   }
 
-  try {
+  subtitles.search(req.query.provider, query, req.query.languages)
+    .then(function (result) {
+      res.json(result);
+    })
+    .catch(function (error) {
+      console.error('subtitles search: ' + error.message);
+      res.status(502).json({ error: error.message, subtitles: [] });
+    });
+});
 
-    format = ytdl.chooseFormat(info.formats, params);
-    if (!format.contentLength) {
-      quality = "highestvideo";
-      format = ytdl.chooseFormat(info.formats, params);
-    }
-
-  } catch (error) {
-    res.sendStatus(404)
-  }
-
-  var totalSize = format.contentLength;
-  console.log(id);
-
-  var range = req.headers.range;
-  range = range && rangeParser(totalSize, range)[0];
-  res.setHeader('Accept-Ranges', 'bytes');
-  res.type(format.mimeType);
-  req.socket.setTimeout(3600000);
-
-  if (!range) {
-      res.setHeader('Content-Length', totalSize);
-      if (req.method === 'HEAD') {
-        return res.end();
-      }
-      return pump(ytdl(link , params), res);
-    }
-  res.statusCode = 206;
-  res.setHeader('Content-Length', range.end - range.start + 1);
-  res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + totalSize);
-  if (req.method === 'HEAD') {
-      return res.end();
-  }
-  params.range = {start : range.start , end : range.end}
-  pump(ytdl(link ,  params), res);
+// ?provider=&ref=&lang= -> WebVTT for <track>
+api.get('/api/subtitles/file', function (req, res) {
+  subtitles.file(req.query.provider, String(req.query.ref || ''), req.query.lang)
+    .then(function (vtt) {
+      res.setHeader('content-type', 'text/vtt; charset=utf-8');
+      res.send(vtt);
+    })
+    .catch(function (error) {
+      console.error('subtitles file: ' + error.message);
+      res.sendStatus(502);
+    });
+});
 
 
+//youtube streaming api (see lib/youtube.js)
+
+api.all('/youtube/:videoId/:type', function (req, res) {
+  youtube.stream(req, res, req.params.type);
+});
+
+api.all('/youtube/:videoId/', function (req, res) {
+  youtube.stream(req, res, req.query.type);
 });
 
 

@@ -1,4 +1,4 @@
-<h1 class="name">{{selectedMovie?.original_title}}</h1>
+<h1 class="name">{{selectedMovie?.original_title || selectedMovie?.name}}</h1>
 <div class="infos">
   <p class="year">{{year}}</p>
   <div class="avalableQualities" *ngIf="availableQualities">
@@ -12,12 +12,21 @@
     {{selectedMovie?.rating}}
   </div>
 
+  <ng-container *ngIf="selectedMovie?.media_type == 'tv'">
+    <div class="quality" *ngIf="selectedMovie?.number_of_seasons">
+      {{selectedMovie.number_of_seasons}} {{selectedMovie.number_of_seasons == 1 ? 'season' : 'seasons'}}
+    </div>
+    <div class="tmdb_score" *ngIf="selectedMovie?.vote_average">
+      TMDB {{selectedMovie.vote_average | number:'1.1-1'}}
+    </div>
+  </ng-container>
+
 </div>
 
 <div class="categories" *ngIf="genres">
   <span *ngFor="let genre of genres">{{genre}} . </span>
 </div>
 <p class="movieDesciption">
-  {{selectedMovie?.overview | slice:1:255}}
-  <span *ngIf="selectedMovie?.overview">...</span>
+  {{selectedMovie?.overview | slice:0:255}}
+  <span *ngIf="selectedMovie?.overview?.length > 255">...</span>
 </p>

@@ -1,14 +1,14 @@
 import { SplashService } from './../splash.service';
-import { MenuServiceService } from './../menu-service.service';
-import { Router } from '@angular/router';
 import { NavigationService } from './../navigation.service';
-import { MoviesSliderComponent } from './../movies-slider/movies-slider.component';
-
 import { MoviesService } from './../movies.service';
-import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
-import {Category , categories} from '../categories'
-import { mergeAll, mergeMap, switchMap, Subscription, map } from 'rxjs';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { switchMap, Subscription, map, Observable } from 'rxjs';
+import { Catalog } from '../catalog';
 
+// Home page of a section (movies or TV shows, from route data `media`):
+// loads the category rows into the section's Catalog and enriches the
+// focused item for <movie-description>.
 @Component({
   selector: 'movies-page',
   templateUrl: './movies-page.component.html',
@@ -16,42 +16,45 @@ import { mergeAll, mergeMap, switchMap, Subscription, map } from 'rxjs';
 })
 export class MoviesPageComponent implements OnInit , OnDestroy {
 
+  catalog:Catalog;
   selectedMovie;
-  _categories:Array<Category> = categories;
-  movies = {};
-  reachedPages = {};
   selectedMovieSub:Subscription;
-  navigationSub:Subscription;
-  @ViewChild(MoviesSliderComponent) moviesSlider:MoviesSliderComponent;
+  pageRequestSub:Subscription;
+
   constructor(
     private moviesService:MoviesService,
     private navigation:NavigationService,
-    private router:Router,
-    private menuService:MenuServiceService,
     private splashService:SplashService,
+    private route:ActivatedRoute,
   ) { }
 
-
-
   ngOnInit(): void {
+    this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
 
-    if ( Object.keys(this.moviesService.movies.value).length !== 0) {
-      this.movies = this.moviesService.movies.value;
+    // Coming from the other section: don't describe its last item here
+    let selected = this.moviesService.selectedmovie.value;
+    if ((selected['media_type'] == 'tv') !== (this.catalog.media == 'tv')) {
+      this.moviesService.assignSelection({});
     }
-    else {
 
-      this._categories.forEach(c => {
-        //Get movies for each category
+    if (Object.keys(this.catalog.items.value).length === 0) {
+
+      // Rows keep category order whatever order the requests finish in
+      let items = {};
+      this.catalog.categories.forEach(c => items[c.name] = []);
+      this.catalog.items.next(items);
+
+      this.catalog.categories.forEach(c => {
         this.getMovies(c.name , c.query);
-        this.reachedPages[c.name] = 1;
+        this.catalog.reachedPages[c.name] = 1;
 
-        // initialize movie slider navigation data
-        this.moviesService.navigationData[c.name] = {
+        // initialize slider navigation data
+        this.catalog.navigationData[c.name] = {
           reached : '0',
           selected : false
         }
-
       })
+
       this.splashService.splashExecuteCommand().subscribe(instruction=>{
         if (instruction == "clearSplash") {
           setTimeout(()=>{
@@ -61,104 +64,84 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
       })
     }
 
+    this.subscribeToSelections();
 
-    this.selectedMovieSub = this.moviesService.selectedMovie()
-    .pipe(
-      map(data=>{
-        this.moviesService.assignSelection(this.selectedMovie);
-        return data;
-      }),
-      switchMap(data => {
-        if (this.movies[data.category][Number(data.index)]) {
-          this.selectedMovie = this.movies[data.category][Number(data.index)];
-        }
-        return this.moviesService.getTmdbMovieDetails(data.id)
-        .pipe(
-          map(data => {
-            this.selectedMovie.genres = data['genres'];
-            this.moviesService.assignSelection(this.selectedMovie);
-            return data;
-          }),
-          switchMap(data => this.moviesService.getYTSMovieDetails(data['imdb_id'])
-          .pipe(
-            map(inner => ({tmdbData : data , ytsData : inner}))
-          ))
+    // Slider reached the end of a row: append the next TMDB page
+    this.pageRequestSub = this.catalog.onPageRequest().subscribe(request => {
+      let query = this.catalog.findCategory(request.category).query;
+      query['params']['page'] = request.page;
 
-        )
-      }))
-      .subscribe(dataGroup =>{
-
-          console.log(dataGroup);
-
-
-          this.selectedMovie.genres = dataGroup.tmdbData['genres'];
-          this.selectedMovie['torrents'] = dataGroup.ytsData['data']['movie']['torrents']
-          this.selectedMovie['mpa_rating'] = dataGroup.ytsData['data']['movie']['mpa_rating']
-          this.selectedMovie['rating'] = dataGroup.ytsData['data']['movie']['rating']
-          this.selectedMovie['runtime'] = dataGroup.ytsData['data']['movie']['runtime']
-          this.selectedMovie['trailer'] = dataGroup.ytsData['data']['movie']['yt_trailer_code']
-          this.selectedMovie.imdb_id = dataGroup.tmdbData['imdb_id'];
-          this.moviesService.assignSelection(this.selectedMovie);
-
-      } , error => {
-        this.ngOnInit()
-      })
-
-    // On movie object update request(appending new movies , etc ...)
-    this.moviesService.requestListener().subscribe(request => {
-
-      //from categories array find the matching query (url + params)
-      let query = this.findCategoryQuery(request['category'])
-      query['params']['page'] = request['page']
-
-      if (query['params']['page'] > this.reachedPages[request['category']]) {
-        this.reachedPages[request['category']] += 1;
-        this.getMovies(request['category'] , query);
+      if (request.page > this.catalog.reachedPages[request.category]) {
+        this.catalog.reachedPages[request.category] += 1;
+        this.getMovies(request.category , query);
       }
-
     })
-
-
   }
 
   ngOnDestroy(): void {
     this.selectedMovieSub.unsubscribe();
+    this.pageRequestSub.unsubscribe();
   }
 
-  //Main method for getting movies from service
+  subscribeToSelections(){
+    this.selectedMovieSub = this.catalog.onSelect()
+    .pipe(
+      switchMap(data => {
+        let item = this.catalog.items.value[data.category]?.[Number(data.index)];
+        if (item) {
+          if (this.catalog.media == 'tv') item.media_type = 'tv';
+          this.selectedMovie = item;
+          this.moviesService.assignSelection(this.selectedMovie);
+        }
+        return this.catalog.media == 'tv' ? this.enrichShow(data.id) : this.enrichMovie(data.id);
+      }))
+      .subscribe(() => {
+        this.moviesService.assignSelection(this.selectedMovie);
+      } , error => {
+        console.log(error);
+        this.subscribeToSelections();
+      })
+  }
+
+  // TMDB genres + YTS torrents/rating/runtime/trailer
+  enrichMovie(id):Observable<any> {
+    return this.moviesService.getTmdbMovieDetails(id).pipe(
+      map(data => {
+        this.selectedMovie.genres = data['genres'];
+        this.moviesService.assignSelection(this.selectedMovie);
+        return data;
+      }),
+      switchMap(tmdbData => this.moviesService.getYTSMovieDetails(tmdbData['imdb_id']).pipe(
+        map(ytsData => {
+          this.selectedMovie['torrents'] = ytsData['data']['movie']['torrents']
+          this.selectedMovie['mpa_rating'] = ytsData['data']['movie']['mpa_rating']
+          this.selectedMovie['rating'] = ytsData['data']['movie']['rating']
+          this.selectedMovie['runtime'] = ytsData['data']['movie']['runtime']
+          this.selectedMovie['trailer'] = ytsData['data']['movie']['yt_trailer_code']
+          this.selectedMovie.imdb_id = tmdbData['imdb_id'];
+        })
+      ))
+    )
+  }
+
+  // TMDB genres, season count and score (episodes are loaded on the show page)
+  enrichShow(id):Observable<any> {
+    return this.moviesService.getTvDetails(id).pipe(
+      map(data => {
+        this.selectedMovie.genres = data['genres'];
+        this.selectedMovie.number_of_seasons = data['number_of_seasons'];
+        this.selectedMovie.imdb_id = data['external_ids']?.['imdb_id'];
+      })
+    )
+  }
+
   getMovies(category:string , query){
-
-     this.moviesService.getMovies(query).subscribe(res => {
-
-      let tempMovies = res;
-      // if there are already movies append to the available array
-      //otherwise start from an empty array
-      let current = this.movies[category] || [];
-      this.movies[category]  =  current.concat(tempMovies['results']);
-
-      // save the changed movies object to the movies service
-      this.moviesService.assignMovies(this.movies);
-
+    this.moviesService.getMovies(query).subscribe(res => {
+      // append the new page to the row (or start it)
+      let items = this.catalog.items.value;
+      items[category] = (items[category] || []).concat(res['results']);
+      this.catalog.items.next(items);
     })
   }
 
-
-  // Fetch the categories array to get category query
-  findCategoryQuery(name){
-
-    let query;
-    this._categories.forEach(element => {
-
-      if (element.name === name) {
-        query = element.query
-      }
-    });
-
-    return query;
-  }
-
 }
-
-
-
-

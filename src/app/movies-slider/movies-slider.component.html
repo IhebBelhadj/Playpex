@@ -1,7 +1,9 @@
 <div class="sliderContainer">
   <div class="overlay"></div>
   <div class="content">
-    <div class="section" *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
+    <ng-container *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
+    <!-- rows are created in category order; empty ones are still loading -->
+    <div class="section" *ngIf="category.value.length">
       <h3 class="sectionTitle">{{category.key}}</h3>
       <div class="slider">
         <div class="container">
@@ -23,5 +25,6 @@
       </div>
     </div>
 
+    </ng-container>
   </div>
 </div>

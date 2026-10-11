@@ -2,7 +2,8 @@ import { NavigationService } from './../navigation.service';
 import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { MoviesService } from '../movies.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -15,7 +16,11 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   scrolledAmount = 0;
   limit = 20;
   movies = {};
+  catalog:Catalog;
   navSub:Subscription;
+  moviesSub:Subscription;
+  sliderEventSub:Subscription;
+  focusListener;
   imgBaseUrl = "https://image.tmdb.org/t/p/w342";
 
   constructor(
@@ -23,6 +28,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private moviesService:MoviesService,
     private navigation:NavigationService,
     private router:Router,
+    private route:ActivatedRoute,
   ) { }
 
 
@@ -30,18 +36,19 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   ngOnInit(): void {
 
 
-    this.movies = this.moviesService.movies.getValue();
+    this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
+    this.movies = this.catalog.items.getValue();
 
     setTimeout(()=>{
       this.updateNavigation();
     } , 100)
 
-    this.moviesService.checkMovies().subscribe(data =>{
+    this.moviesSub = this.catalog.items.subscribe(data =>{
       this.movies = data;
 
     })
 
-    window.addEventListener('sn:focused', (e)=>{
+    this.focusListener = (e)=>{
 
       const node = e.target as HTMLElement;
 
@@ -58,20 +65,17 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
           let pageNumber = Math.floor(currentMovies.length / this.limit) + 1
           console.log(pageNumber);
 
-          this.moviesService.requestMovies({
-            category : currentSection,
-            page : pageNumber
-          });
+          this.catalog.requestPage(currentSection , pageNumber);
 
         }
 
         //update navigation data
 
-        this.moviesService.navigationData[currentSection]['reached'] = node.dataset['index'];
-        for (const section in this.moviesService.navigationData) {
-          this.moviesService.navigationData[section]['selected'] = false
+        this.catalog.navigationData[currentSection]['reached'] = node.dataset['index'];
+        for (const section in this.catalog.navigationData) {
+          this.catalog.navigationData[section]['selected'] = false
         }
-        this.moviesService.navigationData[currentSection]['selected'] = true;
+        this.catalog.navigationData[currentSection]['selected'] = true;
 
 
 
@@ -84,13 +88,14 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
       }
 
-    });
+    }
+    window.addEventListener('sn:focused', this.focusListener);
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url == "/movies/list" && instruction == "back") {
+      if (this.router.url == this.catalog.listUrl && instruction == "back") {
         if (this.menuService.menuState == "collapsed") {
           let currentlyActive = document.activeElement as HTMLElement;
-          this.moviesService.navigationData[currentlyActive.dataset['section']]['reached'] = 0;
+          this.catalog.navigationData[currentlyActive.dataset['section']]['reached'] = 0;
           this.updateNavigation();
           this.menuService.sendInstruction('expand' , this)
 
@@ -115,6 +120,10 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'})
     this.navigation.updateNavigation('remove' , {sectionId : 'slider'})
+    window.removeEventListener('sn:focused', this.focusListener);
+    this.navSub?.unsubscribe();
+    this.moviesSub?.unsubscribe();
+    this.sliderEventSub?.unsubscribe();
   }
 
   ngAfterViewInit(): void {
@@ -140,9 +149,9 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     })
 
     this.navigation.updateNavigation('makeFocusable' , {})
-    console.log(this.moviesService.navigationData);
+    console.log(this.catalog.navigationData);
 
-    this.navigation.getMovieSliderEvent().subscribe(e=>{
+    this.sliderEventSub = this.navigation.getMovieSliderEvent().subscribe(e=>{
 
       (document.querySelector('.sliderContainer .element') as HTMLElement).focus({preventScroll : true})
 
@@ -154,16 +163,18 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     let sliderParent = document.querySelector('.sliderContainer .content') as HTMLElement;
 
-    for (const category in this.moviesService.navigationData) {
+    for (const category in this.catalog.navigationData) {
 
-      if (!document.querySelector(`[data-section="${category}"]`)) return
+      // row not rendered yet (still loading)
+      if (!document.querySelector(`[data-section="${category}"]`)) continue
 
       //Handle horizontal Navigation
 
-      let index = this.moviesService.navigationData[category]['reached'];
+      let index = this.catalog.navigationData[category]['reached'];
       let section = document.querySelector(`[data-section="${category}"]`).closest('.section');
 
       let node = section.querySelector(`[data-index='${index}']`) as HTMLElement;
+      if (!node) continue;
 
       let sliderSection = node.closest('.sliderSection') as HTMLElement;
       let leftDiff = sliderSection.getBoundingClientRect().left - node.getBoundingClientRect().left;
@@ -171,7 +182,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       sliderSection.style.transform = `translateX(${leftDiff}px)`
 
 
-      if(this.moviesService.navigationData[category]['selected']){
+      if(this.catalog.navigationData[category]['selected']){
 
 
         node.focus({preventScroll:true});
@@ -194,11 +205,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   }
 
   selectMovie(id: string , category: string , index: string){
-    this.moviesService.selectMovie({
-      id : id,
-      category : category,
-      index : index
-    })
+    this.catalog.select(id , category , index)
 
   }
 

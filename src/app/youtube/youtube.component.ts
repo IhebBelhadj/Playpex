@@ -6,6 +6,7 @@ import { YoutubeService } from '../youtube.service';
 import { Location } from "@angular/common";
 import { Subscription } from 'rxjs';
 import { gsap ,Power1} from 'gsap'
+import { STREAMING_SERVER } from '../server-config';
 
 
 @Component({
@@ -15,13 +16,14 @@ import { gsap ,Power1} from 'gsap'
 })
 export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
-  baseUrl = "http://localhost:9000/youtube/";
+  baseUrl = STREAMING_SERVER + "/youtube/";
   video_id;
   player:HTMLVideoElement;
   audioTrack:HTMLVideoElement;
   navigationSub:Subscription;
   canplay:boolean = false;
   playerPaused:boolean = false;
+  keydownListener;
   constructor(
     private ytService:YoutubeService,
     private activeRoute:ActivatedRoute,
@@ -47,7 +49,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
 
 
-    this.player.src=this.baseUrl+this.video_id+"?type=video?quality=136";
+    this.player.src=this.baseUrl+this.video_id+"?type=video&quality=136";
     this.audioTrack.src = this.baseUrl+this.video_id+"?type=audio";
 
     let durationDisp = document.querySelector(".ytContainer .duration") as HTMLElement;
@@ -83,7 +85,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
       this.audioTrack.pause();
     })
 
-    document.addEventListener('keydown' , (e)=>{
+    this.keydownListener = (e)=>{
       if(!this.router.url.includes('/ytplayer')) return;
       if(!this.canplay) return;
       if (
@@ -98,7 +100,8 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
         this.seek("backward")
       }
 
-    })
+    }
+    document.addEventListener('keydown' , this.keydownListener);
 
     this.player.addEventListener('loadstart' , ()=>{
 
@@ -109,6 +112,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
   ngOnDestroy(): void {
     this.menuService.sendInstruction('show' , this);
     this.navigationSub.unsubscribe();
+    document.removeEventListener('keydown' , this.keydownListener);
     this.player.src = "";
     this.audioTrack.src = "";
   }

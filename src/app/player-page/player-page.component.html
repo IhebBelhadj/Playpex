@@ -1,12 +1,16 @@
 <div class="playerPageContainer">
   <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted></video>
   <img src="assets/icons/loading.svg" class="loading" >
+  <div class="audioWarning" *ngIf="audioWarning">
+    No sound: this release's audio (Dolby or DTS) can't be played here. Try another title or release.
+  </div>
   <div class="controls">
     <div class="controlsContainer">
       <div class="wrapper">
         <div class="infoSection">
-          <span class="title">{{movie?.original_title}}</span>
-          <span class="infos">{{year}} . {{runtime?.hh}} hr {{runtime?.min}} min</span>
+          <span class="title">{{playback?.title}}</span>
+          <span class="infos" *ngIf="playback?.subtitle">{{playback.subtitle}}</span>
+          <span class="infos" *ngIf="!playback?.subtitle">{{year}} . {{runtime?.hh}} hr {{runtime?.min}} min</span>
         </div>
         <div class="timeSlider">
           <div class="slider">
@@ -56,14 +60,26 @@
   </div>
   <div class="sidePannel">
     <div class="optionsTitle">Subtitles</div>
-    <div class="content" *ngIf="subtitles">
-      <button *ngFor="let subtitle of subtitles" class="controlsElem subtitle" [attr.data-fileId]="subtitle.attributes.files[0].file_id
-      " [attr.data-language]="subtitle.attributes.language">
-        <div class="name">{{subtitle.attributes.files[0].file_name}}</div>
+
+    <!-- Subtitle source; the choice is remembered (SubtitlesService.preferredProvider) -->
+    <div class="providerTabs" *ngIf="subtitleProviders.length > 1">
+      <button *ngFor="let provider of subtitleProviders"
+        class="controlsElem providerTab"
+        [class.selected]="provider.id == subtitleProvider"
+        [attr.data-provider]="provider.id">
+        {{provider.name}}
+      </button>
+    </div>
+
+    <div class="content" *ngIf="subtitles?.length">
+      <button *ngFor="let subtitle of subtitles; let i = index" class="controlsElem subtitle"
+        [attr.data-index]="i"
+        [attr.data-language]="subtitle.language">
+        <div class="name">{{subtitle.name}}</div>
         <div class="params">
           <div class="language">
             <span>language : </span>
-            {{subtitle.attributes.language}}
+            {{subtitle.languageName}}
           </div>
 
           <img class="tick" src="assets/icons/tick.svg" alt="">
@@ -74,6 +90,10 @@
     <div class="loadingSubs" *ngIf="!subtitles">
       Fetching subtitles
       <img src="assets/icons/loading_small.svg" alt="">
+    </div>
+
+    <div class="loadingSubs" *ngIf="subtitles && !subtitles.length">
+      {{subtitlesError || 'No subtitles from this provider'}}
     </div>
   </div>
 

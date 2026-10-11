@@ -1,15 +1,16 @@
 import { NotificationService } from './../notification.service';
 import { Location } from '@angular/common';
-import { SubtitlesService } from './../subtitles.service';
+import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
+import { PlaybackRequest, PlaybackService } from './../playback.service';
 import { NavigationService } from './../navigation.service';
 import { TorrentService } from './../torrent.service';
 import { MenuServiceService } from './../menu-service.service';
-import { MoviesService } from './../movies.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import {  repeat, switchMap , takeWhile } from "rxjs/operators";
 import { gsap } from 'gsap'
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import { STREAMING_SERVER } from '../server-config';
 
 
 @Component({
@@ -21,7 +22,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   magnetUrl;
   torrentHash;
-  movie;
+  playback:PlaybackRequest;
   playerReady = false;
   controlsVisible = false;
   sidePannelVisible = false;
@@ -34,18 +35,17 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   controlsEvent;
   lastSubFocused;
   arrowKeyEvents;
-  serverUrl = "http://localhost:9000"
-  trackers = [
-    "udp://glotorrents.pw:6969/announce",
-    "udp://tracker.opentrackr.org:1337/announce",
-    "udp://torrent.gresille.org:80/announce",
-    "udp://tracker.openbittorrent.com:80",
-    "udp://tracker.coppersurfer.tk:6969",
-  ]
-  subtitles;
+  subFocusListener;
+  serverUrl = STREAMING_SERVER
+  subtitles:Subtitle[];
+  subtitleProviders:SubtitleProvider[] = [];
+  subtitleProvider:string;
+  subtitlesError:string;
+  audioWarning = false;
+  audioCheckDone = false;
 
   constructor(
-    private movieService:MoviesService,
+    private playbackService:PlaybackService,
     private menuService:MenuServiceService,
     private torrentService:TorrentService,
     private navigation:NavigationService,
@@ -59,15 +59,19 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.menuService.sendInstruction('hide' , this);
     document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
 
-    this.movie = this.movieService.selectedmovie.value;
+    this.playback = this.playbackService.current;
+    if (!this.playback) {
+      this.location.back();
+      return;
+    }
 
-    this.runtime = this.timeObject(this.movie['runtime']*60);
+    this.runtime = this.timeObject((this.playback.runtimeMinutes || 0)*60);
 
     let escClicked = false;
 
     //Moving through time on arrow presses
 
-    this.controlsEvent = document.addEventListener('keydown' , (e)=>{
+    this.controlsEvent = (e)=>{
       if(this.router.url != "/player") return;
 
       if (
@@ -88,31 +92,34 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.seek("backward")
       }
 
+      // Leaving before playback starts: same cleanup as a normal exit
       if(e.key == "Escape" && !this.playerReady && !escClicked){
         escClicked = true;
-        this.torrentService.deselectTorrent(this.torrentHash);
-        this.location.back();
+        this.leavePlayer();
       }
 
-    })
+    }
+    document.addEventListener('keydown' , this.controlsEvent);
 
-    window.addEventListener('sn:focused', (e)=>{
+    this.subFocusListener = (e)=>{
 
       if(e.target['classList'].contains('subtitle')){
         let active = document.activeElement as HTMLElement;
-        this.lastSubFocused = active.dataset['fileid'];
+        this.lastSubFocused = active.dataset['index'];
       }
 
-    });
+    }
+    window.addEventListener('sn:focused', this.subFocusListener);
 
-    this.year = this.movie.release_date.slice(0,4)
-
-    // get the magnet link
-    this.magnetUrl = this.buildMagnet()
+    this.year = this.playback.year;
+    this.magnetUrl = this.playback.magnet;
     let reps = 0;
     this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
     .pipe(
-      switchMap(data => this.torrentService.getTorrent(data['infoHash'] )),
+      switchMap(data => {
+        this.torrentHash = data['infoHash'];
+        return this.torrentService.getTorrent(data['infoHash']);
+      }),
       repeat({delay : 4000})
     )
     .subscribe(data => {
@@ -121,27 +128,26 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
       if (data['files']) {
         this.playerSub.unsubscribe();
-        data['files'].forEach(file => {
-          console.log();
-          switch (this.getExtension(file['name'])) {
-            case "mp4" || "mkv" || "avi":
-                this.link = this.serverUrl + file['link']
-                this.setupPlayer();
-                console.log(this.link);
-
-              break;
-
-            default:
-              break;
-          }
-        });
+        let file = this.playback.season
+          ? this.pickEpisodeFile(data['files'] , this.playback.season , this.playback.episode)
+          : this.pickVideoFile(data['files']);
+        if (!file) {
+          this.leavePlayer();
+          let what = this.playback.season ? `${this.playback.subtitle?.split(' ')[0]} in this torrent` : "in this torrent";
+          this.notificationService.sendNotification("error" , `No playable video file found ${what}`);
+          return;
+        }
+        this.link = this.serverUrl + file['link'];
+        console.log(this.link);
+        this.setupPlayer();
+        return;
       }
 
 
       if (reps > 4) {
-        this.location.back();
         this.playerSub.unsubscribe();
-        this.notificationService.sendNotification("error" , "Couldn't fetch metadata for the movie. Try again later");
+        this.leavePlayer();
+        this.notificationService.sendNotification("error" , "Couldn't fetch the torrent's metadata (no peers?). Try again later");
       }
     })
 
@@ -161,22 +167,53 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (this.controlsEvent) document.removeEventListener('keydown' , this.controlsEvent);
     this.navigation.updateNavigation('remove' , {sectionId : 'timeSlider'})
     this.navigation.updateNavigation('remove' , {sectionId : 'optionPannel'})
-    if (this.arrowKeyEvents) removeEventListener('keydown' , this.arrowKeyEvents);
+    this.navigation.updateNavigation('remove' , {sectionId : 'subs'})
+    if (this.arrowKeyEvents) document.removeEventListener('keydown' , this.arrowKeyEvents);
+    window.removeEventListener('sn:focused', this.subFocusListener);
 
   }
 
-  buildMagnet(){
-    console.log(this.movie);
+  // Largest file with a container Chromium can play; mp4 wins over mkv/webm
+  pickVideoFile(files) {
+    let preference = ["mp4", "m4v", "mkv", "webm"];
+    let candidates = files.filter(f => preference.includes(this.getExtension(f['name']).toLowerCase()));
+    candidates.sort((a, b) =>
+      preference.indexOf(this.getExtension(a['name']).toLowerCase()) - preference.indexOf(this.getExtension(b['name']).toLowerCase()) ||
+      b['length'] - a['length']
+    );
+    return candidates[0];
+  }
 
-    this.torrentHash = this.movie['torrents'][0].hash;
-    let torrentName = this.movie['original_title'] + this.movie['torrents'][0].quality;
-    let urlEncodedName = encodeURIComponent(torrentName)
-    let magnetUrl = `magnet:?xt=urn:btih:${this.torrentHash}&dn=${urlEncodedName}`
-    this.trackers.forEach(tracker=>{
-      magnetUrl = magnetUrl.concat("&tr="+tracker);
-    })
+  // Season packs hold every episode: take the file named for this one
+  // ("S02E05", "s2e5", "2x05"); a single-episode torrent just uses its video file
+  pickEpisodeFile(files , season , episode) {
+    let videos = files.filter(f => this.pickVideoFile([f]));
+    let pattern = new RegExp(`(s0*${season}[ ._-]*e0*${episode}|\\b0*${season}x0*${episode})(?!\\d)` , 'i');
+    let matching = videos.filter(f => pattern.test(f['path'] || f['name']));
+    if (matching.length) return this.pickVideoFile(matching);
+    return videos.length == 1 ? videos[0] : undefined;
+  }
 
-    return magnetUrl;
+  // Chromium can't decode Dolby (AC-3/E-AC-3) or DTS audio: the video plays
+  // silently. Say so once, a few seconds in, instead of leaving the user guessing.
+  checkAudio() {
+    let player = this.moviePlayer as any;
+    if (this.audioCheckDone || this.moviePlayer.currentTime < 5) return;
+    this.audioCheckDone = true;
+    if (player.webkitVideoDecodedByteCount > 0 && player.webkitAudioDecodedByteCount === 0) {
+      this.audioWarning = true;
+      setTimeout(() => this.audioWarning = false, 10000);
+    }
+  }
+
+  // Back to where the user came from, dropping the torrent and its data
+  leavePlayer() {
+    if (this.torrentHash) {
+      let removeSub = this.torrentService.removeTorrent(this.torrentHash).subscribe(()=>{
+        removeSub.unsubscribe();
+      })
+    }
+    this.location.back();
   }
 
   getExtension(filename) {
@@ -215,17 +252,18 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
             this.fetchSubs();
           }
 
+          if (document.activeElement.classList.contains('providerTab')) {
+            this.switchSubtitleProvider((document.activeElement as HTMLElement).dataset['provider']);
+          }
+
           if (document.activeElement.classList.contains('subtitle')) {
             let active = document.activeElement as HTMLElement;
-            this.moviePlayer.innerHTML = `
-              <track src="http://localhost:9000/api/subtitles/download/${active.dataset['fileid']}" default srclang="${active.dataset['language']}">
-            `
+            this.showSubtitle(this.subtitles[Number(active.dataset['index'])]);
 
             document.querySelectorAll('.sidePannel .subtitle').forEach(subtitle => {
               subtitle.classList.remove('selected')
             });
-
-            document.querySelector(` [data-fileId = "${active.dataset['fileid']}"] `).classList.add('selected');
+            active.classList.add('selected');
           }
         }
 
@@ -235,10 +273,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         console.log('back');
         console.log(this.sidePannelVisible);
         if (!this.sidePannelVisible && !this.controlsVisible) {
-          let desectionSub = this.torrentService.removeTorrent(this.torrentHash.toLowerCase()).subscribe(()=>{
-            desectionSub.unsubscribe();
-          })
-          this.location.back();
+          this.leavePlayer();
         }else {
           if(this.sidePannelVisible) this.hideSidePannel();
           else if(this.controlsVisible) this.hideControls();
@@ -247,7 +282,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     })
 
 
-    this.arrowKeyEvents = document.addEventListener('keydown' , (e)=>{
+    this.arrowKeyEvents = (e)=>{
       if(this.router.url != "/player") return;
 
       if (e.key == "ArrowDown" && !this.controlsVisible) {
@@ -264,13 +299,20 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       }
 
 
-    })
+    }
+    document.addEventListener('keydown' , this.arrowKeyEvents);
 
 
 
     this.moviePlayer.src = this.link;
     this.setupTimeSlider()
     this.moviePlayer.play();
+    // e.g. HEVC/x265 or AVI that Chromium can't decode
+    this.moviePlayer.addEventListener('error', () => {
+      if (this.router.url != "/player" || !this.moviePlayer.getAttribute('src')) return;
+      this.leavePlayer();
+      this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
+    });
     this.moviePlayer.addEventListener('canplay', () => {
       setTimeout(()=>{
         this.playerReady = true;
@@ -405,6 +447,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       durationDisp.innerHTML = this.timeDisplayString(duration)
 
       this.moviePlayer.addEventListener('timeupdate' , ()=>{
+        this.checkAudio();
         //update Time Slider here
         currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
         slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
@@ -464,22 +507,74 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
 
   fetchSubs(){
-
-    if (!this.subtitles) {
-      this.subtitlesService.getSubtitles(this.movie['id']).subscribe(data=>{
-        this.subtitles = data['data']
-        setTimeout(()=>{
-          let firstSub = document.querySelector('.sidePannel .controlsElem') as HTMLElement;
-          firstSub.focus({preventScroll : true})
-        } , 100)
-
-      })
-    }else {
-
-      let lastSelected = document.querySelector(`[data-fileId =  "${this.lastSubFocused}"]`) as HTMLElement;
-      lastSelected.focus({preventScroll : true});
-
+    if (this.subtitleProviders.length) {
+      this.focusSubtitles();
+      return;
     }
+
+    this.subtitlesService.getProviders().subscribe(providers => {
+      let kind = this.playback.season ? 'episode' : 'movie';
+      this.subtitleProviders = providers.filter(p => p.enabled && p.supports[kind]);
+      let preferred = this.subtitleProviders.find(p => p.id == this.subtitlesService.preferredProvider);
+      this.loadSubtitles((preferred || this.subtitleProviders[0])?.id);
+    } , () => {
+      this.subtitles = [];
+      this.subtitlesError = "Subtitle service unavailable";
+    })
+  }
+
+  switchSubtitleProvider(id:string){
+    if (!id || id == this.subtitleProvider) return;
+    this.subtitlesService.preferredProvider = id;
+    this.loadSubtitles(id);
+  }
+
+  loadSubtitles(provider:string){
+    this.subtitleProvider = provider;
+    this.subtitles = undefined;
+    this.subtitlesError = undefined;
+    this.lastSubFocused = undefined;
+
+    if (!provider || !this.playback.imdbId) {
+      this.subtitles = [];
+      this.subtitlesError = provider ? "No IMDb id for this title" : "No subtitle provider available";
+      return;
+    }
+
+    let query = { imdbId: this.playback.imdbId, season: this.playback.season, episode: this.playback.episode };
+    this.subtitlesService.search(provider , query).subscribe(result => {
+      if (provider != this.subtitleProvider) return;
+      this.subtitles = result.subtitles;
+      this.focusSubtitles();
+    } , () => {
+      if (provider != this.subtitleProvider) return;
+      this.subtitles = [];
+      this.subtitlesError = "This provider is unavailable right now";
+    })
+  }
+
+  // Focus the last chosen subtitle, else the first one, else the provider tab
+  focusSubtitles(){
+    setTimeout(()=>{
+      let target =
+        document.querySelector(`.sidePannel .subtitle[data-index="${this.lastSubFocused}"]`) ||
+        document.querySelector('.sidePannel .subtitle') ||
+        document.querySelector('.sidePannel .providerTab.selected');
+      (target as HTMLElement)?.focus({preventScroll : true});
+    } , 100)
+  }
+
+  showSubtitle(subtitle:Subtitle){
+    if (!subtitle) return;
+    this.moviePlayer.querySelectorAll('track').forEach(track => track.remove());
+    let track = document.createElement('track');
+    track.kind = 'subtitles';
+    track.srclang = subtitle.language;
+    track.label = subtitle.languageName;
+    track.src = this.subtitlesService.fileUrl(subtitle);
+    track.default = true;
+    this.moviePlayer.appendChild(track);
+    track.addEventListener('load', () => track.track.mode = 'showing');
   }
 
 }

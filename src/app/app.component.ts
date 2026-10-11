@@ -93,7 +93,8 @@ export class AppComponent implements AfterViewInit , OnInit{
         }
 
         switch (true) {
-          case this._router.url == '/movies/list':
+          // a section's poster rows (movies or TV shows)
+          case !!this.moviesService.catalogForUrl(this._router.url):
             if (!document.activeElement.classList.contains('menuItem')) {
               this.moviesPageNavigation()
             }
@@ -178,9 +179,11 @@ export class AppComponent implements AfterViewInit , OnInit{
       let sliderTl = gsap.timeline();
       sliderTl.to(".sliderContainer" , {opacity : 0 , y : 100 , duration : .2 , ease : Power2.easeOut , onComplete : ()=>{
         let selected = this.movieService.selectedmovie.value;
+        let catalog = this.moviesService.catalogForUrl(this._router.url);
 
-        this.moviesService.addMovieToHistory(selected);
-        this._router.navigateByUrl(`/movies/movie/${selected['id']}`)
+        // the history stack holds movies only (TMDB movie and TV ids overlap)
+        if (catalog.media == 'movie') this.moviesService.addMovieToHistory(selected);
+        this._router.navigateByUrl(catalog.detailUrl(selected['id']))
 
       }})
     }

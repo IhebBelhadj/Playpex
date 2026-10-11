@@ -38,7 +38,7 @@ export class MovieDescriptionComponent implements OnInit {
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
       map(e => {
 
-        if (e.url.includes('/movies/movie')) {
+        if (e.url.includes('/movies/movie') || e.url.includes('/shows/show')) {
 
           this.fullDescription = true;
         }
@@ -64,7 +64,7 @@ export class MovieDescriptionComponent implements OnInit {
   dataUpdate(movie){
     this.selectedMovie = movie;
 
-    this.shortDescription = this.selectedMovie.overview.slice(0 , 255);
+    this.shortDescription = (this.selectedMovie.overview || '').slice(0 , 255);
     this.availableQualities = [];
     if (movie['torrents']) {
 
@@ -81,9 +81,9 @@ export class MovieDescriptionComponent implements OnInit {
       });
     }
 
-    if (this.selectedMovie.release_date) {
-      this.year = this.selectedMovie.release_date.slice(0,4)
-    }
+    // movies have release_date, TV shows first_air_date
+    let date = this.selectedMovie.release_date || this.selectedMovie.first_air_date;
+    this.year = date ? date.slice(0,4) : undefined;
     this.onMovieSelect(movie);
   }
 

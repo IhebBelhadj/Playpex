@@ -157,7 +157,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
     })
 
 
-    this.focusListener = window.addEventListener('sn:focused', (e)=>{
+    this.focusListener = (e)=>{
 
       if(!(this.router.url == "/search")) return;
 
@@ -173,7 +173,8 @@ export class SearchPageComponent implements OnInit , OnDestroy {
 
 
       }
-    })
+    }
+    window.addEventListener('sn:focused', this.focusListener);
   }
 
   ngOnDestroy(): void {
@@ -182,7 +183,7 @@ export class SearchPageComponent implements OnInit , OnDestroy {
       this.navSub.unsubscribe();
     }
 
-    document.removeEventListener('sn:focused',this.focusListener);
+    window.removeEventListener('sn:focused',this.focusListener);
     this.navigation.updateNavigation('remove' , {sectionId : 'keyboard'});
     this.navigation.updateNavigation('remove' , {sectionId : 'searches'});
 

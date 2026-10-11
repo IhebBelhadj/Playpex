@@ -1,3 +1,10 @@
+// Flex item of .masterContainer: without min-width 0 it grows to the width of
+// its widest row (thousands of px) and rows inside can't clip/scroll
+:host {
+  min-width: 0;
+  flex: 1;
+}
+
 .pageContainer {
   display: flex;
   flex-direction: column;
