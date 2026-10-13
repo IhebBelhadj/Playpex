@@ -8,6 +8,7 @@ import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
+import { TorrentPickerService } from '../torrent-picker.service';
 
 @Component({
   selector: 'app-movie-options',
@@ -26,19 +27,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   navigationSub:Subscription;
   playingTrailer = false;
   canPlay = false;
-  castScrollAmount = {value : 0};
-
-  similarScrollAmount = {value : 0};
   selectedMovie;
-
-  selectedCast = {index : undefined};
-
-  selectedSimilar = {index : undefined};
-
-  focusCastDistance;
-  focusSimilarDistance;
   focusListener;
-  keydownListener;
 
   constructor(
     private navigation:NavigationService,
@@ -49,12 +39,16 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private location:Location,
     private menu:MenuServiceService,
     private playback:PlaybackService,
+    private torrentPicker:TorrentPickerService,
   ) {
   }
 
   ngAfterViewInit(): void {
 
     this.menu.sendInstruction('collapse' , this);
+
+    // the page scrolls natively (vertically) while this component is shown
+    document.querySelector('.pageContainer').classList.add('nativeScroll');
 
     //spacial navigation setup
 
@@ -92,28 +86,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.getPlayData();
     this.handleNavEvents();
 
-    this.keydownListener = (e)=>{
-
-      if (
-        document.activeElement.parentElement.classList.contains('movie') &&
-        e.key == " " &&
-        this.router.url.includes('/movies/movie')
-        ) {
-
-        let currentlySelected = document.activeElement as HTMLElement
-        let tempSub = this.moviesService.getTmdbMovieDetails(currentlySelected.dataset['id'])
-          .subscribe(data=>{
-            console.log(data);
-            this.moviesService.addMovieToHistory(data);
-            this.resetScroll();
-            this.trailer = undefined;
-            this.router.navigateByUrl(`/movies/movie/${data['id']}`);
-            tempSub.unsubscribe();
-          })
-      }
-    }
-    document.addEventListener('keydown' , this.keydownListener)
-
     this.activatedRoute.params.subscribe(params => {
 
       this.navigation.routerCurrentMovieId = params['id'];
@@ -125,10 +97,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
       this.getPageData(params['id'])
       this.resetScroll();
-
-      document.querySelector('.pageContainer')['style']['transform'] = `translateY(0px)`;
-      document.querySelector('.castSlider .content')['style']['transform'] = `translateX(0px)`;
-      document.querySelector('.movieSlider .content')['style']['transform'] = `translateX(0px)`;
       this.getPlayData();
       this.navigation.descriptionUpdateQuery(this.selectedMovie);
 
@@ -137,67 +105,27 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
 
 
-    //ON focus navigation update
+    // Focus moves: remember position per row and scroll it into view
 
     this.focusListener = (e)=>{
       if (!this.router.url.includes('/movies/movie')) return;
       const node = e.target as HTMLElement;
-      let pageContainer = node.closest('.pageContainer') as HTMLElement;
+      if (!node.closest('.optionsMasterContainer')) return;
 
-      //no overflow of section on menu opening
-
-      if (node['classList'].contains('menuItem')) {
-        document.querySelector('.similar .movieSlider').classList.add('noOverflow');
-        document.querySelector('.casts .castSlider').classList.add('noOverflow');
-
-      }
-      else {
-        document.querySelector('.similar .movieSlider').classList.remove('noOverflow');
-        document.querySelector('.casts .castSlider').classList.remove('noOverflow');
-      }
-
-
-      // options section navigation setup
-      if (node['parentElement']['classList'].contains('optionPannel')){
-        pageContainer.style.transform = `translateY(0px)`
-
+      if (node.closest('.optionPannel')) {
         this.updateLastSelected('.optionPannel' , node)
-
+        this.scrollPageTo(0);
       }
-
-
-      //Cast section navigation setup
-      if (node['parentElement']['classList'].contains('cast')) {
-
-        this.sectionNavigationSetup(
-          node ,
-          '.casts' ,
-          pageContainer ,
-          this.castScrollAmount,
-          this.selectedCast
-        )
-
+      else if (node.closest('.casts')) {
         this.updateLastSelected('.casts' , node)
-
+        this.scrollRowTo(node);
+        this.ensureSectionVisible('.casts');
       }
-
-      //similar movies navigation setup
-
-      if (node['parentElement']['classList'].contains('movie')) {
-
-
-        this.sectionNavigationSetup(node ,
-          '.similar' ,
-          pageContainer ,
-          this.similarScrollAmount,
-          this.selectedSimilar
-        )
-
+      else if (node.closest('.similar')) {
         this.updateLastSelected('.similar' , node)
-
-
+        this.scrollRowTo(node);
+        this.ensureSectionVisible('.similar');
       }
-
     }
     window.addEventListener('sn:focused', this.focusListener)
 
@@ -205,128 +133,48 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
-    console.log("reset scroll amount");
-
-    this.resetScroll();
-
-    /*if (this.navigationSub) {
-      this.navigationSub.unsubscribe();
-    }*/
-
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
     this.navigation.updateNavigation('remove' , {sectionId : 'options'});
     this.navigationSub.unsubscribe();
 
     this.navigation.routerCurrentMovieId = undefined;
     window.removeEventListener('sn:focused', this.focusListener);
-    document.removeEventListener('keydown', this.keydownListener);
-    document.querySelector('.pageContainer')['style']['transform'] = `translateY(0px)`
+
+    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
+    if (pageContainer) {
+      pageContainer.scrollTop = 0;
+      pageContainer.classList.remove('nativeScroll');
+    }
   }
 
-  isInViewport(el) {
-    const rect = el.getBoundingClientRect();
-    return (
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-
-    );
+  // Horizontal: smooth-scroll the row so the focused item sits about a third in
+  scrollRowTo(node:HTMLElement){
+    let row = node.closest('.castSlider, .movieSlider') as HTMLElement;
+    let offset = node.getBoundingClientRect().left - row.getBoundingClientRect().left;
+    row.scrollTo({ left : row.scrollLeft + offset - row.clientWidth / 3 , behavior : 'smooth' });
   }
 
-  sectionNavigationSetup(
-    node:HTMLElement ,
-    parentClass:string ,
-    pageContainer:HTMLElement,
-    horizontalScrollAmount:{
-      value:number
-    },
-    selectedItem
-  ){
+  // Vertical: scroll the page just enough for the whole section to be visible
+  ensureSectionVisible(sectionSelector:string){
+    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
+    let section = document.querySelector('.optionsMasterContainer ' + sectionSelector) as HTMLElement;
+    if (!pageContainer || !section) return;
 
-    let nodes = document.querySelectorAll(parentClass + ' .displayedElem');
+    let margin = 40;
+    let viewport = pageContainer.getBoundingClientRect();
+    let rect = section.getBoundingClientRect();
+    let top = pageContainer.scrollTop;
 
-    if (!selectedItem['index']) {
-      selectedItem['index'] = node.dataset['index'];
-    }
+    if (rect.top < viewport.top + margin) top -= viewport.top + margin - rect.top;
+    else if (rect.bottom > viewport.bottom - margin) top += rect.bottom - (viewport.bottom - margin);
 
-    let container = node.closest('.content') as HTMLElement;
-
-
-    //vertical scroll
-
-
-    if (parentClass == ".casts") {
-      if(!this.focusCastDistance){
-        this.focusCastDistance = -container.getBoundingClientRect().y / 2;
-
-      }
-
-      pageContainer.style.transform = `translateY(${this.focusCastDistance}px)`
-    }
-
-    if (parentClass == ".similar") {
-    console.log(this.similarScrollAmount);
-
-      if(!this.focusSimilarDistance){
-        let castsSection = document.querySelector(".casts") as HTMLElement;
-        let descriptionSection = document.querySelector(".movieDesciption") as HTMLElement;
-
-        this.focusSimilarDistance = -descriptionSection.getBoundingClientRect().height - castsSection.getBoundingClientRect().height -20;
-
-      }
-
-      pageContainer.style.transform = `translateY(${this.focusSimilarDistance}px)`
-    }
-
-
-
-
-
-
-    //Horizontal scroll
-
-
-    if (Number(node.dataset['index']) > Number(selectedItem['index'])) {
-
-
-      let rightDiff = node.getBoundingClientRect().right - screen.width;
-
-
-      if (Math.abs(rightDiff) < (3*screen.width/4) && !this.isInViewport(nodes[nodes.length -1])) {
-
-        horizontalScrollAmount.value +=  node.offsetWidth;
-
-        container.style.transform = `translateX(-${horizontalScrollAmount.value}px)`
-
-      }
-
-    }
-
-    else if(Number(node.dataset['index']) < Number(selectedItem['index'])){
-
-      let leftDiff = node.getBoundingClientRect().left;
-
-      if (Math.abs(leftDiff) < (screen.width/4)) {
-
-        horizontalScrollAmount.value -=  node.clientWidth;
-        if (horizontalScrollAmount.value < 0) horizontalScrollAmount.value = 0;
-
-        container.style.transform = `translateX(-${horizontalScrollAmount.value}px)`
-      }
-
-
-    }
-
-    if(Number(node.dataset['index']) == 0) {
-      horizontalScrollAmount.value = 0;
-      container.style.transform = `translateX(-${horizontalScrollAmount.value}px)`
-
-    }
-
-    selectedItem['index'] = node.dataset['index'];
+    this.scrollPageTo(top);
   }
 
+  scrollPageTo(top:number){
+    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
+    if (pageContainer) pageContainer.scrollTo({ top , behavior : 'smooth' });
+  }
 
   getPageData(id){
 
@@ -390,22 +238,32 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     currentNode.classList.add('lastSelected');
   }
 
+  // Instant reset when a new movie is shown on the same page
   resetScroll(){
-    this.castScrollAmount = {
-      value : 0
-    };
+    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
+    if (pageContainer) pageContainer.scrollTop = 0;
+    document.querySelectorAll('.optionsMasterContainer .castSlider, .optionsMasterContainer .movieSlider')
+      .forEach(row => row.scrollLeft = 0);
+  }
 
-    this.similarScrollAmount = {
-      value : 0
-    };
+  chooseTorrentAndPlay(){
+    let movie = this.selectedMovie;
+    let options = movie['torrents'].map(torrent => TorrentPickerService.fromYts(torrent));
 
-    this.selectedCast = {
-      index : undefined
-    };
+    this.torrentPicker.choose(movie['original_title'] , options).subscribe(choice => {
+      this.playback.playMovie(movie , choice.torrent);
+      this.router.navigateByUrl("/player");
+    })
+  }
 
-    this.selectedSimilar = {
-      index : undefined
-    };
+  openSimilar(element:HTMLElement){
+    let tempSub = this.moviesService.getTmdbMovieDetails(element.dataset['id'])
+      .subscribe(data=>{
+        this.moviesService.addMovieToHistory(data);
+        this.trailer = undefined;
+        this.router.navigateByUrl(`/movies/movie/${data['id']}`);
+        tempSub.unsubscribe();
+      })
   }
 
   showYtVid(vidId){
@@ -434,9 +292,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
         switch (true) {
           case document.activeElement.classList.contains('play'):
             if (!this.canPlay) return;
-            if (this.selectedMovie['torrents']) {
-              this.playback.playMovie(this.selectedMovie);
-              this.router.navigateByUrl("/player");
+            if (this.selectedMovie['torrents']?.length) {
+              this.chooseTorrentAndPlay();
             }else {
               this.notificationService.sendNotification('error',"No streaming service found for the movie")
             }
@@ -455,6 +312,9 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
           break;
           case document.activeElement.classList.contains('addWatched'):
             this.notificationService.sendNotification("error","Feature not available yet")
+          break;
+          case document.activeElement.parentElement.classList.contains('movie'):
+            this.openSimilar(document.activeElement as HTMLElement);
           break;
           default:
             break;

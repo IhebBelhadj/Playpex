@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 'use strict';
 
-var STATIC_OPTIONS = { maxAge: 3600000 };
+// Since Node 17 dns.lookup() returns addresses in resolver order. On IPv6 /
+// NAT64 networks that's an IPv6 address first, which the (IPv4-only) DHT and
+// UDP tracker sockets can't send to: the DHT never bootstraps and torrents only
+// get the few peers one tracker hands out. Must run before any lookup.
+require('dns').setDefaultResultOrder('ipv4first');
 
 var
 
   http = require('http'),
-  path = require('path'),
   cors = require('cors'),
-  serveStatic = require('serve-static'),
   socket = require('./lib/socket'),
   remoteSocket = require('./lib/remoteSocketManager'),
   api = require('./lib/api')
-    .use(serveStatic(path.join(__dirname, 'torrents'), STATIC_OPTIONS))
     .use(cors());
 
 var server = http.createServer(api);

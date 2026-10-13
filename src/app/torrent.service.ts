@@ -19,6 +19,12 @@ export class TorrentService {
     return this.http.get(`${STREAMING_SERVER}/torrents/`+hash);
   }
 
+  // Swarm stats: {metadata, peers: {total, unchocked}, traffic: {down, up}, speed: {down, up}, eta}
+  // (bytes and bytes/s); works before the metadata has arrived
+  getStats(hash:string){
+    return this.http.get(`${STREAMING_SERVER}/torrents/`+hash+'/stats');
+  }
+
   deselectTorrent(hash){
     return this.http.get(`${STREAMING_SERVER}/torrents/`+hash+'/deselect')
   }

@@ -1,3 +1,10 @@
+// Flex item of .pageContainer: without min-width 0 it grows to the width of
+// its widest row and the rows can't scroll
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .optionsMasterContainer {
   min-height: 100vh;
 
@@ -66,7 +73,6 @@
       margin-top: 50px;
       //margin-bottom: 80px;
       height: 230px;
-      transition: all .2s;
     }
     .cast {
       .displayedElem {
@@ -149,9 +155,23 @@
 
   .content {
     display: flex;
-    transition: all .2s;
   }
 
+}
+
+// Rows scroll natively (smooth scrollTo from the focus handler). The padding /
+// negative margin pair leaves room for the focused item's scale-up, which an
+// overflow container would otherwise clip.
+.castSlider, .movieSlider {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 16px;
+  margin: -16px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .optionsMasterContainer {
@@ -182,7 +202,3 @@
   }
 }
 
-
-.noOverflow {
-  overflow: hidden;
-}

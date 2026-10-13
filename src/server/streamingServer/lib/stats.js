@@ -2,8 +2,10 @@
 
 module.exports = function stats(torrent) {
   var swarm = torrent.swarm;
-  var eta = (torrent.torrent.length - swarm.downloaded) / swarm.downloadSpeed();
+  // Before metadata arrives there is no torrent.torrent (and no length) yet
+  var eta = torrent.torrent ? (torrent.torrent.length - swarm.downloaded) / swarm.downloadSpeed() : null;
   return {
+    metadata: !!torrent.torrent,
     peers: {
       total: swarm.wires.length,
       unchocked: swarm.wires.reduce(function (prev, wire) {
@@ -18,7 +20,7 @@ module.exports = function stats(torrent) {
       down: swarm.downloadSpeed(),
       up: swarm.uploadSpeed()
     },
-    eta: Math.round(eta),
+    eta: eta === null || !isFinite(eta) ? null : Math.round(eta),
     queue: swarm.queued,
     paused: swarm.paused
   };

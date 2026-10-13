@@ -1,6 +1,19 @@
 <div class="playerPageContainer">
   <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted></video>
   <img src="assets/icons/loading.svg" class="loading" >
+  <div class="loadingStats" *ngIf="!playerReady || buffering">
+    <span class="stage">{{
+      buffering ? 'Buffering' :
+      !stats ? 'Starting torrent' :
+      !stats.peers.total ? 'Connecting to peers' :
+      !stats.metadata ? 'Fetching torrent info' : 'Downloading'
+    }}</span>
+    <div class="numbers" *ngIf="stats">
+      <span><b>{{stats.peers.total}}</b> {{stats.peers.total == 1 ? 'peer' : 'peers'}}</span>
+      <span><b>{{formatBytes(stats.speed.down)}}</b>/s</span>
+      <span><b>{{formatBytes(stats.traffic.down)}}</b> downloaded</span>
+    </div>
+  </div>
   <div class="audioWarning" *ngIf="audioWarning">
     No sound: this release's audio (Dolby or DTS) can't be played here. Try another title or release.
   </div>
@@ -14,6 +27,7 @@
         </div>
         <div class="timeSlider">
           <div class="slider">
+            <div class="buffered"></div>
             <button class="progress controlsElem"
               data-sn-down =".playerPageContainer .playBtn">
 
@@ -49,7 +63,7 @@
             </button>
           </div>
           <div class="settingsOpt">
-            <button class="optBtn controlsElem"
+            <button class="optBtn controlsElem statsBtn"
               data-sn-up =".playerPageContainer .timeSlider .progress">
                 <img src="assets/icons/opts.svg" alt="">
             </button>
@@ -58,6 +72,18 @@
       </div>
     </div>
   </div>
+  <!-- "Stats for nerds": toggled by the stats button, stays up while watching -->
+  <div class="statsPanel" *ngIf="statsVisible">
+    <div class="statsTitle">Stats</div>
+    <div class="row"><span>Peers</span><b>{{stats ? stats.peers.total + ' (' + stats.peers.unchocked + ' sending)' : '…'}}</b></div>
+    <div class="row"><span>Download</span><b>{{stats ? formatBytes(stats.speed.down) + '/s' : '…'}}</b></div>
+    <div class="row"><span>Downloaded</span><b>{{stats ? formatBytes(stats.traffic.down) : '…'}}</b></div>
+    <div class="row"><span>Upload</span><b>{{stats ? formatBytes(stats.speed.up) + '/s · ' + formatBytes(stats.traffic.up) : '…'}}</b></div>
+    <div class="row"><span>Buffered ahead</span><b>{{videoInfo?.bufferedAhead}}</b></div>
+    <div class="row"><span>Resolution</span><b>{{videoInfo?.resolution}}</b></div>
+    <div class="row"><span>Dropped frames</span><b>{{videoInfo?.droppedFrames}}</b></div>
+  </div>
+
   <div class="sidePannel">
     <div class="optionsTitle">Subtitles</div>
 

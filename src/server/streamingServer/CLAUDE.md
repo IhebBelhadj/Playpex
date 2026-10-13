@@ -8,7 +8,7 @@ The torrent part (`store`/`engine`/`socket`/`progressbar`/`serialize`) follows t
 
 | File | Role |
 |---|---|
-| `server.js` | Entry. Express app from `lib/api.js` + `serve-static` on `torrents/` + `cors()`, socket.io via `lib/socket.js`. Listens on `STREAMER_PORT \|\| 9000`, moving up a port on EADDRINUSE. **Exports `{ ready }`**: a promise of the port actually bound; `electron.js` passes it to the UI. Second server on `REMOTE_PORT \|\| 9500` (`lib/remoteSocketManager.js`). |
+| `server.js` | Entry. Sets `dns.setDefaultResultOrder('ipv4first')` first (DHT/UDP trackers are IPv4-only; without it the DHT never bootstraps on IPv6/NAT64 networks). Express app from `lib/api.js` + `cors()`, socket.io via `lib/socket.js`. Listens on `STREAMER_PORT \|\| 9000`, moving up a port on EADDRINUSE. **Exports `{ ready }`**: a promise of the port actually bound; `electron.js` passes it to the UI. Second server on `REMOTE_PORT \|\| 9500` (`lib/remoteSocketManager.js`). |
 | `lib/api.js` | **All HTTP routes**: torrents + byte-range file streaming, YTS proxy, TV episode torrents, subtitles, YouTube. |
 | `lib/episodes.js` | `findEpisodeTorrents(imdbId, title, season, episode)`: queries providers in parallel, keeps exact episode / single-season pack matches, dedupes by hash (merging trackers), ranks. |
 | `lib/providers/eztv.js` | EZTV official API (`/api/get-torrents?imdb_id=`), all pages fetched once per show and cached 30 min; mirrors `eztvx.to`, `eztv.wf`, `eztv.tf`. Episode `0` = season pack. |
@@ -18,13 +18,13 @@ The torrent part (`store`/`engine`/`socket`/`progressbar`/`serialize`) follows t
 | `lib/subtitles/languages.js` | Normalizes `eng`/`pob`/`en`/`English` → ISO 639-1 + name + Windows code page; language filter parsing. |
 | `lib/subtitles/providers/*.js` | `stremio-opensubtitles` (keyless, movies + episodes), `yify` (keyless, movies; zip via `yauzl`), `opensubtitles` (official API, `OPENSUBTITLES_API_KEY`), `wyzie` (`WYZIE_API_KEY`; written from its API docs, **not tested with a real key**). |
 | `lib/youtube.js` | Trailer streaming via `youtubei.js` (iOS client), chunked range proxy to googlevideo. **Broken past ~1 MB** (see Gotchas). |
-| `lib/store.js` | In-memory torrent registry (`EventEmitter`): `add`, `get`, `remove`, `list`, `load`. Persists hashes to `torrents/config/torrents.json`; optional engine options from `torrents/config/config.json`. SIGINT/SIGTERM destroy engines then exit. |
-| `lib/engine.js` | `torrent-stream` factory; downloads to `torrents/torrent_data/`; on `ready` auto-selects the largest file (the stream endpoint narrows the selection); free BitTorrent port from 6881. |
+| `lib/paths.js` | Per-OS data locations (never inside the app — packaged apps are read-only): `config` (Linux `~/.config/Playpex`, macOS `~/Library/Application Support/Playpex`, Windows `%APPDATA%\Playpex`), `cache` (`~/.cache/Playpex`, `~/Library/Caches/Playpex`, `%LOCALAPPDATA%\Playpex\Cache`), `downloads` = `<cache>/torrent_data`. Overrides: `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR`. |
+| `lib/store.js` | In-memory torrent registry (`EventEmitter`): `add`, `get`, `remove`, `list`, `load`. Adds `lib/trackers.js` to every torrent's trackers (also as the engine's `trackers` option). Persists hashes to `<config>/torrents.json`; optional engine options merged from `<config>/config.json`. SIGINT/SIGTERM destroy engines then exit. |
+| `lib/engine.js` | `torrent-stream` factory; downloads to `<cache>/torrent_data/` (metadata cache in `<cache>/torrent-stream/`); on `ready` auto-selects the largest file (the stream endpoint narrows the selection); free BitTorrent port from 6881. |
 | `lib/socket.js` | socket.io v2 events (`stats`, `download`, `ready`, …). **The UI doesn't use it**; it polls HTTP. |
 | `lib/remoteSocketManager.js`, `lib/util.js` | Stub for a phone remote; unused helpers. |
 | `lib/stats.js`, `lib/progressbar.js` | Torrent stats / piece-bitfield → progress runs. |
-| `torrents/config/torrents.json` | Runtime state — don't commit casually. |
-| `torrents/torrent_data/` | Downloads (GBs). Git-ignored; **never force-add**. |
+| `torrents/` | **Legacy** location of state and downloads (before `lib/paths.js`); no longer written. `torrent_data/` is git-ignored — never force-add. |
 
 ## HTTP API (`lib/api.js`)
 
@@ -40,10 +40,10 @@ Every upstream-backed route answers on failure (`502` + JSON `error`) — keep i
 | `POST /torrents/:infoHash/start/:index?` / `stop/:index?`, `GET …/deselect` | Select/deselect files. |
 | `POST /torrents/:infoHash/pause` / `resume` | Swarm pause/resume. |
 | `DELETE /torrents/:infoHash` | Destroy engine **and delete its data**; update the state file. |
-| `GET /torrents/:infoHash/stats` | `stats()` output (peers, speed, traffic). |
+| `GET /torrents/:infoHash/stats` | `stats()` output: `metadata` (bool), `peers`, `speed`, `traffic`, `eta` (null until metadata). Safe before metadata arrives; the player polls it while loading/buffering. |
 | `GET\|HEAD /torrents/:infoHash/files/:path` | **The streaming endpoint.** Selects only this file (deselects the rest — season packs), starts `prefetchTail` (last 2 MB, where MKV keeps its index), parses `Range`, responds `206` and `pump(file.createReadStream(range), res)`. Socket timeout 1 h. |
 
-Serialized torrent: `{ infoHash, name, length, interested, ready, files: [{ name, path, link, length, offset, selected }], progress }`. `serve-static` also exposes everything under `torrents/`.
+Serialized torrent: `{ infoHash, name, length, interested, ready, files: [{ name, path, link, length, offset, selected }], progress }`.
 
 ### Movies (YTS)
 | Path | Notes |
@@ -77,8 +77,8 @@ Adding a torrent provider: module with `search(...)` returning `{ provider, name
 
 ```
 POST /torrents {link}
-  └─ store.add → read-torrent(link) → engine(torrent, {path: torrents/torrent_data})
-       ├─ save() → torrents/config/torrents.json
+  └─ store.add → read-torrent(link) → engine(torrent, {path: <cache>/torrent_data, tmp: <cache>, trackers})
+       ├─ save() → <config>/torrents.json
        └─ engine 'ready' → largest file selected → GET /torrents/:hash now lists files
 GET /torrents/:hash/files/:path (Range) → only this file selected + tail prefetch → pieces prioritised → pump
 DELETE /torrents/:hash → engine.destroy() + remove() (deletes data) → save()

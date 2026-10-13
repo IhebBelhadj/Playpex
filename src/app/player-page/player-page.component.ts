@@ -6,11 +6,12 @@ import { NavigationService } from './../navigation.service';
 import { TorrentService } from './../torrent.service';
 import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import {  repeat, switchMap , takeWhile } from "rxjs/operators";
+import {  repeat, switchMap , takeWhile, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
-import { Subscription } from 'rxjs';
+import { EMPTY, Subscription, timer } from 'rxjs';
 import { Router } from '@angular/router';
 import { STREAMING_SERVER } from '../server-config';
+import { actionForKey } from '../keymap';
 
 
 @Component({
@@ -43,6 +44,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   subtitlesError:string;
   audioWarning = false;
   audioCheckDone = false;
+  buffering = false;          // playback stalled waiting for data
+  stats;                      // latest swarm stats while loading / buffering / stats panel open
+  statsVisible = false;
+  videoInfo;                  // <video>-side numbers for the stats panel
+  statsSub:Subscription;
 
   constructor(
     private playbackService:PlaybackService,
@@ -75,7 +81,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       if(this.router.url != "/player") return;
 
       if (
-        e.key == "ArrowRight" &&
+        actionForKey(e) == 'right' &&
         document.activeElement.classList.contains('progress') &&
         this.controlsVisible &&
         this.playerReady
@@ -83,7 +89,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.seek("forward")
       }
       else if (
-        e.key == "ArrowLeft" &&
+        actionForKey(e) == 'left' &&
         document.activeElement.classList.contains('progress') &&
         this.controlsVisible &&
         this.playerReady
@@ -93,7 +99,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       }
 
       // Leaving before playback starts: same cleanup as a normal exit
-      if(e.key == "Escape" && !this.playerReady && !escClicked){
+      if(actionForKey(e) == 'back' && !this.playerReady && !escClicked){
         escClicked = true;
         this.leavePlayer();
       }
@@ -110,6 +116,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     }
     window.addEventListener('sn:focused', this.subFocusListener);
+
+    this.pollStats();
+    this.updateClock();
 
     this.year = this.playback.year;
     this.magnetUrl = this.playback.magnet;
@@ -162,6 +171,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (this.controlsSub) this.controlsSub.unsubscribe();
 
     if (this.playerSub) this.playerSub.unsubscribe();
+    if (this.statsSub) this.statsSub.unsubscribe();
+    gsap.killTweensOf('.clock');
+    gsap.set('.clock' , { clearProps : 'opacity' });
 
     if (this.moviePlayer) this.moviePlayer.src = "";
     if (this.controlsEvent) document.removeEventListener('keydown' , this.controlsEvent);
@@ -247,6 +259,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           }
 
 
+          if (document.activeElement.classList.contains('statsBtn')) {
+            this.statsVisible = !this.statsVisible;
+          }
+
           if (document.activeElement.classList.contains('ccBtn')) {
             this.showSidePanel();
             this.fetchSubs();
@@ -273,7 +289,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         console.log('back');
         console.log(this.sidePannelVisible);
         if (!this.sidePannelVisible && !this.controlsVisible) {
-          this.leavePlayer();
+          if (this.statsVisible) this.statsVisible = false;
+          else this.leavePlayer();
         }else {
           if(this.sidePannelVisible) this.hideSidePannel();
           else if(this.controlsVisible) this.hideControls();
@@ -285,7 +302,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.arrowKeyEvents = (e)=>{
       if(this.router.url != "/player") return;
 
-      if (e.key == "ArrowDown" && !this.controlsVisible) {
+      if (actionForKey(e) == 'down' && !this.controlsVisible) {
         this.showControls();
         /*let timeSlider = document.querySelector('.progress') as HTMLElement
         setTimeout(()=>{
@@ -293,7 +310,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         } , 10)*/
       }
 
-      if (e.key == "ArrowUp" && this.controlsVisible && document.activeElement.classList.contains('progress')) {
+      if (actionForKey(e) == 'up' && this.controlsVisible && document.activeElement.classList.contains('progress')) {
 
         this.hideControls();
       }
@@ -317,8 +334,24 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       setTimeout(()=>{
         this.playerReady = true;
         document.querySelector('.playerPageContainer .loading').classList.add('hidden');
+        this.updateClock();
       } , 1500)
     });
+
+    // Stalls mid-playback: spinner + swarm stats until data flows again
+    this.moviePlayer.addEventListener('waiting', () => {
+      if (!this.playerReady) return;
+      this.buffering = true;
+      document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
+    });
+    this.moviePlayer.addEventListener('playing', () => {
+      if (!this.buffering) return;
+      this.buffering = false;
+      document.querySelector('.playerPageContainer .loading').classList.add('hidden');
+    });
+
+    this.moviePlayer.addEventListener('play', () => this.updateClock());
+    this.moviePlayer.addEventListener('pause', () => this.updateClock());
 
 
 
@@ -358,6 +391,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       contolsTl.to('.playerPageContainer .controls' , {y:0 , duration : .2 ,delay : -.15})
 
       this.controlsVisible = true;
+      this.updateClock();
 
       }
 
@@ -382,6 +416,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     if(this.controlsVisible){
       this.controlsVisible = false;
+      this.updateClock();
 
       let contolsTl = gsap.timeline();
       contolsTl.to('.playerPageContainer .controls' , {y: 200 , duration : .2 })
@@ -451,8 +486,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         //update Time Slider here
         currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
         slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
+        this.updateBuffered();
 
       })
+      this.moviePlayer.addEventListener('progress' , () => this.updateBuffered());
 
     };
 
@@ -471,6 +508,69 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
     slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
+    this.updateBuffered();
+  }
+
+  // Light bar for the buffered range around the playhead (it starts behind the
+  // playhead, so it shows how far ahead playback can go without waiting)
+  updateBuffered(){
+    let bar = document.querySelector('.playerPageContainer .buffered') as HTMLElement;
+    let duration = this.moviePlayer.duration;
+    if (!bar || !duration) return;
+
+    let ranges = this.moviePlayer.buffered;
+    let current = this.moviePlayer.currentTime;
+    for (let i = 0; i < ranges.length; i++) {
+      if (ranges.start(i) <= current + 0.5 && ranges.end(i) >= current) {
+        bar.style.left = (ranges.start(i) * 100 / duration) + "%";
+        bar.style.width = ((ranges.end(i) - ranges.start(i)) * 100 / duration) + "%";
+        return;
+      }
+    }
+    bar.style.width = "0%";
+  }
+
+  // Peers / speed / downloaded under the spinner, polled while it's shown
+  pollStats(){
+    this.statsSub = timer(0 , 1000).pipe(
+      filter(() => !!this.torrentHash && (!this.playerReady || this.buffering || this.statsVisible)),
+      switchMap(() => this.torrentService.getStats(this.torrentHash).pipe(catchError(() => EMPTY))),
+    ).subscribe(stats => {
+      this.stats = stats;
+      if (this.statsVisible) this.videoInfo = this.readVideoInfo();
+    });
+  }
+
+  readVideoInfo(){
+    let player = this.moviePlayer;
+    if (!player) return undefined;
+
+    let ahead = 0;
+    for (let i = 0; i < player.buffered.length; i++) {
+      if (player.buffered.start(i) <= player.currentTime + 0.5 && player.buffered.end(i) >= player.currentTime) {
+        ahead = player.buffered.end(i) - player.currentTime;
+      }
+    }
+    let quality = player.getVideoPlaybackQuality?.();
+
+    return {
+      bufferedAhead : Math.round(ahead) + ' s',
+      resolution : player.videoWidth ? player.videoWidth + '×' + player.videoHeight : '…',
+      droppedFrames : quality ? quality.droppedVideoFrames + ' / ' + quality.totalVideoFrames : '…',
+    };
+  }
+
+  formatBytes(bytes:number){
+    if (!bytes) return '0 MB';
+    if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + ' GB';
+    return (bytes / 1e6).toFixed(1) + ' MB';
+  }
+
+  // The clock (app shell) is only shown while not actually watching:
+  // loading, controls open, or paused
+  updateClock(){
+    let watching = this.playerReady && !this.controlsVisible && this.moviePlayer && !this.moviePlayer.paused;
+    gsap.to('.clock' , { opacity : watching ? 0 : 1 , duration : .3 });
   }
 
 

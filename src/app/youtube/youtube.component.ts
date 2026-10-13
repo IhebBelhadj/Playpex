@@ -7,6 +7,7 @@ import { Location } from "@angular/common";
 import { Subscription } from 'rxjs';
 import { gsap ,Power1} from 'gsap'
 import { STREAMING_SERVER } from '../server-config';
+import { actionForKey } from '../keymap';
 
 
 @Component({
@@ -89,12 +90,12 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
       if(!this.router.url.includes('/ytplayer')) return;
       if(!this.canplay) return;
       if (
-        e.key == "ArrowRight"
+        actionForKey(e) == 'right'
       ) {
         this.seek("forward")
       }
       else if (
-        e.key == "ArrowLeft"
+        actionForKey(e) == 'left'
 
       ){
         this.seek("backward")

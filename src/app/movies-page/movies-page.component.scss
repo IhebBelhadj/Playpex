@@ -13,3 +13,13 @@
   padding-left: 35px;
   transition: all .2s;
 }
+
+// Set by detail pages (movie-options) that scroll the whole page natively
+.pageContainer.nativeScroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

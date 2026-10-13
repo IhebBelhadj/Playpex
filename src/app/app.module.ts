@@ -21,6 +21,7 @@ import { PowerPageComponent } from './power-page/power-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { RouterModule } from "@angular/router";
 
+import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
 @NgModule({
   declarations: [
     AppComponent,
@@ -38,6 +39,7 @@ import { RouterModule } from "@angular/router";
     DescritionViewerComponent,
     PowerPageComponent,
     ShowOptionsComponent,
+    TorrentPickerComponent,
   ],
   imports: [
     BrowserModule,

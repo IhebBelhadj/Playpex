@@ -8,6 +8,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { gsap , Power2 } from 'gsap'
 import { Location } from '@angular/common';
 import { delay } from 'rxjs';
+import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
+import { TorrentPickerService } from './torrent-picker.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -34,13 +36,15 @@ export class AppComponent implements AfterViewInit , OnInit{
     private location: Location,
     private navigation:NavigationService,
     private menuService:MenuServiceService,
-    private moviesService:MoviesService
+    private moviesService:MoviesService,
+    private torrentPicker:TorrentPickerService,
     ){
 
   }
 
 
   ngAfterViewInit() {
+    spatialNavigation.setKeyMap(SPATIAL_NAVIGATION_KEYS);
     spatialNavigation.init();
 
     this.navigation.updatedNavigation().subscribe(instruction => {
@@ -84,9 +88,20 @@ export class AppComponent implements AfterViewInit , OnInit{
 
 
     document.addEventListener('keydown' , (e)=>{
+      let action = actionForKey(e);
 
-      if (e.key == " ") {
-        console.log('space pressed');
+      // An open torrent picker takes select/back; the page behind must not react
+      if (this.torrentPicker.isOpen) {
+        if (action == 'select' || action == 'back') {
+          e.preventDefault();
+          this.torrentPicker.sendCommand(action);
+        }
+        return;
+      }
+
+      if (action == 'select') {
+        // the select key would also "click" the focused <button> natively
+        e.preventDefault();
 
         if (document.activeElement.classList.contains('menuItem')) {
           this.menuService.sendInstruction("navigate" , this);
@@ -108,9 +123,7 @@ export class AppComponent implements AfterViewInit , OnInit{
 
 
       }
-      if (e.key == "Escape") {
-
-        console.log(this.menuService.menuState);
+      if (action == 'back') {
 
         this.navigation.addCommand('back');
 

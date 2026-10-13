@@ -7,13 +7,15 @@ var fs = require('fs'),
   mkdirp = require('mkdirp'),
   readTorrent = require('read-torrent'),
   engine = require('./engine'),
-  homePath = path.join(__dirname , '../torrents'),
-  configPath = path.join(homePath, 'config'),
+  trackers = require('./trackers'),
+  paths = require('./paths'),
+  configPath = paths.config,
   configFile = path.join(configPath, 'config.json'),
   storageFile = path.join(configPath, 'torrents.json'),
   torrents = {},
   options = {
-    path:  path.join(homePath , 'torrent_data')
+    path: paths.downloads,   // file data
+    tmp: paths.cache         // torrent-stream keeps <tmp>/torrent-stream/<hash>.torrent
   };
 
 function save() {
@@ -49,8 +51,15 @@ var store = _.extend(new events.EventEmitter(), {
 
       console.log('adding ' + infoHash);
 
+      // Magnets often carry few or dead trackers: always announce to the
+      // maintained public list as well (lib/trackers.js)
+      torrent.announce = _.uniq((torrent.announce || []).concat(trackers.list));
+
       try {
-        var e = engine(torrent, options);
+        // Also as an engine option: when torrent-stream has this torrent's
+        // metadata cached (/tmp/torrent-stream/<hash>.torrent) it ignores the
+        // magnet's trackers and would rely on DHT alone
+        var e = engine(torrent, _.extend({}, options, { trackers: torrent.announce }));
         store.emit('torrent', infoHash, e);
         torrents[infoHash] = e;
         save();
@@ -95,7 +104,8 @@ mkdirp(configPath, function (err) {
         throw err;
       }
     } else {
-      options = JSON.parse(data);
+      // engine options (e.g. connections); can't move the data dirs away from paths.js defaults by accident
+      options = _.extend({}, options, JSON.parse(data));
       console.log('options: ' + JSON.stringify(options));
     }
 

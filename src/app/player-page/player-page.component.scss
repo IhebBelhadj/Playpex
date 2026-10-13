@@ -21,6 +21,39 @@
     width: 130px;
   }
 
+  // Under the spinner while loading / buffering
+  .loadingStats {
+    position: absolute;
+    top: calc(50% + 85px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Netflixlt';
+    white-space: nowrap;
+
+    .stage {
+      font-size: 18px;
+      letter-spacing: 1px;
+      opacity: .8;
+    }
+
+    .numbers {
+      display: flex;
+      gap: 26px;
+      font-size: 15px;
+      opacity: .55;
+
+      b {
+        font-family: 'NetflixBk';
+        font-weight: normal;
+        opacity: 1;
+      }
+    }
+  }
+
   .controls {
     height: 79vh;
     position: absolute;
@@ -78,12 +111,25 @@
             height: 3px;
             background: #2f2f2fbf;
             margin-top: 50px;
+            position: relative;
+
+            // Buffered range: behind the yellow progress bar
+            .buffered {
+              position: absolute;
+              top: 0;
+              left: 0;
+              height: 100%;
+              width: 0;
+              background: rgba(255, 255, 255, .3);
+              transition: width .3s, left .3s;
+            }
 
             .progress {
               height: 100%;
               width: 20%;
               background: #FFC107;
               position: relative;
+              z-index: 1;
               border: none;
               float: left;
               .reachedDot{
@@ -187,6 +233,43 @@
   }
 
 
+
+  .statsPanel {
+    position: absolute;
+    top: 80px;
+    right: 32px;
+    width: 300px;
+    padding: 18px 22px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(6px);
+    font-family: 'Netflixlt';
+    font-size: 14px;
+    z-index: 2;
+
+    .statsTitle {
+      font-family: 'NetflixBd';
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 5px 0;
+
+      span {
+        opacity: .6;
+      }
+
+      b {
+        font-family: 'NetflixBk';
+        font-weight: normal;
+        text-align: right;
+      }
+    }
+  }
 
   .sidePannel {
     position: fixed;

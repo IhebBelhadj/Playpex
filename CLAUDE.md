@@ -49,12 +49,12 @@ More detailed guides live next to the code:
 ### Play a movie
 1. `/movies/list`: `MoviesPageComponent` fills the movie `Catalog` from `categories.ts`; `MoviesSliderComponent` renders rows.
 2. Focusing a poster → `Catalog.select()` → TMDB details (`imdb_id`) → YTS via `/api/movies/:imdb_id` → `torrents`, `rating`, `runtime` on `MoviesService.selectedmovie` (shown by `<movie-description>`).
-3. Space → `/movies/movie/:id` (`MovieOptionsComponent`). Play → `PlaybackService.playMovie(movie)` (magnet from `torrents[0]`) → `/player`.
+3. Enter → `/movies/movie/:id` (`MovieOptionsComponent`). Play → torrent picker (one row per YTS torrent) → `PlaybackService.playMovie(movie, torrent)` (magnet from the chosen torrent) → `/player`.
 
 ### Play a TV episode
 1. Menu "Tv shows" → `/shows/list`: same page/slider components with the TV `Catalog` (`showCategories`).
-2. Space on a show → `/shows/show/:id` (`ShowOptionsComponent`): seasons row (focusing one loads its episodes), episodes row.
-3. Space on an episode → `TorrentService.findEpisodeTorrents(imdbId, title, season, episode)` → server returns ranked torrents (single episodes first, season packs as fallback) → `PlaybackService.play({…, magnet, season, episode})` → `/player`.
+2. Enter on a show → `/shows/show/:id` (`ShowOptionsComponent`): seasons row (focusing one loads its episodes), episodes row.
+3. Enter on an episode → `TorrentService.findEpisodeTorrents(imdbId, title, season, episode)` → server returns ranked torrents (single episodes first, season packs as fallback) → torrent picker (ranking order, first marked "Best match") → `PlaybackService.play({…, magnet, season, episode})` → `/player`.
 
 ### Player (both)
 `PlayerPageComponent` reads `PlaybackService.current`, `POST /torrents` (magnet), polls `GET /torrents/:hash` every 4 s until `files` exist, picks the file (episode: the `SxxEyy` file, also inside packs; movie: best container), sets `<video>.src`. Chromium sends `Range` requests; the server pipes `file.createReadStream(range)` and downloads only that file (plus its tail early, for MKV indexes). Leaving the player (Escape, before or after playback starts) → `DELETE /torrents/:hash` (engine destroyed, data deleted).
@@ -86,7 +86,7 @@ More detailed guides live next to the code:
         └── streamingServer/              local server → its CLAUDE.md
             ├── lib/providers/            EZTV, TheRARBG (episode torrents)
             ├── lib/subtitles/            subtitle provider registry + providers
-            └── torrents/                 runtime data: config/torrents.json (state), torrent_data/ (downloads, git-ignored)
+            └── torrents/                 legacy runtime-data folder, no longer written (see lib/paths.js)
 ```
 
 ---
@@ -112,6 +112,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 | `OPENSUBTITLES_API_KEY` | enables the official OpenSubtitles.com subtitle provider (free key: opensubtitles.com/en/consumers) |
 | `WYZIE_API_KEY` | enables the Wyzie Subs provider (free key: store.wyzie.io/redeem) |
 | `STREAMER_PORT`, `REMOTE_PORT` | preferred server ports (default 9000 / 9500) |
+| `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR` | override where state (`torrents.json`) and downloads go; defaults are per-OS user dirs, see `lib/paths.js` |
 
 ---
 
@@ -133,12 +134,12 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 ## Cross-cutting conventions
 
 - **State = RxJS Subjects / BehaviorSubjects inside root services**, no NgRx. Section state (rows, paging, slider position) lives in a `Catalog` per media type (`src/app/catalog.ts`, held in `MoviesService.catalogs`).
-- **Input model**: arrows are handled by the spatial-navigation library; `Space` = "click/select", `Escape` = "back". `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
+- **Input model**: arrows are handled by the spatial-navigation library; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
 - **Direct DOM manipulation**: components use `document.querySelector`, inline `style.transform` (rows never scroll natively), CSS classes like `focused`/`lastSelected`, and **GSAP** timelines. Match this style when editing existing components.
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
 - **Server modules**: CommonJS, ES5 style (`var`, callbacks/promises). Upstream calls go through axios with a mirror list and must **always answer the client** (502 + JSON error) — never leave a request hanging.
-- No backend database. Persisted state: `torrents/config/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']`.
+- No backend database. Persisted state: `<config dir>/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']`.
 
 ## Known gotchas / tech debt (verify before "fixing")
 
@@ -146,7 +147,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 - **Trailers are broken**: YouTube now requires proof-of-origin attestation; `youtubei.js` (iOS client) gets formats but googlevideo returns 403 after the first ~1 MB, even with PO tokens minted by BotGuard in jsdom or in a real Chromium window, and SABR streaming (`googlevideo`) fails with "attestation required" (tested Oct 2026). The robust option is YouTube's official IFrame player (needs the app served from `http://localhost`, YouTube embeds reject `file://`).
 - **Provider data is noisy**: TheRARBG seed counts can be months stale; EZTV's IMDb lookup sometimes returns other shows ("Breaking Brad" for Breaking Bad) — `lib/episodes.js` strictly matches `<title> [year] [US|UK…] SxxEyy` to compensate. Older shows often only exist as season packs (mostly huge HEVC/remux).
 - Port 9000 may be taken by unrelated software (it was on the dev machine) — the server moves to 9001 and the UI follows via `?streamer=`. Don't reintroduce hard-coded ports.
-- `torrents/torrent_data/` (multi-GB downloads) is git-ignored. **Never force-add it.** `torrents/config/torrents.json` is tracked but changes at runtime; avoid committing it.
+- Downloads and state live in per-OS user dirs (`src/server/streamingServer/lib/paths.js`: Linux `~/.cache/Playpex/torrent_data` + `~/.config/Playpex/torrents.json`), never inside the app. The old in-repo `torrents/` folder is legacy; `torrent_data/` there is git-ignored — **never force-add it**.
 - Component/host elements inside the flex shell need `min-width: 0` (see `movies-page.component.scss`, `show-options.component.scss`), otherwise they grow to the width of their widest row and horizontal row scrolling silently stops working.
 - Menu items "Watch list", "Settings", search for TV shows, and the "Add to watchlist"/"mark as watched" buttons are placeholders. `DescritionViewerComponent` (sic) is an unused stub.
 - UI is designed for a fixed 1440px viewport (`index.html`) and hides the mouse cursor globally.

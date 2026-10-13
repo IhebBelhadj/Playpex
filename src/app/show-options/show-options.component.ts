@@ -9,10 +9,11 @@ import { NavigationService } from '../navigation.service';
 import { NotificationService } from '../notification.service';
 import { PlaybackService } from '../playback.service';
 import { TorrentService } from '../torrent.service';
+import { TorrentPickerService } from '../torrent-picker.service';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
-// selected season's episodes. Space on an episode finds the best torrent
-// (EZTV + TheRARBG via the local server) and starts the player.
+// selected season's episodes. Enter on an episode finds its torrents
+// (EZTV + TheRARBG via the local server), lets the user pick one and starts the player.
 @Component({
   selector: 'app-show-options',
   templateUrl: './show-options.component.html',
@@ -47,6 +48,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     private notificationService:NotificationService,
     private torrentService:TorrentService,
     private playback:PlaybackService,
+    private torrentPicker:TorrentPickerService,
   ) { }
 
   ngAfterViewInit(): void {
@@ -193,28 +195,33 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.torrentService.findEpisodeTorrents(this.imdbId , this.show['name'] , this.selectedSeason , ep.episode_number)
       .subscribe(result => {
         this.resolvingEpisode = undefined;
-        let best = result.torrents[0];
-        if (!best) {
+        if (!result.torrents.length) {
           let reason = result.providerErrors ? " (some providers are unreachable)" : "";
           this.notificationService.sendNotification("error" , `No torrents found for ${code}${reason}`);
           return;
         }
 
-        this.playback.play({
-          title : this.show['name'],
-          subtitle : `${code} · ${ep.name}`,
-          year : (ep.air_date || '').slice(0, 4),
-          runtimeMinutes : ep.runtime,
-          magnet : best.magnet,
-          imdbId : this.imdbId,
-          season : this.selectedSeason,
-          episode : ep.episode_number,
-        });
-        this.router.navigateByUrl('/player');
+        let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent , i));
+        this.torrentPicker.choose(`${this.show['name']} ${code}` , options)
+          .subscribe(choice => this.playChosen(ep , code , choice.torrent));
       } , () => {
         this.resolvingEpisode = undefined;
         this.notificationService.sendNotification("error" , "Couldn't reach the torrent providers. Try again later");
       })
+  }
+
+  playChosen(ep , code:string , torrent){
+    this.playback.play({
+      title : this.show['name'],
+      subtitle : `${code} · ${ep.name}`,
+      year : (ep.air_date || '').slice(0, 4),
+      runtimeMinutes : ep.runtime,
+      magnet : torrent.magnet,
+      imdbId : this.imdbId,
+      season : this.selectedSeason,
+      episode : ep.episode_number,
+    });
+    this.router.navigateByUrl('/player');
   }
 
   episodeCode(season , episode){

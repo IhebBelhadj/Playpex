@@ -38,12 +38,15 @@
   /*********************/
   /* Constant Variable */
   /*********************/
+  // Playpex: keyed by KeyboardEvent.key and replaced at runtime through
+  // setKeyMap() with the bindings from src/app/keymap.ts
   var KEYMAPPING = {
-    '37': 'left',
-    '38': 'up',
-    '39': 'right',
-    '40': 'down'
+    'ArrowLeft': 'left',
+    'ArrowUp': 'up',
+    'ArrowRight': 'right',
+    'ArrowDown': 'down'
   };
+  var ENTER_KEYS = ['Enter'];
 
   var REVERSE = {
     'left': 'right',
@@ -853,9 +856,9 @@
       return false;
     };
 
-    var direction = KEYMAPPING[evt.keyCode];
+    var direction = KEYMAPPING[evt.key];
     if (!direction) {
-      if (evt.keyCode == 13) {
+      if (ENTER_KEYS.indexOf(evt.key) >= 0) {
         currentFocusedElement = getCurrentFocusedElement();
         if (currentFocusedElement && getSectionId(currentFocusedElement)) {
           if (!fireEvent(currentFocusedElement, 'enter-down')) {
@@ -900,7 +903,7 @@
     if (evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) {
       return
     }
-    if (!_pause && _sectionCount && evt.keyCode == 13) {
+    if (!_pause && _sectionCount && ENTER_KEYS.indexOf(evt.key) >= 0) {
       var currentFocusedElement = getCurrentFocusedElement();
       if (currentFocusedElement && getSectionId(currentFocusedElement)) {
         if (!fireEvent(currentFocusedElement, 'enter-up')) {
@@ -980,6 +983,17 @@
       SpatialNavigation.clear();
       _idPool = 0;
       _ready = false;
+    },
+
+    // setKeyMap({left: [keys], up: [keys], right: [keys], down: [keys], enter: [keys]})
+    setKeyMap: function(keyMap) {
+      KEYMAPPING = {};
+      ['left', 'up', 'right', 'down'].forEach(function(direction) {
+        (keyMap[direction] || []).forEach(function(key) {
+          KEYMAPPING[key] = direction;
+        });
+      });
+      ENTER_KEYS = keyMap.enter || [];
     },
 
     clear: function() {

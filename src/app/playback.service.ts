@@ -12,12 +12,11 @@ export interface PlaybackRequest {
   episode?: number;         //   inside season packs and looks up episode subtitles
 }
 
+// The server also adds its maintained list (src/server/streamingServer/lib/trackers.js)
+// to every torrent, so this only needs a couple of reliable ones
 const TRACKERS = [
-  "udp://glotorrents.pw:6969/announce",
   "udp://tracker.opentrackr.org:1337/announce",
-  "udp://torrent.gresille.org:80/announce",
-  "udp://tracker.openbittorrent.com:80",
-  "udp://tracker.coppersurfer.tk:6969",
+  "udp://open.stealth.si:80/announce",
 ];
 
 @Injectable({
@@ -31,9 +30,9 @@ export class PlaybackService {
     this.current = request;
   }
 
-  // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`
-  playMovie(movie) {
-    let torrent = movie['torrents'][0];
+  // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;
+  // `torrent` is one of them (defaults to the first)
+  playMovie(movie, torrent = movie['torrents'][0]) {
     let magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
     TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
 
