@@ -7,7 +7,7 @@ $muted: rgba(255, 255, 255, .62);
 $faint: rgba(255, 255, 255, .38);
 $wine: #C2405F;
 $chipBg: rgba(0, 0, 0, .56);
-$rowH: 92px;          // + 12px gap = ROW_HEIGHT in the component
+$rowH: 92px;
 
 // Flex item of .masterContainer next to the menu
 :host {
@@ -324,7 +324,13 @@ $rowH: 92px;          // + 12px gap = ROW_HEIGHT in the component
   // the focused row grows a little: keep it whole at the edges
   padding: 6px 12px 0 6px;
   margin-left: -6px;
-  overflow: hidden;
+  // a pxGrid: scrolls natively (wheel, keys), no scrollbar
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
   mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 90px), transparent 100%);
 }
 
@@ -332,7 +338,6 @@ $rowH: 92px;          // + 12px gap = ROW_HEIGHT in the component
   margin: 0;
   padding: 0 0 120px;
   list-style: none;
-  transition: transform .25s;
 
   li {
     height: $rowH;

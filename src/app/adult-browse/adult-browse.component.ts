@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { catchError, debounceTime, forkJoin, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
-import { isPointerFocus, pagedIndex } from '../pointer.service';
+import { FocusEngine, PositionStore } from '../movement/movement';
 import {
   AdultPage, AdultService, AdultSort, AdultStudio, AdultTitle, AdultTitleDetails, BrowseState, MetaProvider, PosterRow,
 } from '../adult.service';
@@ -12,6 +12,7 @@ type Panel = null | 'keyboard' | 'filters';
 
 const SORTS:AdultSort[] = ['popular', 'newest', 'rated'];
 const LOAD_MORE_AHEAD = 6;          // next page this many posters before a row's end
+const STACK = 'adult-browse';       // the rows' pxStack (positions are kept under this id)
 const PERFORMERS_SHOWN = 4;
 
 // /adult/browse — the 18+ section's poster layout, laid out like the movies
@@ -40,6 +41,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   draftStudio:AdultStudio | null = null;
   draftPeriod = '';
 
+  readonly loadAhead = LOAD_MORE_AHEAD;
+
   private detailCache = new Map<string, AdultTitleDetails>();
   private detailRequests = new Subject<AdultTitle>();
   private rowLoading = new Set<string>();
@@ -53,6 +56,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     private navigation:NavigationService,
     private background:BackgroundService,
     private router:Router,
+    private engine:FocusEngine,
+    private positions:PositionStore,
   ) { }
 
   get filtered():boolean {
@@ -98,8 +103,9 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       // another provider than the one these rows came from (changed in Settings)
       if (this.state.provider != provider.id) {
-        this.setState({ provider: provider.id, rows: [], loaded: false, focusKey: null, studio: null });
+        this.setState({ provider: provider.id, rows: [], loaded: false, studio: null });
       }
+      if (!this.state.loaded) this.positions.clear(STACK);
       if (this.state.loaded) setTimeout(() => this.restoreFocus(), 0);
       else this.load();
     });
@@ -117,30 +123,16 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Sections `adultToolbar`, `adultPosters` and `adultFilterPanel` are pxSection
+  // directives in the template; rows scroll natively (src/app/movement)
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'adultToolbar',
-      selector: '.adultBrowse .toolbar .focusable',
-      restrict: 'self-only',
-      // only one of the two exists: the first row's card, or the empty state's button
-      leaveFor: { left: '@menu', down: '.adultBrowse .titleInfo .focusable, .adultBrowse .section:first-child .lastSelected' },
-      straightOnly: true,
-    });
-    this.navigation.updateNavigation('add', {
-      id: 'adultPosters',
-      selector: '.adultBrowse .card, .adultBrowse .titleInfo .focusable',
-      restrict: 'self-only',
-      leaveFor: { left: '@menu', up: '@adultToolbar' },
-      enterTo: 'last-focused',
-      straightOnly: true,
-    });
     this.navigation.updateNavigation('add', {
       id: 'menu',
       selector: '.menuContainer .element',
       restrict: 'self-only',
-      // the posters area always has something focusable (cards, or the empty
-      // state's Clear / Try again button)
-      leaveFor: { right: '@adultPosters' },
+      // the remembered poster; without rows the empty state's Clear / Try
+      // again button, else the toolbar
+      leaveFor: { right: this.engine.target([`stack:${STACK}`, '@adultPosters', '@adultToolbar']) },
     });
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
@@ -161,8 +153,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.detailSub?.unsubscribe();
     this.navSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
-    ['adultToolbar', 'adultPosters', 'adultFilterPanel', 'menu']
-      .forEach(id => this.navigation.updateNavigation('remove', { sectionId: id }));
+    this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
   // ── input ───────────────────────────────────────────────────────────────
@@ -214,14 +205,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.draftStudio = this.state.studio;
     this.draftPeriod = this.state.period;
     this.panel = 'filters';
-    let show = () => setTimeout(() => {
-      this.navigation.updateNavigation('add', {
-        id: 'adultFilterPanel',
-        selector: '.filterPanel .focusable',
-        restrict: 'self-only',
-      });
-      this.focusSelector('.filterPanel .studioChip.selected');
-    }, 0);
+    let show = () => this.focusSelector('.filterPanel .studioChip.selected');
     if (this.studios.length) show();
     else this.adult.studios(this.state.provider).pipe(catchError(() => of([]))).subscribe(list => {
       this.studios = list;
@@ -230,7 +214,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private closeFilters() {
-    this.navigation.updateNavigation('remove', { sectionId: 'adultFilterPanel' });
     this.panel = null;
     this.focusSelector('.adultBrowse .filterBtn');
   }
@@ -252,7 +235,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   private change(patch:Partial<BrowseState>, focusAfter?:string) {
     let changed = Object.keys(patch).some(k => (patch[k]?.id ?? patch[k]) != (this.state[k]?.id ?? this.state[k]));
     if (!changed) return;
-    this.setState({ ...patch, rows: [], loaded: false, focusKey: null });
+    this.setState({ ...patch, rows: [], loaded: false });
+    this.positions.clear(STACK);
     this.spot = null;
     this.details = null;
     this.load();
@@ -341,7 +325,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.adult.row(s.provider, key, page);
   }
 
-  private loadMore(row:PosterRow) {
+  // A row's pxRow asks (focus or scroll near its end)
+  loadMore(row:PosterRow) {
     if (this.rowLoading.has(row.key) || row.page >= row.totalPages) return;
     this.rowLoading.add(row.key);
     let state = this.state;
@@ -358,67 +343,28 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // ── focus and scrolling (as the watch list / movies rows) ───────────────
+  // ── focus ───────────────────────────────────────────────────────────────
 
+  // Back on the page: the remembered poster, rows where they were (pxStack);
+  // no posters (no results, error): the empty state's button, else the search field
   private restoreFocus() {
-    document.querySelectorAll('.adultBrowse .section').forEach(section => {
-      if (!section.querySelector('.lastSelected')) section.querySelector('.card')?.classList.add('lastSelected');
-    });
-    if (this.panel) return;
-    let remembered = this.state.focusKey && document.querySelector(`.adultBrowse .card[data-key="${this.state.focusKey}"]`) as HTMLElement;
-    // no posters (no results, error): the empty state's button, else the search field
-    let target = remembered
-      || document.querySelector('.adultBrowse .card') as HTMLElement
-      || document.querySelector('.adultBrowse .titleInfo .focusable') as HTMLElement
+    if (this.panel || this.engine.restore(`stack:${STACK}`)) return;
+    let target = document.querySelector('.adultBrowse .titleInfo .focusable') as HTMLElement
       || document.querySelector('.adultBrowse .searchField') as HTMLElement;
-    if (!target) return;
-    target.focus({ preventScroll: true });
-    this.onFocus(target);
+    target?.focus({ preventScroll: true });
   }
 
+  // The title info follows the focused poster (scrolling is the rows' job)
   private onFocus(node:HTMLElement) {
     if (!node.classList.contains('card')) return;
     let row = this.state.rows.find(r => r.key == node.dataset['row']);
     let item = row?.items[Number(node.dataset['index'])];
     if (!row || !item) return;
 
-    this.adult.browseState.focusKey = node.dataset['key'];
     this.spot = item;
     this.details = this.detailCache.get(item.id) || null;
     if (!this.details) this.detailRequests.next(item);
     if (item.backdrop) this.background.sendImage(item.backdrop);
-    if (Number(node.dataset['index']) >= row.items.length - LOAD_MORE_AHEAD) this.loadMore(row);
-
-    let section = node.closest('.section') as HTMLElement;
-    if (!isPointerFocus()) {
-      section.querySelectorAll('.card').forEach(el => el.classList.remove('lastSelected'));
-      node.classList.add('lastSelected');
-    }
-    let slider = node.closest('.sliderSection') as HTMLElement;
-    if (!isPointerFocus()) {
-      slider.style.transform = `translateX(-${node.offsetLeft}px)`;
-      section.classList.toggle('atStart', node === slider.firstElementChild);
-    }
-    (section.parentElement as HTMLElement).style.transform = `translateY(-${section.offsetTop}px)`;
-    document.querySelectorAll('.adultBrowse .section').forEach(s => {
-      if (s === section) s.removeAttribute('data-pointer-hover');
-      else s.setAttribute('data-pointer-hover', 'off');
-    });
-  }
-
-  // Up/down between rows lands on the card last focused in that row
-  neighbour(index:number, step:number):string | null {
-    let row = this.state.rows[index + step];
-    return row ? `.adultBrowse .section[data-row="${row.key}"] .lastSelected` : null;
-  }
-
-  pageRow(rowKey:string, direction:number) {
-    let section = document.querySelector(`.adultBrowse .section[data-row="${rowKey}"]`);
-    let slider = section?.querySelector('.sliderSection') as HTMLElement;
-    if (!slider) return;
-    let cards = Array.from(slider.querySelectorAll('.card')) as HTMLElement[];
-    let target = pagedIndex(slider, cards, (section.querySelector('.slider') as HTMLElement).clientWidth, direction);
-    if (target >= 0) cards[target].focus({ preventScroll: true });
   }
 
   // ── opening a title ─────────────────────────────────────────────────────
@@ -427,7 +373,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     let row = this.state.rows.find(r => r.key == node.dataset['row']);
     let item = row?.items[Number(node.dataset['index'])];
     if (!item) return;
-    this.adult.browseState.focusKey = node.dataset['key'];
     this.adult.openedTitle = this.detailCache.get(item.id) || item;
     this.router.navigateByUrl(`/adult/title/${this.state.provider}/${encodeURIComponent(item.id)}`);
   }

@@ -43,7 +43,6 @@ export interface AdultState {
   page: number;               // last page read
   hasMore: boolean;
   loaded: boolean;
-  focusKey: string | null;    // hash of the focused release
 }
 
 export const EMPTY_ADULT_STATE: AdultState = {
@@ -55,7 +54,6 @@ export const EMPTY_ADULT_STATE: AdultState = {
   page: 0,
   hasMore: false,
   loaded: false,
-  focusKey: null,
 };
 
 // ── catalog (metadata providers, lib/adultMeta) ─────────────────────────────
@@ -132,7 +130,6 @@ export interface BrowseState {
   period: string;
   rows: PosterRow[];
   loaded: boolean;
-  focusKey: string | null;    // "<row>:<title id>"
 }
 
 export const EMPTY_BROWSE_STATE: BrowseState = {
@@ -142,7 +139,6 @@ export const EMPTY_BROWSE_STATE: BrowseState = {
   period: '',
   rows: [],
   loaded: false,
-  focusKey: null,
 };
 
 // The 18+ section: metadata (poster layout) and one provider's releases,

@@ -5,7 +5,9 @@ import { NavigationService } from '../navigation.service';
 // Full-screen on-screen keyboard (A–Z, 0–9, space / delete / clear / done) for
 // the remote; typing on a physical keyboard works too (taken as is). Emits
 // `done` with the text or `cancelled` on back. While open it owns the
-// `textKeyboard` navigation section; hosts must ignore click/back meanwhile.
+// `textKeyboard` navigation section (a trapping pxSection: keys and mouse stay
+// in it; arrows move by key grid lines, src/app/movement); hosts must ignore
+// click/back meanwhile.
 @Component({
   selector: 'text-keyboard',
   templateUrl: './text-keyboard.component.html',
@@ -32,11 +34,6 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   constructor(private navigation:NavigationService) { }
 
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'textKeyboard',
-      selector: '.textKeyboard .key',
-      restrict: 'self-only',
-    });
     setTimeout(() => (document.querySelector('.textKeyboard [data-key="A"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
@@ -60,7 +57,6 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.navSub?.unsubscribe();
     document.removeEventListener('keydown', this.keyListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'textKeyboard' });
   }
 
   press(key:string) {

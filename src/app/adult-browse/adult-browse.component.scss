@@ -110,6 +110,11 @@ $chipBg: rgba(0, 0, 0, .56);
   flex: 1;
 }
 
+// The posters section's wrapper: no box of its own
+.postersArea {
+  display: contents;
+}
+
 // ── title info (as <movie-description>) ────────────────────────────────────
 
 .titleInfo {
@@ -215,14 +220,16 @@ $chipBg: rgba(0, 0, 0, .56);
   }
 }
 
-// ── rows (as the watch list / movies slider) ───────────────────────────────
+// ── rows (pxStack of pxRows, motion="transform": the stack clips, its
+// track and the rows are translated, src/app/movement) ─────────────────────
 
 .sliderContainer {
   flex: none;
-  overflow: clip;
-  overflow-clip-margin: 10px;
   height: 370px;
   position: relative;
+  // the rows' zoom room (below) stays inside the clipping stack
+  margin: 0 -10px;
+  padding: 0 10px;
 
   .overlay {
     position: fixed;
@@ -236,7 +243,6 @@ $chipBg: rgba(0, 0, 0, .56);
 
   .content {
     position: relative;
-    transition: all .25s;
   }
 }
 
@@ -249,8 +255,12 @@ $chipBg: rgba(0, 0, 0, .56);
 
 .sliderSection {
   display: flex;
-  margin-bottom: 20px;
-  transition: all .2s;
+  // room for the focused poster's zoom (1.1 → 9px sideways, 13.5px up and
+  // down; a sideways scrolling row clips vertically too), not enough to show
+  // the previous poster (10px gap); the margins give it back to the layout
+  padding: 16px 10px;
+  margin: -16px -10px 4px;
+  scroll-padding-inline: 10px;
 }
 
 .card {
@@ -311,6 +321,10 @@ $chipBg: rgba(0, 0, 0, .56);
 
 .panelBody {
   width: 1060px;
+  max-height: 100vh;
+  // a pxStack: scrolls when the studios don't fit; room for the chips' zoom
+  padding: 40px 10px;
+  box-sizing: border-box;
 }
 
 .panelTitle {
@@ -374,9 +388,7 @@ $chipBg: rgba(0, 0, 0, .56);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card,
-  .sliderSection,
-  .sliderContainer .content {
+  .card {
     transition: none;
   }
 }

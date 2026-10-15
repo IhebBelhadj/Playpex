@@ -137,3 +137,62 @@ body:not(.pointer-hidden) .pagedRow:hover > .rowPaddle {
 .section.atEnd .rowPaddle.next {
   display: none;
 }
+
+// Movement system (src/app/movement): containers scroll natively with hidden
+// scrollbars. pxRow / pxStack add these classes themselves; give the
+// container a definite size (and room for the focused item's zoom: rows clip
+// vertically once they scroll sideways, see .px-row-pad).
+.px-scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+.px-scroll-y {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+// motion="transform" (src/app/movement/motion.ts): the container clips, its
+// track is translated (a CSS transition the motion sets inline)
+.px-clip {
+  overflow: clip;
+}
+
+.px-track {
+  will-change: transform;
+}
+
+// pxStack `snap`: wheel / trackpad scrolling settles on an entry's block
+// (pxStackItem); off while the Scroller glides (.px-snap-paused)
+.px-snap-y {
+  scroll-snap-type: y mandatory;
+
+  &.px-snap-paused { scroll-snap-type: none; }
+}
+
+.px-snap-point {
+  scroll-snap-align: start;
+}
+
+// Room for a 1.1× zoom around 180×270 posters (9px sideways, 13.5px up and
+// down) that still hides the poster before an item aligned at the start (10px
+// gap); the negative margins give the padding back to the layout
+.px-row-pad {
+  padding: 16px 10px;
+  margin: -16px -10px;
+  scroll-padding-inline: 10px;
+}
+
+// Paddles of a pxRow: siblings of the scrolling row (inside a .pagedRow),
+// hidden at the ends of the real scroll position
+[data-px-container].atStart ~ .rowPaddle.prev,
+[data-px-container].atEnd ~ .rowPaddle.next {
+  display: none;
+}

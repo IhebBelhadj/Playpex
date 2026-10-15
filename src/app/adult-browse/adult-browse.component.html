@@ -1,7 +1,8 @@
-<div class="adultBrowse">
+<div class="adultBrowse" data-px-native-wheel>
 
   <!-- Search, filters and the other layout -->
-  <div class="toolbar">
+  <div class="toolbar" pxSection="adultToolbar"
+    [leaveFor]="{ left: '@menu', down: ['stack:adult-browse', '@adultPosters'] }">
     <div class="seal" aria-label="Adults only">18+</div>
     <button class="searchField focusable" [class.empty]="!state.query">
       <img src="assets/icons/search.svg" alt="">
@@ -18,6 +19,9 @@
       List view
     </button>
   </div>
+
+  <!-- Posters, and the empty state's way out: one section -->
+  <div class="postersArea" pxSection="adultPosters" [leaveFor]="{ left: '@menu', up: '@adultToolbar' }">
 
   <!-- The focused title, laid out like <movie-description> -->
   <header class="titleInfo" *ngIf="spot && !note">
@@ -47,56 +51,55 @@
   </header>
 
   <!-- Category-style rows, like the movies page -->
-  <div class="sliderContainer" *ngIf="state.rows.length && !loadError">
+  <div class="sliderContainer" *ngIf="state.rows.length && !loadError" pxStack="adult-browse" align="row-top" motion="transform">
     <div class="overlay"></div>
-    <div class="content">
-      <div class="section atStart" *ngFor="let row of state.rows; let r = index; trackBy: trackRow" [attr.data-row]="row.key">
+    <div class="content" pxTrack>
+      <div class="section" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem [attr.data-row]="row.key">
         <h3 class="sectionTitle">{{ row.title }}</h3>
         <div class="slider pagedRow">
-          <div class="sliderSection">
+          <div class="sliderSection" [pxRow]="row.key" align="start" [loadAhead]="loadAhead" (nearEnd)="loadMore(row)" #r="pxRow">
             <button *ngFor="let item of row.items; let i = index; trackBy: trackItem" class="card focusable"
-              [attr.data-key]="row.key + ':' + item.id"
+              pxItem [pxItemKey]="item.id"
               [attr.data-row]="row.key"
-              [attr.data-index]="i"
-              [attr.data-sn-up]="neighbour(r, -1)"
-              [attr.data-sn-down]="neighbour(r, 1)">
+              [attr.data-index]="i">
               <img *ngIf="item.poster" [src]="item.poster" alt="" loading="lazy">
               <span class="fallbackTitle" *ngIf="!item.poster">{{ item.title }}</span>
             </button>
           </div>
-          <div class="rowPaddle prev" (click)="pageRow(row.key, -1)">
+          <div class="rowPaddle prev" (click)="r.page(-1)">
             <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
           </div>
-          <div class="rowPaddle next" (click)="pageRow(row.key, 1)">
+          <div class="rowPaddle next" (click)="r.page(1)">
             <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>
     </div>
   </div>
+  </div>
 </div>
 
 <!-- Filters: studio and release period, applied together -->
-<div class="filterPanel" *ngIf="panel == 'filters'">
-  <div class="panelBody">
+<div class="filterPanel" *ngIf="panel == 'filters'" pxSection="adultFilterPanel" [trap]="true">
+  <div class="panelBody" pxStack>
     <h2 class="panelTitle">Filter titles</h2>
 
     <h3 class="groupTitle">Studio</h3>
-    <div class="studioGrid">
-      <button class="studioChip focusable" [class.selected]="!draftStudio" data-studio="">All studios</button>
-      <button *ngFor="let s of studios" class="studioChip focusable"
+    <div class="studioGrid" pxGrid enter="nearest">
+      <button class="studioChip focusable" pxItem [class.selected]="!draftStudio" data-studio="">All studios</button>
+      <button *ngFor="let s of studios" class="studioChip focusable" pxItem
         [class.selected]="draftStudio?.id == s.id" [attr.data-studio]="s.id">{{ s.name }}</button>
     </div>
 
     <h3 class="groupTitle">Released</h3>
-    <div class="periodRow">
-      <button *ngFor="let p of periods" class="studioChip focusable"
+    <div class="periodRow" pxGrid enter="nearest">
+      <button *ngFor="let p of periods" class="studioChip focusable" pxItem
         [class.selected]="draftPeriod == p.id" [attr.data-period]="p.id">{{ p.label }}</button>
     </div>
 
-    <div class="panelActions">
-      <button class="actionBtn primary focusable" data-panel="apply">Show titles</button>
-      <button class="actionBtn focusable" data-panel="reset">Reset filters</button>
+    <div class="panelActions" pxGrid enter="nearest">
+      <button class="actionBtn primary focusable" pxItem data-panel="apply">Show titles</button>
+      <button class="actionBtn focusable" pxItem data-panel="reset">Reset filters</button>
     </div>
   </div>
 </div>

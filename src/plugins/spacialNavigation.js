@@ -731,6 +731,18 @@
         _sections[sectionId].leaveFor[direction] !== undefined) {
       var next = _sections[sectionId].leaveFor[direction];
 
+      // Playpex: a function resolves the target when leaving (the movement
+      // system's 'stack:<id>' targets and fallback chains, src/app/movement)
+      if (typeof next === 'function') {
+        next = next(direction);
+        if (next === null) {
+          return null;
+        }
+        if (!next) {
+          return false;
+        }
+      }
+
       if (typeof next === 'string') {
         if (next === '') {
           return null;
@@ -1163,6 +1175,11 @@
 
     sectionConfig: function(sectionId) {
       return _sections[sectionId];
+    },
+
+    // Navigable elements of a section, in DOM order (empty when it has none)
+    navigableElements: function(sectionId) {
+      return _sections[sectionId] ? getSectionNavigableElements(sectionId) : [];
     },
 
     // move(<direction>)

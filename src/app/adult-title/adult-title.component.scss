@@ -18,7 +18,9 @@ $wine: #C2405F;
   align-items: flex-start;
   height: 100vh;
   padding: 34px 0 0 35px;
-  overflow: hidden;
+  box-sizing: border-box;
+  // a pxStack: scrolls vertically if it has to (programmatically sideways only)
+  overflow-x: hidden;
 }
 
 .seal {
@@ -171,11 +173,10 @@ $wine: #C2405F;
 // ── More from <studio> ──────────────────────────────────────────────────────
 
 .moreRow {
+  flex: none;
   width: 100%;
   margin-top: auto;
   height: 262px;
-  overflow: clip;
-  overflow-clip-margin: 10px;
 }
 
 .sectionTitle {
@@ -187,7 +188,9 @@ $wine: #C2405F;
 
 .sliderSection {
   display: flex;
-  transition: transform .2s;
+  // a pxRow: room for the focused card's zoom, given back by the margins
+  padding: 12px 10px;
+  margin: -12px 0 0 -10px;
 }
 
 .card {

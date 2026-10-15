@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { catchError, map, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { PlaybackService } from '../playback.service';
-import { isPointerFocus } from '../pointer.service';
+import { FocusEngine, PositionStore } from '../movement/movement';
 import { AdultProvider, AdultQuality, AdultRelease, AdultService, AdultState } from '../adult.service';
 
 interface QualityChoice {
@@ -16,8 +16,8 @@ interface Request {
   page: number;
 }
 
-const ROW_HEIGHT = 104;           // .release height + gap, keep in sync with the SCSS
 const LOAD_MORE_AHEAD = 8;        // ask for the next page this many rows before the end
+const LIST = 'adult-releases';    // the list's pxGrid (its position is kept under this id)
 
 // /adult/releases — the 18+ section's compact layout (never for kids profiles, see AdultGuard).
 // Left: search (on-screen keyboard), source and filters. Right: that source's
@@ -43,19 +43,21 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
   loading = false;
   loadError = '';
   keyboardOpen = false;
-  listOffset = 0;
   maxSeeds = 1;
+
+  readonly loadAhead = LOAD_MORE_AHEAD;
 
   private requests = new Subject<Request>();
   private requestSub:Subscription;
   private navSub:Subscription;
-  private focusListener;
 
   constructor(
     private adult:AdultService,
     private navigation:NavigationService,
     private playback:PlaybackService,
     private router:Router,
+    private engine:FocusEngine,
+    private positions:PositionStore,
   ) { }
 
   get provider():AdultProvider | undefined {
@@ -86,6 +88,8 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.state = this.adult.state;
     this.updateMaxSeeds();
+    // a new list (another search, from a title's "Find releases"): no old position
+    if (!this.state.loaded) this.positions.clear(LIST);
 
     // Latest request wins; page 1 replaces the list, later pages extend it
     this.requestSub = this.requests.pipe(
@@ -125,23 +129,9 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Sections `adultFilters` (rail) and `adultReleases` are pxSection directives
+  // in the template; the list scrolls natively (pxGrid, src/app/movement)
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'adultFilters',
-      selector: '.adultPage .rail .focusable',
-      restrict: 'self-only',
-      leaveFor: { left: '@menu', right: '.adultPage .releases .lastSelected' },
-      enterTo: 'last-focused',
-      straightOnly: true,
-    });
-    this.navigation.updateNavigation('add', {
-      id: 'adultReleases',
-      selector: '.adultPage .releases .focusable',
-      restrict: 'self-only',
-      leaveFor: { left: '@adultFilters' },
-      enterTo: 'last-focused',
-      straightOnly: true,
-    });
     this.navigation.updateNavigation('add', {
       id: 'menu',
       selector: '.menuContainer .element',
@@ -156,29 +146,15 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
       else if (instruction == 'click') this.select(active);
     });
 
-    this.focusListener = (e) => {
-      if (this.router.url == '/adult/releases') this.onFocus(e.target as HTMLElement);
-    };
-    window.addEventListener('sn:focused', this.focusListener);
-
-    // Back from the player: the same release in focus
+    // Back from the player: the same release in focus, the list where it was
     setTimeout(() => {
-      let remembered = this.state.focusKey && this.releaseElement(this.state.focusKey);
-      if (remembered) {
-        remembered.focus({ preventScroll: true });
-        this.onFocus(remembered);
-      } else {
-        this.focusSelector('.adultPage .searchField');
-      }
+      if (!this.positions.get(LIST)?.key || !this.engine.restore(`grid:${LIST}`)) this.focusSelector('.adultPage .searchField');
     }, 0);
   }
 
   ngOnDestroy(): void {
     this.navSub?.unsubscribe();
     this.requestSub?.unsubscribe();
-    window.removeEventListener('sn:focused', this.focusListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'adultFilters' });
-    this.navigation.updateNavigation('remove', { sectionId: 'adultReleases' });
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
@@ -229,8 +205,8 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
   private change(patch:Partial<AdultState>, focusAfter?:string) {
     let changed = Object.keys(patch).some(k => patch[k] != this.state[k]);
     if (!changed) return;
-    this.setState({ ...patch, releases: [], page: 0, hasMore: false, loaded: false, focusKey: null });
-    this.listOffset = 0;
+    this.setState({ ...patch, releases: [], page: 0, hasMore: false, loaded: false });
+    this.positions.clear(LIST);
     this.load();
     if (focusAfter) this.focusSelector(focusAfter);
   }
@@ -254,28 +230,11 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.requests.next({ state: this.state, page: 1 });
   }
 
-  private loadMore() {
+  // The list's pxGrid asks (focus or scroll near its end)
+  loadMore() {
     if (this.loading || !this.state.hasMore || this.loadError) return;
     this.loading = true;
     this.requests.next({ state: this.state, page: this.state.page + 1 });
-  }
-
-  private onFocus(el:HTMLElement) {
-    if (!el.classList.contains('release')) return;
-    document.querySelectorAll('.adultPage .release.lastSelected').forEach(r => r.classList.remove('lastSelected'));
-    el.classList.add('lastSelected');
-
-    let index = Number(el.dataset['index']);
-    this.adult.state.focusKey = el.dataset['hash'];
-    if (index >= this.state.releases.length - LOAD_MORE_AHEAD) this.loadMore();
-
-    // the list moves with transform, like every row in the app; not under the mouse
-    if (isPointerFocus()) return;
-    let viewport = document.querySelector('.adultPage .releasesViewport') as HTMLElement;
-    let visible = viewport ? viewport.clientHeight : 700;
-    let total = this.state.releases.length * ROW_HEIGHT;
-    let wanted = index * ROW_HEIGHT - visible * .3;
-    this.listOffset = Math.max(0, Math.min(wanted, total - visible + 40));
   }
 
   private play(release:AdultRelease | undefined) {
@@ -329,10 +288,6 @@ export class AdultPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private updateMaxSeeds() {
     this.maxSeeds = Math.max(1, ...this.state.releases.map(r => r.seeds));
-  }
-
-  private releaseElement(hash:string):HTMLElement | null {
-    return document.querySelector(`.adultPage .release[data-hash="${hash}"]`);
   }
 
   private focusSelector(selector:string) {

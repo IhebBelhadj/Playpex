@@ -14,7 +14,7 @@ Data sources:
 | Subtitles | pluggable providers: OpenSubtitles (keyless, via Stremio addon), YIFY Subtitles, OpenSubtitles.com (key), Wyzie Subs (key) | server; user picks the provider in the player |
 | Trailers | YouTube via `youtubei.js` | server — **currently only the first ~1 MB streams**, see gotchas |
 
-Planned work: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)**: rewrite of focus movement and scrolling (native scroll, mouse wheel, shared directives). Read it before touching row scrolling or `PointerService`.
+Movement system: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)** (plan + status) and the "Movement system" section of [`src/app/CLAUDE.md`](src/app/CLAUDE.md): focus movement and positioning through shared directives (`src/app/movement/`), with a per-container motion: `transform` (translated tracks, for category rows of posters) or `scroll` (native scrolling, for everything else). In use on the 18+ pages and the watch list; the other pages still scroll with transforms and migrate one by one. Read both before touching row scrolling or `PointerService`.
 
 More detailed guides live next to the code:
 
@@ -108,7 +108,7 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 | UI only in browser | `npm start` | `ng serve -o` on :4200; needs the server running separately on :9000 |
 | Server only | `node src/server/streamingServer/server.js` (or `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron …server.js` to use Electron's Node 24) | :9000 + :9500; `STREAMER_PORT` / `REMOTE_PORT` env vars. No power API |
 | DB migration after a schema change | `npm run db:generate` | drizzle-kit; diffs `src/server/streamingServer/lib/db/schema.js` into `lib/db/migrations/` |
-| Unit tests | `npm test` | Karma/Jasmine; specs are mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
+| Unit tests | `CHROME_BIN=/opt/google/chrome/chrome npx ng test --watch=false --browsers=ChromeHeadless` (`--include src/app/movement` for the movement specs) | Karma/Jasmine; besides the movement specs, mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
 | Package installer | `npm run electronBuild` (electron-builder 23) or `npm run make` (forge) | not re-verified since the Electron 44 upgrade |
 
 There is **no linter config** and **no hot reload for Electron** — after UI edits, rebuild (`npm run electron`).
@@ -146,8 +146,8 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 ## Cross-cutting conventions
 
 - **State = RxJS Subjects / BehaviorSubjects inside root services**, no NgRx. Section state (rows, paging, slider position) lives in a `Catalog` per media type (`src/app/catalog.ts`, held in `MoviesService.catalogs`).
-- **Input model**: arrows are handled by the spatial-navigation library; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). The mouse is mapped onto the same model by `PointerService` (hover = focus, click = select, right click / mouse back button = back, wheel = up/down); pages don't handle the mouse themselves. `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
-- **Direct DOM manipulation**: components use `document.querySelector`, inline `style.transform` (rows never scroll natively), CSS classes like `focused`/`lastSelected`, and **GSAP** timelines. Match this style when editing existing components.
+- **Input model**: arrows go through the spatial-navigation library, and inside movement containers (`pxRow` / `pxStack` / `pxGrid`) the `FocusEngine` moves by index instead; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). The mouse is mapped onto the same model by `PointerService` (hover = focus, click = select, right click / mouse back button = back; wheel = native scrolling on migrated pages, up/down elsewhere); pages don't handle the mouse themselves. `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
+- **Direct DOM manipulation**: components use `document.querySelector`, CSS classes like `focused`/`lastSelected`, and **GSAP** timelines; unmigrated pages position rows with inline `style.transform` (migrated ones scroll natively through the movement directives — use those for new pages and rows). Match the surrounding style when editing existing components.
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
 - **Server modules**: CommonJS, ES5 style (`var`, callbacks/promises). Upstream calls go through axios with a mirror list and must **always answer the client** (502 + JSON error) — never leave a request hanging.

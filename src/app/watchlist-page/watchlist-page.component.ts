@@ -2,7 +2,7 @@ import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
-import { isPointerFocus, pagedIndex } from '../pointer.service';
+import { FocusEngine } from '../movement/movement';
 import { BackgroundService } from '../background.service';
 import { MoviesService } from '../movies.service';
 import { NotificationService } from '../notification.service';
@@ -37,9 +37,7 @@ interface Details {
 
 const DAY = 24 * 60 * 60 * 1000;
 const OVERVIEW_MAX = 230;
-
-// Focused card when leaving for a detail page, restored on the way back
-let lastFocusKey:string | null = null;
+const STACK = 'watchlist';      // the rows' pxStack: the focused card is remembered under this id
 
 // /watchlist — the current profile's library, laid out like the movies page:
 // a description of the focused title on top, category-style rows below.
@@ -47,6 +45,9 @@ let lastFocusKey:string | null = null;
 //   My list
 //   Watched this week / this month / earlier
 // Empty rows are left out. Enter opens the title's page; Back goes to the menu, then home.
+// Rows scroll natively (pxStack / pxRow, src/app/movement): the focused row
+// at the top, the focused poster at its row's start; the card is remembered
+// for the way back.
 @Component({
   selector: 'app-watchlist-page',
   templateUrl: './watchlist-page.component.html',
@@ -78,6 +79,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     private moviesService:MoviesService,
     private notification:NotificationService,
     private router:Router,
+    private engine:FocusEngine,
   ) { }
 
   get isEmpty():boolean {
@@ -97,20 +99,13 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     });
   }
 
+  // Section `library` is a pxSection in the template
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'library',
-      selector: '.libraryPage .focusable',
-      restrict: 'self-only',
-      leaveFor: { left: '@menu' },
-      enterTo: 'last-focused',
-      straightOnly: true,
-    });
     this.navigation.updateNavigation('add', {
       id: 'menu',
       selector: '.menuContainer .element',
       restrict: 'self-only',
-      leaveFor: { right: '@library' },
+      leaveFor: { right: this.engine.target([`stack:${STACK}`, '@library']) },
     });
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
@@ -136,7 +131,6 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     this.navSub?.unsubscribe();
     this.detailSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'library' });
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
@@ -248,69 +242,27 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     return days < 730 ? 'last year' : `${Math.floor(days / 365)} years ago`;
   }
 
-  // Up/down between rows lands on the card last focused in that row
-  neighbour(index:number, step:number):string | null {
-    let row = this.rows[index + step];
-    return row ? `.libraryPage .section[data-row="${row.key}"] .lastSelected` : null;
-  }
+  // ── focus ─────────────────────────────────────────────────────────────────
 
-  // ── focus and scrolling (same behaviour as the movies page rows) ──────────
-
+  // The remembered card (back from a title page), else the first one
   private focusInitial() {
-    this.rows.forEach(r => document.querySelector(`.libraryPage .section[data-row="${r.key}"] .card`)?.classList.add('lastSelected'));
     if (this.isEmpty) {
       this.focusSelector('.libraryPage .browseBtn');
       return;
     }
-    let remembered = lastFocusKey && document.querySelector(`.libraryPage .card[data-key="${lastFocusKey}"]`);
-    let target = (remembered || document.querySelector('.libraryPage .card')) as HTMLElement;
-    target?.focus({ preventScroll: true });
-    // unfocused / offscreen windows don't emit sn:focused: fill the description anyway
-    if (target) this.onFocus(target);
+    this.engine.restore(`stack:${STACK}`);
   }
 
+  // The description follows the focused card (scrolling is the rows' job)
   private onFocus(node:HTMLElement) {
     if (this.router.url != '/watchlist' || !node.classList.contains('card')) return;
     let card = this.cards.get(node.dataset['key']);
     if (!card) return;
 
-    lastFocusKey = card.key;
     this.spot = card;
     this.details = this.detailCache.get(this.titleKey(card)) || null;
     if (!this.details) this.detailRequests.next(card);
     if (card.backdropPath) this.background.sendImage(card.backdropPath);
-
-    let section = node.closest('.section') as HTMLElement;
-    // a mouse hover keeps the row's remembered card: up/down come back without a jump
-    if (!isPointerFocus()) {
-      section.querySelectorAll('.card').forEach(el => el.classList.remove('lastSelected'));
-      node.classList.add('lastSelected');
-    }
-
-    // the focused poster moves to the start of its row, the row to the top
-    // (hovered with the mouse, the row stays put: it would slide under the cursor)
-    let row = node.closest('.sliderSection') as HTMLElement;
-    if (!isPointerFocus()) {
-      row.style.transform = `translateX(-${node.offsetLeft}px)`;
-      section.classList.toggle('atStart', node === row.firstElementChild);
-    }
-    (section.parentElement as HTMLElement).style.transform = `translateY(-${section.offsetTop}px)`;
-
-    // the rows peeking in below aren't focused by a mere mouse hover
-    document.querySelectorAll('.libraryPage .section').forEach(s => {
-      if (s === section) s.removeAttribute('data-pointer-hover');
-      else s.setAttribute('data-pointer-hover', 'off');
-    });
-  }
-
-  // Row paddles (mouse only): move a screenful of posters and focus the first
-  pageRow(rowKey:string, direction:number) {
-    let section = document.querySelector(`.libraryPage .section[data-row="${rowKey}"]`);
-    let row = section?.querySelector('.sliderSection') as HTMLElement;
-    if (!row) return;
-    let cards = Array.from(row.querySelectorAll('.card')) as HTMLElement[];
-    let target = pagedIndex(row, cards, (section.querySelector('.slider') as HTMLElement).clientWidth, direction);
-    if (target >= 0) cards[target].focus({ preventScroll: true });
   }
 
   private focusSelector(selector:string) {

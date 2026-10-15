@@ -8,7 +8,6 @@ import { NotificationService } from '../notification.service';
 import { TorrentService } from '../torrent.service';
 import { TorrentPickerService } from '../torrent-picker.service';
 import { PlaybackService } from '../playback.service';
-import { isPointerFocus } from '../pointer.service';
 import { AdultService, AdultTitle, AdultTitleDetails, EMPTY_ADULT_STATE, MetaProvider } from '../adult.service';
 
 const PERFORMERS_SHOWN = 6;
@@ -34,7 +33,6 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private paramSub:Subscription;
   private navSub:Subscription;
-  private focusListener;
 
   constructor(
     private adult:AdultService,
@@ -90,14 +88,9 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Section `adultTitle` is a pxSection in the template; the page is a pxStack
+  // (actions, "More from" row) scrolling natively (src/app/movement)
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'adultTitle',
-      selector: '.adultTitle .focusable',
-      restrict: 'self-only',
-      leaveFor: { left: '@menu' },
-      straightOnly: true,
-    });
     this.navigation.updateNavigation('add', {
       id: 'menu',
       selector: '.menuContainer .element',
@@ -121,18 +114,11 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
       else if (action == 'back') this.location.back();
       else if (active.classList.contains('card')) this.open(this.more[Number(active.dataset['index'])]);
     });
-
-    this.focusListener = (e) => {
-      if (this.router.url.startsWith('/adult/title/')) this.onFocus(e.target as HTMLElement);
-    };
-    window.addEventListener('sn:focused', this.focusListener);
   }
 
   ngOnDestroy(): void {
     this.paramSub?.unsubscribe();
     this.navSub?.unsubscribe();
-    window.removeEventListener('sn:focused', this.focusListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'adultTitle' });
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
@@ -189,12 +175,6 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     this.adult.row(this.providerId, `studio:${details.browsableStudio}`).pipe(catchError(() => of(null))).subscribe(page => {
       if (page && this.details?.id == details.id) this.more = page.items.filter(i => i.id != details.id);
     });
-  }
-
-  private onFocus(node:HTMLElement) {
-    if (!node.classList.contains('card') || isPointerFocus()) return;
-    let row = node.closest('.sliderSection') as HTMLElement;
-    row.style.transform = `translateX(-${node.offsetLeft}px)`;
   }
 
   // ── view helpers ────────────────────────────────────────────────────────

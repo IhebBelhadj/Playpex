@@ -1,7 +1,8 @@
-<div class="adultPage">
+<div class="adultPage" data-px-native-wheel>
 
   <!-- Search, source and filters -->
-  <aside class="rail">
+  <aside class="rail" pxSection="adultFilters"
+    [leaveFor]="{ left: '@menu', right: ['grid:adult-releases', '@adultReleases'] }">
     <div class="seal" aria-label="Adults only">18+</div>
 
     <button class="searchField focusable" [class.empty]="!state.query">
@@ -39,7 +40,7 @@
   </aside>
 
   <!-- That source's releases, most seeded first -->
-  <section class="releases">
+  <section class="releases" pxSection="adultReleases" [leaveFor]="{ left: '@adultFilters' }">
     <header class="listHeader">
       <h1 class="heading">{{ heading }}</h1>
       <p class="count" *ngIf="state.releases.length">
@@ -52,10 +53,11 @@
       <button class="retryBtn focusable" *ngIf="loadError">Try again</button>
     </div>
 
-    <div class="releasesViewport" *ngIf="state.releases.length">
-      <ol class="releaseList" [style.transform]="'translateY(' + -listOffset + 'px)'">
+    <div class="releasesViewport" *ngIf="state.releases.length"
+      pxGrid="adult-releases" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
+      <ol class="releaseList">
         <li *ngFor="let r of state.releases; let i = index; trackBy: trackRelease">
-          <button class="release focusable" [class.lastSelected]="i == 0 && !state.focusKey"
+          <button class="release focusable" pxItem [pxItemKey]="r.hash"
             [class.quiet]="r.seeds < 5"
             [attr.data-hash]="r.hash"
             [attr.data-index]="i">

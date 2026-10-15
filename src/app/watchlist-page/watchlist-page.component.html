@@ -1,4 +1,4 @@
-<div class="libraryPage">
+<div class="libraryPage" data-px-native-wheel pxSection="library" [leaveFor]="{ left: '@menu' }">
 
   <!-- The focused title, laid out like <movie-description> -->
   <header class="titleInfo" *ngIf="spot && !isEmpty && !loadError">
@@ -35,27 +35,26 @@
   </header>
 
   <!-- Category-style rows, like the movies page -->
-  <div class="sliderContainer" *ngIf="rows.length">
+  <div class="sliderContainer" *ngIf="rows.length" pxStack="watchlist" align="row-top" motion="transform">
     <div class="overlay"></div>
-    <div class="content">
-      <div class="section atStart" *ngFor="let row of rows; let r = index" [attr.data-row]="row.key">
+    <div class="content" pxTrack>
+      <div class="section" *ngFor="let row of rows" pxStackItem [attr.data-row]="row.key">
         <h3 class="sectionTitle">{{ row.title }}</h3>
         <div class="slider pagedRow">
-          <div class="sliderSection">
+          <div class="sliderSection" [pxRow]="row.key" align="start" #r="pxRow">
             <button *ngFor="let card of row.cards" class="card focusable"
-              [attr.data-key]="card.key"
-              [attr.data-sn-up]="neighbour(r, -1)"
-              [attr.data-sn-down]="neighbour(r, 1)">
+              pxItem [pxItemKey]="card.key"
+              [attr.data-key]="card.key">
               <img *ngIf="posterUrl(card) as src" [src]="src" alt="">
               <span class="fallbackTitle" *ngIf="!card.posterPath">{{ card.title }}</span>
               <span class="cardProgress" *ngIf="card.progress"><span [style.width.%]="card.progress * 100"></span></span>
             </button>
           </div>
           <!-- mouse only (hidden with the cursor): page through the row -->
-          <div class="rowPaddle prev" (click)="pageRow(row.key, -1)">
+          <div class="rowPaddle prev" (click)="r.page(-1)">
             <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
           </div>
-          <div class="rowPaddle next" (click)="pageRow(row.key, 1)">
+          <div class="rowPaddle next" (click)="r.page(1)">
             <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>

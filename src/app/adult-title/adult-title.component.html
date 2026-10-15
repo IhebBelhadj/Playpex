@@ -1,4 +1,4 @@
-<div class="adultTitle">
+<div class="adultTitle" data-px-native-wheel pxSection="adultTitle" [leaveFor]="{ left: '@menu' }" pxStack>
   <div class="seal" aria-label="Adults only">18+</div>
 
   <ng-container *ngIf="item">
@@ -22,12 +22,12 @@
       <span class="moreCast" *ngIf="morePerformers">and {{ morePerformers }} more</span>
     </div>
 
-    <div class="actions">
-      <button class="actionBtn primary focusable" data-action="play">
+    <div class="actions" pxGrid>
+      <button class="actionBtn primary focusable" pxItem data-action="play">
         <img src="assets/icons/play.svg" alt="">
         {{ findingTorrents ? 'Finding torrents…' : 'Play' }}
       </button>
-      <button class="actionBtn focusable" data-action="releases">
+      <button class="actionBtn focusable" pxItem data-action="releases">
         <img src="assets/icons/search.svg" alt="">
         Find releases
       </button>
@@ -37,16 +37,16 @@
   <ng-container *ngIf="error">
     <h1 class="name">Title unavailable</h1>
     <p class="overview">{{ error }}</p>
-    <div class="actions">
-      <button class="actionBtn focusable" data-action="back">Go back</button>
+    <div class="actions" pxGrid>
+      <button class="actionBtn focusable" pxItem data-action="back">Go back</button>
     </div>
   </ng-container>
 
-  <section class="moreRow" *ngIf="more.length">
+  <section class="moreRow" *ngIf="more.length" pxStackItem>
     <h3 class="sectionTitle">More from {{ studio?.name }}</h3>
     <div class="slider">
-      <div class="sliderSection">
-        <button *ngFor="let m of more; let i = index" class="card focusable" [attr.data-index]="i">
+      <div class="sliderSection" pxRow="more" align="third">
+        <button *ngFor="let m of more; let i = index" class="card focusable" pxItem [pxItemKey]="m.id" [attr.data-index]="i">
           <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
           <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
         </button>

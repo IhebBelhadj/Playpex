@@ -31,6 +31,7 @@ import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
 import { AdultPageComponent } from './adult-page/adult-page.component';
 import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
+import { MOVEMENT_DIRECTIVES } from './movement/movement';
 
 @NgModule({
   declarations: [
@@ -59,6 +60,7 @@ import { AdultTitleComponent } from './adult-title/adult-title.component';
     AdultPageComponent,
     AdultBrowseComponent,
     AdultTitleComponent,
+    ...MOVEMENT_DIRECTIVES,
   ],
   imports: [
     BrowserModule,

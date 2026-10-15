@@ -98,9 +98,7 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": [
-              "https://luke-chang.github.io/js-spatial-navigation/spatial_navigation.js"
-            ]
+            "scripts": []
           }
         }
       }

@@ -2,12 +2,20 @@ import { Injectable, NgZone } from '@angular/core';
 import { Subject } from 'rxjs';
 import * as spatialNavigation from '../plugins/spacialNavigation.js';
 import { InputAction, KEY_BINDINGS } from './keymap';
+import { FocusEngine } from './movement/focus-engine.service';
 
 // Mouse support on top of the keyboard model. The pointer never gets its own
 // code paths in the pages: hovering a navigable element focuses it through the
 // spatial-navigation library, a click on it sends the `select` key, right click
-// / the mouse "back" button send `back` and the wheel sends arrow keys. So every
-// page keeps reacting to the same focus events and actions it already handles.
+// / the mouse "back" button send `back`. So every page keeps reacting to the
+// same focus events and actions it already handles.
+//
+// The wheel: on pages migrated to the movement system (a `data-px-native-wheel`
+// element is on screen) it scrolls natively, like a website: the stack
+// vertically, rows sideways (trackpad, shift + wheel); over translated
+// containers (`motion="transform"`) the FocusEngine steps them a row / a
+// poster at a time. Focus only follows the next real mouse movement. On the
+// other pages it still sends arrow keys.
 //
 // The cursor is hidden on any key press and comes back when the mouse moves
 // (the first nudge only reveals it, so it doesn't steal focus from the keys).
@@ -27,7 +35,10 @@ export const OWN_CLICK_SELECTOR = '[data-pointer="own"]';
 // selecting anything
 export const NO_HOVER_SELECTOR = '[data-pointer-hover="off"]';
 
-// Row paddles: index of the item a screenful away from the first one shown in
+// Pages whose content scrolls natively (src/app/movement) carry this on their root
+export const NATIVE_WHEEL_SELECTOR = '[data-px-native-wheel]';
+
+// Row paddles of unmigrated pages: index of the item a screenful away from the first one shown in
 // a row scrolled with `transform` (keeps one item of overlap for context)
 export function pagedIndex(row:HTMLElement, items:HTMLElement[], viewportWidth:number, direction:number):number {
   if (items.length < 2) return -1;
@@ -41,6 +52,7 @@ export function pagedIndex(row:HTMLElement, items:HTMLElement[], viewportWidth:n
 const WHEEL_STEP = 40;        // px of wheel travel per arrow key
 const WHEEL_INTERVAL = 140;   // ms between two wheel steps
 const WHEEL_SETTLE = 350;     // ms without hover focus after a step (rows are sliding)
+const SCROLL_SETTLE = 150;    // ms without hover focus after content scrolled under the cursor
 const HIDDEN_CLASS = 'pointer-hidden';
 const PRESSED_CLASS = 'pointer-pressed';
 
@@ -63,7 +75,7 @@ export class PointerService {
   private lastX:number;
   private lastY:number;
 
-  constructor(private zone:NgZone) { }
+  constructor(private zone:NgZone, private engine:FocusEngine) { }
 
   init(){
     document.body.classList.add(HIDDEN_CLASS);
@@ -79,6 +91,7 @@ export class PointerService {
       document.addEventListener('contextmenu', this.onContextMenu);
       document.addEventListener('dragstart', this.onDragStart);
       document.addEventListener('wheel', this.onWheel, { passive : false });
+      document.addEventListener('scroll', this.onScroll, { passive : true, capture : true });
     });
   }
 
@@ -111,6 +124,7 @@ export class PointerService {
       return;
     }
     this.moved.next(e);
+    this.engine.pointerActive();
     if (performance.now() < this.hoverPausedUntil) return;
 
     let el = this.navigableFrom(e.target);
@@ -119,6 +133,7 @@ export class PointerService {
 
   private onDown = (e:MouseEvent) => {
     this.show();
+    this.engine.pointerActive();
     // no native focus (focus goes through the library) and no text selection
     if (!(e.target as Element).closest?.('input, textarea, select')) e.preventDefault();
     if (e.button == 0) document.body.classList.add(PRESSED_CLASS);
@@ -168,6 +183,21 @@ export class PointerService {
   // the sideways part of a diagonal trackpad swipe made rows jump back and forth
   private onWheel = (e:WheelEvent) => {
     if (!this.wheelNavigation || e.ctrlKey) return;
+    // translated rows / stacks (movement system): the engine steps them
+    if (this.engine.wheel(e)) {
+      e.preventDefault();
+      this.show();
+      this.engine.pointerActive();
+      this.hoverPausedUntil = performance.now() + WHEEL_SETTLE;
+      return;
+    }
+    if (document.querySelector(NATIVE_WHEEL_SELECTOR)) {
+      // the browser scrolls the nearest scrollable container
+      this.show();
+      this.engine.pointerActive();
+      this.hoverPausedUntil = performance.now() + SCROLL_SETTLE;
+      return;
+    }
     e.preventDefault();
     this.show();
 
@@ -186,6 +216,12 @@ export class PointerService {
     let down = this.wheelY > 0;
     this.wheelY = 0;
     this.send(down ? 'down' : 'up');
+  }
+
+  // Content scrolling under a still cursor must not steal the focus: hover
+  // waits until it settles and the mouse really moves again
+  private onScroll = () => {
+    this.hoverPausedUntil = Math.max(this.hoverPausedUntil, performance.now() + SCROLL_SETTLE);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -209,15 +245,13 @@ export class PointerService {
     let config = spatialNavigation.sectionConfig(from);
     if (!config || config.restrict != 'self-only') return true;
 
-    return Object.values(config.leaveFor || {}).some(dest =>
-      typeof dest == 'string' && (dest == '@' + to || (dest.charAt(0) != '@' && el.matches(dest)))
-    );
+    return Object.values(config.leaveFor || {}).some(dest => this.engine.leads(dest, el, to));
   }
 
   private focus(el:HTMLElement){
     pointerFocusing = true;
     try {
-      spatialNavigation.focus(el);
+      this.engine.focus(el, 'pointer');
     } finally {
       pointerFocusing = false;
     }

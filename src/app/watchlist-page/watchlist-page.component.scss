@@ -133,16 +133,16 @@ $track: rgba(255, 255, 255, .22);
   }
 }
 
-// ── rows (as movies-slider) ─────────────────────────────────────────────────
+// ── rows (pxStack of pxRows, motion="transform": the stack clips, its
+// track and the rows are translated, src/app/movement) ─────────────────────
 
 .sliderContainer {
-  // Clip both ways: posters scrolled off to the left must not show over the
-  // menu (collapsed or expanded). The margin keeps the focused poster's zoom
-  // (1.1 → 9px each side) whole while the previous poster (10px gap) stays hidden
-  overflow: clip;
-  overflow-clip-margin: 10px;
   height: 370px;
   position: relative;
+  // the rows' zoom room (below) stays inside the clipping stack, which also
+  // keeps posters scrolled off to the left from showing over the menu
+  margin: 0 -10px;
+  padding: 0 10px;
 
   .overlay {
     position: fixed;
@@ -156,7 +156,6 @@ $track: rgba(255, 255, 255, .22);
 
   .content {
     position: relative;
-    transition: all .25s;
   }
 }
 
@@ -169,8 +168,12 @@ $track: rgba(255, 255, 255, .22);
 
 .sliderSection {
   display: flex;
-  margin-bottom: 20px;
-  transition: all .2s;
+  // room for the focused poster's zoom (1.1 → 9px sideways, 13.5px up and
+  // down; a sideways scrolling row clips vertically too), not enough to show
+  // the previous poster (10px gap); the margins give it back to the layout
+  padding: 16px 10px;
+  margin: -16px -10px 4px;
+  scroll-padding-inline: 10px;
 }
 
 .card {
@@ -235,8 +238,6 @@ $track: rgba(255, 255, 255, .22);
 
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .sliderSection,
-  .sliderContainer .content,
   .progressLine span {
     transition: none;
   }

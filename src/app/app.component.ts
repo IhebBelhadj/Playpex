@@ -12,6 +12,7 @@ import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { TorrentPickerService } from './torrent-picker.service';
 import { PlayChoiceService } from './play-choice.service';
 import { PointerService } from './pointer.service';
+import { FocusEngine } from './movement/movement';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -42,6 +43,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     private torrentPicker:TorrentPickerService,
     private playChoice:PlayChoiceService,
     private pointer:PointerService,
+    private focusEngine:FocusEngine,
     ){
 
   }
@@ -50,6 +52,8 @@ export class AppComponent implements AfterViewInit , OnInit{
   ngAfterViewInit() {
     spatialNavigation.setKeyMap(SPATIAL_NAVIGATION_KEYS);
     spatialNavigation.init();
+    // focus movement and scrolling of the migrated pages (src/app/movement)
+    this.focusEngine.init();
     // mouse: hover focuses, click selects, right click goes back (pointer.service.ts)
     this.pointer.init();
 
