@@ -75,7 +75,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.state.rows.length) {
       return this.state.query
         ? `No 18+ titles match “${this.state.query}”. Check the spelling, try fewer words or another release period.`
-        : 'Nothing to show with these filters. Try another studio or Any time.';
+        : `${this.provider?.name || 'This catalog'} has no titles for ${this.filterLabel}. Try another studio or Any time.`;
     }
     return '';
   }
@@ -122,7 +122,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'adultToolbar',
       selector: '.adultBrowse .toolbar .focusable',
       restrict: 'self-only',
-      leaveFor: { left: '@menu', down: '.adultBrowse .section:first-child .lastSelected' },
+      // only one of the two exists: the first row's card, or the empty state's button
+      leaveFor: { left: '@menu', down: '.adultBrowse .titleInfo .focusable, .adultBrowse .section:first-child .lastSelected' },
       straightOnly: true,
     });
     this.navigation.updateNavigation('add', {
@@ -137,6 +138,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'menu',
       selector: '.menuContainer .element',
       restrict: 'self-only',
+      // the posters area always has something focusable (cards, or the empty
+      // state's Clear / Try again button)
       leaveFor: { right: '@adultPosters' },
     });
 
@@ -294,7 +297,13 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         this.setState({ rows: rows.filter(r => r && r.items.length), loaded: true });
-        setTimeout(() => this.restoreFocus(), 0);
+        // a search / filter change leaves focus in the toolbar; otherwise
+        // (first load, focus lost with the old rows) restore it
+        setTimeout(() => {
+          let active = document.activeElement as HTMLElement;
+          let kept = active && document.contains(active) && (active.closest('.adultBrowse .toolbar') || active.classList.contains('menuItem'));
+          if (!kept) this.restoreFocus();
+        }, 0);
       },
       error: () => {
         this.loading = false;
@@ -305,11 +314,14 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Search → one row of results; studio/period → popular, newest and top rated
-  // within them; nothing → the provider's home rows
+  // within them (the orders the provider has); nothing → the provider's home rows
   private rowSpecs():Observable<{ key:string, title:string }[]> {
     let s = this.state;
     if (s.query) return of([{ key: 'search', title: `Results for “${s.query}”` }]);
-    if (s.studio || s.period) return of(SORTS.map(sort => ({ key: sort, title: this.sortTitle(sort) })));
+    if (s.studio || s.period) {
+      let sorts = SORTS.filter(sort => (this.provider?.sorts || SORTS).includes(sort));
+      return of(sorts.map(sort => ({ key: sort, title: this.sortTitle(sort) })));
+    }
     return this.adult.home(s.provider).pipe(map(home => home.rows));
   }
 
@@ -352,8 +364,13 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     document.querySelectorAll('.adultBrowse .section').forEach(section => {
       if (!section.querySelector('.lastSelected')) section.querySelector('.card')?.classList.add('lastSelected');
     });
+    if (this.panel) return;
     let remembered = this.state.focusKey && document.querySelector(`.adultBrowse .card[data-key="${this.state.focusKey}"]`) as HTMLElement;
-    let target = remembered || (this.panel ? null : document.querySelector('.adultBrowse .card') as HTMLElement);
+    // no posters (no results, error): the empty state's button, else the search field
+    let target = remembered
+      || document.querySelector('.adultBrowse .card') as HTMLElement
+      || document.querySelector('.adultBrowse .titleInfo .focusable') as HTMLElement
+      || document.querySelector('.adultBrowse .searchField') as HTMLElement;
     if (!target) return;
     target.focus({ preventScroll: true });
     this.onFocus(target);

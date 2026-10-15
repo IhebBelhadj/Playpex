@@ -35,7 +35,11 @@
   <header class="titleInfo" *ngIf="note">
     <h1 class="name">{{ loadError ? '18+ catalog unavailable' : 'No titles' }}</h1>
     <p class="note">{{ note }}</p>
-    <button class="actionBtn retryBtn focusable" *ngIf="loadError">Try again</button>
+    <button class="actionBtn retryBtn focusable" *ngIf="loadError || !filtered">Try again</button>
+    <!-- never a dead end: the empty state has its own way out -->
+    <button class="actionBtn primary clearAll focusable" *ngIf="!loadError && filtered">
+      {{ state.query ? 'Clear search' : 'Clear filters' }}
+    </button>
   </header>
 
   <header class="titleInfo" *ngIf="!spot && !note && loading">

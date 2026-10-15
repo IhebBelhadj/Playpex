@@ -14,6 +14,8 @@ Data sources:
 | Subtitles | pluggable providers: OpenSubtitles (keyless, via Stremio addon), YIFY Subtitles, OpenSubtitles.com (key), Wyzie Subs (key) | server; user picks the provider in the player |
 | Trailers | YouTube via `youtubei.js` | server — **currently only the first ~1 MB streams**, see gotchas |
 
+Planned work: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)**: rewrite of focus movement and scrolling (native scroll, mouse wheel, shared directives). Read it before touching row scrolling or `PointerService`.
+
 More detailed guides live next to the code:
 
 | Area | Guide |

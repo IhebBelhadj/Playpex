@@ -72,13 +72,13 @@ Browse sources (`BROWSE_PROVIDERS` in `adult.js`; add one there): **The Pirate B
 Metadata for the poster layout from **pluggable providers** (contract at the top of `lib/adultMeta/index.js`; add a module to `PROVIDERS`). Every provider answers the same shapes with full image URLs: `Item { id, title, year, releaseDate, overview, poster, backdrop, rating, studio }`, `Title` = Item + `{ runtime, performers: [{name, photo}], director, studios, browsableStudio }`, `Page { items, page, totalPages }`.
 | Path | Notes |
 |---|---|
-| `GET /api/adult/meta/providers` | `[{ id, name, description, enabled, default, periods }]` — `enabled` false without its key; default = first enabled |
+| `GET /api/adult/meta/providers` | `[{ id, name, description, enabled, default, periods, sorts }]` — `enabled` false without its key; default = first enabled |
 | `GET /api/adult/meta/:provider/home` | `{ provider, rows: [{ key, title }] }`; `:provider` = `default` for the server's default |
 | `GET …/:provider/rows/:key?page=` · `…/discover?studio=&period=&sort=popular\|newest\|rated&page=` · `…/search?q=&period=&page=` | Page |
 | `GET …/:provider/studios` · `…/titles/:id` | `[{ id, name }]` · Title |
 Errors: unknown provider 404, provider without key 503, upstream 502 — always `{ error }`.
 - **`tmdb`** (default; `TMDB_API_KEY`): TMDB has adult films (posters, cast, studios as production companies) but no adult filter or genres. Lists = `discover/movie?include_adult=true&with_companies=<studios>` (`STUDIOS`: curated company ids, checked Oct 2026; first 10 = home rows), only `adult` results, no poster-less ones in rows. Search: TMDB ranks every regular result first, so page n reads 2 TMDB pages from `regular total / 20 + 1` (two count queries, include_adult false/true).
-- **`theporndb`** (`THEPORNDB_API_KEY`): written against its public API (Bearer token, `/movies`, `/movies/:id`, `/sites`), **not verified end to end** (no key during development); fields are read defensively. Sorting isn't offered; periods are filtered per page.
+- **`theporndb`** (`THEPORNDB_API_KEY`), checked with a key (Oct 2026): `/movies` only sorts by `orderBy=recently_released|recently_created` (others → 422), so `sorts: ['newest']` and the UI builds no Popular / Top rated rows for it. `recently_released` starts with scraped titles dated in the future (3024-…) and ignores `date_from/date_to`: items dated after today or without a cover are dropped; periods use `year=` (This year / Last year). `site_id` takes **one** site, so "New releases" merges page n of the 10 home studios (`SITES`, curated site ids). Covers: `image` / `posters.*` are the portrait front cover (no landscape art: the cover is also the backdrop); performer photos from `parent.face`. Search = `q` (relevance order) + `year`.
 
 ### Subtitles
 | Path | Notes |

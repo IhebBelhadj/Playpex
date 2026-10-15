@@ -8,10 +8,10 @@
 //   id, name, description
 //   isConfigured() → bool                     false: listed but disabled (missing key)
 //   periods                                   [{ id, label }] release filters it supports
+//   sorts                                     orders discover() supports, of 'popular' | 'newest' | 'rated'
 //   home() → Promise<[{ key, title }]>        rows of the section's home
 //   row(key, page) → Promise<Page>            one of those rows
-//   discover({ studio, period, sort, page }) → Promise<Page>   filtered browsing;
-//                                             sort 'popular' (default) | 'newest' | 'rated' (may be ignored)
+//   discover({ studio, period, sort, page }) → Promise<Page>   filtered browsing, in one of its `sorts`
 //   search({ q, period, page }) → Promise<Page>
 //   studios() → Promise<[{ id, name }]>
 //   title(id) → Promise<Title>
@@ -41,7 +41,8 @@ function list() {
       description: p.description,
       enabled: p.isConfigured(),
       default: p === firstEnabled,
-      periods: p.periods
+      periods: p.periods,
+      sorts: p.sorts || ['popular']
     };
   });
 }

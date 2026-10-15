@@ -67,6 +67,7 @@ export interface MetaProvider {
   enabled: boolean;      // false: needs an API key on the server
   default: boolean;
   periods: { id: string, label: string }[];
+  sorts: AdultSort[];    // orders its filtered views support (ThePornDB: newest only)
 }
 
 export interface AdultStudio {

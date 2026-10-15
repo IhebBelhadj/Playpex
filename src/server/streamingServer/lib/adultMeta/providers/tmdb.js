@@ -264,6 +264,7 @@ module.exports = {
   name: 'TMDB',
   description: 'The Movie Database: posters, cast and studios of released films. Uses TMDB_API_KEY.',
   periods: PERIODS,
+  sorts: ['popular', 'newest', 'rated'],
   isConfigured: function () { return !!process.env.TMDB_API_KEY; },
   home: home,
   row: row,
