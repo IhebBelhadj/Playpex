@@ -1,3 +1,10 @@
+// Collapsed menu: labels hidden. collapseMenu() also sets display:none inline,
+// but only on labels that exist at that moment; items rendered later (the
+// profile entry appears once a profile is picked) need this rule.
+.menuContainer:not(.expended) .description {
+  display: none;
+}
+
 
 .logo {
   width: 50px;
@@ -42,6 +49,22 @@
       //transform: translate(-50% ,-50%);
     }
   }
+}
+
+.profileItem .inner img.profileAvatar {
+  width: 26px !important;
+  height: 26px;
+  margin-left: -3px;
+  border-radius: 4px;
+  filter: none !important;
+}
+
+.profileItem span {
+  padding-left: 22px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .focused {

@@ -22,7 +22,8 @@
     "forge-start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "electronBuild": "electron-builder"
+    "electronBuild": "electron-builder",
+    "db:generate": "drizzle-kit generate"
   },
   "config": {
     "forge": {
@@ -106,6 +107,7 @@
     "connect-multiparty": "^2.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
+    "drizzle-orm": "^0.45.4",
     "electron-compile": "^6.4.2",
     "electron-shutdown-command": "^2.0.1",
     "electron-squirrel-startup": "^1.0.0",
@@ -135,6 +137,7 @@
     "@angular/compiler-cli": "^14.0.0",
     "@electron-forge/cli": "^6.0.0-beta.67",
     "@types/jasmine": "~4.0.0",
+    "drizzle-kit": "^0.31.11",
     "electron": "^44.7.0",
     "electron-builder": "^23.6.0",
     "electron-packager": "^16.0.0",

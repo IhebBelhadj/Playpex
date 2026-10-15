@@ -22,6 +22,11 @@ import { ShowOptionsComponent } from './show-options/show-options.component';
 import { RouterModule } from "@angular/router";
 
 import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
+import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
+import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
+import { PinPadComponent } from './pin-pad/pin-pad.component';
+import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
+import { PlayChoiceComponent } from './play-choice/play-choice.component';
 @NgModule({
   declarations: [
     AppComponent,
@@ -40,6 +45,11 @@ import { TorrentPickerComponent } from './torrent-picker/torrent-picker.componen
     PowerPageComponent,
     ShowOptionsComponent,
     TorrentPickerComponent,
+    ProfilePickerComponent,
+    ProfileEditorComponent,
+    PinPadComponent,
+    WatchlistPageComponent,
+    PlayChoiceComponent,
   ],
   imports: [
     BrowserModule,

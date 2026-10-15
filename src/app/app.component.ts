@@ -10,6 +10,7 @@ import { Location } from '@angular/common';
 import { delay } from 'rxjs';
 import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { TorrentPickerService } from './torrent-picker.service';
+import { PlayChoiceService } from './play-choice.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -38,6 +39,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     private menuService:MenuServiceService,
     private moviesService:MoviesService,
     private torrentPicker:TorrentPickerService,
+    private playChoice:PlayChoiceService,
     ){
 
   }
@@ -77,6 +79,12 @@ export class AppComponent implements AfterViewInit , OnInit{
 
     window.addEventListener('sn:focused', (e)=>{
 
+      // Only one element has focus. An element that lost it while hidden (e.g. a
+      // menu item when a page hides the menu) never gets sn:unfocused, so clear
+      // any stale highlight here.
+      document.querySelectorAll('.focused').forEach(node => {
+        if (node !== e.target) node.classList.remove('focused');
+      });
       e.target['classList'].add("focused");
 
     });
@@ -90,11 +98,13 @@ export class AppComponent implements AfterViewInit , OnInit{
     document.addEventListener('keydown' , (e)=>{
       let action = actionForKey(e);
 
-      // An open torrent picker takes select/back; the page behind must not react
-      if (this.torrentPicker.isOpen) {
+      // An open modal (torrent picker, resume/start-over) takes select/back;
+      // the page behind must not react
+      let modal = this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
+      if (modal) {
         if (action == 'select' || action == 'back') {
           e.preventDefault();
-          this.torrentPicker.sendCommand(action);
+          modal.sendCommand(action);
         }
         return;
       }

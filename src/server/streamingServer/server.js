@@ -7,6 +7,10 @@
 // get the few peers one tracker hands out. Must run before any lookup.
 require('dns').setDefaultResultOrder('ipv4first');
 
+// Local secrets (TMDB_API_KEY, ...) from the repo's .env; real environment
+// variables win. Packaged builds don't ship a .env, use the environment there.
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '..', '.env') });
+
 var
 
   http = require('http'),

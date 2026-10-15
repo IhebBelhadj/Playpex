@@ -46,6 +46,9 @@ More detailed guides live next to the code:
 
 `src/app/server-config.ts` reads `?streamer=` once and removes it from the URL **before Angular boots** (the router only strips a trailing `index.html` from `file://` URLs; any query/hash would make the initial route match nothing → `NG04002`, blank app).
 
+### Start: "Who's watching?"
+The app opens on `/profiles` (Netflix-style picker, under the splash video). Profiles live in the server's SQLite DB (`/api/profiles`); picking one (PIN if locked) sets `ProfilesService.current` and opens `/movies/list`. Pages that need a profile are guarded. The menu's top item shows the current profile and returns to the picker.
+
 ### Play a movie
 1. `/movies/list`: `MoviesPageComponent` fills the movie `Catalog` from `categories.ts`; `MoviesSliderComponent` renders rows.
 2. Focusing a poster → `Catalog.select()` → TMDB details (`imdb_id`) → YTS via `/api/movies/:imdb_id` → `torrents`, `rating`, `runtime` on `MoviesService.selectedmovie` (shown by `<movie-description>`).
@@ -100,19 +103,23 @@ More detailed guides live next to the code:
 | Build UI | `npm run build` | must use `--base-href ./` (already in script). In non-interactive shells run `NG_CLI_ANALYTICS=false npx ng build --base-href ./ < /dev/null` — the CLI can otherwise sit waiting on a prompt |
 | UI only in browser | `npm start` | `ng serve -o` on :4200; needs the server running separately on :9000 |
 | Server only | `node src/server/streamingServer/server.js` (or `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron …server.js` to use Electron's Node 24) | :9000 + :9500; `STREAMER_PORT` / `REMOTE_PORT` env vars. No power API |
+| DB migration after a schema change | `npm run db:generate` | drizzle-kit; diffs `src/server/streamingServer/lib/db/schema.js` into `lib/db/migrations/` |
 | Unit tests | `npm test` | Karma/Jasmine; specs are mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
 | Package installer | `npm run electronBuild` (electron-builder 23) or `npm run make` (forge) | not re-verified since the Electron 44 upgrade |
 
 There is **no linter config** and **no hot reload for Electron** — after UI edits, rebuild (`npm run electron`).
 
-### Optional configuration (environment variables of the Electron/server process)
+### Configuration (environment variables of the Electron/server process)
+
+`server.js` loads the repo's **`.env`** (git-ignored; template in `.env.example`) with dotenv; real environment variables win. Packaged builds don't ship a `.env`.
 
 | Variable | Effect |
 |---|---|
 | `OPENSUBTITLES_API_KEY` | enables the official OpenSubtitles.com subtitle provider (free key: opensubtitles.com/en/consumers) |
 | `WYZIE_API_KEY` | enables the Wyzie Subs provider (free key: store.wyzie.io/redeem) |
 | `STREAMER_PORT`, `REMOTE_PORT` | preferred server ports (default 9000 / 9500) |
-| `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR` | override where state (`torrents.json`) and downloads go; defaults are per-OS user dirs, see `lib/paths.js` |
+| `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR` | override where state (`torrents.json`, `playpex.db`) and downloads go; defaults are per-OS user dirs, see `lib/paths.js` |
+| `TMDB_API_KEY` | TMDB key for the server (`lib/tmdb.js`, recommendations). Set in `.env`; without it recommendations are empty. The UI still uses its own copy in `movies.service.ts` |
 
 ---
 
@@ -123,7 +130,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 | Streaming server base URL | **only** `src/app/server-config.ts` (`STREAMING_SERVER`); every service/component imports it — never hard-code `localhost:9000` again |
 | Power API `http://localhost:3344` | `power.service.ts`, `electron.js` |
 | Remote WS `ws://localhost:5000` (unused; service never injected) | `remoteSocket.service.ts` |
-| TMDB API key | `movies.service.ts#tmdb_key`; `categories.ts` URLs use a `<<api_key>>` placeholder |
+| TMDB API key | `movies.service.ts#tmdb_key`; `categories.ts` URLs use a `<<api_key>>` placeholder; the server reads `TMDB_API_KEY` from `.env` |
 | Movie-magnet trackers | `playback.service.ts` (`TRACKERS`) |
 | Episode-magnet trackers | `src/server/streamingServer/lib/trackers.js` |
 | YTS base URLs | `lib/api.js` `YTS_MIRRORS` (yts.mx stopped answering in 2026) |
@@ -139,7 +146,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
 - **Server modules**: CommonJS, ES5 style (`var`, callbacks/promises). Upstream calls go through axios with a mirror list and must **always answer the client** (502 + JSON error) — never leave a request hanging.
-- No backend database. Persisted state: `<config dir>/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']`.
+- Persisted state: `<config dir>/playpex.db` (SQLite via Drizzle: profiles, watchlist, resume points, history, ratings — layered `lib/services` → `lib/data` → `lib/db`, see the server guide), `<config dir>/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']`. Keep user data in the server DB, not in `localStorage` (it's tied to the `file://` origin, which changes if the app is ever served from `http://localhost`).
 
 ## Known gotchas / tech debt (verify before "fixing")
 
@@ -149,7 +156,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 - Port 9000 may be taken by unrelated software (it was on the dev machine) — the server moves to 9001 and the UI follows via `?streamer=`. Don't reintroduce hard-coded ports.
 - Downloads and state live in per-OS user dirs (`src/server/streamingServer/lib/paths.js`: Linux `~/.cache/Playpex/torrent_data` + `~/.config/Playpex/torrents.json`), never inside the app. The old in-repo `torrents/` folder is legacy; `torrent_data/` there is git-ignored — **never force-add it**.
 - Component/host elements inside the flex shell need `min-width: 0` (see `movies-page.component.scss`, `show-options.component.scss`), otherwise they grow to the width of their widest row and horizontal row scrolling silently stops working.
-- Menu items "Watch list", "Settings", search for TV shows, and the "Add to watchlist"/"mark as watched" buttons are placeholders. `DescritionViewerComponent` (sic) is an unused stub.
+- Menu item "Settings" and search for TV shows are placeholders. "Watch list" (`/watchlist`), the watch list / watched buttons and resume are real and per profile. `DescritionViewerComponent` (sic) is an unused stub.
 - UI is designed for a fixed 1440px viewport (`index.html`) and hides the mouse cursor globally.
 
 ## Legal note

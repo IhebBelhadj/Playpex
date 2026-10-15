@@ -8,17 +8,35 @@ import { MoviesSliderComponent } from './movies-slider/movies-slider.component';
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { MoviesPageComponent } from './movies-page/movies-page.component';
+import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
+import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
+import { ProfileGuard } from './profile.guard';
+import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
 
 const routes: Routes = [
   {
     path:'',
-    redirectTo : '/movies/list',
+    redirectTo : '/profiles',
     pathMatch : 'full',
+  },
+  // "Who's watching?" (start page) and the profile editor
+  {
+    path : 'profiles',
+    component : ProfilePickerComponent
+  },
+  {
+    path : 'profiles/new',
+    component : ProfileEditorComponent
+  },
+  {
+    path : 'profiles/:id/edit',
+    component : ProfileEditorComponent
   },
   // The home page and slider serve both sections; `media` picks the catalog
   // (see MoviesService.catalogs)
   {
     path : 'movies' ,
+    canActivate : [ProfileGuard],
     component : MoviesPageComponent,
     data : { media : 'movie' },
     children : [
@@ -35,6 +53,7 @@ const routes: Routes = [
   },
   {
     path : 'shows' ,
+    canActivate : [ProfileGuard],
     component : MoviesPageComponent,
     data : { media : 'tv' },
     children : [
@@ -50,15 +69,23 @@ const routes: Routes = [
     ]
   },
   {
+    path : 'watchlist',
+    canActivate : [ProfileGuard],
+    component : WatchlistPageComponent
+  },
+  {
     path : 'player',
+    canActivate : [ProfileGuard],
     component : PlayerPageComponent
   },
   {
     path: 'search',
+    canActivate : [ProfileGuard],
     component:SearchPageComponent
   },
   {
     path: 'ytplayer/:id',
+    canActivate : [ProfileGuard],
     component : YoutubeComponent
   },
   {

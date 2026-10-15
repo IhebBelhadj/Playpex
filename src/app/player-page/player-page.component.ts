@@ -12,6 +12,9 @@ import { EMPTY, Subscription, timer } from 'rxjs';
 import { Router } from '@angular/router';
 import { STREAMING_SERVER } from '../server-config';
 import { actionForKey } from '../keymap';
+import { EpisodeKey, LibraryService } from '../library.service';
+
+const SAVE_EVERY_MS = 15000;
 
 
 @Component({
@@ -50,6 +53,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   videoInfo;                  // <video>-side numbers for the stats panel
   statsSub:Subscription;
 
+  // Resume point and progress saving for the current profile
+  filePath:string;
+  resumeAt:number | null = null;
+  resumeDecided = false;      // the saved state arrived (or there is none to ask for)
+  resumeApplied = false;
+  resumeNotice = '';
+  lastSave = 0;
+  stateSub:Subscription;
+
   constructor(
     private playbackService:PlaybackService,
     private menuService:MenuServiceService,
@@ -58,7 +70,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private router:Router,
     private subtitlesService:SubtitlesService,
     private location:Location,
-    private notificationService:NotificationService
+    private notificationService:NotificationService,
+    private library:LibraryService,
   ) { }
 
   ngOnInit(): void {
@@ -72,6 +85,22 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
 
     this.runtime = this.timeObject((this.playback.runtimeMinutes || 0)*60);
+
+    if (this.playback.startAt !== undefined) {
+      // chosen on the detail page: resume at this point, or 0 = from the beginning
+      this.resumeAt = this.playback.startAt || null;
+      this.resumeDecided = true;
+    }
+    else if (this.playback.tmdbId) {
+      this.stateSub = this.library.state(this.libraryKey()).subscribe({
+        next: state => {
+          this.resumeAt = state.resume ? state.resume.positionS : null;
+          this.resumeDecided = true;
+          this.applyResume();
+        },
+        error: () => this.resumeDecided = true,
+      });
+    }
 
     let escClicked = false;
 
@@ -112,6 +141,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       if(e.target['classList'].contains('subtitle')){
         let active = document.activeElement as HTMLElement;
         this.lastSubFocused = active.dataset['index'];
+        this.scrollSubtitleIntoView(e.target as HTMLElement);
       }
 
     }
@@ -146,6 +176,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           this.notificationService.sendNotification("error" , `No playable video file found ${what}`);
           return;
         }
+        this.filePath = file['path'];
         this.link = this.serverUrl + file['link'];
         console.log(this.link);
         this.setupPlayer();
@@ -165,6 +196,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   ngOnDestroy(): void {
+
+    // last position, while the <video> still has it
+    this.saveProgress();
+    this.stateSub?.unsubscribe();
 
     this.menuService.sendInstruction('show' , this);
     this.controlsVisible = false;
@@ -216,6 +251,44 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.audioWarning = true;
       setTimeout(() => this.audioWarning = false, 10000);
     }
+  }
+
+  libraryKey():EpisodeKey {
+    return {
+      mediaType: this.playback.mediaType,
+      tmdbId: this.playback.tmdbId,
+      season: this.playback.season,
+      episode: this.playback.episode,
+    };
+  }
+
+  // Jump to the saved position once both the video and the saved state are there
+  applyResume() {
+    if (this.resumeApplied || !this.resumeAt || !this.moviePlayer || this.moviePlayer.readyState < 1) return;
+    this.resumeApplied = true;
+    let duration = this.moviePlayer.duration;
+    if (!isFinite(duration) || this.resumeAt > duration - 30) return;
+    this.moviePlayer.currentTime = this.resumeAt;
+    this.resumeNotice = `Resuming from ${this.timeDisplayString(this.resumeAt)}`;
+    setTimeout(() => this.resumeNotice = '', 5000);
+  }
+
+  saveProgress() {
+    let player = this.moviePlayer;
+    if (!this.playback?.tmdbId || !player || !this.playerReady || !this.resumeDecided) return;
+    // don't overwrite the saved position with 0:00 before jumping to it
+    if (this.resumeAt && !this.resumeApplied) return;
+    let duration = player.duration;
+    if (!isFinite(duration) || duration <= 0 || player.currentTime < 1) return;
+
+    this.lastSave = Date.now();
+    this.library.saveProgress(this.libraryKey(), {
+      ...this.playback.artwork,
+      positionS: player.currentTime,
+      durationS: duration,
+      infoHash: this.torrentHash,
+      filePath: this.filePath,
+    }).subscribe({ error: () => {} });
   }
 
   // Back to where the user came from, dropping the torrent and its data
@@ -331,6 +404,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
     });
     this.moviePlayer.addEventListener('canplay', () => {
+      this.applyResume();
       setTimeout(()=>{
         this.playerReady = true;
         document.querySelector('.playerPageContainer .loading').classList.add('hidden');
@@ -352,6 +426,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     this.moviePlayer.addEventListener('play', () => this.updateClock());
     this.moviePlayer.addEventListener('pause', () => this.updateClock());
+
+    // Progress for Continue watching / history: periodically, on pause and at the end
+    this.moviePlayer.addEventListener('timeupdate', () => {
+      if (!this.moviePlayer.paused && Date.now() - this.lastSave > SAVE_EVERY_MS) this.saveProgress();
+    });
+    this.moviePlayer.addEventListener('pause', () => this.saveProgress());
+    this.moviePlayer.addEventListener('ended', () => this.saveProgress());
 
 
 
@@ -451,7 +532,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     let sideTl = gsap.timeline();
 
-    sidePannel['style']['display'] = "block";
+    // flex, like the stylesheet: the subtitle list fills the rest and scrolls
+    sidePannel['style']['display'] = "flex";
     sidePannel['style']['transform'] = 'translate(0% , 0%)';
 
     sideTl.to('.playerPageContainer .sidePannel' , {opacity : 1 , duration : .2 })
@@ -661,7 +743,22 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         document.querySelector('.sidePannel .subtitle') ||
         document.querySelector('.sidePannel .providerTab.selected');
       (target as HTMLElement)?.focus({preventScroll : true});
+      // reopening the panel: jump straight to it, no animation
+      if (target) this.scrollSubtitleIntoView(target as HTMLElement , 'auto');
     } , 100)
+  }
+
+  // Keep the focused subtitle inside the (natively scrolling) list
+  scrollSubtitleIntoView(node:HTMLElement , behavior:ScrollBehavior = 'smooth'){
+    let list = node.closest('.sidePannel .content') as HTMLElement;
+    if (!list) return;
+    let listRect = list.getBoundingClientRect();
+    let rect = node.getBoundingClientRect();
+    let top = list.scrollTop;
+    if (rect.top < listRect.top) top -= listRect.top - rect.top;
+    else if (rect.bottom > listRect.bottom) top += rect.bottom - listRect.bottom;
+    else return;
+    list.scrollTo({ top , behavior });
   }
 
   showSubtitle(subtitle:Subtitle){

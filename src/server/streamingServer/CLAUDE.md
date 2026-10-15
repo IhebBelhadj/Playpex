@@ -24,6 +24,8 @@ The torrent part (`store`/`engine`/`socket`/`progressbar`/`serialize`) follows t
 | `lib/socket.js` | socket.io v2 events (`stats`, `download`, `ready`, …). **The UI doesn't use it**; it polls HTTP. |
 | `lib/remoteSocketManager.js`, `lib/util.js` | Stub for a phone remote; unused helpers. |
 | `lib/stats.js`, `lib/progressbar.js` | Torrent stats / piece-bitfield → progress runs. |
+| `lib/routes/profiles.js`, `lib/routes/library.js`, `lib/routes/handle.js` | `/api/profiles` and `/api/profiles/:profileId/…` routers (mounted at the end of `lib/api.js`); `handle(work)` = shared JSON/error adapter. |
+| `lib/db/`, `lib/data/`, `lib/services/`, `lib/userData.js`, `lib/tmdb.js` | Per-profile user data (profiles, watchlist, resume points, history, ratings, recommendations) — see **User data** below. |
 | `torrents/` | **Legacy** location of state and downloads (before `lib/paths.js`); no longer written. `torrent_data/` is git-ignored — never force-add. |
 
 ## HTTP API (`lib/api.js`)
@@ -68,10 +70,60 @@ Adding a subtitle provider: write `lib/subtitles/providers/<id>.js` exporting `i
 
 Adding a torrent provider: module with `search(...)` returning `{ provider, name, hash (lowercase), magnet, seeds, size }`, wired into `findEpisodeTorrents`; matching/ranking/dedupe are applied centrally.
 
+### Profiles (`lib/routes/profiles.js` → `services.profiles`)
+| Method & path | Behavior |
+|---|---|
+| `GET /api/profiles` | `{ profiles: [...], lastUsedId, maxProfiles }` |
+| `POST /api/profiles` body `{name, avatar?, isKid?, pin?}` | 201 + profile; 409 duplicate name / too many |
+| `GET\|PUT\|DELETE /api/profiles/:id` | PUT body `{name?, avatar?, isKid?, preferences?}` (preferences merged); DELETE cascades to all the profile's data |
+| `POST /api/profiles/:id/unlock` body `{pin?}` | the profile (and records it as last used); 403 wrong PIN, 429 after 5 failures (30 s) |
+| `PUT /api/profiles/:id/pin` body `{pin}` / `{pin: null}` | set / remove the lock |
+
+### Library of a profile (`lib/routes/library.js` → `services.watchlist` / `services.playback`)
+Title = `/:mediaType/:tmdbId` (`movie`|`tv`); episodes add `season`/`episode` (query or body). Writes carry `title, posterPath, backdropPath, genreIds?` so rows render without TMDB; a write without them keeps what is stored.
+| Method & path | Behavior |
+|---|---|
+| `GET /api/profiles/:pid/library` | `{ continueWatching, watchlist, watched }` — everything the Watch list page shows. `watched` = one entry per title (latest episode, `episodesWatched`) |
+| `GET /api/profiles/:pid/watchlist` · `GET\|PUT\|DELETE …/watchlist/:mediaType/:tmdbId` | list · `{inWatchlist}` · add (idempotent) · `{removed}` |
+| `PUT …/progress/:mediaType/:tmdbId` body `{positionS, durationS, season?, episode?, infoHash?, filePath?, …artwork}` | save position; `{progress, finished, justFinished}` (first finish → history) |
+| `GET …/progress/:mediaType/:tmdbId?season&episode` | `{ resume: {positionS, durationS, infoHash, filePath} \| null, finished }` |
+| `GET …/progress/:mediaType/:tmdbId/episodes` | every episode's `{season, episode, ratio, finished}` |
+| `PUT\|DELETE …/watched/:mediaType/:tmdbId` | mark watched (logged in history) / forget the progress row (history kept) |
+| `GET …/history` | raw finished views, newest first |
+
+Profile JSON: `{ id, name, avatar, isKid, hasPin, preferences, createdAt, lastUsedAt }`. Errors: `{ error, code }` with the ServiceError status (500 + `INTERNAL` otherwise). CORS allows `PUT`, not `PATCH`. **No auth**: any local process (or web page via CORS `*`) can call these; the PIN only gates the UI.
+
 ### YouTube
 | Path | Notes |
 |---|---|
 | `ALL /youtube/:videoId?type=video\|audio&quality=<itag>` (UI form), `ALL /youtube/:videoId/:type` | Resolves formats with `youtubei.js` (iOS client, info cached 1 h), fetches googlevideo in ≤4 MB chunks to satisfy any `Range`. 404 on any failure. |
+
+## User data (profiles, watchlist, resume, recommendations)
+
+Three layers; each only imports the one below it:
+
+```
+lib/services/   business rules, validation, ServiceError {code, status}   ← routes call these
+     │ repositories only (contract: lib/data/contracts.js)
+lib/data/       data access layer: createRepositories(db) → {profiles, watchlist, progress, history, ratings}
+     │          current implementation: lib/data/drizzle/*.js
+lib/db/         schema.js (Drizzle tables) · driver.js (node:sqlite ↔ Drizzle) · index.js (open + migrate) · migrations/
+```
+
+- `server.js` loads the repo's `.env` (dotenv) before anything else; `lib/tmdb.js` needs `TMDB_API_KEY` from it.
+- **Database**: SQLite file `<config>/playpex.db` (Linux `~/.config/Playpex/playpex.db`), Node's built-in `node:sqlite` (no native module) through Drizzle's `sqlite-proxy` adapter (Drizzle 0.45 has no node:sqlite driver). Opened lazily by `lib/userData.js` (`userData.services()` → Promise of the services), migrations applied on open.
+- **Schema change**: edit `lib/db/schema.js`, run `npm run db:generate` (drizzle-kit, config in `/drizzle.config.js`), commit the new file in `lib/db/migrations/`. Never edit an applied migration.
+- **Replacing the database**: another SQLite driver (better-sqlite3, libsql) → only `driver.js`. Another engine → new schema/driver in `lib/db` and a repository implementation satisfying `contracts.js`, selected in `lib/data/index.js`. Repositories return plain objects, `null` for not found, and reject with `data/errors.DuplicateError` on unique violations; they use array results + `util.first` instead of SQLite-only `.get()`.
+- **Don't use `db.transaction()`**: with the async proxy over a sync driver, other requests can run between BEGIN and COMMIT. Use `db.batch([...])`, which the driver runs in one BEGIN/COMMIT without yielding.
+- **Services** (`createServices(repositories, {catalog, now})`):
+  - `profiles`: list/get/create/update/remove, optional 4–6 digit PIN (scrypt; `setPin`, `unlock` with 5-failure / 30 s lockout), `lastUsed`. Max 8 profiles, names unique case-insensitively. Public shape has `hasPin`, never the hash. Removing a profile cascades to all its rows. The PIN only gates the UI; the DB is not encrypted.
+  - `watchlist`: list/contains/add/remove/toggle.
+  - `playback`: `saveProgress` (finished at ≥ 90 %, first finish appends to history), `getResume` (null under 5 % or finished; includes `infoHash`/`filePath` of the release), `continueWatching` (`kind: 'resume'|'next'` — for `'next'` the UI resolves the following episode), `titleProgress`, `markWatched`/`markUnwatched`, `history`.
+  - `ratings`: thumbs up/down (`1`/`-1`).
+  - `recommendations.forProfile`: seeds = finished views + likes (recency half-life 45 d), TMDB `/recommendations` per seed (`lib/tmdb.js`, cached 6 h), scored and genre-boosted, excluding watched/in-progress/disliked/adult; kid profiles keep Animation/Family/Kids. Empty with no history.
+- Titles are `(mediaType 'movie'|'tv', tmdbId)`; movies use season = episode = 0.
+- **HTTP**: profiles and the library (watchlist, progress, history) are exposed (`lib/routes/*.js`, `handle(work)` → JSON, `err.status` or 500). Ratings / recommendations routes are still to add (same pattern).
+- **Migrations so far**: `0000_init`, `0001_artwork` (backdrop/poster columns on watchlist, progress, history).
 
 ## Lifecycle of a torrent
 

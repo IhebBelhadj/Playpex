@@ -369,5 +369,8 @@ api.all('/youtube/:videoId/', function (req, res) {
   youtube.stream(req, res, req.query.type);
 });
 
+// Per-profile user data (lib/services via lib/userData.js)
+api.use('/api/profiles', require('./routes/profiles'));
+api.use('/api/profiles/:profileId', require('./routes/library'));
 
 module.exports = api;

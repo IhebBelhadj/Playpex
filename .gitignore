@@ -47,3 +47,6 @@ Thumbs.db
 #Released build
 
 /playpex-win32-x64
+
+# Local secrets
+.env

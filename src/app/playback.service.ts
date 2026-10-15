@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Artwork, LibraryService, MediaType } from './library.service';
 
 // What /player should play. Set it, then navigate to /player.
 export interface PlaybackRequest {
@@ -10,6 +11,14 @@ export interface PlaybackRequest {
   imdbId?: string;          // movie or show IMDb id ("tt…"), used for subtitles
   season?: number;          // set for TV episodes: picks the episode file
   episode?: number;         //   inside season packs and looks up episode subtitles
+  // Which title this is, so the player can resume it and save the position for
+  // the current profile (Continue watching, history)
+  mediaType?: MediaType;
+  tmdbId?: number;          // the movie's / show's TMDB id
+  artwork?: Artwork;
+  // Where to start, in seconds: the saved position ("Resume") or 0 ("Play from
+  // the beginning"). Unset: the player resumes from the saved position, if any.
+  startAt?: number;
 }
 
 // The server also adds its maintained list (src/server/streamingServer/lib/trackers.js)
@@ -32,7 +41,8 @@ export class PlaybackService {
 
   // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;
   // `torrent` is one of them (defaults to the first)
-  playMovie(movie, torrent = movie['torrents'][0]) {
+  // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash
+  playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
     let magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
     TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
 
@@ -42,6 +52,10 @@ export class PlaybackService {
       runtimeMinutes: movie['runtime'],
       magnet: magnet,
       imdbId: movie['imdb_id'],
+      mediaType: 'movie',
+      tmdbId: movie['id'],
+      artwork: LibraryService.artworkOf(movie),
+      startAt,
     });
   }
 }

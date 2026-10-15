@@ -5,6 +5,7 @@ import { MoviesService } from '../movies.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
+import { SplashService } from '../splash.service';
 
 @Component({
   selector: 'movies-slider',
@@ -29,6 +30,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private navigation:NavigationService,
     private router:Router,
     private route:ActivatedRoute,
+    private splashService:SplashService,
   ) { }
 
 
@@ -153,10 +155,29 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     this.sliderEventSub = this.navigation.getMovieSliderEvent().subscribe(e=>{
 
-      (document.querySelector('.sliderContainer .element') as HTMLElement).focus({preventScroll : true})
+      (document.querySelector('.sliderContainer .element') as HTMLElement)?.focus({preventScroll : true})
 
     })
 
+    // Opened after the splash (from "Who's watching?") with no row visited yet:
+    // focus the first poster once the rows arrive
+    let visited = Object.values(this.catalog.navigationData).some(d => d['selected']);
+    if (this.splashService.cleared && !visited) {
+      this.focusFirstWhenReady(50);
+    }
+
+  }
+
+  focusFirstWhenReady(tries:number){
+    setTimeout(()=>{
+      if (this.router.url != this.catalog.listUrl) return;
+      // the user already got somewhere (e.g. the menu)
+      if (document.activeElement && document.activeElement !== document.body) return;
+
+      let first = document.querySelector('.sliderContainer .element') as HTMLElement;
+      if (first) first.focus({preventScroll : true});
+      else if (tries > 0) this.focusFirstWhenReady(tries - 1);
+    } , 100)
   }
 
   updateNavigation(){

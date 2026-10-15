@@ -4,6 +4,7 @@ import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, AfterViewInit, AfterContentInit } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
 import { filter, map, Subscription } from 'rxjs';
+import { Profile, ProfilesService } from '../profiles.service';
 
 
 @Component({
@@ -14,11 +15,16 @@ import { filter, map, Subscription } from 'rxjs';
 export class MenuComponent implements OnInit , AfterViewInit{
   subscription: Subscription;
   currentUrl:string = "/movies/list";
+  profile:Profile | null = null;
   constructor(
     private menuService:MenuServiceService,
     private navigation:NavigationService,
     private router:Router,
+    private profiles:ProfilesService,
   ) {
+
+    // Who's watching: shown at the top of the menu, Enter → switch profile
+    this.profiles.current.subscribe(profile => this.profile = profile);
 
     this.subscription = this.menuService.getInstruction().subscribe(data => {
 
@@ -116,6 +122,10 @@ export class MenuComponent implements OnInit , AfterViewInit{
 
   }
 
+  avatarUrl(avatar:string | null){
+    return ProfilesService.avatarUrl(avatar);
+  }
+
   hideMenu(){
     document.querySelector('.menu').classList.add('hide')
   }
@@ -139,6 +149,12 @@ export class MenuComponent implements OnInit , AfterViewInit{
         break;
       case "showsPage":
         this.router.navigateByUrl("/shows/list")
+        break;
+      case "watchPage":
+        this.router.navigateByUrl("/watchlist")
+        break;
+      case "profiles":
+        this.router.navigateByUrl("/profiles")
         break;
       default:
         break;

@@ -12,6 +12,12 @@
       </div>
       <span>Trailer</span>
     </button>
+    <button class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+      <div class="imgContainer">
+        <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
+      </div>
+      <span>{{ inWatchlist ? 'In your watch list' : 'Add to watch list' }}</span>
+    </button>
   </div>
 
   <div class="seasons" *ngIf="seasons.length">
@@ -45,6 +51,14 @@
             <div class="imgContainer">
               <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
               <span class="badge" *ngIf="ep.upcoming">Upcoming</span>
+              <ng-container *ngIf="progressOf(ep) as progress">
+                <span class="badge watchedBadge" *ngIf="progress.finished">
+                  <img src="assets/icons/tick.svg" alt="">Watched
+                </span>
+                <div class="epProgress" *ngIf="!progress.finished">
+                  <span [style.width.%]="progress.ratio * 100"></span>
+                </div>
+              </ng-container>
               <div class="resolving" *ngIf="resolvingEpisode === ep.episode_number">
                 <img src="assets/icons/loading_small.svg" alt="">
                 <span>Finding torrents…</span>

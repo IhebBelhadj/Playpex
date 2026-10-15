@@ -5,6 +5,12 @@
   </div>
 
   <div class="tabs">
+    <button *ngIf="profile" class="tabGroup element menuItem profileItem" data-destination="profiles">
+      <div class="inner">
+        <img class="profileAvatar" [src]="avatarUrl(profile.avatar)" alt="">
+        <span class="description">{{ profile.name }}</span>
+      </div>
+    </button>
     <button class="tabGroup element menuItem" data-destination="searchPage">
       <div class="inner">
         <img src="assets/icons/search.svg" alt="">
@@ -23,7 +29,7 @@
         <span class="description">Tv shows</span>
       </div>
     </button>
-    <button class="tabGroup element menuItem" data-destination="watchPage">
+    <button [class.active] = "currentUrl.includes('/watchlist')" class="tabGroup element menuItem" data-destination="watchPage">
       <div class="inner">
         <img src="assets/icons/list.svg" alt="">
         <span class="description">Watch list</span>

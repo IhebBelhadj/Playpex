@@ -43,8 +43,15 @@
 
       span {
         margin-top: 12px;
-        max-width: 50px;
+        max-width: 110px;
+        text-align: center;
+        line-height: 1.25;
       }
+    }
+
+    // In the watch list / watched: the icon takes the app's amber
+    .option.on:not(.focused) .imgContainer img {
+      filter: invert(80%) sepia(19%) saturate(2493%) hue-rotate(351deg) brightness(100%) contrast(104%);
     }
 
     .focused {

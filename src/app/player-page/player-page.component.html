@@ -14,6 +14,7 @@
       <span><b>{{formatBytes(stats.traffic.down)}}</b> downloaded</span>
     </div>
   </div>
+  <div class="resumeNotice" *ngIf="resumeNotice">{{ resumeNotice }}</div>
   <div class="audioWarning" *ngIf="audioWarning">
     No sound: this release's audio (Dolby or DTS) can't be played here. Try another title or release.
   </div>

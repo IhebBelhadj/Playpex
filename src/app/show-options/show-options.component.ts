@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { Component, AfterViewInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { distinctUntilChanged, Subject, Subscription, switchMap, map } from 'rxjs';
+import { defaultIfEmpty, distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { MoviesService } from '../movies.service';
@@ -10,6 +10,8 @@ import { NotificationService } from '../notification.service';
 import { PlaybackService } from '../playback.service';
 import { TorrentService } from '../torrent.service';
 import { TorrentPickerService } from '../torrent-picker.service';
+import { EpisodeProgress, LibraryService } from '../library.service';
+import { PlayChoiceService } from '../play-choice.service';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes. Enter on an episode finds its torrents
@@ -33,6 +35,11 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   loadingEpisodes = false;
   resolvingEpisode:number;           // episode_number whose torrents are being looked up
 
+  // The current profile's state for this show
+  inWatchlist = false;
+  private episodeProgress = new Map<string, EpisodeProgress>();
+  private libraryBusy = false;
+
   private seasonRequests = new Subject<{ showId:number , season:number }>();
   private subscriptions:Subscription[] = [];
   private focusListener;
@@ -49,6 +56,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     private torrentService:TorrentService,
     private playback:PlaybackService,
     private torrentPicker:TorrentPickerService,
+    private library:LibraryService,
+    private playChoice:PlayChoiceService,
   ) { }
 
   ngAfterViewInit(): void {
@@ -127,6 +136,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
       // Describe the show above the page
       this.moviesService.assignSelection({ ...show, media_type : 'tv' });
+      this.loadLibraryState();
 
       if (this.seasons.length) {
         this.seasonRequests.next({ showId : show['id'] , season : this.seasons[0].season_number });
@@ -139,6 +149,42 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     } , () => {
       this.notificationService.sendNotification("error" , "Couldn't load this show");
     })
+  }
+
+  loadLibraryState(){
+    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
+    this.inWatchlist = false;
+    this.episodeProgress.clear();
+    this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
+    this.library.episodesProgress(ref).subscribe({
+      next : list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}` , p)),
+      error : () => {},
+    });
+  }
+
+  // Shown on the episode thumbnail: a watched badge, or a bar once it's started
+  progressOf(ep):EpisodeProgress | null {
+    let progress = this.episodeProgress.get(`${this.selectedSeason}x${ep.episode_number}`);
+    return progress && (progress.finished || progress.ratio >= 0.02) ? progress : null;
+  }
+
+  toggleWatchlist(){
+    if (this.libraryBusy || !this.show) return;
+    this.libraryBusy = true;
+    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
+    let adding = !this.inWatchlist;
+    this.inWatchlist = adding;
+    let request:Observable<unknown> = adding
+      ? this.library.addToWatchlist(ref , LibraryService.artworkOf(this.show))
+      : this.library.removeFromWatchlist(ref);
+    request.subscribe({
+      next : () => this.libraryBusy = false,
+      error : () => {
+        this.libraryBusy = false;
+        this.inWatchlist = !adding;
+        this.notificationService.sendNotification("error" , "Couldn't update your watch list. Is the Playpex server running?");
+      }
+    });
   }
 
   pickTrailer(videos){
@@ -163,6 +209,9 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
         if (next) this.playEpisode(next);
         else this.notificationService.sendNotification("error" , "No aired episodes in this season yet");
         break;
+      case active.classList.contains('addWatchlist'):
+        this.toggleWatchlist();
+        break;
       case active.classList.contains('trailer'):
         if (this.trailer) this.showYtVid(this.trailer);
         else this.notificationService.sendNotification("error" , "No trailer found");
@@ -178,6 +227,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     }
   }
 
+  // With a saved position, ask Resume / Play from the beginning first
   playEpisode(ep){
     if (!ep || this.resolvingEpisode !== undefined) return;
     let code = this.episodeCode(this.selectedSeason , ep.episode_number);
@@ -186,13 +236,43 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       this.notificationService.sendNotification("error" , `${code} hasn't aired yet`);
       return;
     }
+
+    let season = this.selectedSeason;
+    let key = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) , season , episode : ep.episode_number };
+    this.resolvingEpisode = ep.episode_number;
+    // no current profile: state() completes empty → play as usual
+    this.library.state(key).pipe(defaultIfEmpty({ resume : null , finished : false })).subscribe({
+      next : state => {
+        this.resolvingEpisode = undefined;
+        let resume = state.resume;
+        if (!resume) {
+          this.findAndPlay(ep , code);
+          return;
+        }
+        this.playChoice.choose(`${this.show['name']} ${code}` , resume).subscribe(choice => {
+          if (choice == 'restart') this.findAndPlay(ep , code , 0);
+          // same release as last time, so the saved position matches
+          else if (resume.infoHash) this.playChosen(ep , code , { magnet : resume.infoHash } , resume.positionS , season);
+          else this.findAndPlay(ep , code , resume.positionS);
+        });
+      },
+      // no saved state (or no server): play as usual
+      error : () => {
+        this.resolvingEpisode = undefined;
+        this.findAndPlay(ep , code);
+      },
+    });
+  }
+
+  findAndPlay(ep , code:string , startAt?:number){
     if (!this.imdbId) {
       this.notificationService.sendNotification("error" , "This show has no IMDb id, so torrents can't be looked up");
       return;
     }
 
+    let season = this.selectedSeason;
     this.resolvingEpisode = ep.episode_number;
-    this.torrentService.findEpisodeTorrents(this.imdbId , this.show['name'] , this.selectedSeason , ep.episode_number)
+    this.torrentService.findEpisodeTorrents(this.imdbId , this.show['name'] , season , ep.episode_number)
       .subscribe(result => {
         this.resolvingEpisode = undefined;
         if (!result.torrents.length) {
@@ -203,14 +283,15 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
         let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent , i));
         this.torrentPicker.choose(`${this.show['name']} ${code}` , options)
-          .subscribe(choice => this.playChosen(ep , code , choice.torrent));
+          .subscribe(choice => this.playChosen(ep , code , choice.torrent , startAt , season));
       } , () => {
         this.resolvingEpisode = undefined;
         this.notificationService.sendNotification("error" , "Couldn't reach the torrent providers. Try again later");
       })
   }
 
-  playChosen(ep , code:string , torrent){
+  // season: the one the episode belongs to (the user may have focused another meanwhile)
+  playChosen(ep , code:string , torrent , startAt?:number , season = this.selectedSeason){
     this.playback.play({
       title : this.show['name'],
       subtitle : `${code} · ${ep.name}`,
@@ -218,8 +299,12 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       runtimeMinutes : ep.runtime,
       magnet : torrent.magnet,
       imdbId : this.imdbId,
-      season : this.selectedSeason,
+      season : season,
       episode : ep.episode_number,
+      mediaType : 'tv',
+      tmdbId : this.show['id'],
+      artwork : LibraryService.artworkOf(this.show),
+      startAt,
     });
     this.router.navigateByUrl('/player');
   }
