@@ -1,0 +1,27 @@
+<div class="pinPad">
+  <div class="pinPanel">
+    <img class="pinAvatar" *ngIf="avatar" [src]="avatarUrl(avatar)" alt="">
+    <p class="pinTitle">{{ title }}</p>
+    <p class="pinSubtitle" *ngIf="subtitle">{{ subtitle }}</p>
+
+    <div class="pinBoxes" [class.shake]="shake">
+      <div class="pinBox" *ngFor="let i of slots"
+        [class.filled]="digits.length > i"
+        [class.current]="digits.length == i && !waiting">
+        <span class="dot" *ngIf="digits.length > i"></span>
+      </div>
+    </div>
+    <p class="pinError">{{ error }}</p>
+
+    <div class="pinKeys">
+      <button *ngFor="let key of keys" class="pinKey" [attr.data-key]="key"
+        [class.textKey]="key == 'cancel'">
+        <ng-container [ngSwitch]="key">
+          <span *ngSwitchCase="'cancel'">Cancel</span>
+          <img *ngSwitchCase="'del'" src="assets/icons/keyboardDelete.svg" alt="Delete">
+          <span *ngSwitchDefault>{{ key }}</span>
+        </ng-container>
+      </button>
+    </div>
+  </div>
+</div>

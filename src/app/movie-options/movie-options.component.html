@@ -4,7 +4,7 @@
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
       </div>
-      <span>{{ resumeLabel || 'Play' }}</span>
+      <span>{{ findingTorrents ? 'Finding torrents…' : resumeLabel || 'Play' }}</span>
     </button>
     <button class="option focusable trailer" data-sn-down =".casts .lastSelected">
       <div class="imgContainer">
@@ -12,6 +12,8 @@
       </div>
       <span>Trailer</span>
     </button>
+    <!-- 18+ titles never go in the profile's library -->
+    <ng-container *ngIf="!isAdult">
     <button class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down =".casts .lastSelected">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
@@ -24,6 +26,7 @@
       </div>
       <span>{{ watched ? 'Watched' : 'Mark as watched' }}</span>
     </button>
+    </ng-container>
   </div>
 
   <div class="casts">

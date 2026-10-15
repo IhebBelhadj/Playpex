@@ -57,8 +57,83 @@ body {
 }
 
 
-*{
+// Custom cursor (src/assets/cursor). PointerService hides it on any key press
+// (`body.pointer-hidden`) and shows it again when the mouse moves; the pressed
+// variant is shown while the left button is down.
+* {
+  cursor : url('./assets/cursor/pointer.svg') 5 3, default !important;
+}
+
+body.pointer-pressed * {
+  cursor : url('./assets/cursor/pointer-pressed.svg') 5 3, default !important;
+}
+
+body.pointer-hidden,
+body.pointer-hidden * {
   cursor : none !important;
 }
 
+img {
+  -webkit-user-drag : none;
+}
 
+// Decorative gradients over the pages must not catch the mouse
+.overlay {
+  pointer-events : none;
+}
+
+
+
+// Row paddles (movies slider, watch list): mouse only, shown on the hovered
+// row while the cursor is visible
+.pagedRow {
+  position: relative;
+}
+
+.rowPaddle {
+  position: absolute;
+  top: 0;
+  bottom: 20px;
+  width: 72px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+
+  svg {
+    width: 34px;
+    height: 34px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .7));
+    transition: transform .2s;
+  }
+
+  &.prev {
+    left: 0;
+    background: linear-gradient(90deg, rgba(19, 19, 19, .85) 0%, rgba(19, 19, 19, 0) 100%);
+    &:hover svg { transform: translateX(-4px); }
+  }
+
+  &.next {
+    right: 0;
+    background: linear-gradient(270deg, rgba(19, 19, 19, .85) 0%, rgba(19, 19, 19, 0) 100%);
+    &:hover svg { transform: translateX(4px); }
+  }
+}
+
+body:not(.pointer-hidden) .pagedRow:hover > .rowPaddle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.section.atStart .rowPaddle.prev,
+.section.atEnd .rowPaddle.next {
+  display: none;
+}

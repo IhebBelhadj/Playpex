@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
 import { SplashService } from '../splash.service';
+import { isPointerFocus, pagedIndex } from '../pointer.service';
 
 @Component({
   selector: 'movies-slider',
@@ -17,6 +18,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   scrolledAmount = 0;
   limit = 20;
   movies = {};
+  rowKeys:string[] = [];      // rendered (non-empty) rows, in display order
   catalog:Catalog;
   navSub:Subscription;
   moviesSub:Subscription;
@@ -40,6 +42,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
     this.movies = this.catalog.items.getValue();
+    this.rowKeys = this.renderedRows();
 
     setTimeout(()=>{
       this.updateNavigation();
@@ -47,6 +50,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     this.moviesSub = this.catalog.items.subscribe(data =>{
       this.movies = data;
+      this.rowKeys = this.renderedRows();
+      setTimeout(() => this.markDefaults());
 
     })
 
@@ -62,8 +67,9 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
         let currentMovies = this.movies[currentSection] as Array<Object>
 
 
-        //Get more movies
-        if (currentMovies.length - Number(node.dataset['index']) == Math.floor(this.limit/2)) {
+        //Get more movies (<=: the row paddles jump several posters at once;
+        // movies-page only fetches each page once)
+        if (currentMovies.length - Number(node.dataset['index']) <= Math.floor(this.limit/2)) {
           let pageNumber = Math.floor(currentMovies.length / this.limit) + 1
           console.log(pageNumber);
 
@@ -71,9 +77,13 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
         }
 
-        //update navigation data
-
-        this.catalog.navigationData[currentSection]['reached'] = node.dataset['index'];
+        //update navigation data (a mouse hover leaves the row's position, the
+        // poster it's aligned to, alone: up/down come back to it without a jump)
+        let fromPointer = isPointerFocus();
+        if (!fromPointer) {
+          this.catalog.navigationData[currentSection]['reached'] = node.dataset['index'];
+          this.markLastSelected(node);
+        }
         for (const section in this.catalog.navigationData) {
           this.catalog.navigationData[section]['selected'] = false
         }
@@ -85,8 +95,10 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
         this.sendMenuInstruction("collapse");
 
 
-
-        this.updateNavigation()
+        // Hovered with the mouse: the row stays where it is (it would slide
+        // away under the cursor), only a newly entered row moves up
+        if (fromPointer) this.alignRow(node.closest('.section'));
+        else this.updateNavigation()
 
       }
 
@@ -182,8 +194,6 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
   updateNavigation(){
 
-    let sliderParent = document.querySelector('.sliderContainer .content') as HTMLElement;
-
     for (const category in this.catalog.navigationData) {
 
       // row not rendered yet (still loading)
@@ -198,26 +208,80 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       if (!node) continue;
 
       let sliderSection = node.closest('.sliderSection') as HTMLElement;
-      let leftDiff = sliderSection.getBoundingClientRect().left - node.getBoundingClientRect().left;
+      // layout offsets, not rects: the focused poster's zoom (still animating)
+      // would shift the row by a few px every time
+      let leftDiff = sliderSection.offsetLeft - node.offsetLeft;
 
       sliderSection.style.transform = `translateX(${leftDiff}px)`
+      this.markLastSelected(node);
+      section.classList.toggle('atStart', Number(index) == 0);
 
 
       if(this.catalog.navigationData[category]['selected']){
 
 
         node.focus({preventScroll:true});
-        //Handle vertical navigation
-
-        let topDiff = sliderParent.getBoundingClientRect().top - section.getBoundingClientRect().top;
-
-        sliderParent.style.transform = `translateY(${topDiff}px)`
+        this.alignRow(section);
 
       }
 
     }
 
 
+  }
+
+  //Handle vertical navigation: the focused row slides to the top
+  alignRow(section: Element){
+    let sliderParent = document.querySelector('.sliderContainer .content') as HTMLElement;
+    if (!sliderParent || !section) return;
+
+    // the rows peeking in below/above aren't focused by a mere mouse hover
+    document.querySelectorAll('.sliderContainer .section').forEach(s => {
+      if (s === section) s.removeAttribute('data-pointer-hover');
+      else s.setAttribute('data-pointer-hover' , 'off');
+    });
+
+    let topDiff = sliderParent.getBoundingClientRect().top - section.getBoundingClientRect().top;
+    sliderParent.style.transform = `translateY(${topDiff}px)`
+  }
+
+  renderedRows(){
+    return Object.keys(this.movies).filter(key => this.movies[key]?.length);
+  }
+
+  // Up/down (keys and mouse wheel) land on the row's remembered poster, the
+  // one its position is aligned to, not on whatever sits below the focus
+  neighbour(category: string, direction: number){
+    let next = this.rowKeys[this.rowKeys.indexOf(category) + direction];
+    return next ? `.sliderContainer .element.lastSelected[data-section="${next}"]` : null;
+  }
+
+  // Rows that just arrived: their remembered poster, so up/down can land there
+  markDefaults(){
+    for (const category of this.rowKeys) {
+      let section = document.querySelector(`.sliderContainer .element[data-section="${category}"]`)?.closest('.sliderSection');
+      if (!section || section.querySelector('.lastSelected')) continue;
+      let reached = this.catalog.navigationData[category]?.['reached'] || 0;
+      (section.querySelector(`[data-index="${reached}"]`) || section.querySelector('.element'))?.classList.add('lastSelected');
+    }
+  }
+
+  markLastSelected(node: HTMLElement){
+    node.closest('.sliderSection').querySelectorAll('.lastSelected').forEach(el => el.classList.remove('lastSelected'));
+    node.classList.add('lastSelected');
+  }
+
+  // Row paddles (mouse only): move a screenful of posters and focus the first
+  pageRow(category: string, direction: number){
+    let section = document.querySelector(`[data-section="${category}"]`)?.closest('.section');
+    let row = section?.querySelector('.sliderSection') as HTMLElement;
+    if (!row) return;
+    let posters = Array.from(row.querySelectorAll('.element')) as HTMLElement[];
+    let target = pagedIndex(row, posters, (section.querySelector('.slider') as HTMLElement).clientWidth, direction);
+    if (target < 0) return;
+
+    this.catalog.navigationData[category]['reached'] = target;
+    posters[target].focus({preventScroll : true});
   }
 
   sendMenuInstruction(instruction: string){

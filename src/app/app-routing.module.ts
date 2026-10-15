@@ -10,7 +10,10 @@ import { RouterModule, Routes } from '@angular/router';
 import { MoviesPageComponent } from './movies-page/movies-page.component';
 import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
 import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
-import { ProfileGuard } from './profile.guard';
+import { AdultGuard, AdultLayoutGuard, ProfileGuard } from './profile.guard';
+import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
+import { AdultTitleComponent } from './adult-title/adult-title.component';
+import { AdultPageComponent } from './adult-page/adult-page.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
 
 const routes: Routes = [
@@ -72,6 +75,29 @@ const routes: Routes = [
     path : 'watchlist',
     canActivate : [ProfileGuard],
     component : WatchlistPageComponent
+  },
+  // 18+ section: not for kids profiles. /adult opens the profile's layout:
+  // posters (metadata provider) or the compact list of releases
+  {
+    path : 'adult',
+    pathMatch : 'full',
+    canActivate : [AdultGuard, AdultLayoutGuard],
+    children : [],
+  },
+  {
+    path : 'adult/browse',
+    canActivate : [AdultGuard],
+    component : AdultBrowseComponent
+  },
+  {
+    path : 'adult/title/:provider/:id',
+    canActivate : [AdultGuard],
+    component : AdultTitleComponent
+  },
+  {
+    path : 'adult/releases',
+    canActivate : [AdultGuard],
+    component : AdultPageComponent
   },
   {
     path : 'player',

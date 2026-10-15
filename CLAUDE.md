@@ -9,6 +9,8 @@ Data sources:
 | Catalog (rows, details, seasons, episodes) | **TMDB** | called directly from the browser |
 | Movie torrents, rating, runtime | **YTS** API (`movies-api.accel.li`, mirrors) | proxied by the server |
 | TV episode torrents | **EZTV** API + **TheRARBG** (RARBG's successor; RARBG itself shut down in 2023) | aggregated + ranked by the server |
+| 18+ section (releases ranked by seeders) | **The Pirate Bay** (apibay.org, default) / **TheRARBG** XXX category | server (`lib/adult.js`); not offered to kids profiles |
+| 18+ catalog (posters, performers, studios) | pluggable: **TMDB** (default, adult films via their studios) / **ThePornDB** (key) | server (`lib/adultMeta/`) |
 | Subtitles | pluggable providers: OpenSubtitles (keyless, via Stremio addon), YIFY Subtitles, OpenSubtitles.com (key), Wyzie Subs (key) | server; user picks the provider in the player |
 | Trailers | YouTube via `youtubei.js` | server — **currently only the first ~1 MB streams**, see gotchas |
 
@@ -78,7 +80,7 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 └── src/
     ├── electron.js               Electron main: window, power API (:3344), boots streaming server, passes its port
     ├── main.ts / index.html      Angular bootstrap; index.html loads YouTube iframe API, viewport 1440px
-    ├── styles.scss               global fonts (Futura, Netflix Sans), hides cursor, removes focus outline
+    ├── styles.scss               global fonts (Futura, Netflix Sans), custom cursor (`assets/cursor/`), row paddles, removes focus outline
     ├── proxy.config.json         unused dev proxy; not wired in angular.json
     ├── environments/             standard Angular env files (only `production` flag)
     ├── plugins/spacialNavigation.js   vendored js-spatial-navigation (Luke Chang, MPL-2.0) — see src/app/CLAUDE.md
@@ -119,7 +121,8 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 | `WYZIE_API_KEY` | enables the Wyzie Subs provider (free key: store.wyzie.io/redeem) |
 | `STREAMER_PORT`, `REMOTE_PORT` | preferred server ports (default 9000 / 9500) |
 | `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR` | override where state (`torrents.json`, `playpex.db`) and downloads go; defaults are per-OS user dirs, see `lib/paths.js` |
-| `TMDB_API_KEY` | TMDB key for the server (`lib/tmdb.js`, recommendations). Set in `.env`; without it recommendations are empty. The UI still uses its own copy in `movies.service.ts` |
+| `THEPORNDB_API_KEY` | enables the ThePornDB metadata provider of the 18+ section |
+| `TMDB_API_KEY` | TMDB key for the server (`lib/tmdb.js`, recommendations; default 18+ metadata provider). Set in `.env`; without it recommendations are empty. The UI still uses its own copy in `movies.service.ts` |
 
 ---
 
@@ -141,7 +144,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 ## Cross-cutting conventions
 
 - **State = RxJS Subjects / BehaviorSubjects inside root services**, no NgRx. Section state (rows, paging, slider position) lives in a `Catalog` per media type (`src/app/catalog.ts`, held in `MoviesService.catalogs`).
-- **Input model**: arrows are handled by the spatial-navigation library; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
+- **Input model**: arrows are handled by the spatial-navigation library; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). The mouse is mapped onto the same model by `PointerService` (hover = focus, click = select, right click / mouse back button = back, wheel = up/down); pages don't handle the mouse themselves. `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
 - **Direct DOM manipulation**: components use `document.querySelector`, inline `style.transform` (rows never scroll natively), CSS classes like `focused`/`lastSelected`, and **GSAP** timelines. Match this style when editing existing components.
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
@@ -156,8 +159,8 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 - Port 9000 may be taken by unrelated software (it was on the dev machine) — the server moves to 9001 and the UI follows via `?streamer=`. Don't reintroduce hard-coded ports.
 - Downloads and state live in per-OS user dirs (`src/server/streamingServer/lib/paths.js`: Linux `~/.cache/Playpex/torrent_data` + `~/.config/Playpex/torrents.json`), never inside the app. The old in-repo `torrents/` folder is legacy; `torrent_data/` there is git-ignored — **never force-add it**.
 - Component/host elements inside the flex shell need `min-width: 0` (see `movies-page.component.scss`, `show-options.component.scss`), otherwise they grow to the width of their widest row and horizontal row scrolling silently stops working.
-- Menu item "Settings" and search for TV shows are placeholders. "Watch list" (`/watchlist`), the watch list / watched buttons and resume are real and per profile. `DescritionViewerComponent` (sic) is an unused stub.
-- UI is designed for a fixed 1440px viewport (`index.html`) and hides the mouse cursor globally.
+- Menu item "Settings" is a placeholder. "18+" (`/adult`) has two layouts — posters (catalog from a metadata provider) and compact (torrent releases by seeders) — chosen per profile in `preferences.adult` (`layout`, `metadataProvider`), meant to be edited from Settings later; nothing watched there is saved to the profile. "Watch list" (`/watchlist`), the watch list / watched buttons and resume are real and per profile. `DescritionViewerComponent` (sic) is an unused stub.
+- UI is designed for a fixed 1440px viewport (`index.html`). The mouse works too (`src/app/pointer.service.ts`): the custom cursor hides on any key press and comes back when the mouse moves.
 
 ## Legal note
 The README states this is an educational project; streaming copyrighted content via torrents may be illegal. Keep that framing in any docs you write.

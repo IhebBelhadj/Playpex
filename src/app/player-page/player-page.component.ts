@@ -13,8 +13,11 @@ import { Router } from '@angular/router';
 import { STREAMING_SERVER } from '../server-config';
 import { actionForKey } from '../keymap';
 import { EpisodeKey, LibraryService } from '../library.service';
+import { PointerService } from '../pointer.service';
 
 const SAVE_EVERY_MS = 15000;
+// Mouse: the controls and the cursor hide after this long without movement
+const POINTER_IDLE_MS = 3000;
 
 
 @Component({
@@ -62,12 +65,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   lastSave = 0;
   stateSub:Subscription;
 
+  pointerSub:Subscription;
+  pointerIdle;
+
   constructor(
     private playbackService:PlaybackService,
     private menuService:MenuServiceService,
     private torrentService:TorrentService,
     private navigation:NavigationService,
     private router:Router,
+    private pointer:PointerService,
     private subtitlesService:SubtitlesService,
     private location:Location,
     private notificationService:NotificationService,
@@ -91,7 +98,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.resumeAt = this.playback.startAt || null;
       this.resumeDecided = true;
     }
-    else if (this.playback.tmdbId) {
+    else if (this.playback.tmdbId && !this.playback.adult) {
       this.stateSub = this.library.state(this.libraryKey()).subscribe({
         next: state => {
           this.resumeAt = state.resume ? state.resume.positionS : null;
@@ -150,6 +157,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.pollStats();
     this.updateClock();
 
+    // Mouse: moving it shows the controls; the wheel scrolls panels natively
+    this.pointer.wheelNavigation = false;
+    this.pointerSub = this.pointer.moved.subscribe(() => this.onPointerMove());
+    this.pointerIdle = setTimeout(() => this.onPointerIdle() , POINTER_IDLE_MS);
+
     this.year = this.playback.year;
     this.magnetUrl = this.playback.magnet;
     let reps = 0;
@@ -203,6 +215,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     this.menuService.sendInstruction('show' , this);
     this.controlsVisible = false;
+    this.pointer.wheelNavigation = true;
+    this.pointerSub?.unsubscribe();
+    clearTimeout(this.pointerIdle);
     if (this.controlsSub) this.controlsSub.unsubscribe();
 
     if (this.playerSub) this.playerSub.unsubscribe();
@@ -275,7 +290,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   saveProgress() {
     let player = this.moviePlayer;
-    if (!this.playback?.tmdbId || !player || !this.playerReady || !this.resumeDecided) return;
+    // 18+ titles stay out of the library (Continue watching, Watched)
+    if (!this.playback?.tmdbId || this.playback.adult || !player || !this.playerReady || !this.resumeDecided) return;
     // don't overwrite the saved position with 0:00 before jumping to it
     if (this.resumeAt && !this.resumeApplied) return;
     let duration = player.duration;
@@ -579,9 +595,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   seek(direction){
-    if (direction == 'forward') this.moviePlayer.currentTime += 30;
-    else if(direction == 'backward') this.moviePlayer.currentTime -= 30;
-    else return;
+    if (direction == 'forward') this.seekTo(this.moviePlayer.currentTime + 30);
+    else if(direction == 'backward') this.seekTo(this.moviePlayer.currentTime - 30);
+  }
+
+  seekTo(time:number){
+    this.moviePlayer.currentTime = Math.max(0 , time);
 
 
     let currentDisp = document.querySelector('.currentTime') as HTMLElement;
@@ -591,6 +610,51 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
     slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
     this.updateBuffered();
+  }
+
+  // ── mouse ─────────────────────────────────────────────────────────────────
+
+  onPointerMove(){
+    if (this.playerReady) this.showControls();
+    clearTimeout(this.pointerIdle);
+    this.pointerIdle = setTimeout(() => this.onPointerIdle() , POINTER_IDLE_MS);
+  }
+
+  // Still mouse: clear the picture, unless the user switched to the keys
+  // (they hid the cursor already) or is resting on the controls
+  onPointerIdle(){
+    if (!this.pointer.visible) return;
+    if (document.querySelector('.playerPageContainer :is(.controls, .sidePannel, .statsPanel):hover')) return;
+
+    this.pointer.hide();
+    if (this.playerReady && !this.sidePannelVisible && !this.moviePlayer.paused) this.hideControls();
+  }
+
+  onVideoClick(){
+    if (!this.playerReady) return;
+    if (this.moviePlayer.paused) this.resumePlayer();
+    else this.pausePlayer();
+  }
+
+  // The timeline seeks where it's clicked (data-pointer="own": no select key)
+  onTimelineClick(e:MouseEvent){
+    let duration = this.moviePlayer?.duration;
+    if (!this.playerReady || !isFinite(duration)) return;
+    this.seekTo(this.timelineFraction(e) * duration);
+  }
+
+  onTimelineHover(e:MouseEvent){
+    let label = document.querySelector('.playerPageContainer .hoverTime') as HTMLElement;
+    let duration = this.moviePlayer?.duration;
+    if (!label || !isFinite(duration)) return;
+    let fraction = this.timelineFraction(e);
+    label.style.left = (fraction * 100) + '%';
+    label.textContent = this.timeDisplayString(fraction * duration);
+  }
+
+  timelineFraction(e:MouseEvent){
+    let rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return Math.min(1 , Math.max(0 , (e.clientX - rect.left) / rect.width));
   }
 
   // Light bar for the buffered range around the playhead (it starts behind the

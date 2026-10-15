@@ -9,8 +9,10 @@ import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
 import { TorrentPickerService } from '../torrent-picker.service';
+import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
+import { isPointerFocus } from '../pointer.service';
 
 @Component({
   selector: 'app-movie-options',
@@ -29,6 +31,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   navigationSub:Subscription;
   playingTrailer = false;
   canPlay = false;
+  findingTorrents = false;    // 18+ movie: Play is looking up torrents
   selectedMovie;
   focusListener;
 
@@ -49,6 +52,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private menu:MenuServiceService,
     private playback:PlaybackService,
     private torrentPicker:TorrentPickerService,
+    private torrentService:TorrentService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
   ) {
@@ -119,11 +123,13 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
 
     // Focus moves: remember position per row and scroll it into view
+    // (not for mouse hovers: the row would slide away under the cursor)
 
     this.focusListener = (e)=>{
       if (!this.router.url.includes('/movies/movie')) return;
       const node = e.target as HTMLElement;
       if (!node.closest('.optionsMasterContainer')) return;
+      let scroll = !isPointerFocus();
 
       if (node.closest('.optionPannel')) {
         this.updateLastSelected('.optionPannel' , node)
@@ -131,13 +137,17 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       }
       else if (node.closest('.casts')) {
         this.updateLastSelected('.casts' , node)
-        this.scrollRowTo(node);
-        this.ensureSectionVisible('.casts');
+        if (scroll) {
+          this.scrollRowTo(node);
+          this.ensureSectionVisible('.casts');
+        }
       }
       else if (node.closest('.similar')) {
         this.updateLastSelected('.similar' , node)
-        this.scrollRowTo(node);
-        this.ensureSectionVisible('.similar');
+        if (scroll) {
+          this.scrollRowTo(node);
+          this.ensureSectionVisible('.similar');
+        }
       }
     }
     window.addEventListener('sn:focused', this.focusListener)
@@ -226,7 +236,19 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     })
   }
 
+  // 18+ title (TMDB `adult`): torrents come from the server's adult providers
+  // when Play is pressed, and the title never enters the profile's library
+  get isAdult():boolean {
+    return !!this.selectedMovie?.['adult'];
+  }
+
   getPlayData(){
+
+    // YTS has no 18+ movies
+    if (this.isAdult) {
+      this.canPlay = true;
+      return;
+    }
 
     this.moviesService
       .getYTSMovieDetails(this.selectedMovie['imdb_id'])
@@ -268,7 +290,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.watched = false;
     this.resumeLabel = '';
     this.resume = null;
-    if (!this.selectedMovie) return;
+    if (!this.selectedMovie || this.isAdult) return;
     let ref = this.movieRef();
     this.library.inWatchlist(ref).subscribe({ next: r => this.inWatchlist = r.inWatchlist, error: () => {} });
     this.library.state(ref).subscribe({
@@ -341,6 +363,10 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
   chooseTorrentAndPlay(startAt?:number){
     let movie = this.selectedMovie;
+    if (this.isAdult) {
+      this.chooseAdultTorrentAndPlay();
+      return;
+    }
     if (!movie['torrents']?.length) {
       this.notificationService.sendNotification('error',"No streaming service found for the movie");
       return;
@@ -348,6 +374,30 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     let options = movie['torrents'].map(torrent => TorrentPickerService.fromYts(torrent));
 
     this.torrentPicker.choose(movie['original_title'] , options).subscribe(choice => this.startPlayer(choice.torrent , startAt));
+  }
+
+  chooseAdultTorrentAndPlay(){
+    if (this.findingTorrents) return;
+    let movie = this.selectedMovie;
+    let title = movie['title'] || movie['original_title'];
+    this.findingTorrents = true;
+    this.torrentService.findAdultTorrents(title , (movie['release_date'] || '').slice(0, 4))
+      .subscribe({
+        next: result => {
+          this.findingTorrents = false;
+          if (!result.torrents.length) {
+            let reason = result.providerErrors ? " (some providers are unreachable)" : "";
+            this.notificationService.sendNotification('error' , `No torrents found for ${title}${reason}`);
+            return;
+          }
+          let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent , i));
+          this.torrentPicker.choose(title , options).subscribe(choice => this.startPlayer(choice.torrent));
+        },
+        error: () => {
+          this.findingTorrents = false;
+          this.notificationService.sendNotification('error' , "Couldn't reach the torrent providers. Try again later");
+        },
+      });
   }
 
   startPlayer(torrent , startAt?:number){

@@ -153,6 +153,9 @@ export class MenuComponent implements OnInit , AfterViewInit{
       case "watchPage":
         this.router.navigateByUrl("/watchlist")
         break;
+      case "adultPage":
+        this.router.navigateByUrl("/adult")
+        break;
       case "profiles":
         this.router.navigateByUrl("/profiles")
         break;

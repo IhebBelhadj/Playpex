@@ -120,85 +120,165 @@
   font-size: 22px;
 }
 
-.resultsWrapper {
-  margin-top: 90px;
+// ── filters ────────────────────────────────────────────────────────────────
+// Same material as the keyboard keys; the selected filter keeps a light ring,
+// the focused one turns white like a focused key
 
-  .sectionTitle {
-    font-family: "netflixBk";
-    font-size: 16px;
-    letter-spacing: .25px;
-    opacity: .9;
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-top: 36px;
 
-  }
+  .filterChip {
+    height: 40px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, .56);
+    color: rgba(255, 255, 255, .7);
+    font-family: 'NetflixBk';
+    font-size: 15px;
+    transition: all .2s;
 
-  .movieSlider {
-    margin-top: 30px;
-    .movie{
-
-      display: flex;
-      flex-direction: column;
-
-      .displayedElem {
-        background: rgba(103, 103 ,103 , .35);
-        width: 150px;
-        height: 230px;
-        padding: 0px;
-        margin-right: 21px;
-        margin-bottom: 25px;
-        border: none;
-        transition: all .2s;
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        .name {
-          margin-top: 15px;
-          font-family: 'netflixBk';
-          opacity: .75;
-          font-size: 15px;
-        }
-
-        .year {
-          font-family: 'netflixLt';
-          opacity: .4;
-          font-size: 14px;
-          margin-top: 3px;
-        }
-
-        .imgContainer {
-          transition: all .2s;
-          display: contents;
-          overflow: hidden;
-          img {
-            display: block;
-            min-width: 100%;
-            min-height: 100%;
-            opacity: .7;
-            filter: saturate(.6);
-          }
-
-        }
-
-      }
+    &.selected {
+      color: #fff;
+      background: rgba(255, 255, 255, .14);
+      box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
     }
 
-    .content {
-      display: flex;
+    &.focused {
+      background: #fff;
+      color: #000;
+      box-shadow: none;
+      scale: 1.08;
+    }
+  }
+}
+
+// ── results ────────────────────────────────────────────────────────────────
+
+.searchContainer {
+  transition: transform .25s;
+}
+
+.noTransition,
+.noTransition * {
+  transition: none !important;
+}
+
+.results {
+  margin-top: 44px;
+
+  .searchNote {
+    font-family: 'NetflixBk';
+    font-size: 17px;
+    opacity: .7;
+    margin: 0;
+  }
+
+  .resultRow {
+    margin-bottom: 18px;
+
+    .sectionTitle {
+      font-family: "netflixBk";
+      font-size: 16px;
+      letter-spacing: .25px;
+      opacity: .9;
+    }
+  }
+
+  .rowViewport {
+    margin-top: 22px;
+  }
+
+  .rowContent {
+    display: flex;
+    transition: transform .25s;
+  }
+}
+
+.result {
+  flex: none;
+  width: 150px;
+  padding: 0;
+  margin-right: 21px;
+  margin-bottom: 12px;
+  border: none;
+  background: none;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform .2s;
+
+  .imgContainer {
+    position: relative;
+    width: 150px;
+    height: 225px;
+    background: rgba(103, 103, 103, .35);
+    overflow: hidden;
+
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: .7;
+      filter: saturate(.6);
       transition: all .2s;
     }
 
-    .focused {
-      transform: scale(1.13);
-      .imgContainer {
-        img {
-          filter: none !important;
-          opacity: 1!important;
-        }
-      }
+    // a series in a person's mixed row of movies and shows
+    .badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, .75);
+      font-family: 'NetflixBd';
+      font-size: 11px;
+      letter-spacing: .5px;
     }
-
   }
 
+  .name {
+    max-width: 100%;
+    margin-top: 14px;
+    font-family: 'netflixBk';
+    font-size: 15px;
+    opacity: .75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .year {
+    min-height: 17px;
+    margin-top: 3px;
+    font-family: 'netflixLt';
+    font-size: 14px;
+    opacity: .4;
+  }
+
+  // People are faces, not posters
+  &.person .imgContainer {
+    width: 140px;
+    height: 140px;
+    margin-top: 5px;
+    border-radius: 50%;
+  }
+
+  &.focused {
+    transform: scale(1.1);
+
+    .imgContainer img {
+      filter: none;
+      opacity: 1;
+    }
+
+    .name {
+      opacity: 1;
+    }
+  }
 }
-
-

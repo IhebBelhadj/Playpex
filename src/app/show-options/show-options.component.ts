@@ -12,6 +12,7 @@ import { TorrentService } from '../torrent.service';
 import { TorrentPickerService } from '../torrent-picker.service';
 import { EpisodeProgress, LibraryService } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
+import { isPointerFocus } from '../pointer.service';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes. Enter on an episode finds its torrents
@@ -151,10 +152,16 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     })
   }
 
+  // 18+ show (TMDB `adult`): never enters the profile's library
+  get isAdult():boolean {
+    return !!this.show?.['adult'];
+  }
+
   loadLibraryState(){
-    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
     this.inWatchlist = false;
     this.episodeProgress.clear();
+    if (this.isAdult) return;
+    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
     this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
     this.library.episodesProgress(ref).subscribe({
       next : list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}` , p)),
@@ -305,6 +312,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       tmdbId : this.show['id'],
       artwork : LibraryService.artworkOf(this.show),
       startAt,
+      adult : this.isAdult,
     });
     this.router.navigateByUrl('/player');
   }
@@ -315,8 +323,10 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   // Spatial navigation focus: remember position per row, scroll rows into view
+  // (not for mouse hovers: the row would slide away under the cursor)
   onFocus(node:HTMLElement){
     if (!this.router.url.includes('/shows/show') || !node.closest('.showOptionsContainer')) return;
+    let scroll = !isPointerFocus();
 
     if (node.closest('.optionPannel')) {
       this.updateLastSelected('.optionPannel' , node);
@@ -324,14 +334,18 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     }
     else if (node.classList.contains('season')) {
       this.updateLastSelected('.seasons' , node);
-      this.scrollRowTo(node);
-      this.ensureRowVisible('.seasons');
+      if (scroll) {
+        this.scrollRowTo(node);
+        this.ensureRowVisible('.seasons');
+      }
       this.seasonRequests.next({ showId : this.show['id'] , season : Number(node.dataset['season']) });
     }
     else if (node.classList.contains('episodeBtn')) {
       this.updateLastSelected('.episodes' , node);
-      this.scrollRowTo(node);
-      this.ensureRowVisible('.episodes');
+      if (scroll) {
+        this.scrollRowTo(node);
+        this.ensureRowVisible('.episodes');
+      }
     }
   }
 

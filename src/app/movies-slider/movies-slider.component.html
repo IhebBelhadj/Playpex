@@ -3,9 +3,9 @@
   <div class="content">
     <ng-container *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
     <!-- rows are created in category order; empty ones are still loading -->
-    <div class="section" *ngIf="category.value.length">
+    <div class="section atStart" *ngIf="category.value.length">
       <h3 class="sectionTitle">{{category.key}}</h3>
-      <div class="slider">
+      <div class="slider pagedRow">
         <div class="container">
           <div class="elements_wrapper sliderSection">
 
@@ -14,13 +14,22 @@
                 *ngFor="let movie of category.value ; let i=index;"
                 [attr.data-id]="movie?.id"
                 [attr.data-section] = "category.key"
-                [attr.data-index]="i">
+                [attr.data-index]="i"
+                [attr.data-sn-up]="neighbour(category.key , -1)"
+                [attr.data-sn-down]="neighbour(category.key , 1)">
 
                 <img src="{{imgBaseUrl + movie?.poster_path}}" alt="">
 
               </button>
 
           </div>
+      </div>
+      <!-- mouse only (hidden with the cursor): page through the row -->
+      <div class="rowPaddle prev" (click)="pageRow(category.key , -1)">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </div>
+      <div class="rowPaddle next" (click)="pageRow(category.key , 1)">
+        <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
       </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import { delay } from 'rxjs';
 import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { TorrentPickerService } from './torrent-picker.service';
 import { PlayChoiceService } from './play-choice.service';
+import { PointerService } from './pointer.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -40,6 +41,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     private moviesService:MoviesService,
     private torrentPicker:TorrentPickerService,
     private playChoice:PlayChoiceService,
+    private pointer:PointerService,
     ){
 
   }
@@ -48,6 +50,8 @@ export class AppComponent implements AfterViewInit , OnInit{
   ngAfterViewInit() {
     spatialNavigation.setKeyMap(SPATIAL_NAVIGATION_KEYS);
     spatialNavigation.init();
+    // mouse: hover focuses, click selects, right click goes back (pointer.service.ts)
+    this.pointer.init();
 
     this.navigation.updatedNavigation().subscribe(instruction => {
 
@@ -149,15 +153,16 @@ export class AppComponent implements AfterViewInit , OnInit{
       gsap.set(this.newImgElement, { clearProps: true });
       gsap.set(this.previousImgElement, { clearProps: true });
 
-      //this.img_url = this.imgBaseUrl + data.img_url;
+      // a TMDB path, or a full URL (18+ catalog providers)
+      let url = /^https?:/.test(data.img_url) ? data.img_url : this.imgBaseUrl + data.img_url;
       if(!this.previousImg) {
-        this.previousImg = this.imgBaseUrl + data.img_url;
+        this.previousImg = url;
         this.previousImgElement.src = this.previousImg;
         this.animateImgStatic('.previousBackground');
 
       }
       else if(!this.nextImg){
-        this.nextImg = this.imgBaseUrl + data.img_url;
+        this.nextImg = url;
         this.newImgElement.src = this.nextImg;
         this.imgChangeAnimation();
         this.animateImgStatic('.newBackground');
@@ -167,7 +172,7 @@ export class AppComponent implements AfterViewInit , OnInit{
       else {
         this.previousImg = this.nextImg;
         this.previousImgElement.src = this.previousImg;
-        this.nextImg = this.imgBaseUrl + data.img_url;
+        this.nextImg = url;
         this.newImgElement.src = this.nextImg;
         this.imgChangeAnimation();
         this.animateImgStatic('.newBackground');
@@ -195,6 +200,9 @@ export class AppComponent implements AfterViewInit , OnInit{
 
     let element = document.activeElement as HTMLElement;
     if (element.classList.contains('element')) {
+      // opened with a mouse click: come back to this poster, not the row's old position
+      let catalog = this.moviesService.catalogForUrl(this._router.url);
+      if (catalog && element.dataset['section']) catalog.navigationData[element.dataset['section']]['reached'] = element.dataset['index'];
 
       this.navigation.updateNavigation('remove' , {sectionId : "menu"})
       this.navigation.updateNavigation('remove' , {sectionId : "slider"})

@@ -1,0 +1,65 @@
+<div class="libraryPage">
+
+  <!-- The focused title, laid out like <movie-description> -->
+  <header class="titleInfo" *ngIf="spot && !isEmpty && !loadError">
+    <h1 class="name">{{ spot.title }}</h1>
+    <div class="infos">
+      <p class="year" *ngIf="details?.year">{{ details.year }}</p>
+      <span class="chip">{{ spot.mediaType == 'tv' ? 'Series' : 'Movie' }}</span>
+      <span class="chip" *ngIf="details?.length">{{ details.length }}</span>
+      <span class="score" *ngIf="details?.score">TMDB {{ details.score | number:'1.1-1' }}</span>
+    </div>
+    <div class="categories" *ngIf="details?.genres?.length">
+      <span *ngFor="let genre of details.genres">{{ genre }} . </span>
+    </div>
+
+    <!-- where this profile is with it -->
+    <p class="status">{{ spot.meta }}</p>
+    <div class="progressLine" *ngIf="spot.progress">
+      <span [style.width.%]="spot.progress * 100"></span>
+    </div>
+
+    <p class="overview" *ngIf="details?.overview">{{ details.overview }}</p>
+  </header>
+
+  <header class="titleInfo" *ngIf="isEmpty">
+    <h1 class="name">Your watch list is empty</h1>
+    <p class="note">Save movies and shows with “Add to watch list” on their page. Anything you start watching shows up here too, so you can pick up where you left off.</p>
+    <button class="actionBtn browseBtn focusable">Browse movies</button>
+  </header>
+
+  <header class="titleInfo" *ngIf="loadError">
+    <h1 class="name">Watch list unavailable</h1>
+    <p class="note">{{ loadError }}</p>
+    <button class="actionBtn retryBtn focusable">Try again</button>
+  </header>
+
+  <!-- Category-style rows, like the movies page -->
+  <div class="sliderContainer" *ngIf="rows.length">
+    <div class="overlay"></div>
+    <div class="content">
+      <div class="section atStart" *ngFor="let row of rows; let r = index" [attr.data-row]="row.key">
+        <h3 class="sectionTitle">{{ row.title }}</h3>
+        <div class="slider pagedRow">
+          <div class="sliderSection">
+            <button *ngFor="let card of row.cards" class="card focusable"
+              [attr.data-key]="card.key"
+              [attr.data-sn-up]="neighbour(r, -1)"
+              [attr.data-sn-down]="neighbour(r, 1)">
+              <img *ngIf="posterUrl(card) as src" [src]="src" alt="">
+              <span class="fallbackTitle" *ngIf="!card.posterPath">{{ card.title }}</span>
+              <span class="cardProgress" *ngIf="card.progress"><span [style.width.%]="card.progress * 100"></span></span>
+            </button>
+          </div>
+          <!-- mouse only (hidden with the cursor): page through the row -->
+          <div class="rowPaddle prev" (click)="pageRow(row.key, -1)">
+            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+          </div>
+          <div class="rowPaddle next" (click)="pageRow(row.key, 1)">
+            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

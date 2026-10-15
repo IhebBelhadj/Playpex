@@ -59,6 +59,27 @@ Serialized torrent: `{ infoHash, name, length, interested, ready, files: [{ name
 
 Ranking (`episodes.js#compare`): `playable` video (no HEVC/10-bit/XviD/4K) → `audio` (AAC/Opus/MP3 > untagged > Dolby/DTS, which Chromium can't decode) → ≥10 seeders → single episode before pack → resolution (1080p > 720p > 480p/SD > 2160p) → seeders. Matching (`matchKind`): normalized name must start with the show title, optional year and country (`US|UK|AU|NZ|CA`), then `SxxEyy` with no episode range after it (or `Sxx` / `Season x` for a pack, never multi-season). Both rules are unit-checkable by evaluating the module source in Node.
 
+### 18+ (`lib/adult.js`, providers `lib/providers/piratebay.js` + `therarbg.js`)
+| Path | Notes |
+|---|---|
+| `GET /api/adult/torrents?title=&year=` | torrents for one TMDB `adult: true` movie (movie page Play); matched by title (+year) in the release name, ranked like episodes |
+| `GET /api/adult/providers` | `[{ id, name, paged, default }]` — sources of the 18+ section; first = default (`piratebay`) |
+| `GET /api/adult/browse?provider=&q=&quality=2160p\|1080p\|720p\|SD&playable=1&page=` | `{ provider, page, hasMore, torrents }`, **most seeded first**. Each torrent: `provider, name, hash, magnet, seeds, peers, size, added` + `describe()` fields (`quality, codec, audio, playable`) + `present()` (`title, studio, year`: release name cleaned for display) + `scenes`. 502 `{error, torrents: []}` on upstream failure |
+
+Browse sources (`BROWSE_PROVIDERS` in `adult.js`; add one there): **The Pirate Bay** (apibay.org) — no query → `precompiled/data_top100_<cat>.json` (500 all, 505 HD, 507 4K), query → `q.php` (≤ 100 results), no paging. **TheRARBG** — `/get-posts/[keywords:<q>:]order:-se:category:XXX/?format=json&page=n`, 50 per page. Don't put the resolution in TheRARBG keywords: it then ranks by name, not seeders; quality/playable are filtered after fetching and a paged source reads up to 3 pages per call to keep ≥ 20 results (`page` in the answer = last page read).
+
+### 18+ catalog (`lib/adultMeta/`, routes `lib/routes/adultMeta.js`)
+Metadata for the poster layout from **pluggable providers** (contract at the top of `lib/adultMeta/index.js`; add a module to `PROVIDERS`). Every provider answers the same shapes with full image URLs: `Item { id, title, year, releaseDate, overview, poster, backdrop, rating, studio }`, `Title` = Item + `{ runtime, performers: [{name, photo}], director, studios, browsableStudio }`, `Page { items, page, totalPages }`.
+| Path | Notes |
+|---|---|
+| `GET /api/adult/meta/providers` | `[{ id, name, description, enabled, default, periods }]` — `enabled` false without its key; default = first enabled |
+| `GET /api/adult/meta/:provider/home` | `{ provider, rows: [{ key, title }] }`; `:provider` = `default` for the server's default |
+| `GET …/:provider/rows/:key?page=` · `…/discover?studio=&period=&sort=popular\|newest\|rated&page=` · `…/search?q=&period=&page=` | Page |
+| `GET …/:provider/studios` · `…/titles/:id` | `[{ id, name }]` · Title |
+Errors: unknown provider 404, provider without key 503, upstream 502 — always `{ error }`.
+- **`tmdb`** (default; `TMDB_API_KEY`): TMDB has adult films (posters, cast, studios as production companies) but no adult filter or genres. Lists = `discover/movie?include_adult=true&with_companies=<studios>` (`STUDIOS`: curated company ids, checked Oct 2026; first 10 = home rows), only `adult` results, no poster-less ones in rows. Search: TMDB ranks every regular result first, so page n reads 2 TMDB pages from `regular total / 20 + 1` (two count queries, include_adult false/true).
+- **`theporndb`** (`THEPORNDB_API_KEY`): written against its public API (Bearer token, `/movies`, `/movies/:id`, `/sites`), **not verified end to end** (no key during development); fields are read defensively. Sorting isn't offered; periods are filtered per page.
+
 ### Subtitles
 | Path | Notes |
 |---|---|

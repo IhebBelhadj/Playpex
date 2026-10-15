@@ -1,0 +1,82 @@
+<div class="profileEditor">
+  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+
+  <div class="editorContent" *ngIf="ready" [class.dimmed]="panel">
+    <h1 class="heading">{{ id ? 'Edit Profile' : 'Add Profile' }}</h1>
+    <p class="intro" *ngIf="!id">Add a profile for another person watching Playpex.</p>
+
+    <div class="editorBody">
+      <button class="avatarBtn focusable" data-field="avatar">
+        <img class="avatarImg" [src]="avatarUrl(avatar)" alt="">
+        <span class="editBadge"><img src="assets/icons/edit.svg" alt=""></span>
+      </button>
+
+      <div class="fields">
+        <button class="field nameField focusable" data-field="name" [class.placeholder]="!name">
+          {{ name || 'Name' }}
+        </button>
+        <p class="fieldError">{{ error }}</p>
+
+        <h2 class="settingTitle">Kids Profile</h2>
+        <p class="settingHint">Recommendations stick to family and animation titles.</p>
+        <button class="field toggleField focusable" data-field="kid">
+          <span class="label">This profile is for a kid</span>
+          <span class="switch" [class.on]="isKid"><span class="knob"></span></span>
+        </button>
+
+        <h2 class="settingTitle">Profile Lock</h2>
+        <p class="settingHint">{{ pinActive ? 'A PIN is needed to open this profile.' : 'Anyone can open this profile.' }}</p>
+        <button class="field focusable" data-field="pin">
+          <img class="fieldIcon" src="assets/icons/lock.svg" alt="">
+          {{ pinActive ? 'Change PIN' : 'Lock with a PIN' }}
+        </button>
+        <button *ngIf="pinActive" class="field focusable" data-field="removePin">Remove profile lock</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="actionBtn primary focusable" data-action="save">{{ saving ? 'Saving…' : 'Save' }}</button>
+      <button class="actionBtn focusable" data-action="cancel">Cancel</button>
+      <button *ngIf="id" class="actionBtn focusable" data-action="delete">Delete Profile</button>
+    </div>
+  </div>
+
+  <!-- Name: on-screen keyboard -->
+  <text-keyboard *ngIf="panel == 'keyboard'"
+    title="Profile name"
+    placeholder="Name"
+    [value]="name"
+    [maxLength]="nameMax"
+    (done)="onNameDone($event)"
+    (cancelled)="closePanel()">
+  </text-keyboard>
+
+  <!-- Avatar chooser -->
+  <div class="overlayPanel avatarPanel" *ngIf="panel == 'avatars'">
+    <p class="panelTitle">Choose a profile icon</p>
+    <div class="avatarGrid">
+      <button *ngFor="let a of avatars" class="avatarChoice focusable" [attr.data-avatar]="a" [class.current]="a == avatar">
+        <img [src]="avatarUrl(a)" alt="">
+      </button>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="overlayPanel confirmPanel" *ngIf="panel == 'confirmDelete'">
+    <img class="confirmAvatar" [src]="avatarUrl(avatar)" alt="">
+    <p class="panelTitle">Delete {{ name }}?</p>
+    <p class="confirmText">This profile's watch list, viewing history, resume points and ratings will be deleted for good.</p>
+    <div class="actions">
+      <button class="actionBtn focusable" data-confirm="no">Keep Profile</button>
+      <button class="actionBtn danger focusable" data-confirm="yes">Delete Profile</button>
+    </div>
+  </div>
+
+  <pin-pad *ngIf="panel == 'pin'"
+    [avatar]="avatar"
+    [title]="pinActive ? 'Enter a new PIN' : 'Lock this profile'"
+    subtitle="Choose a 4-digit PIN. You'll enter it every time you open this profile."
+    (completed)="onPinSet($event)"
+    (cancelled)="onPinCancelled()">
+  </pin-pad>
+</div>

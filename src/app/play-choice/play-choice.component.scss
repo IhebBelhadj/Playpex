@@ -1,0 +1,93 @@
+// Same modal frame as <torrent-picker>
+.playChoice {
+  position: fixed;
+  width: 100vw;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(17, 17, 17, 0.4);
+  z-index: 8;
+  backdrop-filter: blur(5px);
+
+  .panel {
+    width: 480px;
+    backdrop-filter: blur(10px);
+    background-color: rgba(20, 20, 20, .85);
+    position: fixed;
+    transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 40px 40px 34px;
+    border-radius: 6px;
+  }
+
+  .title {
+    font-family: 'NetflixBd';
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .subtitle {
+    font-family: 'Netflixlt';
+    opacity: .6;
+    margin: 0 0 16px;
+  }
+
+  .choice {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 16px 18px 18px;
+    border: none;
+    border-radius: 5px;
+    overflow: hidden;
+    background: rgba(40, 40, 40, .72);
+    color: #fff;
+    text-align: left;
+    opacity: .7;
+
+    .label {
+      font-family: 'NetflixBd';
+      font-size: 20px;
+    }
+
+    .detail {
+      font-family: 'NetflixBk';
+      font-size: 14px;
+      opacity: .75;
+    }
+
+    // how far in, in the app's progress amber
+    .progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: rgba(255, 255, 255, .2);
+
+      span {
+        display: block;
+        height: 100%;
+        background: #FFC107;
+      }
+    }
+  }
+
+  .choice.focused {
+    opacity: 1;
+    background: #fff;
+    color: rgb(17, 17, 17);
+
+    .progress {
+      background: rgba(0, 0, 0, .12);
+    }
+  }
+}

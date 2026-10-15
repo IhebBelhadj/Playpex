@@ -1,5 +1,9 @@
 .sliderContainer {
-  overflow-y: clip;
+  // Clip both ways: posters scrolled off to the left must not show over the
+  // menu (collapsed or expanded). The margin keeps the focused poster's zoom
+  // (1.1 → 9px each side) whole while the previous poster (10px gap) stays hidden
+  overflow: clip;
+  overflow-clip-margin: 10px;
   height: 370px;
   position: relative;
 
@@ -67,4 +71,5 @@
   height: 300px;
   scroll-behavior: smooth;
 }
+
 

@@ -1154,6 +1154,17 @@
       return result;
     },
 
+    // Section an element is navigable in (undefined when none); used by the
+    // pointer controller (src/app/pointer.service.ts) to map hovers to focus
+    sectionOf: function(elem) {
+      var sectionId = getSectionId(elem);
+      return isNavigable(elem, sectionId) ? sectionId : undefined;
+    },
+
+    sectionConfig: function(sectionId) {
+      return _sections[sectionId];
+    },
+
     // move(<direction>)
     // move(<direction>, <selector>)
     move: function(direction, selector) {

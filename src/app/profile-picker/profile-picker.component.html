@@ -1,0 +1,49 @@
+<div class="profilesPage">
+  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+
+  <div class="profilesContent" *ngIf="loaded">
+    <ng-container *ngIf="!loadError; else failed">
+      <h1 class="heading">{{ managing ? 'Manage Profiles' : "Who's watching?" }}</h1>
+      <p class="hint" *ngIf="!profiles.length">Create a profile for everyone who watches. Each one gets its own watch list, history and recommendations.</p>
+
+      <div class="profileList">
+        <button *ngFor="let profile of profiles" class="profileTile focusable" [attr.data-id]="profile.id">
+          <div class="avatar">
+            <img [src]="avatarUrl(profile.avatar)" alt="">
+            <div class="editOverlay" *ngIf="managing">
+              <img src="assets/icons/edit.svg" alt="Edit">
+            </div>
+            <span class="kidsBadge" *ngIf="profile.isKid">KIDS</span>
+          </div>
+          <span class="name">{{ profile.name }}</span>
+          <img class="lock" *ngIf="profile.hasPin && !managing" src="assets/icons/lock.svg" alt="Locked">
+        </button>
+
+        <button *ngIf="profiles.length < maxProfiles" class="profileTile addTile focusable" data-id="new">
+          <div class="avatar">
+            <img class="plus" src="assets/icons/plus.svg" alt="">
+          </div>
+          <span class="name">Add Profile</span>
+        </button>
+      </div>
+
+      <button *ngIf="profiles.length" class="manageBtn focusable" [class.done]="managing">
+        {{ managing ? 'Done' : 'Manage Profiles' }}
+      </button>
+    </ng-container>
+
+    <ng-template #failed>
+      <h1 class="heading">Profiles unavailable</h1>
+      <p class="hint">{{ loadError }}</p>
+      <button class="manageBtn retryBtn focusable">Try again</button>
+    </ng-template>
+  </div>
+
+  <pin-pad *ngIf="pinProfile"
+    [avatar]="pinProfile.avatar"
+    title="Profile Lock is on."
+    [subtitle]="'Enter your PIN to access ' + pinProfile.name + '.'"
+    (completed)="onPinCompleted($event)"
+    (cancelled)="onPinCancelled()">
+  </pin-pad>
+</div>

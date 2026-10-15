@@ -35,6 +35,12 @@
         <span class="description">Watch list</span>
       </div>
     </button>
+    <button *ngIf="profile && !profile.isKid" [class.active] = "currentUrl.includes('/adult')" class="tabGroup element menuItem" data-destination="adultPage">
+      <div class="inner">
+        <img src="assets/icons/adult.svg" alt="">
+        <span class="description">18+</span>
+      </div>
+    </button>
     <button class="tabGroup element menuItem" data-destination="settingsPage">
       <div class="inner">
         <img src="assets/icons/settings.svg" alt="">

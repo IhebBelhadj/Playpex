@@ -10,6 +10,7 @@ var rangeParser = require('range-parser'),
   multipart = require('connect-multiparty'),
   youtube = require('./youtube'),
   episodes = require('./episodes'),
+  adult = require('./adult'),
   subtitles = require('./subtitles'),
   fs = require('fs'),
   store = require('./store'),
@@ -317,6 +318,49 @@ api.get('/api/shows/:imdb_id/torrents', function (req, res) {
     });
 });
 
+//18+ movie torrents (TheRARBG XXX + The Pirate Bay), best match first.
+// ?title=&year= — these movies are matched by name, YTS has none of them
+
+api.get('/api/adult/torrents', function (req, res) {
+  var title = String(req.query.title || '').trim();
+  if (!title) {
+    return res.status(400).send({ error: 'title is required' });
+  }
+
+  adult.findAdultTorrents(title, parseInt(req.query.year, 10))
+    .then(function (result) {
+      res.json(result);
+    })
+    .catch(function (error) {
+      console.error(error);
+      res.status(502).send({ error: error.message });
+    });
+});
+
+//18+ section: one provider's list, most seeded first (lib/adult.js#browse)
+// ?provider=piratebay|therarbg&q=&quality=2160p|1080p|720p|SD&playable=1&page=
+
+api.get('/api/adult/providers', function (req, res) {
+  res.json(adult.browseProviders());
+});
+
+api.get('/api/adult/browse', function (req, res) {
+  adult.browse({
+    provider: String(req.query.provider || ''),
+    q: String(req.query.q || '').slice(0, 100),
+    quality: String(req.query.quality || ''),
+    playable: req.query.playable === '1' || req.query.playable === 'true',
+    page: parseInt(req.query.page, 10) || 1
+  })
+    .then(function (result) {
+      res.json(result);
+    })
+    .catch(function (error) {
+      console.error('adult browse: ' + error.message);
+      res.status(502).send({ error: error.message, torrents: [] });
+    });
+});
+
 //Subtitles (see lib/subtitles: several providers, chosen by the player)
 
 api.get('/api/subtitles/providers', function (req, res) {
@@ -370,6 +414,9 @@ api.all('/youtube/:videoId/', function (req, res) {
 });
 
 // Per-profile user data (lib/services via lib/userData.js)
+// 18+ section catalog (lib/adultMeta: TMDB, ThePornDB, …)
+api.use('/api/adult/meta', require('./routes/adultMeta'));
+
 api.use('/api/profiles', require('./routes/profiles'));
 api.use('/api/profiles/:profileId', require('./routes/library'));
 

@@ -19,6 +19,9 @@ export interface PlaybackRequest {
   // Where to start, in seconds: the saved position ("Resume") or 0 ("Play from
   // the beginning"). Unset: the player resumes from the saved position, if any.
   startAt?: number;
+  // 18+ title: played without touching the profile's library (no saved
+  // position, no Continue watching / Watched entry)
+  adult?: boolean;
 }
 
 // The server also adds its maintained list (src/server/streamingServer/lib/trackers.js)
@@ -41,10 +44,14 @@ export class PlaybackService {
 
   // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;
   // `torrent` is one of them (defaults to the first)
-  // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash
+  // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash.
+  // 18+ movies get server results (lib/adult.js) that carry their own `magnet`
   playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
-    let magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
-    TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
+    let magnet = torrent.magnet;
+    if (!magnet) {
+      magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
+      TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
+    }
 
     this.play({
       title: movie['original_title'],
@@ -56,6 +63,7 @@ export class PlaybackService {
       tmdbId: movie['id'],
       artwork: LibraryService.artworkOf(movie),
       startAt,
+      adult: !!movie['adult'],
     });
   }
 }

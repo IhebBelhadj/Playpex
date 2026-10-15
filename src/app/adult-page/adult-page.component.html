@@ -1,0 +1,103 @@
+<div class="adultPage">
+
+  <!-- Search, source and filters -->
+  <aside class="rail">
+    <div class="seal" aria-label="Adults only">18+</div>
+
+    <button class="searchField focusable" [class.empty]="!state.query">
+      <img src="assets/icons/search.svg" alt="">
+      <span class="searchText">{{ state.query || 'Search releases' }}</span>
+    </button>
+    <button class="clearSearch focusable" *ngIf="state.query">Clear search</button>
+
+    <h2 class="groupTitle">Source</h2>
+    <div class="chips">
+      <button *ngFor="let p of providers" class="chip focusable"
+        [class.selected]="p.id == state.provider"
+        [attr.data-provider]="p.id">{{ p.name }}</button>
+    </div>
+
+    <h2 class="groupTitle">Quality</h2>
+    <div class="chips">
+      <button *ngFor="let q of qualities" class="chip focusable"
+        [class.selected]="q.id == state.quality"
+        [attr.data-quality]="q.id">{{ q.label }}</button>
+    </div>
+
+    <button class="playableToggle focusable">
+      <span class="toggleText">
+        Only releases that play here
+        <span class="toggleHint">Hides x265, 4K and Dolby / DTS audio</span>
+      </span>
+      <span class="switch" [class.on]="state.playableOnly"><span class="knob"></span></span>
+    </button>
+
+    <button class="layoutSwitch focusable">
+      <img src="assets/icons/grid.svg" alt="">
+      Poster view
+    </button>
+  </aside>
+
+  <!-- That source's releases, most seeded first -->
+  <section class="releases">
+    <header class="listHeader">
+      <h1 class="heading">{{ heading }}</h1>
+      <p class="count" *ngIf="state.releases.length">
+        {{ state.releases.length }}{{ state.hasMore ? '+' : '' }} releases, most seeded first
+      </p>
+    </header>
+
+    <div class="listNote" *ngIf="note">
+      <p>{{ note }}</p>
+      <button class="retryBtn focusable" *ngIf="loadError">Try again</button>
+    </div>
+
+    <div class="releasesViewport" *ngIf="state.releases.length">
+      <ol class="releaseList" [style.transform]="'translateY(' + -listOffset + 'px)'">
+        <li *ngFor="let r of state.releases; let i = index; trackBy: trackRelease">
+          <button class="release focusable" [class.lastSelected]="i == 0 && !state.focusKey"
+            [class.quiet]="r.seeds < 5"
+            [attr.data-hash]="r.hash"
+            [attr.data-index]="i">
+
+            <span class="seeds">
+              <span class="seedCount">{{ r.seeds | number }}</span>
+              <span class="seedLabel">{{ r.seeds == 1 ? 'seeder' : 'seeders' }}</span>
+              <span class="seedMeter"><span [style.width.%]="seedShare(r.seeds) * 100"></span></span>
+            </span>
+
+            <span class="releaseInfo">
+              <span class="releaseTitle">{{ r.title }}</span>
+              <span class="releaseMeta">
+                <span class="studio" *ngIf="r.studio">{{ r.studio }}</span>
+                <span *ngIf="r.year">{{ r.year }}</span>
+                <span *ngIf="r.scenes">Split scenes</span>
+                <span *ngIf="r.added">{{ age(r.added) }}</span>
+              </span>
+              <span class="releaseName">{{ r.name }}</span>
+            </span>
+
+            <span class="releaseTags">
+              <span class="tag quality">{{ qualityLabel(r.quality) }}</span>
+              <span class="tag" *ngIf="r.size">{{ size(r.size) }}</span>
+              <span class="tag warn" *ngIf="!r.playable">May not play</span>
+              <span class="tag warn" *ngIf="r.audio == 'unsupported'">Probably no sound</span>
+            </span>
+          </button>
+        </li>
+      </ol>
+      <p class="moreNote" *ngIf="loading && state.releases.length">Loading more…</p>
+    </div>
+  </section>
+</div>
+
+<text-keyboard *ngIf="keyboardOpen"
+  title="Search releases"
+  placeholder="Studio, performer or title"
+  [value]="state.query"
+  [maxLength]="60"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="onSearchCancelled()">
+</text-keyboard>

@@ -12,7 +12,8 @@
       </div>
       <span>Trailer</span>
     </button>
-    <button class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+    <!-- 18+ titles never go in the profile's library -->
+    <button *ngIf="!isAdult" class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down=".showOptionsContainer .seasons .lastSelected">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
       </div>

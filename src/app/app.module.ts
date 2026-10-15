@@ -27,6 +27,11 @@ import { ProfileEditorComponent } from './profile-editor/profile-editor.componen
 import { PinPadComponent } from './pin-pad/pin-pad.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
 import { PlayChoiceComponent } from './play-choice/play-choice.component';
+import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
+import { AdultPageComponent } from './adult-page/adult-page.component';
+import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
+import { AdultTitleComponent } from './adult-title/adult-title.component';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -50,6 +55,10 @@ import { PlayChoiceComponent } from './play-choice/play-choice.component';
     PinPadComponent,
     WatchlistPageComponent,
     PlayChoiceComponent,
+    TextKeyboardComponent,
+    AdultPageComponent,
+    AdultBrowseComponent,
+    AdultTitleComponent,
   ],
   imports: [
     BrowserModule,

@@ -6,6 +6,36 @@ import { Catalog, MediaType } from './catalog';
 import { categories, showCategories } from './categories';
 import { STREAMING_SERVER } from './server-config';
 
+// TMDB search endpoints: 'multi' = movies, TV shows and people together
+export type SearchKind = 'multi' | 'movie' | 'tv' | 'person';
+
+// What the search page shows; kept here so it survives a trip to a title page
+export interface SearchItem {
+  key: string;                          // `${kind}-${id}`
+  kind: 'movie' | 'tv' | 'person';
+  id: number;
+  title: string;
+  sub: string;                          // year, or a person's department
+  image: string;                        // TMDB poster / profile path
+  badge?: string;                       // shown on mixed rows ("TV")
+}
+
+export interface SearchRow {
+  key: string;
+  title: string;
+  items: SearchItem[];
+}
+
+export interface SearchState {
+  query: string;
+  filter: string;
+  rows: SearchRow[];
+  searched: boolean;                    // a search ran for this query/filter
+  focusKey?: string;                    // item to focus when coming back
+}
+
+export const EMPTY_SEARCH: SearchState = { query: '', filter: 'all', rows: [], searched: false };
+
 @Injectable({
   providedIn: 'root'
 })
@@ -24,12 +54,7 @@ export class MoviesService {
 
   // Item shown in <movie-description>: a TMDB movie, or a TV show (media_type 'tv')
   selectedmovie = new BehaviorSubject({});
-  searchData = new BehaviorSubject({
-    query:"",
-    results:{},
-    lastFocused:undefined ,
-    sectionScroll : 0
-  });
+  searchData = new BehaviorSubject<SearchState>(EMPTY_SEARCH);
   movieAppHistory = [];
 
   private tmdb_key = "0067d3f9de200e949bc7f144b1ff83f1";
@@ -69,8 +94,14 @@ export class MoviesService {
     })
   }
 
-  searchMovies(query:string){
-    return this.http.get(`https://api.themoviedb.org/3/search/movie?api_key=${this.tmdb_key}&language=en-US&query=${query}&include_adult=false`)
+  // includeAdult: also 18+ titles (the search page's 18+ filter only)
+  search(kind:SearchKind , query:string , includeAdult = false , page = 1){
+    return this.http.get(`https://api.themoviedb.org/3/search/${kind}?api_key=${this.tmdb_key}&language=en-US&query=${encodeURIComponent(query)}&include_adult=${includeAdult}&page=${page}`)
+  }
+
+  // Movies and shows a person played in or worked on
+  getPersonCredits(person_id){
+    return this.http.get(`https://api.themoviedb.org/3/person/${person_id}/combined_credits?api_key=${this.tmdb_key}&language=en-US`)
   }
 
   getYTSMovieDetails(id){
@@ -149,33 +180,6 @@ export class MoviesService {
         return element;
       }
 
-// Keeps track of the search page results
-
-  updateSearchData(
-    query ,
-    results ,
-    focusData = {
-      index : undefined ,
-      sectionScroll : 0
-    }){
-    this.searchData.next({
-      query:query,
-      results:results,
-      lastFocused:focusData.index ,
-      sectionScroll : focusData.sectionScroll
-    });
-    console.log(this.searchData.value);
-
-  }
-
-  deleteSearchData(){
-    this.searchData.next({
-      query:"",
-      results:{},
-      lastFocused:undefined ,
-      sectionScroll : 0
-    });
-  }
 
 
 

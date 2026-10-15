@@ -1,0 +1,56 @@
+<div class="adultTitle">
+  <div class="seal" aria-label="Adults only">18+</div>
+
+  <ng-container *ngIf="item">
+    <h1 class="name">{{ item.title }}</h1>
+    <div class="infos">
+      <p class="year" *ngIf="item.year">{{ item.year }}</p>
+      <span class="chip" *ngIf="studio">{{ studio.name }}</span>
+      <span class="chip" *ngIf="details?.runtime">{{ runtime(details.runtime) }}</span>
+      <span class="score" *ngIf="item.rating">{{ provider?.name }} {{ item.rating | number:'1.1-1' }}</span>
+    </div>
+
+    <p class="overview" *ngIf="item.overview">{{ item.overview }}</p>
+
+    <!-- Who's in it -->
+    <div class="cast" *ngIf="performers.length">
+      <div class="performer" *ngFor="let p of performers">
+        <img *ngIf="p.photo" [src]="p.photo" alt="">
+        <span class="initials" *ngIf="!p.photo">{{ initials(p.name) }}</span>
+        <span class="performerName">{{ p.name }}</span>
+      </div>
+      <span class="moreCast" *ngIf="morePerformers">and {{ morePerformers }} more</span>
+    </div>
+
+    <div class="actions">
+      <button class="actionBtn primary focusable" data-action="play">
+        <img src="assets/icons/play.svg" alt="">
+        {{ findingTorrents ? 'Finding torrents…' : 'Play' }}
+      </button>
+      <button class="actionBtn focusable" data-action="releases">
+        <img src="assets/icons/search.svg" alt="">
+        Find releases
+      </button>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="error">
+    <h1 class="name">Title unavailable</h1>
+    <p class="overview">{{ error }}</p>
+    <div class="actions">
+      <button class="actionBtn focusable" data-action="back">Go back</button>
+    </div>
+  </ng-container>
+
+  <section class="moreRow" *ngIf="more.length">
+    <h3 class="sectionTitle">More from {{ studio?.name }}</h3>
+    <div class="slider">
+      <div class="sliderSection">
+        <button *ngFor="let m of more; let i = index" class="card focusable" [attr.data-index]="i">
+          <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
+          <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

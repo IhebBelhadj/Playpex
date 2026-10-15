@@ -1,0 +1,23 @@
+<div class="torrentPicker" *ngIf="request">
+  <div class="panel">
+    <h2 class="title">Choose a torrent</h2>
+    <span class="subtitle">{{request.title}} · {{request.options.length}} {{request.options.length == 1 ? 'source' : 'sources'}}</span>
+
+    <div class="options">
+      <button class="torrentOption" *ngFor="let option of request.options; let i = index" [attr.data-index]="i">
+        <div class="main">
+          <span class="quality">{{option.quality}}</span>
+          <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>
+          <span class="tag recommended" *ngIf="option.recommended">Best match</span>
+        </div>
+        <div class="meta">
+          <span *ngIf="option.size">{{option.size}}</span>
+          <span *ngIf="option.seeds !== undefined">{{option.seeds}} seeds</span>
+          <span *ngIf="option.peers !== undefined">{{option.peers}} peers</span>
+        </div>
+        <div class="name" *ngIf="option.name">{{option.name}}</div>
+        <div class="warning" *ngFor="let warning of option.warnings">{{warning}}</div>
+      </button>
+    </div>
+  </div>
+</div>

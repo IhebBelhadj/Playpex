@@ -113,6 +113,33 @@
             margin-top: 50px;
             position: relative;
 
+            // Mouse hit area: the bar itself is only 3px tall
+            &::before {
+              content: '';
+              position: absolute;
+              left: 0;
+              right: 0;
+              top: -14px;
+              bottom: -14px;
+            }
+
+            // Time under the cursor, while it hovers the timeline
+            .hoverTime {
+              position: absolute;
+              bottom: 16px;
+              left: 0;
+              transform: translateX(-50%);
+              padding: 4px 8px;
+              border-radius: 4px;
+              background: rgba(0, 0, 0, .7);
+              font-family: 'Netflixlt';
+              font-size: 13px;
+              white-space: nowrap;
+              pointer-events: none;
+              opacity: 0;
+              transition: opacity .15s;
+            }
+
             // Buffered range: behind the yellow progress bar
             .buffered {
               position: absolute;
@@ -430,4 +457,8 @@ video::-webkit-media-text-track-display {
   font-family: 'NetflixLt';
   font-size: 120%;
   background-image: #ffffffff;
+}
+
+:host-context(body:not(.pointer-hidden)) .playerPageContainer .timeSlider .slider:hover .hoverTime {
+  opacity: 1;
 }

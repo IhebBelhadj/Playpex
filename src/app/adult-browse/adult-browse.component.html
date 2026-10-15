@@ -1,0 +1,109 @@
+<div class="adultBrowse">
+
+  <!-- Search, filters and the other layout -->
+  <div class="toolbar">
+    <div class="seal" aria-label="Adults only">18+</div>
+    <button class="searchField focusable" [class.empty]="!state.query">
+      <img src="assets/icons/search.svg" alt="">
+      <span class="fieldText">{{ state.query || 'Search titles' }}</span>
+    </button>
+    <button class="filterBtn focusable" [class.active]="state.studio || state.period">
+      <img src="assets/icons/opts.svg" alt="">
+      <span class="fieldText">{{ filterLabel }}</span>
+    </button>
+    <button class="clearAll focusable" *ngIf="filtered">Clear</button>
+    <span class="spacer"></span>
+    <button class="layoutSwitch focusable">
+      <img src="assets/icons/rows.svg" alt="">
+      List view
+    </button>
+  </div>
+
+  <!-- The focused title, laid out like <movie-description> -->
+  <header class="titleInfo" *ngIf="spot && !note">
+    <h1 class="name">{{ spot.title }}</h1>
+    <div class="infos">
+      <p class="year" *ngIf="spot.year">{{ spot.year }}</p>
+      <span class="chip" *ngIf="spot.studio || details?.studio">{{ (details?.studio || spot.studio).name }}</span>
+      <span class="chip" *ngIf="details?.runtime">{{ runtime(details.runtime) }}</span>
+      <span class="score" *ngIf="spot.rating">{{ provider?.name }} {{ spot.rating | number:'1.1-1' }}</span>
+    </div>
+    <p class="performers" *ngIf="performers">{{ performers }}</p>
+    <p class="overview" *ngIf="spot.overview">{{ spot.overview }}</p>
+  </header>
+
+  <header class="titleInfo" *ngIf="note">
+    <h1 class="name">{{ loadError ? '18+ catalog unavailable' : 'No titles' }}</h1>
+    <p class="note">{{ note }}</p>
+    <button class="actionBtn retryBtn focusable" *ngIf="loadError">Try again</button>
+  </header>
+
+  <header class="titleInfo" *ngIf="!spot && !note && loading">
+    <p class="note">Loading {{ provider?.name || 'the catalog' }}…</p>
+  </header>
+
+  <!-- Category-style rows, like the movies page -->
+  <div class="sliderContainer" *ngIf="state.rows.length && !loadError">
+    <div class="overlay"></div>
+    <div class="content">
+      <div class="section atStart" *ngFor="let row of state.rows; let r = index; trackBy: trackRow" [attr.data-row]="row.key">
+        <h3 class="sectionTitle">{{ row.title }}</h3>
+        <div class="slider pagedRow">
+          <div class="sliderSection">
+            <button *ngFor="let item of row.items; let i = index; trackBy: trackItem" class="card focusable"
+              [attr.data-key]="row.key + ':' + item.id"
+              [attr.data-row]="row.key"
+              [attr.data-index]="i"
+              [attr.data-sn-up]="neighbour(r, -1)"
+              [attr.data-sn-down]="neighbour(r, 1)">
+              <img *ngIf="item.poster" [src]="item.poster" alt="" loading="lazy">
+              <span class="fallbackTitle" *ngIf="!item.poster">{{ item.title }}</span>
+            </button>
+          </div>
+          <div class="rowPaddle prev" (click)="pageRow(row.key, -1)">
+            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+          </div>
+          <div class="rowPaddle next" (click)="pageRow(row.key, 1)">
+            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters: studio and release period, applied together -->
+<div class="filterPanel" *ngIf="panel == 'filters'">
+  <div class="panelBody">
+    <h2 class="panelTitle">Filter titles</h2>
+
+    <h3 class="groupTitle">Studio</h3>
+    <div class="studioGrid">
+      <button class="studioChip focusable" [class.selected]="!draftStudio" data-studio="">All studios</button>
+      <button *ngFor="let s of studios" class="studioChip focusable"
+        [class.selected]="draftStudio?.id == s.id" [attr.data-studio]="s.id">{{ s.name }}</button>
+    </div>
+
+    <h3 class="groupTitle">Released</h3>
+    <div class="periodRow">
+      <button *ngFor="let p of periods" class="studioChip focusable"
+        [class.selected]="draftPeriod == p.id" [attr.data-period]="p.id">{{ p.label }}</button>
+    </div>
+
+    <div class="panelActions">
+      <button class="actionBtn primary focusable" data-panel="apply">Show titles</button>
+      <button class="actionBtn focusable" data-panel="reset">Reset filters</button>
+    </div>
+  </div>
+</div>
+
+<text-keyboard *ngIf="panel == 'keyboard'"
+  title="Search 18+ titles"
+  placeholder="Title, studio or series"
+  [value]="state.query"
+  [maxLength]="60"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="onSearchCancelled()">
+</text-keyboard>

@@ -10,6 +10,7 @@ export class BackgroundService {
 
   constructor() { }
 
+  // url: a TMDB image path ("/abc.jpg") or a full image URL
   sendImage(url: string) {
     if(!this.previousUrl){
       this.previousUrl = url;

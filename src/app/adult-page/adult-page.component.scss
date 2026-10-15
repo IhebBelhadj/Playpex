@@ -1,0 +1,480 @@
+// The 18+ section. Same materials as the rest of the app (Netflix Sans, white
+// focus, translucent black keys/chips); what sets it apart is a darker, wine
+// tinted backdrop (no TMDB artwork here) and the seed count as the headline of
+// every release: the list is ranked by it.
+$ink: #fff;
+$muted: rgba(255, 255, 255, .62);
+$faint: rgba(255, 255, 255, .38);
+$wine: #C2405F;
+$chipBg: rgba(0, 0, 0, .56);
+$rowH: 92px;          // + 12px gap = ROW_HEIGHT in the component
+
+// Flex item of .masterContainer next to the menu
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+
+  // Covers the shell's blurred backdrop (the last movie's): inside the
+  // .masterContainer stacking context, under the menu and the page
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 60% at 85% 0%, rgba(120, 32, 58, .28) 0%, rgba(120, 32, 58, 0) 70%),
+      linear-gradient(38deg, #000 0%, #0e0b0c 45%, #23161b 100%);
+  }
+}
+
+.adultPage {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 48px;
+  height: 100vh;
+  padding: 0 60px 0 35px;
+  color: $ink;
+}
+
+// ── left rail ───────────────────────────────────────────────────────────────
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 48px;
+}
+
+.seal {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 40px;
+  border: 2px solid $wine;
+  border-radius: 12px;
+  color: $wine;
+  font-family: 'NetflixBd';
+  font-size: 21px;
+  letter-spacing: -.5px;
+}
+
+.searchField {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 54px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: $chipBg;
+  color: $ink;
+  font-family: 'NetflixBk';
+  font-size: 18px;
+  text-align: left;
+  transition: transform .2s, background .2s;
+
+  img {
+    width: 20px;
+    filter: invert(1);
+    opacity: .8;
+  }
+
+  .searchText {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.empty .searchText {
+    color: $faint;
+  }
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+    transform: scale(1.04);
+
+    img { filter: none; }
+    &.empty .searchText { color: rgba(20, 20, 20, .55); }
+  }
+}
+
+.clearSearch {
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 15px;
+  transition: all .2s;
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+  }
+}
+
+.groupTitle {
+  margin: 38px 0 14px;
+  font-family: 'NetflixBk';
+  font-weight: normal;
+  font-size: 15px;
+  color: $muted;
+}
+
+// Same chips as the search page's filters
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 20px;
+  background: $chipBg;
+  color: rgba(255, 255, 255, .7);
+  font-family: 'NetflixBk';
+  font-size: 15px;
+  transition: all .2s;
+
+  &.selected {
+    color: $ink;
+    background: rgba(255, 255, 255, .14);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+  }
+
+  &.focused {
+    background: $ink;
+    color: #000;
+    box-shadow: none;
+    scale: 1.08;
+  }
+}
+
+// As the profile editor's kids switch
+.playableToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  margin-top: 38px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 8px;
+  background: $chipBg;
+  color: $ink;
+  text-align: left;
+  transition: all .2s;
+
+  .toggleText {
+    font-family: 'NetflixBk';
+    font-size: 16px;
+  }
+
+  .toggleHint {
+    display: block;
+    margin-top: 4px;
+    font-family: 'NetflixLt';
+    font-size: 13px;
+    color: $faint;
+  }
+
+  .switch {
+    position: relative;
+    flex: none;
+    width: 46px;
+    height: 26px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .22);
+    transition: background .2s;
+
+    .knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: $ink;
+      transition: transform .2s;
+    }
+
+    &.on {
+      background: $wine;
+      .knob { transform: translateX(20px); }
+    }
+  }
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+
+    .toggleHint { color: rgba(20, 20, 20, .6); }
+    .switch:not(.on) { background: rgba(0, 0, 0, .25); }
+  }
+}
+
+// Back to the poster layout: quiet, at the bottom of the rail
+.layoutSwitch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: 44px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 15px;
+  transition: all .2s;
+
+  img {
+    width: 18px;
+    filter: invert(1);
+    opacity: .7;
+  }
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+
+    img { filter: none; opacity: 1; }
+  }
+}
+
+// ── releases ────────────────────────────────────────────────────────────────
+
+.releases {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  padding-top: 48px;
+}
+
+.listHeader {
+  padding-right: 150px;     // the shell's clock
+}
+
+.heading {
+  margin: 0;
+  font-family: 'NetflixBd';
+  font-weight: normal;
+  font-size: 2.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.count {
+  margin: 10px 0 0;
+  font-family: 'NetflixLt';
+  font-size: 17px;
+  color: $muted;
+}
+
+.listNote {
+  margin-top: 40px;
+
+  p {
+    max-width: 620px;
+    margin: 0;
+    font-family: 'NetflixBk';
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: $muted;
+  }
+}
+
+.retryBtn {
+  margin-top: 24px;
+  padding: 12px 30px;
+  border: 1px solid #808080;
+  background: transparent;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 17px;
+  transition: all .15s;
+
+  &.focused {
+    background: $ink;
+    border-color: $ink;
+    color: #141414;
+  }
+}
+
+.releasesViewport {
+  flex: 1;
+  min-height: 0;
+  margin-top: 30px;
+  // the focused row grows a little: keep it whole at the edges
+  padding: 6px 12px 0 6px;
+  margin-left: -6px;
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 90px), transparent 100%);
+}
+
+.releaseList {
+  margin: 0;
+  padding: 0 0 120px;
+  list-style: none;
+  transition: transform .25s;
+
+  li {
+    height: $rowH;
+    margin-bottom: 12px;
+  }
+}
+
+.release {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 26px;
+  width: 100%;
+  height: 100%;
+  padding: 0 22px 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .38);
+  color: $ink;
+  text-align: left;
+  transition: transform .2s, background .2s;
+
+  &.quiet {
+    opacity: .55;
+  }
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+    opacity: 1;
+    transform: scale(1.015);
+
+    .seedLabel, .releaseMeta, .releaseName { color: rgba(20, 20, 20, .6); }
+    .seedMeter { background: rgba(0, 0, 0, .12); }
+    .seedMeter span { background: #141414; }
+    .tag { background: rgba(0, 0, 0, .08); color: #141414; }
+    .tag.warn { color: #8a1c38; }
+  }
+}
+
+// The headline of each row: how many people share it (= how well it streams)
+.seeds {
+  display: flex;
+  flex-direction: column;
+}
+
+.seedCount {
+  font-family: 'NetflixBd';
+  font-size: 34px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.5px;
+}
+
+.seedLabel {
+  margin-top: 4px;
+  font-family: 'NetflixLt';
+  font-size: 13px;
+  color: $faint;
+}
+
+.seedMeter {
+  height: 3px;
+  margin-top: 9px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .12);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .85);
+  }
+}
+
+.releaseInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.releaseTitle {
+  font-family: 'NetflixBk';
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.releaseMeta {
+  display: flex;
+  gap: 16px;
+  margin-top: 6px;
+  font-family: 'NetflixLt';
+  font-size: 14px;
+  color: $muted;
+  white-space: nowrap;
+  overflow: hidden;
+
+  .studio {
+    font-family: 'NetflixBk';
+  }
+}
+
+// the raw release name, for people who read those
+.releaseName {
+  margin-top: 5px;
+  font-family: 'NetflixLt';
+  font-size: 12px;
+  color: $faint;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.releaseTags {
+  display: flex;
+  gap: 8px;
+}
+
+.tag {
+  padding: 6px 9px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .08);
+  font-family: 'NetflixBk';
+  font-size: 13px;
+  white-space: nowrap;
+
+  &.quality {
+    font-family: 'NetflixBd';
+  }
+
+  &.warn {
+    background: none;
+    color: #e88aa1;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+}
+
+.moreNote {
+  font-family: 'NetflixLt';
+  color: $faint;
+  margin: 0 0 0 20px;
+}

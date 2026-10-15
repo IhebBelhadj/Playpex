@@ -1,0 +1,14 @@
+<div class="textKeyboard">
+  <p class="panelTitle" *ngIf="title">{{ title }}</p>
+  <div class="textDisplay" [class.empty]="!value">{{ value || placeholder }}<span class="caret"></span></div>
+  <div class="keyGrid">
+    <button *ngFor="let k of letters" class="key" [attr.data-key]="k">{{ k }}</button>
+    <button *ngFor="let k of digits" class="key" [attr.data-key]="k">{{ k }}</button>
+  </div>
+  <div class="keyRow">
+    <button class="key wide" data-key="space"><img src="assets/icons/spacebar.svg" alt="Space"></button>
+    <button class="key wide" data-key="del"><img src="assets/icons/keyboardDelete.svg" alt="Delete"></button>
+    <button class="key wide" data-key="clear">Clear</button>
+    <button class="key wide primary" data-key="done">{{ doneLabel }}</button>
+  </div>
+</div>

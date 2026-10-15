@@ -1,0 +1,124 @@
+.pinPad {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, .92);
+  backdrop-filter: blur(6px);
+}
+
+.pinPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pinAvatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  margin-bottom: 28px;
+}
+
+.pinTitle {
+  font-family: 'NetflixBd';
+  font-size: 34px;
+  margin: 0;
+}
+
+.pinSubtitle {
+  font-family: 'Netflixlt';
+  font-size: 18px;
+  color: #b3b3b3;
+  margin: 12px 0 0;
+}
+
+.pinBoxes {
+  display: flex;
+  gap: 16px;
+  margin-top: 40px;
+
+  &.shake {
+    animation: shake .35s;
+  }
+}
+
+.pinBox {
+  width: 72px;
+  height: 72px;
+  border: 2px solid #5a5a5a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color .15s, transform .15s;
+
+  &.current {
+    border-color: #fff;
+    transform: scale(1.06);
+  }
+
+  &.filled {
+    border-color: #8c8c8c;
+  }
+
+  .dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+}
+
+.pinError {
+  min-height: 24px;
+  margin: 18px 0 10px;
+  font-family: 'NetflixBk';
+  font-size: 17px;
+  color: #ff6f6f;
+}
+
+.pinKeys {
+  display: grid;
+  grid-template-columns: repeat(3, 96px);
+  gap: 12px;
+}
+
+.pinKey {
+  height: 64px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .08);
+  color: #e5e5e5;
+  font-family: 'NetflixBk';
+  font-size: 26px;
+  transition: transform .1s, background .1s;
+
+  &.textKey {
+    font-size: 16px;
+  }
+
+  img {
+    width: 30px;
+    filter: invert(1);
+    opacity: .85;
+  }
+
+  &.focused {
+    background: #fff;
+    color: #141414;
+    transform: scale(1.08);
+
+    img {
+      filter: none;
+    }
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-10px); }
+  40%, 80% { transform: translateX(10px); }
+}

@@ -1,5 +1,5 @@
 <div class="playerPageContainer">
-  <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted></video>
+  <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted (click)="onVideoClick()"></video>
   <img src="assets/icons/loading.svg" class="loading" >
   <div class="loadingStats" *ngIf="!playerReady || buffering">
     <span class="stage">{{
@@ -27,8 +27,10 @@
           <span class="infos" *ngIf="!playback?.subtitle">{{year}} . {{runtime?.hh}} hr {{runtime?.min}} min</span>
         </div>
         <div class="timeSlider">
-          <div class="slider">
+          <div class="slider" data-pointer="own"
+            (click)="onTimelineClick($event)" (mousemove)="onTimelineHover($event)">
             <div class="buffered"></div>
+            <span class="hoverTime"></span>
             <button class="progress controlsElem"
               data-sn-down =".playerPageContainer .playBtn">
 

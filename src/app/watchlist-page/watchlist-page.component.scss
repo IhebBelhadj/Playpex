@@ -1,0 +1,243 @@
+// Mirrors the movies page (movies-page + movie-description + movies-slider) so
+// the watch list reads as one more section of the app. Amber is reserved for
+// "how far you are".
+$ink: #fff;
+$muted: rgba(255, 255, 255, .62);
+$amber: #FFC107;
+$track: rgba(255, 255, 255, .22);
+
+// Flex item of .masterContainer next to the menu: without min-width 0 it grows
+// to its widest row and rows can't scroll
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.libraryPage {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100vh;
+  padding-left: 35px;
+}
+
+// ── title info (as <movie-description>; not called .description: the menu hides every .description in the document) ────────────────────────────────────
+
+.titleInfo {
+  padding-top: 40px;
+}
+
+.name {
+  font-family: 'NetflixBd';
+  font-weight: normal;
+  font-size: 2.8rem;
+  margin: .67em 0 0;
+  max-width: 800px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.infos {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 10px 0 15px;
+}
+
+// The rest mirrors movie-description: year, chips, score, genres, overview
+.year {
+  font-family: 'Netflixlt';
+  font-size: 22px;
+  margin: 0;
+}
+
+.chip {
+  font-family: 'Netflixlt';
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 5px;
+  background: #1d1d1d9e;
+  opacity: .8;
+}
+
+.score {
+  font-family: 'NetflixBk';
+  padding: 7px;
+  border-radius: 5px;
+  background: #1515152e;
+  opacity: .9;
+}
+
+.categories {
+  font-family: 'Netflixlt';
+  opacity: .6;
+}
+
+// Where this profile is with the title
+.status {
+  font-family: 'NetflixBk';
+  font-size: 19px;
+  margin: 20px 0 0;
+}
+
+.overview {
+  max-width: 700px;
+  font-family: 'NetflixBk';
+  font-size: 1.2rem;
+  line-height: 36px;
+  letter-spacing: 1px;
+  opacity: .62;
+  margin: 22px 0 0;
+}
+
+.note {
+  max-width: 640px;
+  font-family: 'NetflixBk';
+  font-size: 1.2rem;
+  line-height: 1.7;
+  color: $muted;
+  margin: 18px 0 0;
+}
+
+// The one accent: how far into it you are
+.progressLine {
+  width: 440px;
+  height: 4px;
+  margin-top: 10px;
+  background: $track;
+
+  span {
+    display: block;
+    height: 100%;
+    background: $amber;
+    transition: width .3s ease;
+  }
+}
+
+.actionBtn {
+  margin-top: 28px;
+  padding: 12px 30px;
+  border: 1px solid #808080;
+  background: transparent;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 17px;
+  transition: all .15s;
+
+  &.focused {
+    background: $ink;
+    border-color: $ink;
+    color: #141414;
+  }
+}
+
+// ── rows (as movies-slider) ─────────────────────────────────────────────────
+
+.sliderContainer {
+  // Clip both ways: posters scrolled off to the left must not show over the
+  // menu (collapsed or expanded). The margin keeps the focused poster's zoom
+  // (1.1 → 9px each side) whole while the previous poster (10px gap) stays hidden
+  overflow: clip;
+  overflow-clip-margin: 10px;
+  height: 370px;
+  position: relative;
+
+  .overlay {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 250px;
+    pointer-events: none;
+    background: linear-gradient(0deg, rgba(19, 19, 19, 1) 0%, rgba(143, 143, 143, 0) 50%);
+  }
+
+  .content {
+    position: relative;
+    transition: all .25s;
+  }
+}
+
+.sectionTitle {
+  font-family: 'FuturaLt';
+  font-weight: normal;
+  font-size: 16px;
+  opacity: .8;
+}
+
+.sliderSection {
+  display: flex;
+  margin-bottom: 20px;
+  transition: all .2s;
+}
+
+.card {
+  position: relative;
+  flex: none;
+  width: 180px;
+  height: 270px;
+  margin-right: 10px;
+  padding: 0;
+  border: none;
+  opacity: .75;
+  background: rgba(103, 103, 103, .35);
+  transition: all .2s;
+
+  img {
+    display: block;
+    width: 180px;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(.6);
+  }
+
+  &.focused {
+    transform: scale(1.1);
+    opacity: 1;
+    z-index: 1;
+
+    img {
+      filter: saturate(1);
+    }
+  }
+}
+
+// Continue watching: progress along the poster's bottom edge
+.cardProgress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, .55);
+
+  span {
+    display: block;
+    height: 100%;
+    background: $amber;
+  }
+}
+
+.fallbackTitle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  font-family: 'NetflixBk';
+  font-size: 16px;
+  color: $muted;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .sliderSection,
+  .sliderContainer .content,
+  .progressLine span {
+    transition: none;
+  }
+}
