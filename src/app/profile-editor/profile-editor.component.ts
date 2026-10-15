@@ -10,11 +10,6 @@ type Panel = null | 'keyboard' | 'avatars' | 'pin' | 'confirmDelete';
 
 // Overlay panels and their navigation sections (restrict self-only while open).
 // The name keyboard (<text-keyboard>) and the PIN pad own their sections.
-const PANEL_SECTIONS = {
-  avatars: { id: 'avatarChooser', selector: '.avatarPanel .focusable' },
-  confirmDelete: { id: 'confirmDelete', selector: '.confirmPanel .focusable' },
-};
-
 const NAME_MAX = 30;
 
 // /profiles/new and /profiles/:id/edit. Changes are kept locally and sent on
@@ -83,19 +78,16 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     }
   }
 
+  // Sections `profileEditor`, `avatarChooser` and `confirmDelete` are
+  // pxSection directives in the template (the panels' are traps)
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'profileEditor',
-      selector: '.profileEditor .editorContent .focusable',
-      restrict: 'self-only',
-    });
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       if (!this.router.url.startsWith('/profiles/') || this.saving) return;
       // the PIN pad and the keyboard handle their own keys
       if (this.panel == 'pin' || this.panel == 'keyboard') return;
 
-      if (instruction == 'back') {
+      if (instruction == 'back' || instruction == 'leave') {
         if (this.panel) this.closePanel();
         else this.cancel();
         return;
@@ -113,8 +105,6 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnDestroy(): void {
     this.navSub?.unsubscribe();
-    this.navigation.updateNavigation('remove', { sectionId: 'profileEditor' });
-    Object.values(PANEL_SECTIONS).forEach(s => this.navigation.updateNavigation('remove', { sectionId: s.id }));
     this.menuService.sendInstruction('show', this);
   }
 
@@ -158,16 +148,12 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null, focusSelector:string) {
     this.panel = panel;
     this.returnFocus = returnFocus;
-    let section = PANEL_SECTIONS[panel];
     setTimeout(() => {
-      this.navigation.updateNavigation('add', { id: section.id, selector: section.selector, restrict: 'self-only' });
       (document.querySelector(focusSelector) as HTMLElement)?.focus({ preventScroll: true });
     }, 0);
   }
 
   closePanel() {
-    let section = PANEL_SECTIONS[this.panel];
-    if (section) this.navigation.updateNavigation('remove', { sectionId: section.id });
     let returnTo = this.panel == 'confirmDelete' ? '[data-action="delete"]' : null;
     this.panel = null;
     if (returnTo) this.focus(returnTo);

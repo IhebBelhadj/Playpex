@@ -1,26 +1,35 @@
-<div class="optionsMasterContainer">
-  <div class="optionPannel">
-    <button class="option focusable play lastSelected" data-sn-down =".casts .lastSelected">
+<!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
+     cast row, the similar titles row -->
+<div class="optionsMasterContainer" pxSection="options" [leaveFor]="{ left: '@menu' }">
+  <div class="optionPannel" pxGrid>
+    <button class="option focusable play" pxItem pxItemKey="play">
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
       </div>
       <span>{{ findingTorrents ? 'Finding torrents…' : resumeLabel || 'Play' }}</span>
     </button>
-    <button class="option focusable trailer" data-sn-down =".casts .lastSelected">
+    <button class="option focusable trailer" pxItem pxItemKey="trailer">
       <div class="imgContainer">
         <img src="assets/icons/trailer.svg" alt="">
       </div>
       <span>Trailer</span>
     </button>
+    <!-- every source's releases of this movie, not only YTS' -->
+    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+      <div class="imgContainer">
+        <img src="assets/icons/search.svg" alt="">
+      </div>
+      <span>Find releases</span>
+    </button>
     <!-- 18+ titles never go in the profile's library -->
     <ng-container *ngIf="!isAdult">
-    <button class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down =".casts .lastSelected">
+    <button class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
       </div>
       <span>{{ inWatchlist ? 'In your watch list' : 'Add to watch list' }}</span>
     </button>
-    <button class="option focusable addWatched" [class.on]="watched" data-sn-down =".casts .lastSelected">
+    <button class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched">
       <div class="imgContainer">
         <img [src]="watched ? 'assets/icons/tick.svg' : 'assets/icons/mark.svg'" alt="">
       </div>
@@ -29,17 +38,14 @@
     </ng-container>
   </div>
 
-  <div class="casts">
+  <div class="casts" pxStackItem>
     <h3 class="sectionTitle">cast</h3>
-    <div class="castSlider">
+    <div class="castSlider" pxRow="cast" align="third">
       <div class="content">
         <div class="cast" *ngFor="let cast of casts ; let i=index" >
-          <button class="displayedElem focusable"
+          <button class="displayedElem focusable" pxItem [pxItemKey]="cast.credit_id"
           *ngIf="cast.profile_path"
-          [attr.data-index]="i"
-          data-sn-down =".similar .lastSelected"
-          data-sn-up =".optionPannel .lastSelected"
-          >
+          [attr.data-index]="i">
             <div class="imgContainer">
               <img src="{{profileImgBase + cast?.profile_path}}" alt="">
             </div>
@@ -52,17 +58,15 @@
     </div>
   </div>
 
-  <div class="similar">
+  <div class="similar" pxStackItem>
     <h3 class="sectionTitle">Similar titles to watch</h3>
-    <div class="movieSlider">
+    <div class="movieSlider" pxRow="similar" align="third">
       <div class="content">
         <div class="movie" *ngFor="let movie of similar; let i=index">
-          <button class="displayedElem focusable"
+          <button class="displayedElem focusable" pxItem [pxItemKey]="movie.id"
             *ngIf="movie.poster_path && movie.original_language == 'en'"
             [attr.data-index]="i"
-            [attr.data-id]="movie.id"
-            data-sn-up =".casts .lastSelected"
-            >
+            [attr.data-id]="movie.id">
               <div class="imgContainer">
                 <img src="{{profileImgBase + movie?.poster_path}}" alt="">
               </div>

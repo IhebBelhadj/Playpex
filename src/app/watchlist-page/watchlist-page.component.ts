@@ -112,8 +112,12 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
       if (this.router.url != '/watchlist') return;
       let active = document.activeElement as HTMLElement;
 
+      if (instruction == 'leave') {
+        this.navigation.openPowerMenu();
+        return;
+      }
       if (instruction == 'back') {
-        if (active.classList.contains('menuItem')) this.router.navigateByUrl('/movies/list');
+        if (active.classList.contains('menuItem')) this.navigation.openPowerMenu();
         else (document.querySelector('[data-destination="watchPage"]') as HTMLElement)?.focus({ preventScroll: true });
         return;
       }

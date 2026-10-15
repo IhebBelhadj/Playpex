@@ -37,7 +37,7 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
     setTimeout(() => (document.querySelector('.textKeyboard [data-key="A"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction == 'back') {
+      if (instruction == 'back' || instruction == 'leave') {
         this.cancelled.emit();
         return;
       }
@@ -49,7 +49,12 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
 
     this.keyListener = (e:KeyboardEvent) => {
       if (e.key == 'Backspace') this.press('del');
-      else if (e.key.length == 1 && /[\p{L}\p{N} '\-&.]/u.test(e.key)) this.append(e.key);
+      else if (e.key.length == 1 && /[\p{L}\p{N} '\-&.]/u.test(e.key)) {
+        // typed, not pressed on screen: space would also "click" the
+        // focused key button
+        e.preventDefault();
+        this.append(e.key);
+      }
     };
     document.addEventListener('keydown', this.keyListener);
   }

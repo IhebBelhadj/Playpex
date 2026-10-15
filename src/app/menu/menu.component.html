@@ -4,13 +4,8 @@
     <img src="assets/icons/logo.svg" alt="">
   </div>
 
-  <div class="tabs">
-    <button *ngIf="profile" class="tabGroup element menuItem profileItem" data-destination="profiles">
-      <div class="inner">
-        <img class="profileAvatar" [src]="avatarUrl(profile.avatar)" alt="">
-        <span class="description">{{ profile.name }}</span>
-      </div>
-    </button>
+  <!-- Places to browse, centered -->
+  <div class="tabs sections">
     <button class="tabGroup element menuItem" data-destination="searchPage">
       <div class="inner">
         <img src="assets/icons/search.svg" alt="">
@@ -45,6 +40,17 @@
       <div class="inner">
         <img src="assets/icons/settings.svg" alt="">
         <span class="description">Settings</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- Who's watching, anchored at the bottom like an account control: Enter
+       switches profile -->
+  <div class="tabs account" *ngIf="profile">
+    <button class="tabGroup element menuItem profileItem" data-destination="profiles">
+      <div class="inner">
+        <img class="profileAvatar" [src]="avatarUrl(profile.avatar)" alt="">
+        <span class="description">{{ profile.name }}</span>
       </div>
     </button>
   </div>

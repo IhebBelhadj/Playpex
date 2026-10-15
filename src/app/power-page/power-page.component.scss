@@ -6,7 +6,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  z-index: 15;
+  // over the page, under the shell's Back button (z 7)
+  z-index: 6;
   padding-top: 50px;
 
   .powerSection {

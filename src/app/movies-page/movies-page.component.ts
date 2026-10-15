@@ -2,13 +2,18 @@ import { SplashService } from './../splash.service';
 import { NavigationService } from './../navigation.service';
 import { MoviesService } from './../movies.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { switchMap, Subscription, map, Observable } from 'rxjs';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { switchMap, Subscription, map, Observable, filter } from 'rxjs';
 import { Catalog } from '../catalog';
+import { Category } from '../categories';
+import { FocusEngine } from '../movement/movement';
+import { ImdbService } from '../imdb.service';
 
 // Home page of a section (movies or TV shows, from route data `media`):
 // loads the category rows into the section's Catalog and enriches the
-// focused item for <movie-description>.
+// focused item for <movie-description>. On the list page, a search bar above
+// searches the section (TMDB): one row of results stands in for the rows
+// (Catalog.startSearch / endSearch) until Clear.
 @Component({
   selector: 'movies-page',
   templateUrl: './movies-page.component.html',
@@ -20,16 +25,49 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   selectedMovie;
   selectedMovieSub:Subscription;
   pageRequestSub:Subscription;
+  routeSub:Subscription;
+  navSub:Subscription;
+  onList = false;
+  onEpisode = false;
+  toolbarExits = {};
 
   constructor(
     private moviesService:MoviesService,
     private navigation:NavigationService,
     private splashService:SplashService,
     private route:ActivatedRoute,
+    private router:Router,
+    private engine:FocusEngine,
+    private imdb:ImdbService,
   ) { }
+
+  get searchHint():string {
+    return this.catalog.media == 'tv' ? 'Search TV shows' : 'Search movies';
+  }
 
   ngOnInit(): void {
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
+
+    // the search bar: list page only; down → the rows (remembered poster)
+    this.toolbarExits = {
+      left: '@menu',
+      down: this.engine.target([`stack:catalog:${this.catalog.media}`, '@slider']),
+    };
+    this.onList = this.router.url == this.catalog.listUrl;
+    this.onEpisode = this.router.url.includes('/episode/');
+    this.routeSub = this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe(() => {
+        this.onList = this.router.url == this.catalog.listUrl;
+        this.onEpisode = this.router.url.includes('/episode/');
+      });
+
+    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
+      if (instruction != 'click' || this.router.url != this.catalog.listUrl || this.catalog.typing) return;
+      let active = document.activeElement as HTMLElement;
+      if (active.classList.contains('searchField')) this.catalog.typing = true;
+      else if (active.classList.contains('clearSearch')) this.clearSearch();
+    });
 
     // Coming from the other section: don't describe its last item here
     let selected = this.moviesService.selectedmovie.value;
@@ -47,12 +85,6 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
       this.catalog.categories.forEach(c => {
         this.getMovies(c.name , c.query);
         this.catalog.reachedPages[c.name] = 1;
-
-        // initialize slider navigation data
-        this.catalog.navigationData[c.name] = {
-          reached : '0',
-          selected : false
-        }
       })
 
       this.splashService.splashExecuteCommand().subscribe(instruction=>{
@@ -81,6 +113,44 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   ngOnDestroy(): void {
     this.selectedMovieSub.unsubscribe();
     this.pageRequestSub.unsubscribe();
+    this.routeSub?.unsubscribe();
+    this.navSub?.unsubscribe();
+    this.catalog.typing = false;
+  }
+
+  // ── search ──────────────────────────────────────────────────────────────
+
+  onSearchDone(query:string) {
+    this.catalog.typing = false;
+    query = query.trim();
+    if (!query) this.clearSearch();
+    else if (query != this.catalog.search?.query) this.search(query);
+    this.focusSearchField();
+  }
+
+  onSearchCancelled() {
+    this.catalog.typing = false;
+    this.focusSearchField();
+  }
+
+  // One row of TMDB search results (paged like the rows, by the slider)
+  private search(query:string) {
+    let kind = this.catalog.media == 'tv' ? 'tv' : 'movie';
+    let category = new Category(`Results for “${query}”`, {
+      url: `https://api.themoviedb.org/3/search/${kind}?api_key=<<api_key>>&language=en-US&include_adult=false`,
+      params: { query, page: 1 },
+    });
+    this.catalog.startSearch(query, category);
+    this.getMovies(category.name, category.query);
+  }
+
+  private clearSearch() {
+    this.catalog.endSearch();
+    this.focusSearchField();
+  }
+
+  private focusSearchField() {
+    setTimeout(() => (document.querySelector('.sectionToolbar .searchField') as HTMLElement)?.focus({ preventScroll: true }), 0);
   }
 
   subscribeToSelections(){
@@ -124,23 +194,41 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     )
   }
 
-  // TMDB genres, season count and score (episodes are loaded on the show page)
+  // TMDB genres, season count and score, then the IMDb rating (episodes are
+  // loaded on the show page)
   enrichShow(id):Observable<any> {
+    let show = this.selectedMovie;
     return this.moviesService.getTvDetails(id).pipe(
       map(data => {
-        this.selectedMovie.genres = data['genres'];
-        this.selectedMovie.number_of_seasons = data['number_of_seasons'];
-        this.selectedMovie.imdb_id = data['external_ids']?.['imdb_id'];
+        show.genres = data['genres'];
+        show.number_of_seasons = data['number_of_seasons'];
+        show.imdb_id = data['external_ids']?.['imdb_id'];
+        this.moviesService.assignSelection(show);
+        return show.imdb_id;
+      }),
+      switchMap(imdbId => this.imdb.title(imdbId)),
+      map(rating => {
+        if (rating?.rating) show.rating = rating.rating;
       })
     )
   }
 
   getMovies(category:string , query){
+    // the rows asked for: a page arriving after a search started (or ended)
+    // still lands in its own rows
+    let items = this.catalog.items.value;
+    let search = this.catalog.search;
     this.moviesService.getMovies(query).subscribe(res => {
-      // append the new page to the row (or start it)
-      let items = this.catalog.items.value;
-      items[category] = (items[category] || []).concat(res['results']);
+      // append the new page to the row (or start it); search results without
+      // a poster can't be shown in a row of posters
+      let results = search ? (res['results'] || []).filter(r => r['poster_path']) : res['results'];
+      let first = !(items[category] || []).length;
+      items[category] = (items[category] || []).concat(results);
+      if (search) search.loaded = true;
+      if (items !== this.catalog.items.value) return;
       this.catalog.items.next(items);
+      // new results: the first one is described until a poster is focused
+      if (search && first && results.length) this.catalog.select(results[0]['id'], category, '0');
     })
   }
 

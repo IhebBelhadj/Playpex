@@ -88,11 +88,12 @@ function searchAdult(title) {
   });
 }
 
-// The 18+ section's list: category XXX, most seeded first, 50 per page.
-// keywords: optional search words (the quality filter adds e.g. "1080p" so
-// pages aren't emptied by filtering afterwards)
-function browseAdult(keywords, page) {
-  var filters = 'order:-se:category:XXX';
+// A release list (releases.js): one category ('XXX', 'Movies', 'TV' — the
+// site's `c` values), most seeded first, 50 per page.
+// keywords: optional search words (never the resolution: the site then ranks
+// by name, not by seeders)
+function browse(keywords, category, page) {
+  var filters = 'order:-se:category:' + category;
   var words = String(keywords || '').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
   if (words) {
     filters = 'keywords:' + encodeURIComponent(words) + ':' + filters;
@@ -106,10 +107,13 @@ function browseAdult(keywords, page) {
       timeout: 15000
     }).then(function (res) {
       var data = res.data || {};
+      if (!Array.isArray(data.results)) {
+        throw new Error('TheRARBG: unexpected answer');
+      }
       return {
-        results: (data.results || [])
+        results: data.results
           .filter(function (r) {
-            return r.h && r.c === 'XXX';
+            return r.h && r.c === category;
           })
           .map(function (r) {
             var hash = r.h.toLowerCase();
@@ -137,9 +141,15 @@ function browseAdult(keywords, page) {
   return attempt();
 }
 
+// The 18+ section's list: category XXX
+function browseAdult(keywords, page) {
+  return browse(keywords, 'XXX', page);
+}
+
 module.exports = {
   name: 'TheRARBG',
   search: search,
   searchAdult: searchAdult,
+  browse: browse,
   browseAdult: browseAdult
 };

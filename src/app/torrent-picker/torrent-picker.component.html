@@ -1,10 +1,11 @@
-<div class="torrentPicker" *ngIf="request">
+<div class="torrentPicker" *ngIf="request" pxSection="torrentPicker" [trap]="true">
   <div class="panel">
     <h2 class="title">Choose a torrent</h2>
     <span class="subtitle">{{request.title}} · {{request.options.length}} {{request.options.length == 1 ? 'source' : 'sources'}}</span>
 
-    <div class="options">
-      <button class="torrentOption" *ngFor="let option of request.options; let i = index" [attr.data-index]="i">
+    <!-- a one-column pxGrid: scrolls natively (src/app/movement) -->
+    <div class="options" pxGrid>
+      <button class="torrentOption" pxItem *ngFor="let option of request.options; let i = index" [attr.data-index]="i">
         <div class="main">
           <span class="quality">{{option.quality}}</span>
           <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>

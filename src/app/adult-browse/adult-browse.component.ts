@@ -138,7 +138,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       if (this.router.url != '/adult/browse' || this.panel == 'keyboard') return;
       let active = document.activeElement as HTMLElement;
-      if (instruction == 'back') this.back(active);
+      if (instruction == 'leave') this.panel == 'filters' ? this.closeFilters() : this.navigation.openPowerMenu();
+      else if (instruction == 'back') this.back(active);
       else if (instruction == 'click') this.select(active);
     });
 
@@ -182,7 +183,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.panel == 'filters') {
       this.closeFilters();
     } else if (active.classList.contains('menuItem')) {
-      this.router.navigateByUrl('/movies/list');
+      this.navigation.openPowerMenu();
     } else if (active.closest('.toolbar')) {
       this.focusSelector('[data-destination="adultPage"]');
     } else {
@@ -287,6 +288,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
           let active = document.activeElement as HTMLElement;
           let kept = active && document.contains(active) && (active.closest('.adultBrowse .toolbar') || active.classList.contains('menuItem'));
           if (!kept) this.restoreFocus();
+          // focus stayed on the menu / toolbar: the first title fills the info
+          if (!this.spot) this.showSpot(this.state.rows[0]?.items[0]);
         }, 0);
       },
       error: () => {
@@ -360,7 +363,11 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     let row = this.state.rows.find(r => r.key == node.dataset['row']);
     let item = row?.items[Number(node.dataset['index'])];
     if (!row || !item) return;
+    this.showSpot(item);
+  }
 
+  private showSpot(item:AdultTitle | undefined) {
+    if (!item) return;
     this.spot = item;
     this.details = this.detailCache.get(item.id) || null;
     if (!this.details) this.detailRequests.next(item);

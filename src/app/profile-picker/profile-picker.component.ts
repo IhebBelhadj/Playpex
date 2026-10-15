@@ -49,12 +49,8 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
     this.load();
   }
 
+  // Section `profiles` is a pxSection in the template (tiles: a pxGrid)
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'profiles',
-      selector: '.profilesPage .focusable',
-      restrict: 'self-only',
-    });
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       // the PIN pad handles its own keys while it is open
@@ -94,7 +90,6 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
     this.navSub?.unsubscribe();
     this.splashSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'profiles' });
     this.menuService.sendInstruction('show', this);
   }
 

@@ -10,48 +10,20 @@ import { FocusEngine } from './movement/focus-engine.service';
 // / the mouse "back" button send `back`. So every page keeps reacting to the
 // same focus events and actions it already handles.
 //
-// The wheel: on pages migrated to the movement system (a `data-px-native-wheel`
-// element is on screen) it scrolls natively, like a website: the stack
-// vertically, rows sideways (trackpad, shift + wheel); over translated
-// containers (`motion="transform"`) the FocusEngine steps them a row / a
-// poster at a time. Focus only follows the next real mouse movement. On the
-// other pages it still sends arrow keys.
+// The wheel scrolls natively, like a website (movement system,
+// src/app/movement): a page's stack vertically, rows sideways (trackpad,
+// shift + wheel); over translated containers (`motion="transform"`) the
+// FocusEngine steps them a row / a poster at a time. Focus only follows the
+// next real mouse movement; hovering never scrolls anything.
 //
 // The cursor is hidden on any key press and comes back when the mouse moves
 // (the first nudge only reveals it, so it doesn't steal focus from the keys).
-//
-// Pages that scroll rows on focus check `isPointerFocus()` and leave the row
-// where it is: the row would otherwise slide away under the cursor.
-
-let pointerFocusing = false;
-export function isPointerFocus() { return pointerFocusing; }
 
 // Elements (or containers) marked like this get the hover/focus but handle the
 // click themselves, e.g. the player's progress bar seeks where it's clicked
 export const OWN_CLICK_SELECTOR = '[data-pointer="own"]';
 
-// Containers marked like this (rows peeking in below the current one) don't
-// take focus on hover; a click brings them in as the arrow keys would, without
-// selecting anything
-export const NO_HOVER_SELECTOR = '[data-pointer-hover="off"]';
-
-// Pages whose content scrolls natively (src/app/movement) carry this on their root
-export const NATIVE_WHEEL_SELECTOR = '[data-px-native-wheel]';
-
-// Row paddles of unmigrated pages: index of the item a screenful away from the first one shown in
-// a row scrolled with `transform` (keeps one item of overlap for context)
-export function pagedIndex(row:HTMLElement, items:HTMLElement[], viewportWidth:number, direction:number):number {
-  if (items.length < 2) return -1;
-  let step = items[1].offsetLeft - items[0].offsetLeft;
-  let shownFrom = Math.round(-new DOMMatrix(getComputedStyle(row).transform).m41 / step);
-  let perPage = Math.max(1, Math.floor(viewportWidth / step) - 1);
-  let target = Math.min(items.length - 1, Math.max(0, shownFrom + direction * perPage));
-  return target == shownFrom ? -1 : target;
-}
-
-const WHEEL_STEP = 40;        // px of wheel travel per arrow key
-const WHEEL_INTERVAL = 140;   // ms between two wheel steps
-const WHEEL_SETTLE = 350;     // ms without hover focus after a step (rows are sliding)
+const WHEEL_SETTLE = 350;     // ms without hover focus after a wheel step (content slides)
 const SCROLL_SETTLE = 150;    // ms without hover focus after content scrolled under the cursor
 const HIDDEN_CLASS = 'pointer-hidden';
 const PRESSED_CLASS = 'pointer-pressed';
@@ -62,15 +34,12 @@ const PRESSED_CLASS = 'pointer-pressed';
 export class PointerService {
 
   visible = false;
-  // false while a page uses the wheel natively (the player)
+  // false while a page handles the wheel itself (the player)
   wheelNavigation = true;
   // real mouse movement with the cursor visible
   moved = new Subject<MouseEvent>();
 
   private synthetic = new WeakSet<Event>();
-  private wheelY = 0;
-  private lastWheelStep = 0;
-  private lastWheelEvent = 0;
   private hoverPausedUntil = 0;
   private lastX:number;
   private lastY:number;
@@ -128,7 +97,7 @@ export class PointerService {
     if (performance.now() < this.hoverPausedUntil) return;
 
     let el = this.navigableFrom(e.target);
-    if (el && el !== document.activeElement && !el.closest(NO_HOVER_SELECTOR) && this.canReach(el)) this.focus(el);
+    if (el && el !== document.activeElement && this.canReach(el)) this.focus(el);
   }
 
   private onDown = (e:MouseEvent) => {
@@ -153,14 +122,6 @@ export class PointerService {
     let el = this.navigableFrom(e.target);
     if (!el || !this.canReach(el)) return;
 
-    // a peeking row comes in at its remembered item (.lastSelected), so it
-    // doesn't also slide sideways
-    let inert = el.closest(NO_HOVER_SELECTOR);
-    if (inert) {
-      spatialNavigation.focus(inert.querySelector('.lastSelected') || el);
-      return;
-    }
-
     if (el !== document.activeElement) this.focus(el);
     if (el !== document.activeElement) return;   // refused (willfocus cancelled)
     if (el.closest(OWN_CLICK_SELECTOR)) return;
@@ -178,44 +139,18 @@ export class PointerService {
     e.preventDefault();
   }
 
-  // Wheel → up/down arrow keys, one step per notch (trackpads: per WHEEL_STEP
-  // px). Vertical only: rows go sideways with the paddles or by hovering, and
-  // the sideways part of a diagonal trackpad swipe made rows jump back and forth
+  // The browser scrolls the nearest scrollable container; translated rows /
+  // stacks (motion="transform") are stepped by the engine instead
   private onWheel = (e:WheelEvent) => {
     if (!this.wheelNavigation || e.ctrlKey) return;
-    // translated rows / stacks (movement system): the engine steps them
+    this.show();
+    this.engine.pointerActive();
     if (this.engine.wheel(e)) {
       e.preventDefault();
-      this.show();
-      this.engine.pointerActive();
       this.hoverPausedUntil = performance.now() + WHEEL_SETTLE;
-      return;
+    } else {
+      this.hoverPausedUntil = Math.max(this.hoverPausedUntil, performance.now() + SCROLL_SETTLE);
     }
-    if (document.querySelector(NATIVE_WHEEL_SELECTOR)) {
-      // the browser scrolls the nearest scrollable container
-      this.show();
-      this.engine.pointerActive();
-      this.hoverPausedUntil = performance.now() + SCROLL_SETTLE;
-      return;
-    }
-    e.preventDefault();
-    this.show();
-
-    let scale = e.deltaMode == WheelEvent.DOM_DELTA_LINE ? 40 : e.deltaMode == WheelEvent.DOM_DELTA_PAGE ? 400 : 1;
-    let dy = e.shiftKey ? 0 : e.deltaY * scale;
-
-    let now = performance.now();
-    if (now - this.lastWheelEvent > 250) this.wheelY = 0;
-    this.lastWheelEvent = now;
-    this.wheelY += dy;
-
-    if (now - this.lastWheelStep < WHEEL_INTERVAL || Math.abs(this.wheelY) < WHEEL_STEP) return;
-
-    this.lastWheelStep = now;
-    this.hoverPausedUntil = now + WHEEL_SETTLE;
-    let down = this.wheelY > 0;
-    this.wheelY = 0;
-    this.send(down ? 'down' : 'up');
   }
 
   // Content scrolling under a still cursor must not steal the focus: hover
@@ -248,13 +183,9 @@ export class PointerService {
     return Object.values(config.leaveFor || {}).some(dest => this.engine.leads(dest, el, to));
   }
 
+  // Hover focus: never scrolls, doesn't change what rows remember
   private focus(el:HTMLElement){
-    pointerFocusing = true;
-    try {
-      this.engine.focus(el, 'pointer');
-    } finally {
-      pointerFocusing = false;
-    }
+    this.engine.focus(el, 'pointer');
   }
 
   // Same path as a key press: every handler sees an ordinary keydown/keyup

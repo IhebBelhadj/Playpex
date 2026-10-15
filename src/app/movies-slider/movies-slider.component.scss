@@ -1,11 +1,12 @@
+// A translated pxStack of pxRows (src/app/movement): the stack clips (also
+// keeps posters moved off to the left from showing over the menu); its 10px
+// of sideways padding is room for the focused poster's zoom (1.1 → 9px) that
+// still hides the previous poster (10px gap)
 .sliderContainer {
-  // Clip both ways: posters scrolled off to the left must not show over the
-  // menu (collapsed or expanded). The margin keeps the focused poster's zoom
-  // (1.1 → 9px each side) whole while the previous poster (10px gap) stays hidden
-  overflow: clip;
-  overflow-clip-margin: 10px;
   height: 370px;
   position: relative;
+  margin: 0 -10px;
+  padding: 0 10px;
 
   .overlay {
     position: fixed;
@@ -19,14 +20,15 @@
 
   .content {
     position: relative;
-    transition : all .25s;
   }
 }
 
 .elements_wrapper{
   display: flex;
-  margin-bottom: 20px;
-  transition: all .2s;
+  // room for the focused poster's zoom inside the row, given back by the margins
+  padding: 16px 10px;
+  margin: -16px -10px 4px;
+  scroll-padding-inline: 10px;
   .element {
     width: 180px;
     height: 270px;

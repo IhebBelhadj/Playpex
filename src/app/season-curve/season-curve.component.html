@@ -1,0 +1,15 @@
+<div class="curve" role="img" [attr.aria-label]="label" *ngIf="imdb?.rating">
+  <div class="bars">
+    <span class="average" [style.bottom.%]="averageAt"></span>
+    <span class="bar" *ngFor="let bar of bars; trackBy: trackBar"
+      [class.unrated]="!bar.rating"
+      [class.current]="bar.episode === current"
+      [class.lit]="bar.episode === highlight"
+      [style.height.%]="bar.height"></span>
+  </div>
+  <span class="caption">
+    <img src="assets/icons/imdbsvg.svg" alt="IMDb">
+    <strong>{{imdb.rating | number:'1.1-1'}}</strong>
+    <span class="hint">season average</span>
+  </span>
+</div>

@@ -1,5 +1,4 @@
 import { NotificationService } from './../notification.service';
-import { Location } from '@angular/common';
 import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
 import { PlaybackRequest, PlaybackService } from './../playback.service';
 import { NavigationService } from './../navigation.service';
@@ -39,6 +38,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   year;
   playerSub:Subscription;
   controlsSub:Subscription;
+  leaveSub:Subscription;
   controlsEvent;
   lastSubFocused;
   arrowKeyEvents;
@@ -76,7 +76,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private router:Router,
     private pointer:PointerService,
     private subtitlesService:SubtitlesService,
-    private location:Location,
     private notificationService:NotificationService,
     private library:LibraryService,
   ) { }
@@ -87,7 +86,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     this.playback = this.playbackService.current;
     if (!this.playback) {
-      this.location.back();
+      this.navigation.goBack();
       return;
     }
 
@@ -142,6 +141,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     }
     document.addEventListener('keydown' , this.controlsEvent);
+
+    // The shell's Back button (mouse): out at once, loading or playing
+    this.leaveSub = this.navigation.executeCommand().subscribe(instruction => {
+      if (instruction != 'leave' || this.router.url != "/player" || escClicked) return;
+      escClicked = true;
+      this.leavePlayer();
+    });
 
     this.subFocusListener = (e)=>{
 
@@ -219,6 +225,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.pointerSub?.unsubscribe();
     clearTimeout(this.pointerIdle);
     if (this.controlsSub) this.controlsSub.unsubscribe();
+    this.leaveSub?.unsubscribe();
 
     if (this.playerSub) this.playerSub.unsubscribe();
     if (this.statsSub) this.statsSub.unsubscribe();
@@ -314,7 +321,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         removeSub.unsubscribe();
       })
     }
-    this.location.back();
+    this.navigation.goBack();
   }
 
   getExtension(filename) {

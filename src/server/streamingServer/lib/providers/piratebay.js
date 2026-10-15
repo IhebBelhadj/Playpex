@@ -1,7 +1,8 @@
 'use strict';
 
 // The Pirate Bay, through its JSON API (apibay.org, what thepiratebay.org's own
-// page calls). Used for 18+ movies only: category 500 "Porn".
+// page calls). 18+ movie search (category 500 "Porn") and the release lists
+// of lib/releases.js (porn, movie and TV subcategories).
 // Result fields: name, info_hash, seeders, leechers, size (bytes), category.
 // No match answers one fake row with an all-zero info hash.
 
@@ -75,43 +76,63 @@ function searchAdult(title) {
   });
 }
 
-// The 18+ section's list. No keywords: the site's 100 most seeded of the
-// category; keywords: its search (up to 100 results). No paging either way.
-// category: '500' (all porn) or one of ADULT_MOVIE_CATEGORIES
-function browseAdult(keywords, category) {
+function toRelease(r) {
+  var hash = r.info_hash.toLowerCase();
+  var name = unescape(r.name);
+  return {
+    provider: 'The Pirate Bay',
+    name: name,
+    hash: hash,
+    magnet: trackers.build(hash, name),
+    seeds: Number(r.seeders) || 0,
+    peers: Number(r.leechers) || 0,
+    size: Number(r.size) || 0,
+    added: Number(r.added) || 0
+  };
+}
+
+// A release list (releases.js). No keywords: the site's 100 most seeded of each
+// of `options.lists` (precompiled top-100 lists, merged, de-duplicated by hash);
+// keywords: its search in `options.searchCategory` (up to 100 results). Either
+// way only `options.categories` are kept. No paging.
+// options: { lists: ['201', '207'], searchCategory: '200', categories: ['201', '207', '211'] }
+function browse(keywords, options) {
   var words = String(keywords || '').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
   var list = words
-    ? query(words, category)
-    : get('/precompiled/data_top100_' + category + '.json');
+    ? query(words, options.searchCategory)
+    : Promise.all(options.lists.map(function (category) {
+      return get('/precompiled/data_top100_' + category + '.json');
+    })).then(function (lists) {
+      return [].concat.apply([], lists);
+    });
 
   return list.then(function (results) {
+    var seen = {};
     return {
       results: results
         .filter(function (r) {
-          return r.info_hash && !NO_HASH.test(r.info_hash) &&
-            ADULT_MOVIE_CATEGORIES.indexOf(String(r.category)) !== -1;
+          if (!r.info_hash || NO_HASH.test(r.info_hash) ||
+            options.categories.indexOf(String(r.category)) === -1 || seen[r.info_hash]) {
+            return false;
+          }
+          seen[r.info_hash] = true;
+          return true;
         })
-        .map(function (r) {
-          var hash = r.info_hash.toLowerCase();
-          return {
-            provider: 'The Pirate Bay',
-            name: unescape(r.name),
-            hash: hash,
-            magnet: trackers.build(hash, unescape(r.name)),
-            seeds: Number(r.seeders) || 0,
-            peers: Number(r.leechers) || 0,
-            size: Number(r.size) || 0,
-            added: Number(r.added) || 0
-          };
-        }),
+        .map(toRelease),
       hasMore: false
     };
   });
 }
 
+// The 18+ section's list. category: '500' (all porn) or one of ADULT_MOVIE_CATEGORIES
+function browseAdult(keywords, category) {
+  return browse(keywords, { lists: [category], searchCategory: category, categories: ADULT_MOVIE_CATEGORIES });
+}
+
 module.exports = {
   name: 'The Pirate Bay',
   searchAdult: searchAdult,
+  browse: browse,
   browseAdult: browseAdult,
   ADULT_MOVIE_CATEGORIES: ADULT_MOVIE_CATEGORIES
 };

@@ -6,8 +6,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
 import { SplashService } from '../splash.service';
-import { isPointerFocus, pagedIndex } from '../pointer.service';
+import { FocusEngine, PositionStore } from '../movement/movement';
 
+const PAGE_SIZE = 20;          // TMDB results per page
+const LOAD_AHEAD = 10;         // next page this many posters before a row's end
+
+// The category rows of a section (movies or TV shows). Movement and
+// positioning are the movement system's (src/app/movement): a translated
+// pxStack of pxRows, positions remembered in PositionStore under
+// `catalog:<media>` (survives the player and the detail pages). This
+// component only feeds the rows, pages them and describes the focused poster.
 @Component({
   selector: 'movies-slider',
   templateUrl: './movies-slider.component.html',
@@ -15,11 +23,10 @@ import { isPointerFocus, pagedIndex } from '../pointer.service';
 })
 export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy {
 
-  scrolledAmount = 0;
-  limit = 20;
+  readonly loadAhead = LOAD_AHEAD;
   movies = {};
-  rowKeys:string[] = [];      // rendered (non-empty) rows, in display order
   catalog:Catalog;
+  stackId = '';
   navSub:Subscription;
   moviesSub:Subscription;
   sliderEventSub:Subscription;
@@ -33,151 +40,88 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private router:Router,
     private route:ActivatedRoute,
     private splashService:SplashService,
+    private engine:FocusEngine,
+    private positions:PositionStore,
   ) { }
 
-
-
   ngOnInit(): void {
-
-
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
+    this.stackId = `catalog:${this.catalog.media}`;
     this.movies = this.catalog.items.getValue();
-    this.rowKeys = this.renderedRows();
 
-    setTimeout(()=>{
-      this.updateNavigation();
-    } , 100)
+    this.moviesSub = this.catalog.items.subscribe(data => this.movies = data);
 
-    this.moviesSub = this.catalog.items.subscribe(data =>{
-      this.movies = data;
-      this.rowKeys = this.renderedRows();
-      setTimeout(() => this.markDefaults());
-
-    })
-
+    // The description follows the focused poster
     this.focusListener = (e)=>{
-
       const node = e.target as HTMLElement;
-
-
-      if (e.target['parentElement']['classList'].contains('sliderSection')) {
-
-
-        let currentSection = node.dataset['section'];
-        let currentMovies = this.movies[currentSection] as Array<Object>
-
-
-        //Get more movies (<=: the row paddles jump several posters at once;
-        // movies-page only fetches each page once)
-        if (currentMovies.length - Number(node.dataset['index']) <= Math.floor(this.limit/2)) {
-          let pageNumber = Math.floor(currentMovies.length / this.limit) + 1
-          console.log(pageNumber);
-
-          this.catalog.requestPage(currentSection , pageNumber);
-
-        }
-
-        //update navigation data (a mouse hover leaves the row's position, the
-        // poster it's aligned to, alone: up/down come back to it without a jump)
-        let fromPointer = isPointerFocus();
-        if (!fromPointer) {
-          this.catalog.navigationData[currentSection]['reached'] = node.dataset['index'];
-          this.markLastSelected(node);
-        }
-        for (const section in this.catalog.navigationData) {
-          this.catalog.navigationData[section]['selected'] = false
-        }
-        this.catalog.navigationData[currentSection]['selected'] = true;
-
-
-
-        this.selectMovie(node.dataset['id'] , node.dataset['section'] , node.dataset['index']);
-        this.sendMenuInstruction("collapse");
-
-
-        // Hovered with the mouse: the row stays where it is (it would slide
-        // away under the cursor), only a newly entered row moves up
-        if (fromPointer) this.alignRow(node.closest('.section'));
-        else this.updateNavigation()
-
-      }
-
+      // a poster (menu items are `.element`s too)
+      if (this.router.url != this.catalog.listUrl || !node.closest('.sliderContainer')) return;
+      this.catalog.select(node.dataset['id'] , node.dataset['section'] , node.dataset['index']);
+      this.menuService.sendInstruction("collapse" , this);
     }
     window.addEventListener('sn:focused', this.focusListener);
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url == this.catalog.listUrl && instruction == "back") {
-        if (this.menuService.menuState == "collapsed") {
-          let currentlyActive = document.activeElement as HTMLElement;
-          this.catalog.navigationData[currentlyActive.dataset['section']]['reached'] = 0;
-          this.updateNavigation();
-          this.menuService.sendInstruction('expand' , this)
-
-          let menuElem = document.querySelector('.menuItem') as HTMLElement;
-          console.log(menuElem);
-          setTimeout(()=>{
-            menuElem.focus({preventScroll : true})
-          } , 10)
-        }else if (
-          this.menuService.menuState == "expanded" &&
-          document.activeElement.classList.contains("menuItem"))
-        {
-          this.navSub.unsubscribe();
-          this.router.navigateByUrl('/power');
-        }
+      // (the search's keyboard handles its own keys)
+      if (this.router.url != this.catalog.listUrl || this.catalog.typing) return;
+      if (instruction == "leave") {
+        // the shell's Back button: out to the power menu at once
+        this.navSub.unsubscribe();
+        this.navigation.openPowerMenu();
       }
-
+      if (instruction != "back") return;
+      let active = document.activeElement as HTMLElement;
+      if (this.catalog.search && active.closest('.sliderContainer')) {
+        // back on a search result: to the search bar, results kept
+        (document.querySelector('.sectionToolbar .searchField') as HTMLElement)?.focus({ preventScroll: true });
+      } else if (active.closest('.sectionToolbar')) {
+        this.openMenu();
+      } else if (this.menuService.menuState == "collapsed") {
+        // back on a poster: its row returns to the start, the menu opens
+        let row = this.engine.containerOf(active.closest('[data-px-container="row"]'));
+        row?.home();
+        this.openMenu();
+      } else if (active.classList.contains("menuItem")) {
+        this.navSub.unsubscribe();
+        this.navigation.openPowerMenu();
+      }
     })
-
   }
 
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'})
-    this.navigation.updateNavigation('remove' , {sectionId : 'slider'})
     window.removeEventListener('sn:focused', this.focusListener);
     this.navSub?.unsubscribe();
     this.moviesSub?.unsubscribe();
     this.sliderEventSub?.unsubscribe();
   }
 
+  // Section `slider` is a pxSection in the template
   ngAfterViewInit(): void {
-
-    this.navigation.updateNavigation('add' , {
-      id: 'slider',
-      selector: '.slider .sliderSection .element',
-      restrict : "self-only",
-      leaveFor: {
-        left: '@menu',
-      },
-      enterTo: 'default-element',
-      straightOnly: true,
-    })
-
     this.navigation.updateNavigation('add',{
       id: 'menu',
       selector: '.menuContainer .element',
       restrict : "self-only",
       leaveFor: {
-        right: '@slider'
+        right: this.engine.target([`stack:${this.stackId}`, '@slider'])
       }
     })
 
-    this.navigation.updateNavigation('makeFocusable' , {})
-    console.log(this.catalog.navigationData);
+    // the splash is gone (movies-page): first poster
+    this.sliderEventSub = this.navigation.getMovieSliderEvent().subscribe(() => this.focusFirstWhenReady(50));
 
-    this.sliderEventSub = this.navigation.getMovieSliderEvent().subscribe(e=>{
+    // Back from a title / the player: the same poster, rows where they were.
+    // Opened after the splash (from "Who's watching?") with no row visited
+    // yet: the first poster once the rows arrive
+    if (this.positions.get(this.stackId)) setTimeout(() => this.engine.restore(`stack:${this.stackId}`));
+    else if (this.splashService.cleared) this.focusFirstWhenReady(50);
+  }
 
-      (document.querySelector('.sliderContainer .element') as HTMLElement)?.focus({preventScroll : true})
-
-    })
-
-    // Opened after the splash (from "Who's watching?") with no row visited yet:
-    // focus the first poster once the rows arrive
-    let visited = Object.values(this.catalog.navigationData).some(d => d['selected']);
-    if (this.splashService.cleared && !visited) {
-      this.focusFirstWhenReady(50);
-    }
-
+  // The menu, opened on this section's own item
+  private openMenu(){
+    this.menuService.sendInstruction('expand' , this)
+    let menuElem = (document.querySelector('.menuItem.active') || document.querySelector('.menuItem')) as HTMLElement;
+    setTimeout(() => menuElem?.focus({preventScroll : true}), 10)
   }
 
   focusFirstWhenReady(tries:number){
@@ -185,124 +129,24 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       if (this.router.url != this.catalog.listUrl) return;
       // the user already got somewhere (e.g. the menu)
       if (document.activeElement && document.activeElement !== document.body) return;
-
-      let first = document.querySelector('.sliderContainer .element') as HTMLElement;
-      if (first) first.focus({preventScroll : true});
-      else if (tries > 0) this.focusFirstWhenReady(tries - 1);
+      if (!this.engine.restore(`stack:${this.stackId}`) && tries > 0) this.focusFirstWhenReady(tries - 1);
     } , 100)
   }
 
-  updateNavigation(){
-
-    for (const category in this.catalog.navigationData) {
-
-      // row not rendered yet (still loading)
-      if (!document.querySelector(`[data-section="${category}"]`)) continue
-
-      //Handle horizontal Navigation
-
-      let index = this.catalog.navigationData[category]['reached'];
-      let section = document.querySelector(`[data-section="${category}"]`).closest('.section');
-
-      let node = section.querySelector(`[data-index='${index}']`) as HTMLElement;
-      if (!node) continue;
-
-      let sliderSection = node.closest('.sliderSection') as HTMLElement;
-      // layout offsets, not rects: the focused poster's zoom (still animating)
-      // would shift the row by a few px every time
-      let leftDiff = sliderSection.offsetLeft - node.offsetLeft;
-
-      sliderSection.style.transform = `translateX(${leftDiff}px)`
-      this.markLastSelected(node);
-      section.classList.toggle('atStart', Number(index) == 0);
-
-
-      if(this.catalog.navigationData[category]['selected']){
-
-
-        node.focus({preventScroll:true});
-        this.alignRow(section);
-
-      }
-
-    }
-
-
-  }
-
-  //Handle vertical navigation: the focused row slides to the top
-  alignRow(section: Element){
-    let sliderParent = document.querySelector('.sliderContainer .content') as HTMLElement;
-    if (!sliderParent || !section) return;
-
-    // the rows peeking in below/above aren't focused by a mere mouse hover
-    document.querySelectorAll('.sliderContainer .section').forEach(s => {
-      if (s === section) s.removeAttribute('data-pointer-hover');
-      else s.setAttribute('data-pointer-hover' , 'off');
-    });
-
-    let topDiff = sliderParent.getBoundingClientRect().top - section.getBoundingClientRect().top;
-    sliderParent.style.transform = `translateY(${topDiff}px)`
-  }
-
-  renderedRows(){
-    return Object.keys(this.movies).filter(key => this.movies[key]?.length);
-  }
-
-  // Up/down (keys and mouse wheel) land on the row's remembered poster, the
-  // one its position is aligned to, not on whatever sits below the focus
-  neighbour(category: string, direction: number){
-    let next = this.rowKeys[this.rowKeys.indexOf(category) + direction];
-    return next ? `.sliderContainer .element.lastSelected[data-section="${next}"]` : null;
-  }
-
-  // Rows that just arrived: their remembered poster, so up/down can land there
-  markDefaults(){
-    for (const category of this.rowKeys) {
-      let section = document.querySelector(`.sliderContainer .element[data-section="${category}"]`)?.closest('.sliderSection');
-      if (!section || section.querySelector('.lastSelected')) continue;
-      let reached = this.catalog.navigationData[category]?.['reached'] || 0;
-      (section.querySelector(`[data-index="${reached}"]`) || section.querySelector('.element'))?.classList.add('lastSelected');
-    }
-  }
-
-  markLastSelected(node: HTMLElement){
-    node.closest('.sliderSection').querySelectorAll('.lastSelected').forEach(el => el.classList.remove('lastSelected'));
-    node.classList.add('lastSelected');
-  }
-
-  // Row paddles (mouse only): move a screenful of posters and focus the first
-  pageRow(category: string, direction: number){
-    let section = document.querySelector(`[data-section="${category}"]`)?.closest('.section');
-    let row = section?.querySelector('.sliderSection') as HTMLElement;
-    if (!row) return;
-    let posters = Array.from(row.querySelectorAll('.element')) as HTMLElement[];
-    let target = pagedIndex(row, posters, (section.querySelector('.slider') as HTMLElement).clientWidth, direction);
-    if (target < 0) return;
-
-    this.catalog.navigationData[category]['reached'] = target;
-    posters[target].focus({preventScroll : true});
-  }
-
-  sendMenuInstruction(instruction: string){
-
-    this.menuService.sendInstruction(instruction , this);
-  }
-
-  selectMovie(id: string , category: string , index: string){
-    this.catalog.select(id , category , index)
-
+  // A row's pxRow asks (focus or scroll near its end); movies-page fetches
+  // each page once
+  loadMore(category:string){
+    let count = (this.movies[category] || []).length;
+    this.catalog.requestPage(category , Math.floor(count / PAGE_SIZE) + 1);
   }
 
   trackById(index:Number, movie: { id: any; }) {
-    return movie.id;
+    return movie?.id;
   }
 
   trackByCategory(index:Number , category: { key: any; }){
     return category.key
   }
 
-  unsorted(){}
-
-
+  unsorted(){ return 0; }
 }

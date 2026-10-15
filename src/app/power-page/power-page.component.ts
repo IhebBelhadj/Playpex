@@ -3,7 +3,6 @@ import { PowerService } from './../power.service';
 import { Router } from '@angular/router';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
-import { Location } from '@angular/common';
 import { MenuServiceService } from '../menu-service.service';
 
 @Component({
@@ -20,7 +19,6 @@ export class PowerPageComponent implements AfterViewInit , OnDestroy{
     private navigation:NavigationService,
     private router:Router,
     private menuService:MenuServiceService,
-    private location:Location,
     private power:PowerService,
     ) {
 
@@ -37,11 +35,7 @@ export class PowerPageComponent implements AfterViewInit , OnDestroy{
     powerBtn.focus({preventScroll : true});
     powerBtn.classList.add("focused");
     this.menuService.sendInstruction('hide' , this);
-    this.navigation.updateNavigation('add' , {
-      id: 'powerControls',
-      selector: '.powerSection .powerBtn',
-      straightOnly: true,
-    })
+    // section `powerControls` is a pxSection in the template
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction =>{
       if (this.router.url != "/power") return;
@@ -57,11 +51,9 @@ export class PowerPageComponent implements AfterViewInit , OnDestroy{
 
         }
       }
-      if (instruction == "back") {
+      if (instruction == "back" || instruction == "leave") {
         this.menuService.sendInstruction('show' , this);
-
-        this.navigation.updateNavigation('remove' , {sectionId : "powerControls"})
-        this.location.back();
+        this.navigation.goBack();
       }
 
 

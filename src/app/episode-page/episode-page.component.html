@@ -1,0 +1,128 @@
+<!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
+     season's episodes row, the guest stars row. The title block above them
+     stands in for <movie-description>, which movies-page hides here. -->
+<div class="episodePageContainer" pxSection="episodePage" [leaveFor]="{ left: '@menu' }">
+  <header class="episodeHeader" *ngIf="episode">
+    <p class="showLine">
+      <span class="showName">{{show?.name}}</span>
+      <span class="position">Season {{seasonNumber}}, episode {{episode.episode_number}}</span>
+    </p>
+    <h1 class="name">{{episode.name}}</h1>
+
+    <div class="infos">
+      <div class="imdb_score" *ngIf="imdbEpisode?.rating as rating">
+        <img src="assets/icons/imdbsvg.svg" alt="IMDb">
+        <strong>{{rating | number:'1.1-1'}}</strong>
+        <span class="votes" *ngIf="imdbEpisode.votes">{{votes(imdbEpisode.votes)}} votes</span>
+      </div>
+      <div class="tmdb_score" *ngIf="episode.vote_average">TMDB {{episode.vote_average | number:'1.1-1'}}</div>
+      <p class="aired" *ngIf="episode.air_date">
+        {{episode.upcoming ? 'Airs' : 'Aired'}} {{episode.air_date | date:'d MMMM y'}}
+      </p>
+      <div class="chip" *ngIf="episode.runtime">{{episode.runtime}} min</div>
+      <div class="chip" *ngIf="topOfSeason">Best rated of season {{seasonNumber}}</div>
+      <div class="chip watchedChip" *ngIf="watched">
+        <img src="assets/icons/tick.svg" alt="">Watched
+      </div>
+    </div>
+
+    <p class="overview" *ngIf="episode.overview">{{episode.overview}}</p>
+    <p class="overview empty" *ngIf="!episode.overview">No description for this episode yet.</p>
+
+    <dl class="credits" *ngIf="directors.length || writers.length">
+      <div *ngIf="directors.length">
+        <dt>Directed by</dt>
+        <dd>{{directors.join(', ')}}</dd>
+      </div>
+      <div *ngIf="writers.length">
+        <dt>Written by</dt>
+        <dd>{{writers.slice(0, 3).join(', ')}}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <div class="optionPannel" pxGrid>
+    <button class="option focusable play" pxItem pxItemKey="play">
+      <div class="imgContainer">
+        <img src="assets/icons/play.svg" alt="">
+        <div class="resumeLine" *ngIf="resumeRatio && !resolving">
+          <span [style.width.%]="resumeRatio * 100"></span>
+        </div>
+      </div>
+      <span>{{ resolving ? 'Finding torrents…' : resumeLabel || 'Play ' + code }}</span>
+    </button>
+    <!-- every source's releases of this episode -->
+    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+      <div class="imgContainer">
+        <img src="assets/icons/search.svg" alt="">
+      </div>
+      <span>Find releases</span>
+    </button>
+    <!-- 18+ titles never go in the profile's library -->
+    <button *ngIf="!isAdult" class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched">
+      <div class="imgContainer">
+        <img [src]="watched ? 'assets/icons/tick.svg' : 'assets/icons/mark.svg'" alt="">
+      </div>
+      <span>{{ watched ? 'Watched' : 'Mark as watched' }}</span>
+    </button>
+  </div>
+
+  <div class="episodes" *ngIf="episodes.length" pxStackItem>
+    <div class="rowHeader">
+      <h3 class="sectionTitle">
+        {{seasonName}}
+        <span class="count">{{episodes.length}} episodes</span>
+      </h3>
+      <season-curve [episodes]="episodes" [imdb]="seasonImdb"
+        [current]="episode?.episode_number" [highlight]="focusedEpisode"></season-curve>
+    </div>
+    <div class="rowViewport">
+      <div class="content" pxRow="seasonEpisodes" align="third">
+        <div class="episodeCard" *ngFor="let ep of episodes; let i = index"
+          [class.upcoming]="ep.upcoming" [class.current]="ep === episode">
+          <button class="displayedElem focusable episodeBtn"
+            pxItem [pxItemKey]="ep.episode_number"
+            [attr.data-index]="i">
+            <div class="imgContainer">
+              <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
+              <span class="badge nowBadge" *ngIf="ep === episode">On this page</span>
+              <span class="badge" *ngIf="ep !== episode && ep.upcoming">Upcoming</span>
+              <ng-container *ngIf="progressOf(ep) as progress">
+                <span class="badge watchedBadge" *ngIf="progress.finished && ep !== episode">
+                  <img src="assets/icons/tick.svg" alt="">Watched
+                </span>
+                <div class="epProgress" *ngIf="!progress.finished">
+                  <span [style.width.%]="progress.ratio * 100"></span>
+                </div>
+              </ng-container>
+            </div>
+          </button>
+          <span class="cardName"><span class="number">{{ep.episode_number}}</span><span class="title">{{ep.name}}</span></span>
+          <span class="meta">
+            <span class="epRating" *ngIf="episodeRating(ep) as rating">
+              <img src="assets/icons/imdbsvg.svg" alt="IMDb">{{rating | number:'1.1-1'}}
+            </span>
+            <span *ngIf="ep.runtime">{{ep.runtime}} min</span>
+            <span *ngIf="ep.air_date">{{ep.air_date | date:'d MMM y'}}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guests" *ngIf="guests.length" pxStackItem>
+    <h3 class="sectionTitle">Guest stars</h3>
+    <div class="rowViewport">
+      <div class="content guestsRow" pxRow="guests" align="third">
+        <button class="guest focusable" *ngFor="let guest of guests"
+          pxItem [pxItemKey]="guest.credit_id">
+          <div class="imgContainer">
+            <img [src]="profileBase + guest.profile_path" alt="">
+          </div>
+          <span class="guestName">{{guest.name}}</span>
+          <span class="character" *ngIf="guest.character">{{guest.character}}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

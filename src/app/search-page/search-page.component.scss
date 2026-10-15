@@ -17,13 +17,17 @@
 
 }
 
+// The page is a pxStack (src/app/movement): it scrolls natively
 .searchContainer {
-  //margin: 50px;
-  padding: 40px 15px;
+  // left: the menu's column is empty here (search hides the menu) but holds
+  // the shell's Back button; content lines up with the other pages' (85px)
+  padding: 40px 15px 40px 85px;
   width: 100vw;
-  min-height: 100vh;
+  height: 100vh;
+  box-sizing: border-box;
   position: relative;
   z-index: 5;
+  scroll-padding-block: 40px;
 
   .keyboardContainer {
     display: flex;
@@ -157,15 +161,6 @@
 
 // ── results ────────────────────────────────────────────────────────────────
 
-.searchContainer {
-  transition: transform .25s;
-}
-
-.noTransition,
-.noTransition * {
-  transition: none !important;
-}
-
 .results {
   margin-top: 44px;
 
@@ -191,9 +186,14 @@
     margin-top: 22px;
   }
 
+  // a pxRow: scrolls natively; room for the focused item's zoom (1.1 on 150px:
+  // 7.5px sideways, ~14px up and down), given back by the margins; keeps 60px
+  // around the focused item ('nearest')
   .rowContent {
     display: flex;
-    transition: transform .25s;
+    padding: 16px 10px;
+    margin: -16px -10px;
+    scroll-padding-inline: 60px;
   }
 }
 

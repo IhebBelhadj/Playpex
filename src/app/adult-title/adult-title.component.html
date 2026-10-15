@@ -1,56 +1,87 @@
-<div class="adultTitle" data-px-native-wheel pxSection="adultTitle" [leaveFor]="{ left: '@menu' }" pxStack>
-  <div class="seal" aria-label="Adults only">18+</div>
+<!-- Laid out like the movie page (movie-description + movie-options): the
+     title info on top, then the entries of this page's pxStack: the action
+     tiles, the cast row, the "More from <studio>" row -->
+<div class="adultTitle" pxSection="adultTitle" [leaveFor]="{ left: '@menu' }" pxStack>
 
-  <ng-container *ngIf="item">
+  <header class="titleBlock" *ngIf="item">
     <h1 class="name">{{ item.title }}</h1>
     <div class="infos">
       <p class="year" *ngIf="item.year">{{ item.year }}</p>
+      <span class="seal" aria-label="Adults only">18+</span>
       <span class="chip" *ngIf="studio">{{ studio.name }}</span>
       <span class="chip" *ngIf="details?.runtime">{{ runtime(details.runtime) }}</span>
       <span class="score" *ngIf="item.rating">{{ provider?.name }} {{ item.rating | number:'1.1-1' }}</span>
     </div>
-
+    <p class="credits" *ngIf="details?.director">Directed by {{ details.director }}</p>
     <p class="overview" *ngIf="item.overview">{{ item.overview }}</p>
+  </header>
 
-    <!-- Who's in it -->
-    <div class="cast" *ngIf="performers.length">
-      <div class="performer" *ngFor="let p of performers">
-        <img *ngIf="p.photo" [src]="p.photo" alt="">
-        <span class="initials" *ngIf="!p.photo">{{ initials(p.name) }}</span>
-        <span class="performerName">{{ p.name }}</span>
+  <div class="options" *ngIf="item">
+    <div class="optionPannel" pxGrid>
+      <button class="option focusable" pxItem pxItemKey="play" data-action="play">
+        <div class="imgContainer">
+          <img src="assets/icons/play.svg" alt="">
+        </div>
+        <span>{{ findingTorrents ? 'Finding torrents…' : 'Play' }}</span>
+      </button>
+      <button class="option focusable" pxItem pxItemKey="releases" data-action="releases">
+        <div class="imgContainer">
+          <img src="assets/icons/search.svg" alt="">
+        </div>
+        <span>Find releases</span>
+      </button>
+    </div>
+
+    <!-- Enter on a performer: their releases in the compact list -->
+    <section class="casts" *ngIf="details?.performers?.length" pxStackItem>
+      <h3 class="sectionTitle">Cast</h3>
+      <div class="castSlider" pxRow="cast" align="third">
+        <div class="content">
+          <button *ngFor="let p of details.performers; let i = index" class="performer focusable"
+            pxItem [pxItemKey]="p.name" [attr.data-performer]="i">
+            <div class="imgContainer">
+              <img *ngIf="p.photo" [src]="p.photo" alt="" loading="lazy">
+              <span class="initials" *ngIf="!p.photo">{{ initials(p.name) }}</span>
+            </div>
+            <div class="name">{{ p.name }}</div>
+          </button>
+        </div>
       </div>
-      <span class="moreCast" *ngIf="morePerformers">and {{ morePerformers }} more</span>
-    </div>
+    </section>
 
-    <div class="actions" pxGrid>
-      <button class="actionBtn primary focusable" pxItem data-action="play">
-        <img src="assets/icons/play.svg" alt="">
-        {{ findingTorrents ? 'Finding torrents…' : 'Play' }}
-      </button>
-      <button class="actionBtn focusable" pxItem data-action="releases">
-        <img src="assets/icons/search.svg" alt="">
-        Find releases
-      </button>
-    </div>
-  </ng-container>
+    <section class="similar" *ngIf="more.length" pxStackItem>
+      <h3 class="sectionTitle">More from {{ studio?.name }}</h3>
+      <div class="movieSlider" pxRow="more" align="third">
+        <div class="content">
+          <div class="movie" *ngFor="let m of more; let i = index">
+            <button class="displayedElem card focusable" pxItem [pxItemKey]="m.id" [attr.data-index]="i">
+              <div class="imgContainer">
+                <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
+                <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
+              </div>
+            </button>
+            <span class="name">{{ m.title }}</span>
+            <span class="year" *ngIf="m.year">{{ m.year }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <ng-container *ngIf="error">
-    <h1 class="name">Title unavailable</h1>
-    <p class="overview">{{ error }}</p>
-    <div class="actions" pxGrid>
-      <button class="actionBtn focusable" pxItem data-action="back">Go back</button>
-    </div>
-  </ng-container>
-
-  <section class="moreRow" *ngIf="more.length" pxStackItem>
-    <h3 class="sectionTitle">More from {{ studio?.name }}</h3>
-    <div class="slider">
-      <div class="sliderSection" pxRow="more" align="third">
-        <button *ngFor="let m of more; let i = index" class="card focusable" pxItem [pxItemKey]="m.id" [attr.data-index]="i">
-          <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
-          <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
+    <header class="titleBlock">
+      <h1 class="name">Title unavailable</h1>
+      <p class="overview">{{ error }}</p>
+    </header>
+    <div class="options">
+      <div class="optionPannel" pxGrid>
+        <button class="option focusable" pxItem data-action="back">
+          <div class="imgContainer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          </div>
+          <span>Go back</span>
         </button>
       </div>
     </div>
-  </section>
+  </ng-container>
 </div>

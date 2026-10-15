@@ -19,6 +19,8 @@ import { SplashComponent } from './splash/splash.component';
 import { DescritionViewerComponent } from './descrition-viewer/descrition-viewer.component';
 import { PowerPageComponent } from './power-page/power-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
+import { EpisodePageComponent } from './episode-page/episode-page.component';
+import { SeasonCurveComponent } from './season-curve/season-curve.component';
 import { RouterModule } from "@angular/router";
 
 import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
@@ -28,14 +30,17 @@ import { PinPadComponent } from './pin-pad/pin-pad.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
 import { PlayChoiceComponent } from './play-choice/play-choice.component';
 import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
-import { AdultPageComponent } from './adult-page/adult-page.component';
+import { ReleasesPageComponent } from './releases-page/releases-page.component';
 import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
+import { BackButtonComponent } from './back-button/back-button.component';
 import { MOVEMENT_DIRECTIVES } from './movement/movement';
 
 @NgModule({
   declarations: [
     AppComponent,
+    EpisodePageComponent,
+    SeasonCurveComponent,
     MenuComponent,
     MovieDescriptionComponent,
     MoviesSliderComponent,
@@ -57,9 +62,10 @@ import { MOVEMENT_DIRECTIVES } from './movement/movement';
     WatchlistPageComponent,
     PlayChoiceComponent,
     TextKeyboardComponent,
-    AdultPageComponent,
+    ReleasesPageComponent,
     AdultBrowseComponent,
     AdultTitleComponent,
+    BackButtonComponent,
     ...MOVEMENT_DIRECTIVES,
   ],
   imports: [

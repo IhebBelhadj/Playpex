@@ -1,9 +1,7 @@
-// One 18+ title: the movie page's layout (title, chips, overview, actions)
-// with the cast as small portraits and a studio row of (smaller, secondary)
-// posters at the bottom.
-$ink: #fff;
-$muted: rgba(255, 255, 255, .62);
-$faint: rgba(255, 255, 255, .38);
+// One 18+ title, styled like the movie page: <movie-description>'s title
+// block, then movie-options' icon tiles, round cast portraits and captioned
+// poster row (same sizes and focus treatment). The only 18+ mark is the wine
+// seal next to the year.
 $wine: #C2405F;
 
 :host {
@@ -12,213 +10,289 @@ $wine: #C2405F;
   min-width: 0;
 }
 
+// A pxStack, like movies-page's .pageContainer: the title info on top, the
+// tiles at the bottom of the first screen, the rows scrolled into view
 .adultTitle {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  justify-content: space-between;
   height: 100vh;
-  padding: 34px 0 0 35px;
+  padding-left: 35px;
   box-sizing: border-box;
-  // a pxStack: scrolls vertically if it has to (programmatically sideways only)
   overflow-x: hidden;
+  scroll-padding-block: 40px;
 }
 
-.seal {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 2px solid $wine;
-  border-radius: 10px;
-  color: $wine;
-  font-family: 'NetflixBd';
-  font-size: 16px;
-  letter-spacing: -.5px;
-}
+// ── title info (as <movie-description>) ────────────────────────────────────
 
 .name {
-  font-family: 'NetflixBd';
+  font-family: "netflixBd";
   font-weight: normal;
-  font-size: 3rem;
-  margin: 24px 0 0;
-  max-width: 1000px;
-  line-height: 1.1;
+  font-size: 2.8rem;
+  margin-bottom: 0;
+  max-width: 900px;
 }
 
 .infos {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin: 14px 0 0;
+  gap: 8px;
+  margin: 8px 0 15px;
 }
 
 .year {
   font-family: 'Netflixlt';
   font-size: 22px;
-  margin: 0;
+  margin: 0 7px 0 0;
+}
+
+.seal {
+  padding: 5px 7px;
+  border: 1.5px solid $wine;
+  border-radius: 5px;
+  color: $wine;
+  font-family: 'NetflixBd';
+  font-size: 12px;
 }
 
 .chip {
-  font-family: 'Netflixlt';
-  font-size: 12px;
+  font-family: 'netflixlt';
   padding: 8px;
-  border-radius: 5px;
   background: #1d1d1d9e;
-  opacity: .8;
+  border-radius: 5px;
+  font-size: 12px;
+  opacity: .7;
 }
 
 .score {
   font-family: 'NetflixBk';
+  margin-left: 4px;
+  opacity: .9;
+  background: #1515152e;
   padding: 7px;
   border-radius: 5px;
-  background: #1515152e;
-  opacity: .9;
+}
+
+.credits {
+  font-family: 'Netflixlt';
+  opacity: .6;
+  margin: 0;
 }
 
 .overview {
-  max-width: 720px;
-  margin: 22px 0 0;
-  font-family: 'NetflixBk';
-  font-size: 1.15rem;
-  line-height: 34px;
+  max-width: 700px;
+  font-size: 1.2rem;
+  font-family: "NetflixBk";
+  line-height: 39px;
   letter-spacing: 1px;
-  opacity: .7;
+  opacity: 0.62;
+  margin-top: 50px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.cast {
+// ── action tiles (as movie-options) ────────────────────────────────────────
+
+.options {
+  min-height: 100vh;
+}
+
+.optionPannel {
   display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-top: 24px;
+  align-items: flex-start;
+
+  .option {
+    background: none;
+    border: none;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 25px 6px;
+    opacity: .67;
+
+    &:first-child { margin-left: 0; }
+
+    .imgContainer {
+      display: grid;
+      place-items: center;
+      width: 102px;
+      height: 60px;
+      background: rgba(28, 28, 28, .72);
+      border-radius: 5px;
+
+      img,
+      svg {
+        width: 26px;
+        filter: invert(100%);
+      }
+
+      svg {
+        fill: none;
+        stroke: #000;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    }
+
+    span {
+      margin-top: 12px;
+      max-width: 110px;
+      text-align: center;
+      line-height: 1.25;
+    }
+
+    &.focused {
+      opacity: 1;
+
+      .imgContainer {
+        background: #fff;
+
+        img, svg { filter: none; }
+      }
+    }
+  }
+}
+
+.sectionTitle {
+  font-family: 'netflixBk';
+  font-weight: bold;
+  opacity: .9;
+}
+
+// Rows are pxRows (src/app/movement): they scroll natively. The padding /
+// negative margin pair leaves room for the focused item's scale-up.
+.castSlider,
+.movieSlider {
+  padding: 16px;
+  margin: -16px;
+
+  .content { display: flex; }
+}
+
+// ── cast (as movie-options) ─────────────────────────────────────────────────
+
+.castSlider .content {
+  margin-top: 50px;
+  height: 230px;
 }
 
 .performer {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-
-  img,
-  .initials {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: rgba(255, 255, 255, .1);
-  }
-
-  .initials {
-    display: grid;
-    place-items: center;
-    font-family: 'NetflixBk';
-    font-size: 13px;
-    color: $muted;
-  }
-}
-
-.performerName {
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  color: $muted;
-  white-space: nowrap;
-}
-
-.moreCast {
-  font-family: 'NetflixLt';
-  font-size: 15px;
-  color: $faint;
-}
-
-.actions {
-  display: flex;
-  gap: 14px;
-  margin-top: 30px;
-}
-
-.actionBtn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 28px;
-  border: 1px solid #808080;
-  background: transparent;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  transition: all .15s;
-
-  img {
-    width: 16px;
-    filter: invert(1);
-    opacity: .75;
-  }
-
-  &.primary {
-    border-color: $ink;
-    color: $ink;
-  }
-
-  &.focused {
-    background: $ink;
-    border-color: $ink;
-    color: #141414;
-
-    img { filter: none; opacity: 1; }
-  }
-}
-
-// ── More from <studio> ──────────────────────────────────────────────────────
-
-.moreRow {
-  flex: none;
-  width: 100%;
-  margin-top: auto;
-  height: 262px;
-}
-
-.sectionTitle {
-  font-family: 'FuturaLt';
-  font-weight: normal;
-  font-size: 16px;
-  opacity: .8;
-}
-
-.sliderSection {
-  display: flex;
-  // a pxRow: room for the focused card's zoom, given back by the margins
-  padding: 12px 10px;
-  margin: -12px 0 0 -10px;
-}
-
-.card {
-  position: relative;
   flex: none;
   width: 140px;
-  height: 210px;
-  margin-right: 10px;
+  margin-right: 15px;
   padding: 0;
+  background: none;
   border: none;
-  opacity: .75;
-  background: rgba(103, 103, 103, .35);
-  transition: all .2s;
+  color: #fff;
 
-  img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(.6);
+  .imgContainer {
+    display: grid;
+    place-items: center;
+    width: 130px;
+    height: 130px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: rgba(103, 103, 103, .35);
+    transition: .2s all;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .initials {
+    font-family: 'NetflixBk';
+    font-size: 34px;
+    opacity: .6;
+  }
+
+  .name {
+    font-family: 'netflixLt';
+    font-size: 16px;
+    text-align: center;
+    opacity: .7;
+    margin-top: 20px;
+    max-width: 120px;
   }
 
   &.focused {
-    transform: scale(1.08);
-    opacity: 1;
-    z-index: 1;
+    .imgContainer {
+      border: 3px solid #fff;
+      transform: scale(1.13);
+    }
 
-    img { filter: saturate(1); }
+    .name { opacity: 1; }
+  }
+}
+
+// ── More from <studio> (as movie-options' similar titles) ──────────────────
+
+.movieSlider {
+  .movie {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    width: 150px;
+    margin-right: 21px;
+
+    .name {
+      font-family: 'netflixBk';
+      opacity: .75;
+      font-size: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .year {
+      font-family: 'netflixLt';
+      opacity: .4;
+      font-size: 14px;
+    }
+  }
+
+  .displayedElem {
+    position: relative;
+    width: 150px;
+    height: 230px;
+    padding: 0;
+    margin-bottom: 25px;
+    border: none;
+    background: rgba(103, 103, 103, .35);
+
+    .imgContainer {
+      width: 100%;
+      height: 100%;
+      transition: all .2s;
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: .7;
+        filter: saturate(.6);
+      }
+    }
+
+    &.focused .imgContainer {
+      transform: scale(1.13);
+
+      img {
+        filter: none;
+        opacity: 1;
+      }
+    }
   }
 }
 
@@ -231,6 +305,6 @@ $wine: #C2405F;
   padding: 14px;
   font-family: 'NetflixBk';
   font-size: 15px;
-  color: $muted;
+  color: rgba(255, 255, 255, .62);
   text-align: center;
 }

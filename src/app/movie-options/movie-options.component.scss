@@ -166,19 +166,12 @@
 
 }
 
-// Rows scroll natively (smooth scrollTo from the focus handler). The padding /
-// negative margin pair leaves room for the focused item's scale-up, which an
-// overflow container would otherwise clip.
+// Rows are pxRows (src/app/movement): they scroll natively. The padding /
+// negative margin pair leaves room for the focused item's scale-up, which a
+// scrolling container would otherwise clip.
 .castSlider, .movieSlider {
-  overflow-x: auto;
-  overflow-y: hidden;
   padding: 16px;
   margin: -16px;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .optionsMasterContainer {

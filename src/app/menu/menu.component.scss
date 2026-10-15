@@ -6,6 +6,31 @@
 }
 
 
+// Full height: the logo (and the shell's mouse Back button under it) on top,
+// the sections centered in what's left, the profile at the bottom
+.menuContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 118px 0 14px;
+  box-sizing: border-box;
+}
+
+.sections {
+  margin: auto 0;
+}
+
+.account {
+  flex: none;
+}
+
+// The collapse animation narrows `.tabs` inline, but the profile group is
+// rendered after the menu's first collapse (once a profile is picked) and
+// would keep the menu 220px wide: follow the menu's state instead
+.menuContainer:not(.expended) .account {
+  width: 50px !important;
+}
+
 .logo {
   width: 50px;
   position: absolute;
@@ -21,7 +46,7 @@
   display: flex;
   align-items: center;
   padding: 11px;
-  margin: 19px 8px;
+  margin: 14px 8px;
   border-radius: 8px;
   background: none;
   border: none;

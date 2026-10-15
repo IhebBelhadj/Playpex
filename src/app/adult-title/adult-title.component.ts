@@ -1,6 +1,5 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Location } from '@angular/common';
 import { catchError, of, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
@@ -8,14 +7,15 @@ import { NotificationService } from '../notification.service';
 import { TorrentService } from '../torrent.service';
 import { TorrentPickerService } from '../torrent-picker.service';
 import { PlaybackService } from '../playback.service';
-import { AdultService, AdultTitle, AdultTitleDetails, EMPTY_ADULT_STATE, MetaProvider } from '../adult.service';
-
-const PERFORMERS_SHOWN = 6;
+import { AdultService, AdultTitle, AdultTitleDetails, MetaProvider } from '../adult.service';
+import { ReleasesService } from '../releases.service';
 
 // /adult/title/:provider/:id — one 18+ title from a metadata provider, laid out
-// like the movie page. Play finds its torrents by title + year (TheRARBG XXX +
+// and styled like the movie page (title info, action tiles, cast row, "More
+// from <studio>" row). Play finds its torrents by title + year (TheRARBG XXX +
 // The Pirate Bay, server lib/adult.js) → torrent picker → player; nothing is
-// saved to the profile. "Find releases" opens the compact list searched for it.
+// saved to the profile. "Find releases" opens the compact list searched for
+// the title, Enter on a performer searches it for them.
 @Component({
   selector: 'app-adult-title',
   templateUrl: './adult-title.component.html',
@@ -36,6 +36,7 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private adult:AdultService,
+    private releases:ReleasesService,
     private navigation:NavigationService,
     private background:BackgroundService,
     private notification:NotificationService,
@@ -44,19 +45,10 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     private playback:PlaybackService,
     private route:ActivatedRoute,
     private router:Router,
-    private location:Location,
   ) { }
 
   get studio() {
     return this.details?.studio || this.item?.studio || null;
-  }
-
-  get performers() {
-    return (this.details?.performers || []).slice(0, PERFORMERS_SHOWN);
-  }
-
-  get morePerformers():number {
-    return Math.max(0, (this.details?.performers?.length || 0) - PERFORMERS_SHOWN);
   }
 
   ngOnInit(): void {
@@ -77,7 +69,7 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     ).subscribe(details => {
       if (!details) {
         if (!this.item) this.error = "Couldn't load this title. Check your connection, then go back and try again.";
-        setTimeout(() => this.focusSelector('.adultTitle .actionBtn'), 0);
+        setTimeout(() => this.focusSelector('.adultTitle .option'), 0);
         return;
       }
       this.details = details;
@@ -102,16 +94,21 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       if (!this.router.url.startsWith('/adult/title/')) return;
       let active = document.activeElement as HTMLElement;
+      if (instruction == 'leave') {
+        this.navigation.goBack();
+        return;
+      }
       if (instruction == 'back') {
         if (active.classList.contains('menuItem')) this.focusSelector('.adultTitle [data-action="play"]');
-        else this.location.back();
+        else this.navigation.goBack();
         return;
       }
       if (instruction != 'click' || active.classList.contains('menuItem')) return;
       let action = active.dataset['action'];
       if (action == 'play') this.play();
-      else if (action == 'releases') this.findReleases();
-      else if (action == 'back') this.location.back();
+      else if (action == 'releases') this.findReleases(this.item?.title);
+      else if (active.dataset['performer'] !== undefined) this.findReleases(this.details?.performers[Number(active.dataset['performer'])]?.name);
+      else if (action == 'back') this.navigation.goBack();
       else if (active.classList.contains('card')) this.open(this.more[Number(active.dataset['index'])]);
     });
   }
@@ -155,11 +152,11 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // The compact list, searched for this title on the current release source
-  private findReleases() {
-    if (!this.item) return;
-    this.adult.state = { ...EMPTY_ADULT_STATE, provider: this.adult.state.provider, query: this.item.title };
-    this.router.navigateByUrl('/adult/releases');
+  // The compact list, searched for this title (or a performer) on the current
+  // release source
+  private findReleases(query:string | undefined) {
+    if (!query) return;
+    this.releases.open('adult', query, { label: this.item?.title || query, url: this.router.url });
   }
 
   private open(item:AdultTitle | undefined) {

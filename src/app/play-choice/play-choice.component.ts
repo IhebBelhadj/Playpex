@@ -49,13 +49,8 @@ export class PlayChoiceComponent implements OnInit, OnDestroy {
     this.choices.isOpen = true;
     this.previousFocus = document.activeElement as HTMLElement;
 
+    // the trapping section is a pxSection in the template
     setTimeout(() => {
-      this.navigation.updateNavigation('add', {
-        id: 'playChoice',
-        selector: '.playChoice .choice',
-        restrict: 'self-only',
-        straightOnly: true,
-      });
       (document.querySelector('.playChoice .choice[data-choice="resume"]') as HTMLElement)?.focus({ preventScroll: true });
     }, 0);
   }
@@ -70,7 +65,6 @@ export class PlayChoiceComponent implements OnInit, OnDestroy {
 
   close(done = () => this.request?.cancel()) {
     if (!this.request) return;
-    this.navigation.updateNavigation('remove', { sectionId: 'playChoice' });
     this.previousFocus?.focus({ preventScroll: true });
     done();
     this.request = undefined;

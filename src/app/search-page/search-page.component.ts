@@ -4,8 +4,7 @@ import { catchError, debounceTime, first, forkJoin, map, Observable, of, Subject
 import { MenuServiceService } from './../menu-service.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
-import { Location } from '@angular/common';
-import { isPointerFocus, pagedIndex } from '../pointer.service';
+import { FocusEngine, PositionStore } from '../movement/movement';
 import { ProfilesService } from '../profiles.service';
 
 interface Filter {
@@ -16,6 +15,7 @@ interface Filter {
 const MIN_QUERY = 3;
 const ADULT_WINDOW = 4;     // 18+ filter: TMDB pages read from where adult results start
 const TMDB_MAX_PAGES = 500;
+const STACK = 'search';       // the page's pxStack: positions are kept under this id
 
 @Component({
   selector: 'app-search-page',
@@ -39,7 +39,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   navSub:Subscription;
   searchSub:Subscription;
-  focusListener;
   private searches = new Subject<{query:string , filter:string}>();
 
   constructor(
@@ -47,8 +46,9 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     private menuService:MenuServiceService,
     private moviesService:MoviesService,
     private router:Router,
-    private location:Location,
     private profiles:ProfilesService,
+    private engine:FocusEngine,
+    private positions:PositionStore,
   ) { }
 
   get isKid():boolean {
@@ -78,8 +78,9 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     ).subscribe(({query , filter , rows}) => {
       this.loading = false;
       if (query != this.state.query || filter != this.state.filter) return;
+      // new results: no old position in them
+      this.positions.clear(STACK);
       this.update({ rows : (rows || []).filter(r => r.items.length) , searched : true });
-      setTimeout(() => this.markDefaults());
     });
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction=>{
@@ -96,53 +97,22 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
         this.open(this.itemFor(active));
       }
 
-      if (instruction == 'back') {
+      // a section without the menu: out to the power menu at once
+      if (instruction == 'back' || instruction == 'leave') {
         this.moviesService.searchData.next(EMPTY_SEARCH);
-        this.location.back();
+        this.positions.clear(STACK);
+        this.navigation.openPowerMenu();
       }
     })
-
-    this.focusListener = (e)=>{
-      if(!(this.router.url == "/search")) return;
-      this.onFocus(e.target as HTMLElement);
-    }
-    window.addEventListener('sn:focused', this.focusListener);
   }
 
+  // Sections `keyboard`, `searchFilters` and `searches` are pxSection
+  // directives in the template; the page and its rows scroll natively
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add' , {
-      id: 'keyboard',
-      selector: '.keyboardContainer .keyboardBtn',
-      leaveFor : { down : "@searchFilters" },
-      straightOnly: true,
-    })
-    this.navigation.updateNavigation('add' , {
-      id: 'searchFilters',
-      selector: '.searchContainer .filters .filterChip',
-      leaveFor : {
-        up : "@keyboard",
-        down : ".searchContainer .resultRow:first-of-type .lastSelected",
-      },
-      straightOnly: true,
-    })
-    this.navigation.updateNavigation('add' , {
-      id: 'searches',
-      selector: '.searchContainer .results .result',
-      leaveFor : { up : "@searchFilters" },
-      straightOnly: true,
-    })
-
     // Coming back from a title page: same results, same item focused
     setTimeout(()=>{
-      this.markDefaults();
-      let remembered = this.state.focusKey && document.querySelector(`.searchContainer .result[data-key="${this.state.focusKey}"]`) as HTMLElement;
-      if (remembered) {
-        this.instantly(() => remembered.focus({preventScroll : true}));
-        this.onFocus(remembered);
-      }
-      else {
-        this.navigation.updateNavigation('focus' , {sectionId : 'keyboard'});
-      }
+      let restored = this.state.rows.length && this.positions.get(STACK) && this.engine.restore(`stack:${STACK}`);
+      if (!restored) this.navigation.updateNavigation('focus' , {sectionId : 'keyboard'});
     } , 50)
   }
 
@@ -150,10 +120,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     this.menuService.sendInstruction('show' , this);
     this.navSub?.unsubscribe();
     this.searchSub?.unsubscribe();
-    window.removeEventListener('sn:focused',this.focusListener);
-    this.navigation.updateNavigation('remove' , {sectionId : 'keyboard'});
-    this.navigation.updateNavigation('remove' , {sectionId : 'searchFilters'});
-    this.navigation.updateNavigation('remove' , {sectionId : 'searches'});
   }
 
   // ── searching ───────────────────────────────────────────────────────────
@@ -280,7 +246,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   open(item:SearchItem){
     if (!item) return;
-    this.update({ focusKey : item.key });
 
     if (item.kind == 'person') {
       this.showCredits(item);
@@ -317,11 +282,8 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       this.update({ rows });
 
       setTimeout(()=>{
-        this.markDefaults();
         let first = document.querySelector('.searchContainer .resultRow[data-row="credits"] .result') as HTMLElement;
-        if (!first) return;
-        first.focus({preventScroll : true});
-        this.onFocus(first);
+        if (first) this.engine.focus(first);
       })
     })
   }
@@ -371,112 +333,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     switchNumKey.style.display = to == 'num' ? "none" : "block";
 
     (to == 'num' ? switchCharKey : switchNumKey).focus({preventScroll : true});
-  }
-
-  // ── focus and scrolling ────────────────────────────────────────────────
-
-  onFocus(node:HTMLElement){
-    if (!node.closest('.searchContainer')) return;
-
-    if (!node.classList.contains('result')) {
-      this.setPageOffset(0);
-      return;
-    }
-
-    let row = node.closest('.resultRow') as HTMLElement;
-    row.querySelectorAll('.result').forEach(el => el.classList.remove('lastSelected'));
-    node.classList.add('lastSelected');
-
-    // Hovered with the mouse: nothing moves under the cursor
-    if (isPointerFocus()) return;
-    this.scrollRowTo(node);
-    this.ensureRowVisible(row);
-  }
-
-  // Up/down between rows land on the row's last focused item
-  // (skipping an empty "No titles found" row)
-  neighbour(rowIndex:number , direction:number):string {
-    for (let i = rowIndex + direction; i >= 0 && i < this.state.rows.length; i += direction) {
-      let next = this.state.rows[i];
-      if (next.items.length) return `.searchContainer .resultRow[data-row="${next.key}"] .lastSelected`;
-    }
-    return direction < 0 ? '@searchFilters' : null;
-  }
-
-  markDefaults(){
-    document.querySelectorAll('.searchContainer .resultRow').forEach(row => {
-      if (!row.querySelector('.lastSelected')) row.querySelector('.result')?.classList.add('lastSelected');
-      this.updatePaddles(row.querySelector('.rowContent'));
-    });
-  }
-
-  // Horizontal: just enough for the focused item to be fully shown
-  scrollRowTo(node:HTMLElement){
-    let content = node.closest('.rowContent') as HTMLElement;
-    let width = (content.parentElement as HTMLElement).clientWidth;
-    let current = this.rowOffset(content);
-    let margin = 60;
-
-    let target = current;
-    if (node.offsetLeft + node.offsetWidth > current + width - margin) target = node.offsetLeft + node.offsetWidth - width + margin;
-    if (node.offsetLeft < current + margin) target = node.offsetLeft - margin;
-    this.setRowOffset(content , target);
-  }
-
-  // Row paddles (mouse only): a screenful further, that item first
-  pageRow(rowKey:string , direction:number){
-    let content = document.querySelector(`.searchContainer .resultRow[data-row="${rowKey}"] .rowContent`) as HTMLElement;
-    if (!content) return;
-    let items = Array.from(content.querySelectorAll('.result')) as HTMLElement[];
-    let target = pagedIndex(content , items , content.parentElement.clientWidth , direction);
-    if (target < 0) return;
-
-    this.setRowOffset(content , items[target].offsetLeft);
-    items[target].focus({preventScroll : true});
-  }
-
-  rowOffset(content:HTMLElement):number {
-    return -new DOMMatrix(getComputedStyle(content).transform).m41;
-  }
-
-  setRowOffset(content:HTMLElement , offset:number){
-    let max = Math.max(0 , content.scrollWidth - content.parentElement.clientWidth);
-    offset = Math.min(max , Math.max(0 , offset));
-    content.style.transform = `translateX(-${offset}px)`;
-    this.updatePaddles(content , offset);
-  }
-
-  updatePaddles(content:HTMLElement , offset = content ? this.rowOffset(content) : 0){
-    if (!content) return;
-    let row = content.closest('.resultRow');
-    row.classList.toggle('atStart' , offset <= 1);
-    row.classList.toggle('atEnd' , offset >= content.scrollWidth - content.parentElement.clientWidth - 1);
-  }
-
-  // Vertical: slide the page so the focused row is fully on screen
-  ensureRowVisible(row:HTMLElement){
-    let page = document.querySelector('.searchContainer') as HTMLElement;
-    let current = -new DOMMatrix(getComputedStyle(page).transform).m42;
-    let rect = row.getBoundingClientRect();
-    let margin = 40;
-
-    let target = current;
-    if (rect.bottom > window.innerHeight - margin) target += rect.bottom - (window.innerHeight - margin);
-    else if (rect.top < margin) target -= margin - rect.top;
-    this.setPageOffset(target);
-  }
-
-  setPageOffset(offset:number){
-    let page = document.querySelector('.searchContainer') as HTMLElement;
-    if (page) page.style.transform = `translateY(-${Math.max(0 , offset)}px)`;
-  }
-
-  // Restoring a position: no slide-in animation
-  instantly(fn:() => void){
-    let page = document.querySelector('.searchContainer') as HTMLElement;
-    page?.classList.add('noTransition');
-    fn();
-    setTimeout(() => page?.classList.remove('noTransition') , 50);
   }
 
   // ── state ──────────────────────────────────────────────────────────────

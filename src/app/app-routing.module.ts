@@ -1,4 +1,5 @@
 import { PowerPageComponent } from './power-page/power-page.component';
+import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { YoutubeComponent } from './youtube/youtube.component';
 import { SearchPageComponent } from './search-page/search-page.component';
@@ -13,7 +14,7 @@ import { ProfileEditorComponent } from './profile-editor/profile-editor.componen
 import { AdultGuard, AdultLayoutGuard, ProfileGuard } from './profile.guard';
 import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
-import { AdultPageComponent } from './adult-page/adult-page.component';
+import { ReleasesPageComponent } from './releases-page/releases-page.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
 
 const routes: Routes = [
@@ -65,6 +66,10 @@ const routes: Routes = [
         component : ShowOptionsComponent
       },
       {
+        path : 'show/:id/season/:season/episode/:episode',
+        component : EpisodePageComponent
+      },
+      {
         path : 'list',
         component : MoviesSliderComponent,
         data : { media : 'tv' },
@@ -97,7 +102,22 @@ const routes: Routes = [
   {
     path : 'adult/releases',
     canActivate : [AdultGuard],
-    component : AdultPageComponent
+    component : ReleasesPageComponent,
+    data : { kind : 'adult' },
+  },
+  // "Find releases" on a movie / show page (ReleasesService.open); under no
+  // section path, but /movies and /shows keep the menu's section highlighted
+  {
+    path : 'releases/movies',
+    canActivate : [ProfileGuard],
+    component : ReleasesPageComponent,
+    data : { kind : 'movie' },
+  },
+  {
+    path : 'releases/shows',
+    canActivate : [ProfileGuard],
+    component : ReleasesPageComponent,
+    data : { kind : 'tv' },
   },
   {
     path : 'player',

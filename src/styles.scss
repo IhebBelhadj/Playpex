@@ -133,10 +133,6 @@ body:not(.pointer-hidden) .pagedRow:hover > .rowPaddle {
   pointer-events: auto;
 }
 
-.section.atStart .rowPaddle.prev,
-.section.atEnd .rowPaddle.next {
-  display: none;
-}
 
 // Movement system (src/app/movement): containers scroll natively with hidden
 // scrollbars. pxRow / pxStack add these classes themselves; give the

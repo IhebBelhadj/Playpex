@@ -3,7 +3,6 @@ import { MenuServiceService } from './../menu-service.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { YoutubeService } from '../youtube.service';
-import { Location } from "@angular/common";
 import { Subscription } from 'rxjs';
 import { gsap ,Power1} from 'gsap'
 import { STREAMING_SERVER } from '../server-config';
@@ -30,7 +29,6 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
     private activeRoute:ActivatedRoute,
     private menuService:MenuServiceService,
     private navigation:NavigationService,
-    private location:Location,
     private router:Router,
   ) {
 
@@ -153,7 +151,8 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
       switch (instruction) {
         case 'back':
-            this.location.back();
+        case 'leave':
+            this.navigation.goBack();
           break;
         case 'click':
           if (this.canplay) {

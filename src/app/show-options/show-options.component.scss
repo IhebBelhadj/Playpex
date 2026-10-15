@@ -71,9 +71,10 @@
     opacity: .9;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 
     .count {
+      font-family: 'netflixLt';
       opacity: .6;
     }
 
@@ -82,22 +83,29 @@
     }
   }
 
-  // Rows scroll with transform (no native scrolling in the 10-foot UI)
-  .rowViewport {
-    overflow: hidden;
-    padding: 8px 0 8px 4px;
-  }
-
+  // Rows are pxRows (src/app/movement): they scroll natively; the padding is
+  // room for the focused card's scale/outline, inside the scrolling box
   .content {
     position: relative;
     display: flex;
-    transition: transform .2s;
-    // room for the focused card's scale/outline at the end of the row
-    padding-right: 24px;
+    padding: 8px 24px 8px 4px;
+  }
+
+  // the episodes row's title, with the season's ratings beside it
+  .rowHeader {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    margin: 1em 0;
+
+    .sectionTitle { margin: 0; }
   }
 
   .seasons {
     .season {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       flex: none;
       background: rgba(28, 28, 28, .72);
       color: #fff;
@@ -114,6 +122,13 @@
     .selected {
       border-color: rgba(255, 255, 255, .6);
       opacity: 1;
+    }
+
+    // the season's IMDb mean
+    .seasonRating {
+      font-family: 'netflixBd';
+      font-size: 13px;
+      opacity: .6;
     }
 
     .focused {
@@ -219,16 +234,47 @@
       }
 
       .name {
+        display: flex;
+        gap: 10px;
         font-family: 'netflixBk';
         opacity: .8;
         font-size: 16px;
+
+        .title {
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .number {
+          flex: none;
+          font-family: 'netflixBd';
+          opacity: .55;
+        }
       }
 
-      .year {
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 6px;
         font-family: 'netflixLt';
-        opacity: .45;
         font-size: 14px;
-        margin-top: 4px;
+        color: rgba(255, 255, 255, .5);
+      }
+
+      .epRating {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'netflixBd';
+        color: rgba(255, 255, 255, .9);
+
+        img {
+          width: 26px;
+          display: block;
+        }
       }
 
       .focused .imgContainer {

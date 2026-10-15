@@ -1,4 +1,4 @@
-<div class="playChoice" *ngIf="request">
+<div class="playChoice" *ngIf="request" pxSection="playChoice" [trap]="true" pxSelector=".choice">
   <div class="panel">
     <h2 class="title">{{ request.title }}</h2>
     <p class="subtitle">You stopped at {{ time(request.positionS) }}.</p>

@@ -128,9 +128,11 @@ export class AppComponent implements AfterViewInit , OnInit{
         switch (true) {
           // a section's poster rows (movies or TV shows)
           case !!this.moviesService.catalogForUrl(this._router.url):
-            if (!document.activeElement.classList.contains('menuItem')) {
-              this.moviesPageNavigation()
-            }
+            // a poster opens its title; the search bar above the rows gets
+            // a click like on any other page
+            if (document.activeElement.classList.contains('menuItem')) break;
+            if (document.activeElement.classList.contains('element')) this.moviesPageNavigation();
+            else this.navigation.addCommand('click');
 
             break;
 
@@ -204,10 +206,7 @@ export class AppComponent implements AfterViewInit , OnInit{
 
     let element = document.activeElement as HTMLElement;
     if (element.classList.contains('element')) {
-      // opened with a mouse click: come back to this poster, not the row's old position
-      let catalog = this.moviesService.catalogForUrl(this._router.url);
-      if (catalog && element.dataset['section']) catalog.navigationData[element.dataset['section']]['reached'] = element.dataset['index'];
-
+      // (the movement system already remembered this poster for the way back)
       this.navigation.updateNavigation('remove' , {sectionId : "menu"})
       this.navigation.updateNavigation('remove' , {sectionId : "slider"})
 

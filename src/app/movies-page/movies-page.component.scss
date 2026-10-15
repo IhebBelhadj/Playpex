@@ -11,15 +11,70 @@
   justify-content: space-between;
   height: 100vh;
   padding-left: 35px;
-  transition: all .2s;
+  box-sizing: border-box;
+  // a detail page's row is scrolled fully into view, 40px from the edges
+  scroll-padding-block: 40px;
 }
 
-// Set by detail pages (movie-options) that scroll the whole page natively
-.pageContainer.nativeScroll {
-  overflow-y: auto;
-  scrollbar-width: none;
+// ── list page: the section's search bar (styled like the 18+ toolbar's) ────
 
-  &::-webkit-scrollbar {
-    display: none;
+.sectionToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 170px 0 0;     // the shell's clock on the right
+
+  // the description follows right under it, the rows stay at the bottom
+  & + movie-description {
+    margin-bottom: auto;
   }
+}
+
+.searchField,
+.clearSearch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .56);
+  color: #fff;
+  font-family: 'NetflixBk';
+  font-size: 16px;
+  white-space: nowrap;
+  transition: transform .2s, background .2s, color .2s;
+
+  img {
+    width: 18px;
+    filter: invert(1);
+    opacity: .8;
+  }
+
+  &.focused {
+    background: #fff;
+    color: #141414;
+    transform: scale(1.05);
+
+    img { filter: none; opacity: 1; }
+  }
+}
+
+.searchField {
+  width: 320px;
+
+  .fieldText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.empty .fieldText { color: rgba(255, 255, 255, .38); }
+  &.empty.focused .fieldText { color: rgba(20, 20, 20, .55); }
+}
+
+.clearSearch:not(.focused) {
+  background: none;
+  color: rgba(255, 255, 255, .62);
 }

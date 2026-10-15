@@ -31,7 +31,6 @@ export interface SearchState {
   filter: string;
   rows: SearchRow[];
   searched: boolean;                    // a search ran for this query/filter
-  focusKey?: string;                    // item to focus when coming back
 }
 
 export const EMPTY_SEARCH: SearchState = { query: '', filter: 'all', rows: [], searched: false };

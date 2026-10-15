@@ -1,9 +1,16 @@
-<div class="adultPage" data-px-native-wheel>
+<div class="releasesPage">
 
   <!-- Search, source and filters -->
-  <aside class="rail" pxSection="adultFilters"
-    [leaveFor]="{ left: '@menu', right: ['grid:adult-releases', '@adultReleases'] }">
-    <div class="seal" aria-label="Adults only">18+</div>
+  <aside class="rail" pxSection="releasesFilters"
+    [leaveFor]="{ left: '@menu', right: ['grid:' + listId, '@releasesList'] }">
+    <div class="railHead">
+      <!-- opened from a title's "Find releases": the way back to it -->
+      <button class="originBack focusable" *ngIf="origin">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        <span class="originText">Back to <span class="originLabel">{{ origin.label }}</span></span>
+      </button>
+      <div class="seal" *ngIf="!origin && kind == 'adult'" aria-label="Adults only">18+</div>
+    </div>
 
     <button class="searchField focusable" [class.empty]="!state.query">
       <img src="assets/icons/search.svg" alt="">
@@ -33,14 +40,14 @@
       <span class="switch" [class.on]="state.playableOnly"><span class="knob"></span></span>
     </button>
 
-    <button class="layoutSwitch focusable">
+    <button class="layoutSwitch focusable" *ngIf="kind == 'adult'">
       <img src="assets/icons/grid.svg" alt="">
       Poster view
     </button>
   </aside>
 
   <!-- That source's releases, most seeded first -->
-  <section class="releases" pxSection="adultReleases" [leaveFor]="{ left: '@adultFilters' }">
+  <section class="releases" pxSection="releasesList" [leaveFor]="{ left: '@releasesFilters' }">
     <header class="listHeader">
       <h1 class="heading">{{ heading }}</h1>
       <p class="count" *ngIf="state.releases.length">
@@ -54,7 +61,7 @@
     </div>
 
     <div class="releasesViewport" *ngIf="state.releases.length"
-      pxGrid="adult-releases" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
+      [pxGrid]="listId" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
       <ol class="releaseList">
         <li *ngFor="let r of state.releases; let i = index; trackBy: trackRelease">
           <button class="release focusable" pxItem [pxItemKey]="r.hash"
@@ -71,6 +78,7 @@
             <span class="releaseInfo">
               <span class="releaseTitle">{{ r.title }}</span>
               <span class="releaseMeta">
+                <span class="episode" *ngIf="episodeLabel(r)">{{ episodeLabel(r) }}</span>
                 <span class="studio" *ngIf="r.studio">{{ r.studio }}</span>
                 <span *ngIf="r.year">{{ r.year }}</span>
                 <span *ngIf="r.scenes">Split scenes</span>
@@ -95,7 +103,7 @@
 
 <text-keyboard *ngIf="keyboardOpen"
   title="Search releases"
-  placeholder="Studio, performer or title"
+  [placeholder]="searchHint"
   [value]="state.query"
   [maxLength]="60"
   [capitalizeWords]="false"

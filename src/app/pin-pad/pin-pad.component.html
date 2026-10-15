@@ -1,4 +1,4 @@
-<div class="pinPad">
+<div class="pinPad" pxSection="pinPad" [trap]="true">
   <div class="pinPanel">
     <img class="pinAvatar" *ngIf="avatar" [src]="avatarUrl(avatar)" alt="">
     <p class="pinTitle">{{ title }}</p>
@@ -13,8 +13,8 @@
     </div>
     <p class="pinError">{{ error }}</p>
 
-    <div class="pinKeys">
-      <button *ngFor="let key of keys" class="pinKey" [attr.data-key]="key"
+    <div class="pinKeys" pxGrid enter="nearest">
+      <button *ngFor="let key of keys" class="pinKey" pxItem [pxItemKey]="key" [attr.data-key]="key"
         [class.textKey]="key == 'cancel'">
         <ng-container [ngSwitch]="key">
           <span *ngSwitchCase="'cancel'">Cancel</span>

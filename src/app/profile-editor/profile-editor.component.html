@@ -1,7 +1,7 @@
 <div class="profileEditor">
   <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
 
-  <div class="editorContent" *ngIf="ready" [class.dimmed]="panel">
+  <div class="editorContent" *ngIf="ready" [class.dimmed]="panel" pxSection="profileEditor">
     <h1 class="heading">{{ id ? 'Edit Profile' : 'Add Profile' }}</h1>
     <p class="intro" *ngIf="!id">Add a profile for another person watching Playpex.</p>
 
@@ -52,17 +52,17 @@
   </text-keyboard>
 
   <!-- Avatar chooser -->
-  <div class="overlayPanel avatarPanel" *ngIf="panel == 'avatars'">
+  <div class="overlayPanel avatarPanel" *ngIf="panel == 'avatars'" pxSection="avatarChooser" [trap]="true">
     <p class="panelTitle">Choose a profile icon</p>
-    <div class="avatarGrid">
-      <button *ngFor="let a of avatars" class="avatarChoice focusable" [attr.data-avatar]="a" [class.current]="a == avatar">
+    <div class="avatarGrid" pxGrid enter="nearest">
+      <button *ngFor="let a of avatars" class="avatarChoice focusable" pxItem [pxItemKey]="a" [attr.data-avatar]="a" [class.current]="a == avatar">
         <img [src]="avatarUrl(a)" alt="">
       </button>
     </div>
   </div>
 
   <!-- Delete confirmation -->
-  <div class="overlayPanel confirmPanel" *ngIf="panel == 'confirmDelete'">
+  <div class="overlayPanel confirmPanel" *ngIf="panel == 'confirmDelete'" pxSection="confirmDelete" [trap]="true">
     <img class="confirmAvatar" [src]="avatarUrl(avatar)" alt="">
     <p class="panelTitle">Delete {{ name }}?</p>
     <p class="confirmText">This profile's watch list, viewing history, resume points and ratings will be deleted for good.</p>

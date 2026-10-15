@@ -226,6 +226,9 @@ $chipBg: rgba(0, 0, 0, .56);
 .sliderContainer {
   flex: none;
   height: 370px;
+  // at the bottom even before a title info exists above (focus left on the
+  // menu after opening the page from it)
+  margin-top: auto;
   position: relative;
   // the rows' zoom room (below) stays inside the clipping stack
   margin: 0 -10px;

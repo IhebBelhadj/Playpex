@@ -11,6 +11,9 @@ var rangeParser = require('range-parser'),
   youtube = require('./youtube'),
   episodes = require('./episodes'),
   adult = require('./adult'),
+  releases = require('./releases'),
+  imdb = require('./imdb'),
+  yts = require('./providers/yts'),
   subtitles = require('./subtitles'),
   fs = require('fs'),
   store = require('./store'),
@@ -254,27 +257,10 @@ api.get('/subtitles/:imdb_id', function (req, res) {
 
 })
 
-//YTS movie API (torrents, rating, runtime). yts.mx stopped answering in 2026;
-//the API itself announces movies-api.accel.li as its new base URL.
+//YTS movie API (torrents, rating, runtime), via lib/providers/yts.js
+// (mirror list there: yts.mx stopped answering in 2026)
 
-var YTS_MIRRORS = ['https://movies-api.accel.li', 'https://yts.lt', 'https://yts.ag'];
-
-function ytsGet(endpoint, params) {
-  var mirrors = YTS_MIRRORS.slice();
-
-  function attempt() {
-    var base = mirrors.shift();
-    return axios.get(base + '/api/v2/' + endpoint, { params: params, timeout: 15000 })
-      .catch(function (err) {
-        if (mirrors.length) {
-          return attempt();
-        }
-        throw err;
-      });
-  }
-
-  return attempt();
-}
+var ytsGet = yts.get;
 
 api.get('/api/movies', function (req, res) {
   ytsGet('list_movies.json', req.query)
@@ -318,6 +304,30 @@ api.get('/api/shows/:imdb_id/torrents', function (req, res) {
     });
 });
 
+//IMDb ratings (lib/imdb.js): a title's, and a series' seasons and episodes
+// GET /api/imdb/:id → { id, rating, votes }
+// GET /api/imdb/:id/episodes → { id, rating, votes, seasons: [{ season, rating, rated, episodes: [{ episode, id, rating, votes }] }] }
+
+function imdbRoute(read) {
+  return function (req, res) {
+    var id = String(req.params.id || '');
+    if (!imdb.isImdbId(id)) {
+      return res.status(400).json({ error: 'not an IMDb id: ' + id });
+    }
+    read(id)
+      .then(function (result) {
+        res.json(result);
+      })
+      .catch(function (error) {
+        console.error('imdb ' + id + ': ' + error.message);
+        res.status(502).json({ error: error.message });
+      });
+  };
+}
+
+api.get('/api/imdb/:id', imdbRoute(imdb.title));
+api.get('/api/imdb/:id/episodes', imdbRoute(imdb.episodes));
+
 //18+ movie torrents (TheRARBG XXX + The Pirate Bay), best match first.
 // ?title=&year= — these movies are matched by name, YTS has none of them
 
@@ -357,6 +367,44 @@ api.get('/api/adult/browse', function (req, res) {
     })
     .catch(function (error) {
       console.error('adult browse: ' + error.message);
+      res.status(502).send({ error: error.message, torrents: [] });
+    });
+});
+
+//"Find releases" lists for movies, TV shows and the 18+ section: one source's
+// releases, most seeded first (lib/releases.js)
+// GET /api/releases/providers?kind=movie|tv|adult → [{ id, name, paged, default }]
+// GET /api/releases/browse?kind=&provider=&q=&quality=2160p|1080p|720p|SD&playable=1&page=&imdb=tt…
+//   → { provider, page, hasMore, torrents }; `imdb` is optional context (EZTV lists that show)
+
+api.get('/api/releases/providers', function (req, res) {
+  var kind = String(req.query.kind || '');
+  if (!releases.isKind(kind)) {
+    return res.status(400).json({ error: 'kind must be one of: ' + releases.KINDS.join(', ') });
+  }
+  res.json(releases.providers(kind));
+});
+
+api.get('/api/releases/browse', function (req, res) {
+  var kind = String(req.query.kind || '');
+  if (!releases.isKind(kind)) {
+    return res.status(400).json({ error: 'kind must be one of: ' + releases.KINDS.join(', '), torrents: [] });
+  }
+
+  releases.browse({
+    kind: kind,
+    provider: String(req.query.provider || ''),
+    q: String(req.query.q || '').slice(0, 100),
+    quality: String(req.query.quality || ''),
+    playable: req.query.playable === '1' || req.query.playable === 'true',
+    page: parseInt(req.query.page, 10) || 1,
+    imdb: String(req.query.imdb || '')
+  })
+    .then(function (result) {
+      res.json(result);
+    })
+    .catch(function (error) {
+      console.error(kind + ' releases: ' + error.message);
       res.status(502).send({ error: error.message, torrents: [] });
     });
 });

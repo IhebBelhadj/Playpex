@@ -1,4 +1,8 @@
-<div class="searchContainer">
+<!-- The page is a scrolling pxStack (filters line, result rows); the keyboard
+     is a plain section on top of it, moved by geometry (src/app/movement) -->
+<div class="searchContainer" pxStack="search" align="nearest">
+  <!-- one block: focusing a key brings the search field into view too -->
+  <div class="searchHead" pxStackItem>
   <input
   name="searchBar"
   type="text"
@@ -9,7 +13,7 @@
   [value]="state.query">
 
 
-  <div class="keyboardContainer">
+  <div class="keyboardContainer" pxSection="keyboard" pxSelector=".keyboardBtn" [leaveFor]="{ down: '@searchFilters' }">
     <div class="keyboardGrid charKeyboard">
       <button class="keyboardBtn">A</button>
       <button class="keyboardBtn">B</button>
@@ -67,27 +71,27 @@
 
     </div>
   </div>
+  </div>
 
   <!-- What to search: the selected filter stays highlighted -->
-  <div class="filters">
-    <button *ngFor="let f of visibleFilters" class="filterChip"
+  <div class="filters" pxSection="searchFilters" [leaveFor]="{ up: '@keyboard' }" pxGrid="filters">
+    <button *ngFor="let f of visibleFilters" class="filterChip" pxItem [pxItemKey]="f.id"
       [class.selected]="f.id == state.filter"
       [attr.data-filter]="f.id">{{ f.label }}</button>
   </div>
 
-  <div class="results">
+  <div class="results" pxSection="searches" [leaveFor]="{ up: '@searchFilters' }">
     <p class="searchNote" *ngIf="note">{{ note }}</p>
 
-    <div class="section resultRow atStart" *ngFor="let row of state.rows; let r = index; trackBy: trackRow"
+    <div class="section resultRow" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem
       [attr.data-row]="row.key">
       <span class="sectionTitle">{{ row.title }}</span>
       <div class="rowViewport pagedRow">
-        <div class="rowContent">
+        <div class="rowContent" [pxRow]="row.key" align="nearest" #r="pxRow">
           <button *ngFor="let item of row.items; trackBy: trackItem" class="result focusable"
+            pxItem [pxItemKey]="item.key"
             [class.person]="item.kind == 'person'"
-            [attr.data-key]="item.key"
-            [attr.data-sn-up]="neighbour(r , -1)"
-            [attr.data-sn-down]="neighbour(r , 1)">
+            [attr.data-key]="item.key">
             <div class="imgContainer">
               <img [src]="imgBase + item.image" alt="">
               <span class="badge" *ngIf="item.badge">{{ item.badge }}</span>
@@ -97,10 +101,10 @@
           </button>
         </div>
         <!-- mouse only (hidden with the cursor): page through the row -->
-        <div class="rowPaddle prev" (click)="pageRow(row.key , -1)">
+        <div class="rowPaddle prev" (click)="r.page(-1)">
           <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
         </div>
-        <div class="rowPaddle next" (click)="pageRow(row.key , 1)">
+        <div class="rowPaddle next" (click)="r.page(1)">
           <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
         </div>
       </div>

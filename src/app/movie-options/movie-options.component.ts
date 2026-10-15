@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { NotificationService } from './../notification.service';
 import { filter, first, map, Observable, Subscription } from 'rxjs';
 import { MoviesService } from './../movies.service';
@@ -12,7 +11,8 @@ import { TorrentPickerService } from '../torrent-picker.service';
 import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
-import { isPointerFocus } from '../pointer.service';
+import { FocusEngine, PositionStore } from '../movement/movement';
+import { ReleasesService } from '../releases.service';
 
 @Component({
   selector: 'app-movie-options',
@@ -33,7 +33,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   canPlay = false;
   findingTorrents = false;    // 18+ movie: Play is looking up torrents
   selectedMovie;
-  focusListener;
 
   // The current profile's state for this movie
   inWatchlist = false;
@@ -48,13 +47,15 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private moviesService:MoviesService,
     private router:Router,
     private notificationService:NotificationService,
-    private location:Location,
     private menu:MenuServiceService,
     private playback:PlaybackService,
     private torrentPicker:TorrentPickerService,
     private torrentService:TorrentService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
+    private engine:FocusEngine,
+    private positions:PositionStore,
+    private releases:ReleasesService,
   ) {
   }
 
@@ -62,22 +63,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
     this.menu.sendInstruction('collapse' , this);
 
-    // the page scrolls natively (vertically) while this component is shown
-    document.querySelector('.pageContainer').classList.add('nativeScroll');
-
-    //spacial navigation setup
-
-    this.navigation.updateNavigation('add' , {
-      id: 'options',
-      selector: '.optionsMasterContainer .focusable',
-      restrict : "self-only",
-      leaveFor: {
-        left: '@menu',
-      },
-      enterTo: 'default-element',
-      straightOnly: true,
-
-    })
+    // Section `options` is a pxSection in the template; the buttons and rows
+    // are entries of the section page's scrolling pxStack (src/app/movement)
     this.navigation.updateNavigation('add',{
       id: 'menu',
       selector: '.menuContainer .element',
@@ -122,81 +109,16 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
 
 
-    // Focus moves: remember position per row and scroll it into view
-    // (not for mouse hovers: the row would slide away under the cursor)
-
-    this.focusListener = (e)=>{
-      if (!this.router.url.includes('/movies/movie')) return;
-      const node = e.target as HTMLElement;
-      if (!node.closest('.optionsMasterContainer')) return;
-      let scroll = !isPointerFocus();
-
-      if (node.closest('.optionPannel')) {
-        this.updateLastSelected('.optionPannel' , node)
-        this.scrollPageTo(0);
-      }
-      else if (node.closest('.casts')) {
-        this.updateLastSelected('.casts' , node)
-        if (scroll) {
-          this.scrollRowTo(node);
-          this.ensureSectionVisible('.casts');
-        }
-      }
-      else if (node.closest('.similar')) {
-        this.updateLastSelected('.similar' , node)
-        if (scroll) {
-          this.scrollRowTo(node);
-          this.ensureSectionVisible('.similar');
-        }
-      }
-    }
-    window.addEventListener('sn:focused', this.focusListener)
-
-
   }
 
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
-    this.navigation.updateNavigation('remove' , {sectionId : 'options'});
     this.navigationSub.unsubscribe();
 
     this.navigation.routerCurrentMovieId = undefined;
-    window.removeEventListener('sn:focused', this.focusListener);
 
     let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
-    if (pageContainer) {
-      pageContainer.scrollTop = 0;
-      pageContainer.classList.remove('nativeScroll');
-    }
-  }
-
-  // Horizontal: smooth-scroll the row so the focused item sits about a third in
-  scrollRowTo(node:HTMLElement){
-    let row = node.closest('.castSlider, .movieSlider') as HTMLElement;
-    let offset = node.getBoundingClientRect().left - row.getBoundingClientRect().left;
-    row.scrollTo({ left : row.scrollLeft + offset - row.clientWidth / 3 , behavior : 'smooth' });
-  }
-
-  // Vertical: scroll the page just enough for the whole section to be visible
-  ensureSectionVisible(sectionSelector:string){
-    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
-    let section = document.querySelector('.optionsMasterContainer ' + sectionSelector) as HTMLElement;
-    if (!pageContainer || !section) return;
-
-    let margin = 40;
-    let viewport = pageContainer.getBoundingClientRect();
-    let rect = section.getBoundingClientRect();
-    let top = pageContainer.scrollTop;
-
-    if (rect.top < viewport.top + margin) top -= viewport.top + margin - rect.top;
-    else if (rect.bottom > viewport.bottom - margin) top += rect.bottom - (viewport.bottom - margin);
-
-    this.scrollPageTo(top);
-  }
-
-  scrollPageTo(top:number){
-    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
-    if (pageContainer) pageContainer.scrollTo({ top , behavior : 'smooth' });
+    if (pageContainer) pageContainer.scrollTop = 0;
   }
 
   getPageData(id){
@@ -204,20 +126,11 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.moviesService.getCredits(id)
     .subscribe(data =>{
       this.casts = data['cast'];
-      setTimeout(()=>{
-        document.querySelectorAll('.casts .focusable')[0].classList.add('lastSelected')
-      } , 100)
     })
 
     this.moviesService.getSimilarMovies(id)
     .subscribe(data =>{
       this.similar = data['results'];
-      console.log(this.similar);
-
-      setTimeout(()=>{
-        document.querySelectorAll('.similar .focusable')[0].classList.add('lastSelected')
-      } , 100)
-
     })
 
     this.moviesService.getMovieVideos(id)
@@ -234,6 +147,27 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.trailer = trailer || data['results'][0]['key'];
 
     })
+  }
+
+  // Every source's releases of this movie (title + year), most seeded first;
+  // one played from there still counts as this movie (progress, subtitles)
+  findReleases(){
+    let movie = this.selectedMovie;
+    if (!movie) return;
+    let title = movie['original_title'] || movie['title'];
+    let year = (movie['release_date'] || '').slice(0, 4);
+    this.releases.open(this.isAdult ? 'adult' : 'movie', [title, year].filter(Boolean).join(' '), {
+      label: movie['title'] || title,
+      url: this.router.url,
+      context: this.isAdult ? undefined : {
+        mediaType: 'movie',
+        tmdbId: movie['id'],
+        imdbId: movie['imdb_id'],
+        title,
+        year,
+        artwork: LibraryService.artworkOf(movie),
+      },
+    });
   }
 
   // 18+ title (TMDB `adult`): torrents come from the server's adult providers
@@ -266,17 +200,12 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     })
   }
 
-  updateLastSelected(parentClass:string , currentNode:HTMLElement){
-    document.querySelectorAll(parentClass + ' .focusable').forEach(node=>{
-      node.classList.remove('lastSelected')
-    })
-    currentNode.classList.add('lastSelected');
-  }
-
-  // Instant reset when a new movie is shown on the same page
+  // Another movie on the same page: top of the page, rows at their start
   resetScroll(){
     let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
     if (pageContainer) pageContainer.scrollTop = 0;
+    this.positions.clear('cast');
+    this.positions.clear('similar');
     document.querySelectorAll('.optionsMasterContainer .castSlider, .optionsMasterContainer .movieSlider')
       .forEach(row => row.scrollLeft = 0);
   }
@@ -453,6 +382,9 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
             this.showYtVid(this.trailer);
 
             break;
+          case document.activeElement.classList.contains('findReleases'):
+            this.findReleases();
+          break;
           case document.activeElement.classList.contains('addWatchlist'):
             this.toggleWatchlist();
           break;
@@ -471,9 +403,9 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
       }
 
-      if(instruction == "back" && this.router.url.includes('/movies/movie')){
+      if((instruction == "back" || instruction == "leave") && this.router.url.includes('/movies/movie')){
         this.moviesService.popFromHistoryStack(this.navigation.routerCurrentMovieId)
-        this.location.back();
+        this.navigation.goBack();
       }
     })
   }

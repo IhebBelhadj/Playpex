@@ -1,5 +1,27 @@
-<div class="pageContainer">
-  <movie-description></movie-description>
+<!-- A scrolling pxStack (src/app/movement): its entries are the routed page's
+     rows (the list's translated rows, a detail page's buttons and rows) -->
+<div class="pageContainer" pxStack>
+  <!-- List page: search this section (results stand in for the rows) -->
+  <div class="sectionToolbar" *ngIf="onList" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
+    <button class="searchField focusable" [class.empty]="!catalog.search">
+      <img src="assets/icons/search.svg" alt="">
+      <span class="fieldText">{{ catalog.search?.query || searchHint }}</span>
+    </button>
+    <button class="clearSearch focusable" *ngIf="catalog.search">Clear</button>
+  </div>
+  <!-- an episode page shows its own title block -->
+  <movie-description *ngIf="!onEpisode"></movie-description>
   <router-outlet></router-outlet>
 
 </div>
+
+<text-keyboard *ngIf="catalog.typing"
+  [title]="searchHint"
+  [placeholder]="catalog.media == 'tv' ? 'Show title' : 'Movie title'"
+  [value]="catalog.search?.query || ''"
+  [maxLength]="60"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="onSearchCancelled()">
+</text-keyboard>

@@ -1,19 +1,28 @@
-<div class="showOptionsContainer">
-  <div class="optionPannel">
-    <button class="option focusable play lastSelected" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+<!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
+     seasons row, the episodes row -->
+<div class="showOptionsContainer" pxSection="showOptions" [leaveFor]="{ left: '@menu' }">
+  <div class="optionPannel" pxGrid>
+    <button class="option focusable play" pxItem pxItemKey="play">
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
       </div>
       <span>Play {{selectedSeason ? 'S' + selectedSeason : ''}}</span>
     </button>
-    <button class="option focusable trailer" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+    <button class="option focusable trailer" pxItem pxItemKey="trailer">
       <div class="imgContainer">
         <img src="assets/icons/trailer.svg" alt="">
       </div>
       <span>Trailer</span>
     </button>
+    <!-- every source's releases of this show: episodes and season packs -->
+    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+      <div class="imgContainer">
+        <img src="assets/icons/search.svg" alt="">
+      </div>
+      <span>Find releases</span>
+    </button>
     <!-- 18+ titles never go in the profile's library -->
-    <button *ngIf="!isAdult" class="option focusable addWatchlist" [class.on]="inWatchlist" data-sn-down=".showOptionsContainer .seasons .lastSelected">
+    <button *ngIf="!isAdult" class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
       </div>
@@ -21,34 +30,37 @@
     </button>
   </div>
 
-  <div class="seasons" *ngIf="seasons.length">
+  <div class="seasons" *ngIf="seasons.length" pxStackItem>
     <h3 class="sectionTitle">Seasons</h3>
     <div class="rowViewport">
-      <div class="content">
+      <div class="content" pxRow="seasons" align="third">
         <button class="season focusable"
           *ngFor="let season of seasons"
+          pxItem [pxItemKey]="season.season_number"
           [class.selected]="season.season_number === selectedSeason"
-          [attr.data-season]="season.season_number"
-          data-sn-up=".showOptionsContainer .optionPannel .lastSelected"
-          data-sn-down=".showOptionsContainer .episodes .lastSelected">
+          [attr.data-season]="season.season_number">
           {{season.name}}
+          <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="episodes">
-    <h3 class="sectionTitle">
-      {{seasonName}}
-      <span class="count" *ngIf="episodes.length">· {{episodes.length}} episodes</span>
-      <img class="loading" *ngIf="loadingEpisodes" src="assets/icons/loading_small.svg" alt="">
-    </h3>
+  <div class="episodes" pxStackItem>
+    <div class="rowHeader">
+      <h3 class="sectionTitle">
+        {{seasonName}}
+        <span class="count" *ngIf="episodes.length">{{episodes.length}} episodes</span>
+        <img class="loading" *ngIf="loadingEpisodes" src="assets/icons/loading_small.svg" alt="">
+      </h3>
+      <season-curve [episodes]="episodes" [imdb]="selectedSeasonImdb" [highlight]="focusedEpisode"></season-curve>
+    </div>
     <div class="rowViewport">
-      <div class="content">
+      <div class="content" pxRow="episodes" align="third">
         <div class="episode" *ngFor="let ep of episodes; let i = index" [class.upcoming]="ep.upcoming">
           <button class="displayedElem focusable episodeBtn"
-            [attr.data-index]="i"
-            data-sn-up=".showOptionsContainer .seasons .lastSelected">
+            pxItem [pxItemKey]="ep.episode_number"
+            [attr.data-index]="i">
             <div class="imgContainer">
               <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
               <span class="badge" *ngIf="ep.upcoming">Upcoming</span>
@@ -60,14 +72,20 @@
                   <span [style.width.%]="progress.ratio * 100"></span>
                 </div>
               </ng-container>
-              <div class="resolving" *ngIf="resolvingEpisode === ep.episode_number">
+              <div class="resolving" *ngIf="isResolving(ep)">
                 <img src="assets/icons/loading_small.svg" alt="">
                 <span>Finding torrents…</span>
               </div>
             </div>
           </button>
-          <span class="name">E{{ep.episode_number}} · {{ep.name | slice:0:30}}{{ep.name?.length > 30 ? '…' : ''}}</span>
-          <span class="year">{{ep.air_date | slice:0:10}}{{ep.runtime ? ' · ' + ep.runtime + ' min' : ''}}</span>
+          <span class="name"><span class="number">{{ep.episode_number}}</span><span class="title">{{ep.name}}</span></span>
+          <span class="meta">
+            <span class="epRating" *ngIf="episodeRating(ep) as rating">
+              <img src="assets/icons/imdbsvg.svg" alt="IMDb">{{rating | number:'1.1-1'}}
+            </span>
+            <span *ngIf="ep.runtime">{{ep.runtime}} min</span>
+            <span *ngIf="ep.air_date">{{ep.air_date | date:'d MMM y'}}</span>
+          </span>
         </div>
       </div>
     </div>

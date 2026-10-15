@@ -1,7 +1,8 @@
-// The 18+ section. Same materials as the rest of the app (Netflix Sans, white
-// focus, translucent black keys/chips); what sets it apart is a darker, wine
-// tinted backdrop (no TMDB artwork here) and the seed count as the headline of
-// every release: the list is ranked by it.
+// Release lists (18+, movies, TV). Same materials as the rest of the app
+// (Netflix Sans, white focus, translucent black keys/chips); the seed count is
+// the headline of every release: the list is ranked by it. The 18+ list adds a
+// darker, wine tinted backdrop (no TMDB artwork there); movies and shows keep
+// the shell's backdrop (the title's).
 $ink: #fff;
 $muted: rgba(255, 255, 255, .62);
 $faint: rgba(255, 255, 255, .38);
@@ -14,9 +15,11 @@ $rowH: 92px;
   display: block;
   flex: 1;
   min-width: 0;
+}
 
-  // Covers the shell's blurred backdrop (the last movie's): inside the
-  // .masterContainer stacking context, under the menu and the page
+// 18+: covers the shell's blurred backdrop (the last movie's): inside the
+// .masterContainer stacking context, under the menu and the page
+:host(.kindAdult) {
   &::before {
     content: '';
     position: fixed;
@@ -29,7 +32,7 @@ $rowH: 92px;
   }
 }
 
-.adultPage {
+.releasesPage {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 48px;
@@ -47,12 +50,62 @@ $rowH: 92px;
   padding-top: 48px;
 }
 
+// The seal, or (opened from a title's "Find releases") the way back to it
+.railHead {
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.originBack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 58px;
+  padding: 0 18px 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: $chipBg;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 16px;
+  text-align: left;
+
+  svg {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &.focused {
+    background: $ink;
+    color: #141414;
+
+    .originLabel { color: #141414; }
+  }
+}
+
+.originText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.originLabel {
+  color: $ink;
+}
+
 .seal {
   display: grid;
   place-items: center;
   width: 58px;
   height: 58px;
-  margin-bottom: 40px;
   border: 2px solid $wine;
   border-radius: 12px;
   color: $wine;
@@ -371,6 +424,7 @@ $rowH: 92px;
     transform: scale(1.015);
 
     .seedLabel, .releaseMeta, .releaseName { color: rgba(20, 20, 20, .6); }
+    .releaseMeta .episode { color: #141414; }
     .seedMeter { background: rgba(0, 0, 0, .12); }
     .seedMeter span { background: #141414; }
     .tag { background: rgba(0, 0, 0, .08); color: #141414; }
@@ -439,6 +493,12 @@ $rowH: 92px;
 
   .studio {
     font-family: 'NetflixBk';
+  }
+
+  // TV: the episode / season a release holds
+  .episode {
+    font-family: 'NetflixBk';
+    color: $ink;
   }
 }
 

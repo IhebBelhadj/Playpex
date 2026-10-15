@@ -9,12 +9,14 @@ Data sources:
 | Catalog (rows, details, seasons, episodes) | **TMDB** | called directly from the browser |
 | Movie torrents, rating, runtime | **YTS** API (`movies-api.accel.li`, mirrors) | proxied by the server |
 | TV episode torrents | **EZTV** API + **TheRARBG** (RARBG's successor; RARBG itself shut down in 2023) | aggregated + ranked by the server |
-| 18+ section (releases ranked by seeders) | **The Pirate Bay** (apibay.org, default) / **TheRARBG** XXX category | server (`lib/adult.js`); not offered to kids profiles |
+| 18+ section (releases ranked by seeders) | **The Pirate Bay** (apibay.org, default) / **TheRARBG** XXX category | server (`lib/releases.js`, kind `adult`); not offered to kids profiles |
+| "Find releases" lists for movies / shows (ranked by seeders) | movies: **The Pirate Bay** / **TheRARBG** / **YTS**; shows: **The Pirate Bay** / **TheRARBG** / **EZTV** (by IMDb id) | server (`lib/releases.js`, `/api/releases/*`) |
 | 18+ catalog (posters, performers, studios) | pluggable: **TMDB** (default, adult films via their studios) / **ThePornDB** (key) | server (`lib/adultMeta/`) |
+| IMDb ratings of series, seasons (mean of the episodes) and episodes | IMDb's own GraphQL API (`caching.graphql.imdb.com`, no key; limited non-commercial use only) | server (`lib/imdb.js`, `/api/imdb/*`), cached 6 h |
 | Subtitles | pluggable providers: OpenSubtitles (keyless, via Stremio addon), YIFY Subtitles, OpenSubtitles.com (key), Wyzie Subs (key) | server; user picks the provider in the player |
 | Trailers | YouTube via `youtubei.js` | server — **currently only the first ~1 MB streams**, see gotchas |
 
-Movement system: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)** (plan + status) and the "Movement system" section of [`src/app/CLAUDE.md`](src/app/CLAUDE.md): focus movement and positioning through shared directives (`src/app/movement/`), with a per-container motion: `transform` (translated tracks, for category rows of posters) or `scroll` (native scrolling, for everything else). In use on the 18+ pages and the watch list; the other pages still scroll with transforms and migrate one by one. Read both before touching row scrolling or `PointerService`.
+Movement system: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)** (plan + status) and the "Movement system" section of [`src/app/CLAUDE.md`](src/app/CLAUDE.md): focus movement and positioning through shared directives (`src/app/movement/`), with a per-container motion: `transform` (translated tracks, for category rows of posters) or `scroll` (native scrolling, for everything else). Every page uses it (the player excepted). Read both before touching focus movement, scrolling or `PointerService`.
 
 More detailed guides live next to the code:
 
@@ -61,7 +63,8 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 ### Play a TV episode
 1. Menu "Tv shows" → `/shows/list`: same page/slider components with the TV `Catalog` (`showCategories`).
 2. Enter on a show → `/shows/show/:id` (`ShowOptionsComponent`): seasons row (focusing one loads its episodes), episodes row.
-3. Enter on an episode → `TorrentService.findEpisodeTorrents(imdbId, title, season, episode)` → server returns ranked torrents (single episodes first, season packs as fallback) → torrent picker (ranking order, first marked "Best match") → `PlaybackService.play({…, magnet, season, episode})` → `/player`.
+3. Enter on an episode → `/shows/show/:id/season/:s/episode/:e` (`EpisodePageComponent`): its overview, IMDb rating + votes, director / writers, the season's episodes and guest stars; Find releases (that episode); Play →
+4. `EpisodePlaybackService.play` → `TorrentService.findEpisodeTorrents(imdbId, title, season, episode)` → server returns ranked torrents (single episodes first, season packs as fallback) → torrent picker (ranking order, first marked "Best match") → `PlaybackService.play({…, magnet, season, episode})` → `/player`. The show page's "Play" button takes the same path for the season's first aired episode.
 
 ### Player (both)
 `PlayerPageComponent` reads `PlaybackService.current`, `POST /torrents` (magnet), polls `GET /torrents/:hash` every 4 s until `files` exist, picks the file (episode: the `SxxEyy` file, also inside packs; movie: best container), sets `<video>.src`. Chromium sends `Range` requests; the server pipes `file.createReadStream(range)` and downloads only that file (plus its tail early, for MKV indexes). Leaving the player (Escape, before or after playback starts) → `DELETE /torrents/:hash` (engine destroyed, data deleted).
@@ -138,7 +141,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 | TMDB API key | `movies.service.ts#tmdb_key`; `categories.ts` URLs use a `<<api_key>>` placeholder; the server reads `TMDB_API_KEY` from `.env` |
 | Movie-magnet trackers | `playback.service.ts` (`TRACKERS`) |
 | Episode-magnet trackers | `src/server/streamingServer/lib/trackers.js` |
-| YTS base URLs | `lib/api.js` `YTS_MIRRORS` (yts.mx stopped answering in 2026) |
+| YTS base URLs | `lib/providers/yts.js` `MIRRORS` (yts.mx stopped answering in 2026) |
 | Provider mirrors | `lib/providers/eztv.js`, `lib/providers/therarbg.js` (`MIRRORS`) |
 
 ---
@@ -147,7 +150,7 @@ There is **no linter config** and **no hot reload for Electron** — after UI ed
 
 - **State = RxJS Subjects / BehaviorSubjects inside root services**, no NgRx. Section state (rows, paging, slider position) lives in a `Catalog` per media type (`src/app/catalog.ts`, held in `MoviesService.catalogs`).
 - **Input model**: arrows go through the spatial-navigation library, and inside movement containers (`pxRow` / `pxStack` / `pxGrid`) the `FocusEngine` moves by index instead; Enter = "click/select", Escape = "back" — all bindings are defined once in `src/app/keymap.ts` (actions → keys). The mouse is mapped onto the same model by `PointerService` (hover = focus, click = select, right click / mouse back button = back; wheel = native scrolling on migrated pages, up/down elsewhere); pages don't handle the mouse themselves. `AppComponent` turns keys into `NavigationService.addCommand('click'|'back')`; every page subscribes and filters by `router.url`.
-- **Direct DOM manipulation**: components use `document.querySelector`, CSS classes like `focused`/`lastSelected`, and **GSAP** timelines; unmigrated pages position rows with inline `style.transform` (migrated ones scroll natively through the movement directives — use those for new pages and rows). Match the surrounding style when editing existing components.
+- **Direct DOM manipulation**: components use `document.querySelector`, CSS classes like `focused`, and **GSAP** timelines. Rows and pages are positioned only by the movement directives (`src/app/movement`): never move content with your own `transform` / `scrollTo` for navigation. Match the surrounding style when editing existing components.
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
 - **Server modules**: CommonJS, ES5 style (`var`, callbacks/promises). Upstream calls go through axios with a mirror list and must **always answer the client** (502 + JSON error) — never leave a request hanging.

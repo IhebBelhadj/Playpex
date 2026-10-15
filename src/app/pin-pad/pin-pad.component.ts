@@ -34,15 +34,11 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   constructor(private navigation:NavigationService) { }
 
   ngAfterViewInit(): void {
-    this.navigation.updateNavigation('add', {
-      id: 'pinPad',
-      selector: '.pinPad .pinKey',
-      restrict: 'self-only',
-    });
+    // section `pinPad`: a trapping pxSection in the template, keys a pxGrid
     setTimeout(() => (document.querySelector('.pinPad .pinKey') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction == 'back') {
+      if (instruction == 'back' || instruction == 'leave') {
         this.cancelled.emit();
         return;
       }
@@ -63,7 +59,6 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.navSub?.unsubscribe();
     document.removeEventListener('keydown', this.keyListener);
-    this.navigation.updateNavigation('remove', { sectionId: 'pinPad' });
   }
 
   press(key:string) {

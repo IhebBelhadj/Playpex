@@ -4,58 +4,6 @@ import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } fr
 import { STREAMING_SERVER } from './server-config';
 import { ProfilesService } from './profiles.service';
 
-export interface AdultProvider {
-  id: string;
-  name: string;
-  paged: boolean;       // more results on request (TheRARBG), or one list (The Pirate Bay)
-  default: boolean;
-}
-
-// One release as the server lists it (lib/adult.js#browse)
-export interface AdultRelease {
-  provider: string;
-  name: string;         // raw release name
-  title: string;        // cleaned: no studio tag, resolution, encoder…
-  studio: string | null;
-  year: number | null;
-  hash: string;
-  magnet: string;
-  seeds: number;
-  peers: number;
-  size: number;         // bytes
-  added: number;        // unix seconds
-  quality: string;      // '2160p' | '1080p' | '720p' | '480p' | 'SD'
-  codec: string;
-  audio: 'supported' | 'unknown' | 'unsupported';
-  playable: boolean;
-  scenes: boolean;      // split scenes: one file per scene
-}
-
-export type AdultQuality = '' | '2160p' | '1080p' | '720p' | 'SD';
-
-// What the 18+ page shows; kept here so coming back from the player restores it
-export interface AdultState {
-  provider: string | null;    // null: the server's default
-  query: string;
-  quality: AdultQuality;
-  playableOnly: boolean;
-  releases: AdultRelease[];
-  page: number;               // last page read
-  hasMore: boolean;
-  loaded: boolean;
-}
-
-export const EMPTY_ADULT_STATE: AdultState = {
-  provider: null,
-  query: '',
-  quality: '',
-  playableOnly: false,
-  releases: [],
-  page: 0,
-  hasMore: false,
-  loaded: false,
-};
-
 // ── catalog (metadata providers, lib/adultMeta) ─────────────────────────────
 
 export interface MetaProvider {
@@ -141,19 +89,17 @@ export const EMPTY_BROWSE_STATE: BrowseState = {
   loaded: false,
 };
 
-// The 18+ section: metadata (poster layout) and one provider's releases,
-// most seeded first (compact layout).
+// The 18+ section: preferences and metadata (poster layout). Its release list
+// (compact layout) is ReleasesService's, kind 'adult'.
 @Injectable({
   providedIn: 'root'
 })
 export class AdultService {
 
-  state:AdultState = { ...EMPTY_ADULT_STATE };
   browseState:BrowseState = { ...EMPTY_BROWSE_STATE };
   // the title being opened, so its page renders before the details arrive
   openedTitle:AdultTitle | null = null;
 
-  private providers$:Observable<AdultProvider[]>;
   private metaProviders$:Observable<MetaProvider[]>;
   private meta = `${STREAMING_SERVER}/api/adult/meta`;
 
@@ -236,33 +182,8 @@ export class AdultService {
     return this.http.get<AdultTitleDetails>(`${this.meta}/${provider}/titles/${encodeURIComponent(id)}`);
   }
 
-  // ── releases (compact layout) ───────────────────────────────────────────
-
-  providers(): Observable<AdultProvider[]> {
-    if (!this.providers$) {
-      this.providers$ = this.http.get<AdultProvider[]>(`${STREAMING_SERVER}/api/adult/providers`).pipe(
-        catchError(() => {
-          this.providers$ = null;     // try again next time
-          return of([]);
-        }),
-        shareReplay(1),
-      );
-    }
-    return this.providers$;
-  }
-
-  browse(provider:string, query:string, quality:AdultQuality, playableOnly:boolean, page = 1)
-    : Observable<{ provider:string, page:number, hasMore:boolean, torrents:AdultRelease[] }> {
-    let params:any = { provider, page };
-    if (query) params.q = query;
-    if (quality) params.quality = quality;
-    if (playableOnly) params.playable = 1;
-    return this.http.get<any>(`${STREAMING_SERVER}/api/adult/browse`, { params });
-  }
-
   // Forget everything (another profile)
   reset() {
-    this.state = { ...EMPTY_ADULT_STATE };
     this.browseState = { ...EMPTY_BROWSE_STATE };
   }
 }
