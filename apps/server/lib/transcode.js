@@ -107,7 +107,8 @@ function stream(url, start, audioIndex, req, res) {
       res.status(503).json({ error: 'ffmpeg unavailable: ' + e.message, code: 'TRANSCODER_UNAVAILABLE' });
     }
   });
-  child.stderr.on('data', function (d) { log.warn(String(d).trim()); });
+  // ffmpeg names its input URL in errors: keep the internal secret (lib/auth) out of the logs
+  child.stderr.on('data', function (d) { log.warn(String(d).trim().replace(/([?&]internal=)[^&\s]+/g, '$1…')); });
 
   res.setHeader('Content-Type', 'video/x-matroska');
   res.setHeader('Cache-Control', 'no-store');

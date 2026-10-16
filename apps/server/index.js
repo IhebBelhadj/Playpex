@@ -8,6 +8,11 @@
 //   start(options) → Promise<{ port, host, urls, id, name }>
 //     rejects with err.code 'PORT_IN_USE' / 'PORT_NOT_ALLOWED' (+ err.port)
 //   stop() → Promise   destroys the torrent engines (data stays), closes HTTP and the DB
+//   startOrRecover(options) → like start(), but when the port belongs to another
+//     program, starts in recovery mode instead (plan §5.9): dashboard only, on
+//     a free loopback port, so the admin can choose another port
+//   restart() → Promise<info>   stop() + startOrRecover() with the same options
+//     (the dashboard's "Restart server": a new port, LAN sharing, download dir)
 
 // Since Node 17 dns.lookup() returns addresses in resolver order. On IPv6 /
 // NAT64 networks that's an IPv6 address first, which the (IPv4-only) DHT and
@@ -32,13 +37,21 @@ var http = require('http'),
   logger = require('./lib/logger'),
   identity = require('./lib/identity'),
   ffmpeg = require('./lib/ffmpeg'),
+  health = require('./lib/health'),
+  system = require('./lib/system'),
+  portOwner = require('./lib/portOwner'),
   store = require('./lib/store'),
+  sessions = require('./lib/sessions'),
   userData = require('./lib/userData'),
+  auth = require('./lib/auth'),
+  events = require('./lib/events'),
+  discovery = require('./lib/discovery'),
   api = require('./lib/api');
 
 var log = logger.child('server');
 
-var running = null;   // { server, sockets, info }
+var running = null,   // { server, sockets, info }
+  lastOptions = {};   // start()'s options, for restart()
 
 function lanUrls(port) {
   var nets = os.networkInterfaces();
@@ -68,15 +81,20 @@ function listen(server, port, host) {
 }
 
 /**
- * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string }} [options]
+ * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number, recovery?: object }} [options]
  *   port / host: override the settings for this run (the embedded TV server
  *   uses port 0 on 127.0.0.1 when the fixed port belongs to something else);
- *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg
+ *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg;
+ *   discoveryPort: UDP port of the discovery responder (tests; default 28471);
+ *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback
  */
 function start(options) {
   options = options || {};
   if (running) {
     return Promise.resolve(running.info);
+  }
+  if (!options.recovery) {
+    lastOptions = Object.assign({}, options);
   }
   settings.load();
   logger.configure({
@@ -90,9 +108,12 @@ function start(options) {
   identity.load();
   store.init({ downloads: settings.get('storage.downloadDir') || paths.downloads });
 
-  var lan = settings.get('network.lanSharing'),
-    host = options.host || (lan ? '0.0.0.0' : '127.0.0.1'),
-    port = options.port !== undefined ? options.port : settings.get('general.port'),
+  health.install();
+
+  var recovery = options.recovery || null,
+    lan = settings.get('network.lanSharing') && !recovery,
+    host = recovery ? '127.0.0.1' : options.host || (lan ? '0.0.0.0' : '127.0.0.1'),
+    port = recovery ? 0 : options.port !== undefined ? options.port : settings.get('general.port'),
     server = http.createServer(api),
     sockets = new Set();
 
@@ -103,13 +124,45 @@ function start(options) {
 
   return listen(server, port, host).then(function (bound) {
     var info = Object.assign(identity.info(), {
+      startedAt: Date.now(),
       port: bound,
       host: host,
-      urls: ['http://localhost:' + bound].concat(lan && !options.host ? lanUrls(bound) : [])
+      urls: ['http://localhost:' + bound].concat(lan && !options.host ? lanUrls(bound) : []),
+      recovery: recovery
     });
     running = { server: server, sockets: sockets, info: info };
-    log.info('listening on ' + info.urls.join(', ') + (lan ? '' : ' (LAN sharing off)'),
-      { port: bound, host: host, lanSharing: lan });
+    system.start(info);
+    sessions.start();
+    // only when listening on the LAN: not the TV app's loopback fallback
+    discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
+    events.attach(server, {
+      status: function () {
+        return {
+          uptimeS: Math.round((Date.now() - info.startedAt) / 1000),
+          torrents: store.list().length,
+          sessions: sessions.count(),
+          eventClients: events.clientCount()
+        };
+      },
+      stats: sessions.activeStats
+    });
+    // Loads Better Auth and the database now rather than on the first request
+    auth.setupNeeded().then(function (needed) {
+      if (needed) {
+        log.warn('no admin account yet: set one up from this machine (dashboard, or ' +
+          '`playpex-server admin set <username>`); until then pairing requests can be approved with ' +
+          '`playpex-server devices approve <code>`');
+      }
+    }, function () {});
+    if (recovery) {
+      log.warn('RECOVERY MODE: port ' + recovery.port + ' is in use' +
+        (recovery.owner ? ' by ' + (recovery.owner.name || 'a process') + ' (pid ' + recovery.owner.pid + ')' : '') +
+        '. Clients are not served. Open http://localhost:' + bound + '/ on this machine to choose another port, ' +
+        'or run `playpex-server set-port <port>`');
+    } else {
+      log.info('listening on ' + info.urls.join(', ') + (lan ? '' : ' (LAN sharing off)'),
+        { port: bound, host: host, lanSharing: lan });
+    }
     log.info('logs in ' + paths.logs + ', settings in ' + settings.FILE);
     ffmpeg.info().then(function (ff) {
       if (ff.available) {
@@ -138,8 +191,13 @@ function stop() {
   var current = running;
   running = null;
   log.info('stopping');
-  return new Promise(function (resolve) {
-    store.destroyAll(resolve);
+  system.stop();
+  sessions.stop();
+  events.detach();
+  return discovery.stop().then(function () {
+    return new Promise(function (resolve) {
+      store.destroyAll(resolve);
+    });
   }).then(function () {
     return new Promise(function (resolve) {
       current.server.close(function () { resolve(); });
@@ -147,15 +205,63 @@ function stop() {
       current.sockets.forEach(function (socket) { socket.destroy(); });
     });
   }).then(function () {
+    auth.close();
     return userData.close();
   }).then(function () {
     log.info('stopped');
   });
 }
 
+// start(), or recovery mode when another program holds the port. Rejects
+// when another Playpex server holds it (use that one) or for other errors.
+function startOrRecover(options) {
+  options = options || {};
+  return start(options).catch(function (err) {
+    if (err.code !== 'PORT_IN_USE' && err.code !== 'PORT_NOT_ALLOWED') {
+      throw err;
+    }
+    return portOwner.isPlaypex(err.port).then(function (playpex) {
+      if (playpex) {
+        err.playpex = true;   // another Playpex server: the caller decides
+        throw err;
+      }
+      return portOwner(err.port).then(function (owner) {
+        log.error(err.message + (owner ? ' by ' + (owner.name || 'a process') + ' (pid ' + owner.pid + ')' : ''),
+          { code: err.code, port: err.port });
+        return start(Object.assign({}, options, {
+          recovery: { reason: err.code, port: err.port, owner: owner, message: err.message }
+        }));
+      });
+    });
+  });
+}
+
+// The dashboard's "Restart server": settings that apply on start (port, LAN
+// sharing, download dir) take effect. Answers the new info (another port,
+// maybe recovery mode).
+var restarting = null;
+function restart() {
+  if (!restarting) {
+    log.info('restarting');
+    restarting = stop().then(function () {
+      return startOrRecover(lastOptions);
+    }).then(function (info) {
+      restarting = null;
+      return info;
+    }, function (err) {
+      restarting = null;
+      log.error('restart failed: ' + err.message, { err: err });
+      throw err;
+    });
+  }
+  return restarting;
+}
+
 module.exports = {
   start: start,
   stop: stop,
+  startOrRecover: startOrRecover,
+  restart: restart,
   info: function () { return running ? running.info : null; },
   settings: settings,
   logger: logger

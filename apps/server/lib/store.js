@@ -35,7 +35,9 @@ function save() {
 }
 
 var store = _.extend(new events.EventEmitter(), {
-  add: function (link, callback) {
+  // options.beforeAdd(infoHash) → Error | null: asked only for a torrent the
+  // store doesn't hold yet (lib/sessions.js refuses it past maxTorrents)
+  add: function (link, callback, addOptions) {
     if (/^(\w{32}|\w{40})$/.test(link)) {
       link = `magnet:?xt=urn:btih:${link}`;
     }
@@ -48,6 +50,10 @@ var store = _.extend(new events.EventEmitter(), {
       var infoHash = torrent.infoHash;
       if (torrents[infoHash]) {
         return callback(null, infoHash);
+      }
+      var refused = addOptions && addOptions.beforeAdd && addOptions.beforeAdd(infoHash);
+      if (refused) {
+        return callback(refused);
       }
 
       log.info('adding ' + infoHash);
@@ -73,8 +79,12 @@ var store = _.extend(new events.EventEmitter(), {
   get: function (infoHash) {
     return torrents[infoHash];
   },
+  // Stops the engine and deletes the downloaded data
   remove: function (infoHash) {
     var torrent = torrents[infoHash];
+    if (!torrent) {
+      return;
+    }
     torrent.destroy();
     torrent.remove(function () {
       torrent.emit('destroyed');
@@ -82,22 +92,35 @@ var store = _.extend(new events.EventEmitter(), {
     delete torrents[infoHash];
     save();
   },
+  // Stops the engine, the downloaded data stays (storage.deleteAfterWatching off)
+  close: function (infoHash) {
+    var torrent = torrents[infoHash];
+    if (!torrent) {
+      return;
+    }
+    delete torrents[infoHash];
+    save();
+    torrent.destroy(function () {
+      torrent.emit('destroyed');
+    });
+  },
   list: function () {
     return Object.keys(torrents).map(function (infoHash) {
       return torrents[infoHash];
     });
   },
-  // Called once by start(): download directory, plus optional engine options
-  // (e.g. connections) from <config>/config.json. The hashes saved in
+  // Download directory (every start()), plus optional engine options (e.g.
+  // connections) from <config>/config.json (read once). The hashes saved in
   // torrents.json are not resumed (resume on start is off on purpose).
   init: function (opts) {
-    if (initialized) {
-      return;
-    }
-    initialized = true;
     if (opts && opts.downloads) {
       options = _.extend({}, options, { path: opts.downloads });
     }
+    if (initialized) {
+      log.info('downloads in ' + options.path);
+      return;
+    }
+    initialized = true;
     try {
       options = _.extend({}, options, JSON.parse(fs.readFileSync(configFile, 'utf8')));
       log.info('engine options from config.json', { options: options });

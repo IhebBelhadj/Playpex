@@ -14,7 +14,7 @@ var router = express.Router();
 router.get('/', function (req, res) {
   ffmpeg.info().then(function (ff) {
     res.json(Object.assign(identity.info(), {
-      auth: 'none',   // 'pairing' with plan step 4
+      auth: 'pairing',   // LAN clients pair (RFC 8628, lib/auth); loopback ones needn't
       features: {
         transcode: ff.available,
         subtitles: subtitles.list().filter(function (p) { return p.enabled; }).map(function (p) { return p.id; }),

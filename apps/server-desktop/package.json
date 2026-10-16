@@ -1,6 +1,166 @@
 {
   "name": "@playpex/server-desktop",
-  "version": "0.0.0",
+  "productName": "Playpex Media Server",
+  "version": "0.9.0",
   "private": true,
-  "description": "Placeholder, see docs/server-separation-plan.md"
+  "description": "Runs the Playpex media server in the background, with a tray icon and a web dashboard",
+  "author": "Iheb Belhaj",
+  "homepage": "https://github.com/IhebBelhadj/Playpex",
+  "license": "SEE LICENSE IN licence.md",
+  "main": "main.js",
+  "desktopName": "playpex-media-server.desktop",
+  "scripts": {
+    "start": "electron .",
+    "icons": "node build/make-icons.js",
+    "fetch-ffmpeg": "node build/fetch-ffmpeg.js",
+    "linux-scripts": "node build/linux-scripts.js",
+    "prepack": "npm run build --prefix ../dashboard && node build/fetch-ffmpeg.js && node build/linux-scripts.js",
+    "pack": "npm run prepack && electron-builder --dir",
+    "dist": "npm run prepack && electron-builder",
+    "dist:linux": "npm run prepack && electron-builder --linux",
+    "dist:win": "node build/fetch-ffmpeg.js --platform win32 && npm run build --prefix ../dashboard && electron-builder --win",
+    "dist:mac": "npm run prepack && electron-builder --mac"
+  },
+  "dependencies": {
+    "@playpex/server": "*",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.playpex.mediaserver",
+    "productName": "Playpex Media Server",
+    "executableName": "playpex-media-server",
+    "copyright": "Iheb Belhaj",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "lib/**",
+      "assets/**",
+      "package.json",
+      "!node_modules/@playpex/server/{torrents,test,vendor}{,/**}",
+      "!node_modules/@playpex/server/{README.md,CLAUDE.md,drizzle.config.js}",
+      "!node_modules/@playpex/server/node_modules/{ajv,yaml}{,/**}",
+      "!node_modules/@playpex/protocol/README.md"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "../../licence.md",
+        "to": "licence.md"
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "IhebBelhadj",
+        "repo": "Playpex",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/win32-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Playpex Media Server",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "license": "../../licence.md",
+      "include": "build/installer.nsh",
+      "artifactName": "Playpex-Media-Server-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.video",
+      "icon": "build/icon.png",
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSLocalNetworkUsageDescription": "Playpex Media Server shares your media with Playpex apps on your local network.",
+        "NSBonjourServices": [
+          "_playpex._tcp"
+        ]
+      },
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/darwin-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "artifactName": "Playpex-Media-Server-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "build/icon.png",
+      "synopsis": "Playpex media server with a tray icon",
+      "maintainer": "Iheb Belhaj <noreply@playpex.app>",
+      "artifactName": "Playpex-Media-Server-${version}-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "Playpex Media Server",
+          "Comment": "Runs the Playpex media server in the background",
+          "StartupNotify": "false"
+        }
+      },
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/linux-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "deb": {
+      "afterInstall": "vendor/linux/after-install.sh",
+      "afterRemove": "vendor/linux/after-remove.sh",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libayatana-appindicator3-1 | libappindicator3-1"
+      ]
+    }
+  }
 }

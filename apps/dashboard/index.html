@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Playpex Media Server</title>
+    <script>
+      // Dark unless the system prefers light (shadcn's .dark class)
+      ;(function () {
+        var media = matchMedia('(prefers-color-scheme: light)')
+        function apply() { document.documentElement.classList.toggle('dark', !media.matches) }
+        apply()
+        media.addEventListener('change', apply)
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

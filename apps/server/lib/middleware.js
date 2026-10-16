@@ -1,8 +1,8 @@
 'use strict';
 
 // Express middleware every request goes through (lib/api.js), before any route.
-// Network hardening from docs/server-separation-plan.md §5.8; real access
-// control (pairing, tokens) comes with plan step 4.
+// Network hardening from docs/server-separation-plan.md §5.8. Access control
+// (pairing, tokens, the admin) is lib/auth/http.js, mounted by lib/api.js.
 
 var net = require('net'),
   os = require('os'),
@@ -96,6 +96,9 @@ function requestLog(req, res, next) {
 }
 
 module.exports = {
+  hostname: hostname,
+  allowedHost: allowedHost,
+  allowedOrigin: allowedOrigin,
   hostCheck: hostCheck,
   cors: cors,
   requestLog: requestLog

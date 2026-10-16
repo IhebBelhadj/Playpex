@@ -50,3 +50,6 @@ Thumbs.db
 
 # Local secrets
 .env
+
+# Dashboard build (npm run build:dashboard), served by the server
+/apps/server/public/

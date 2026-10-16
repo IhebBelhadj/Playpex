@@ -15,6 +15,13 @@
       "when": 1792010725815,
       "tag": "0001_artwork",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792147777712,
+      "tag": "0002_auth",
+      "breakpoints": true
     }
   ]
 }

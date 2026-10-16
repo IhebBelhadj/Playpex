@@ -18,6 +18,8 @@ Data sources:
 
 Movement system: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)** (plan + status) and the "Movement system" section of [`apps/tv/src/app/CLAUDE.md`](apps/tv/src/app/CLAUDE.md): focus movement and positioning through shared directives (`apps/tv/src/app/movement/`), with a per-container motion: `transform` (translated tracks, for category rows of posters) or `scroll` (native scrolling, for everything else). Every page uses it (the player excepted). Read both before touching focus movement, scrolling or `PointerService`.
 
+Server / client split: **[`docs/server-separation-plan.md`](docs/server-separation-plan.md)** (plan + status, in progress): the server becomes its own product (Playpex Media Server) and the TV app one of several clients over a versioned API (`packages/protocol/openapi.yaml`). Read its status line before working on the server, the API or packaging.
+
 More detailed guides live next to the code:
 
 | Area | Guide |
@@ -34,6 +36,7 @@ More detailed guides live next to the code:
 │  require('@playpex/server').start()  ──► runs in the SAME Node process:                    │
 │     • Express streaming API              :28470 (fixed; settings.json / PLAYPEX_PORT)      │
 │       port held by a running Playpex server → use it; by something else → a free port     │
+│     • LAN discovery: mDNS _playpex._tcp + UDP :28471 (when sharing on the LAN)            │
 │  express() power API                     :3344  GET /power/:action (quit/sleep/...)        │
 │                                                                                           │
 │  waits for the port in use, then                                                          │
@@ -50,7 +53,13 @@ More detailed guides live next to the code:
                  └── http://localhost:3344/power/:action   → Electron quits / OS shutdown
 ```
 
-The API is versioned (`/api/v1`) and described in **`packages/protocol/openapi.yaml`** (the contract for every client; types generated from it, checked by the server's contract test). `apps/tv/src/app/server-config.ts` reads `?streamer=` once and removes it from the URL **before Angular boots** (the router only strips a trailing `index.html` from `file://` URLs; any query/hash would make the initial route match nothing → `NG04002`, blank app).
+The API is versioned (`/api/v1`) and described in **`packages/protocol/openapi.yaml`** (the contract for every client; types generated from it, checked by the server's contract test). **Writing or changing a client: read the client author guide [`docs/api/`](docs/api/README.md)** (discovery, pairing, requests, playback, events, errors and versions; plan step 10), also served by every server at `/docs` with the rendered spec at `/docs/reference`. Keep it in sync when the protocol changes. `apps/tv/src/app/server-config.ts` reads `?streamer=` once and removes it from the URL **before Angular boots** (the router only strips a trailing `index.html` from `file://` URLs; any query/hash would make the initial route match nothing → `NG04002`, blank app).
+
+**Auth** (plan step 4, `apps/server/lib/auth/`, on Better Auth): LAN clients pair with the RFC 8628 device flow (`POST /api/v1/auth/device/code` → show the code → the admin approves → `POST …/device/token` → `Authorization: Bearer`); loopback clients (the TV app today) are trusted without a token; the dashboard signs in as the admin. Events: WebSocket `/api/v1/events`.
+
+**Dashboard** (plan step 5, `apps/dashboard`, React + Vite + shadcn/ui): the server's admin web UI at `http://<server>:<port>/` (first-run setup, Overview, Activity, Devices + the `/link` pairing page, Storage, Logs, Settings, Profiles, About; public: `/docs`, the client author guide and API reference). Built into `apps/server/public` (git-ignored) and served by the server with an SPA fallback; see [`apps/dashboard/CLAUDE.md`](apps/dashboard/CLAUDE.md).
+
+**Desktop server edition** (plan step 6, `apps/server-desktop`): "Playpex Media Server", Electron as a windowless supervisor that runs the same headless entry in a `utilityProcess`, with a tray icon (status, pairing approvals, pause downloads, restart, start at login, updates), crash restarts, electron-updater, bundled LGPL ffmpeg, and installers (NSIS per-user, dmg, AppImage + deb). It talks to the server over `process.parentPort` (`apps/server/lib/host.js`); the dashboard's Settings › Desktop app goes through `/api/v1/admin/host`. See [`apps/server-desktop/CLAUDE.md`](apps/server-desktop/CLAUDE.md).
 
 ### Start: "Who's watching?"
 The app opens on `/profiles` (Netflix-style picker, under the splash video). Profiles live in the server's SQLite DB (`/api/profiles`); picking one (PIN if locked) sets `ProfilesService.current` and opens `/movies/list`. Pages that need a profile are guarded. The menu's top item shows the current profile and returns to the picker.
@@ -67,7 +76,7 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 4. `EpisodePlaybackService.play` → `TorrentService.findEpisodeTorrents(imdbId, title, season, episode)` → server returns ranked torrents (single episodes first, season packs as fallback) → torrent picker (ranking order, first marked "Best match") → `PlaybackService.play({…, magnet, season, episode})` → `/player`. The show page's "Play" button takes the same path for the season's first aired episode.
 
 ### Player (both)
-`PlayerPageComponent` reads `PlaybackService.current`, `POST /torrents` (magnet), polls `GET /torrents/:hash` every 4 s until `files` exist, picks the file (episode: the `SxxEyy` file, also inside packs; movie: best container), sets `<video>.src`. Chromium sends `Range` requests; the server pipes `file.createReadStream(range)` and downloads only that file (plus its tail early, for MKV indexes). Leaving the player (Escape, before or after playback starts) → `DELETE /torrents/:hash` (engine destroyed, data deleted).
+`PlayerPageComponent` reads `PlaybackService.current`, `POST /torrents` (magnet), polls `GET /torrents/:hash` every 4 s until `files` exist, picks the file (episode: the `SxxEyy` file, also inside packs; movie: best container), sets `<video>.src`. Chromium sends `Range` requests; the server pipes `file.createReadStream(range)` and downloads only that file (plus its tail early, for MKV indexes). Leaving the player (Escape, before or after playback starts) → `DELETE /torrents/:hash?device=` releases this client's **lease**; the server stops the torrent (and deletes its data) 30 s after the last client let go. While open, the player sends `POST /torrents/:hash/keepalive` every 60 s; leases idle for 10 min are reaped (crashed clients). Limits (4 torrents, 2 transcodes) answer 503 `BUSY` (`apps/server/lib/sessions.js`, settings `streaming.*`).
 
 ---
 
@@ -78,7 +87,8 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 ├── CLAUDE.md                     ← you are here
 ├── package.json                  workspaces + root scripts that delegate to the apps (no deps of its own)
 ├── .env / .env.example           server secrets (TMDB_API_KEY, …), read by apps/server/server.js
-├── docs/                         movement-system-plan.md, server-separation-plan.md (the split into server + clients, in progress)
+├── docs/                         movement-system-plan.md, server-separation-plan.md (the split into server + clients, in progress),
+│                                 api/ (the client author guide: README + discovery, auth, playback, profiles, events, errors-and-versions)
 ├── electron.txt                  a pasted Electron console log — NOT config, ignore
 ├── licence.md
 ├── apps/
@@ -96,6 +106,7 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 │   │   ├── karma.conf.js         default Angular Karma/Jasmine setup
 │   │   ├── favicon.ico, app_icon.svg
 │   │   ├── electron/main.js      Electron main: window, power API (:3344), boots @playpex/server, passes its port
+│   │   ├── electron/discovery.js finds Playpex servers on the LAN (mDNS + UDP, merged by server id); used by the /connect page from plan step 9
 │   │   ├── electron/remoteWs.js  empty placeholder (future phone-remote)
 │   │   └── src/
 │   │       ├── main.ts / index.html   Angular bootstrap; index.html loads YouTube iframe API, viewport 1440px
@@ -105,11 +116,13 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 │   │       ├── plugins/spacialNavigation.js   vendored js-spatial-navigation (Luke Chang, MPL-2.0) — see apps/tv/src/app/CLAUDE.md
 │   │       ├── assets/           fonts/, icons/ (svg UI icons), imgs/wallpaper.jpg, videos/playpex_splash.mp4
 │   │       └── app/              Angular application → apps/tv/src/app/CLAUDE.md
-│   ├── dashboard/                placeholder (server web dashboard, plan §7)
-│   └── server-desktop/           placeholder (tray supervisor + installers, plan §8)
+│   ├── dashboard/                @playpex/dashboard — the server's admin web UI (React 19 + Vite + shadcn/ui) → its CLAUDE.md;
+│   │                             `npm run build:dashboard` writes apps/server/public (git-ignored), served at the server's root
+│   └── server-desktop/           @playpex/server-desktop — "Playpex Media Server": tray supervisor + installers (plan §8) → its CLAUDE.md
 └── packages/
     └── protocol/                 @playpex/protocol — the API contract: openapi.yaml, types/api.d.ts (generated, committed),
-                                  index.js constants (API_VERSION, ports, ERROR_CODES, client header) used by server and clients
+                                  index.js constants (API_VERSION, ports, DISCOVERY, ERROR_CODES, client header) used by server and clients,
+                                  mdns.js (Node only: mDNS sent on every network interface; server advertiser + TV discovery)
 ```
 
 ---
@@ -122,24 +135,27 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 | Full app (what users run) | `npm run electron` | runs in `apps/tv`: `ng build --base-href ./` then `electron .` |
 | Build UI | `npm run build` | must use `--base-href ./` (already in script). In non-interactive shells run, from `apps/tv`, `NG_CLI_ANALYTICS=false npx ng build --base-href ./ < /dev/null` — the CLI can otherwise sit waiting on a prompt |
 | UI only in browser | `npm start` | `ng serve -o` on :4200; needs the server running separately (`npm run server`, :28470) |
-| Server only (headless) | `npm run server` (= `node apps/server/bin/playpex-server.js`; or `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron apps/server/bin/playpex-server.js` to use Electron's Node 24) | :28470, loopback only unless `network.lanSharing`. `npm run server -- set-port <n>` when the port is taken. `npm run electron` while it runs uses this server instead of starting its own. No power API |
-| API contract | `npm run generate -w packages/protocol` after editing `openapi.yaml` (regenerates `types/api.d.ts`); `npm run test:server` = contract test (`PLAYPEX_TEST_NETWORK=1` adds provider routes) | change the spec first, then server and clients |
+| Server only (headless) | `npm run server` (= `node apps/server/bin/playpex-server.js`; or `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron apps/server/bin/playpex-server.js` to use Electron's Node 24) | :28470 on every interface (`network.lanSharing`, default on): LAN clients must pair (RFC 8628 device flow), loopback clients needn't. `npm run server -- set-port <n>` when the port is taken; `-- admin set <username>` creates the admin (dashboard login); `-- devices pending\|approve <code>\|list\|revoke <id>` (CLI side of the dashboard's Devices page). Port taken by another program → **recovery mode** (dashboard only, on a free loopback port printed in the log; `--no-recovery` exits instead). `npm run electron` while it runs uses this server instead of starting its own. No power API |
+| Dashboard | `npm run build:dashboard` (once, and after dashboard edits; then open `http://localhost:28470/`), or `npm run dashboard` for development (Vite on :5173 with hot reload, proxies `/api` + the events socket to `npm run server`; `PLAYPEX_SERVER=<url>` for another server) | first visit from the server machine runs the setup wizard (admin account, server name, download dir, LAN sharing, TMDB key) |
+| API contract | `npm run generate -w packages/protocol` after editing `openapi.yaml` (regenerates `types/api.d.ts`); `npm run test:server` = contract test + discovery test (`PLAYPEX_TEST_NETWORK=1` adds provider routes; the discovery test advertises a short-lived "Playpex test" server on your LAN) | change the spec first, then server and clients |
 | DB migration after a schema change | `npm run db:generate` | drizzle-kit; runs in `apps/server`; diffs `lib/db/schema.js` into `lib/db/migrations/` |
 | Unit tests | from `apps/tv`: `CHROME_BIN=/opt/google/chrome/chrome npx ng test --watch=false --browsers=ChromeHeadless` (`--include src/app/movement` for the movement specs) | Karma/Jasmine; besides the movement specs, mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
-| Package installer | `npm run electronBuild` (electron-builder 23) or `npm run make` (forge) | config in `apps/tv/package.json`; not re-verified since the Electron 44 upgrade nor since the move to workspaces (the plan replaces it in steps 6 and 9) |
+| Desktop server (tray app) | `npm run server:desktop` (development run); installers: `npm run dist:server-desktop` (this OS; `npm run dist:win -w apps/server-desktop` cross-builds NSIS from Linux) | electron-builder 26, config in `apps/server-desktop/package.json`; fetches the pinned LGPL ffmpeg first. Uses port 28470 like the TV app's embedded server: whichever starts first holds it |
+| Package installer (TV app) | `npm run electronBuild` (electron-builder 23) or `npm run make` (forge) | config in `apps/tv/package.json`; not re-verified since the Electron 44 upgrade nor since the move to workspaces (the plan replaces it in step 9) |
 
 There is **no linter config** and **no hot reload for Electron** — after UI edits, rebuild (`npm run electron`).
 
 ### Configuration
 
-The server's settings live in **`<config dir>/settings.json`** (`apps/server/lib/settings.js`: port, LAN sharing, log level, download dir, API keys, ffmpeg paths), meant to be edited from the future dashboard. Environment variables override them; `apps/server/index.js` also loads the repo root's **`.env`** (git-ignored; template in `.env.example`) with dotenv, real environment variables winning. Packaged builds don't ship a `.env`. Logs: `<logs dir>/playpex-server.log` (Linux `~/.local/state/Playpex/logs`).
+The server's settings live in **`<config dir>/settings.json`** (`apps/server/lib/settings.js`: port, LAN sharing, log level, download dir, API keys, ffmpeg paths), edited from the dashboard (Settings). Environment variables override them; `apps/server/index.js` also loads the repo root's **`.env`** (git-ignored; template in `.env.example`) with dotenv, real environment variables winning. Packaged builds don't ship a `.env`. Logs: `<logs dir>/playpex-server.log` (Linux `~/.local/state/Playpex/logs`).
 
 | Variable | Effect |
 |---|---|
 | `OPENSUBTITLES_API_KEY` | enables the official OpenSubtitles.com subtitle provider (free key: opensubtitles.com/en/consumers) |
 | `WYZIE_API_KEY` | enables the Wyzie Subs provider (free key: store.wyzie.io/redeem) |
-| `PLAYPEX_PORT` (or `STREAMER_PORT`) | server HTTP port (default **28470**, fixed: if taken, the headless server exits with `PORT_IN_USE`) |
-| `PLAYPEX_LAN_SHARING` | `1` = listen on all interfaces (**no auth yet**), default loopback only |
+| `PLAYPEX_PORT` (or `STREAMER_PORT`) | server HTTP port (default **28470**, fixed: if another program holds it, the headless server enters recovery mode, see Commands; env-set values are read-only in the dashboard) |
+| `PLAYPEX_LAN_SHARING` | `0` = loopback only; default on (all interfaces; LAN clients pair first, plan step 4) |
+| `PLAYPEX_DISCOVERY` | `0` = don't advertise on the LAN (mDNS `_playpex._tcp` + UDP responder on 28471, plan step 8); default on, only with LAN sharing |
 | `PLAYPEX_LOG_LEVEL`, `PLAYPEX_DOWNLOAD_DIR`, `FFMPEG_PATH`, `FFPROBE_PATH` | log level (`debug`…`error`), download dir, ffmpeg binaries (else bundled, else the PATH) |
 | `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR`, `PLAYPEX_LOG_DIR` | override where state (`settings.json`, `server.json`, `torrents.json`, `playpex.db`), downloads and logs go; defaults are per-OS user dirs, see `lib/paths.js` |
 | `THEPORNDB_API_KEY` | enables the ThePornDB metadata provider of the 18+ section |
@@ -170,14 +186,14 @@ The server's settings live in **`<config dir>/settings.json`** (`apps/server/lib
 - **Bracket property access** (`data['files']`) is required by `noPropertyAccessFromIndexSignature` for loosely-typed API responses.
 - **Listener/subscription hygiene**: store `document`/`window` handlers in a property and remove them in `ngOnDestroy` (`addEventListener` returns `undefined`; never assign its return value). Unsubscribe service subscriptions on destroy.
 - **Server modules**: CommonJS, ES5 style (`var`, callbacks/promises). Upstream calls go through axios with a mirror list and must **always answer the client** (502 + JSON error) — never leave a request hanging.
-- Persisted state: `<config dir>/playpex.db` (SQLite via Drizzle: profiles, watchlist, resume points, history, ratings — layered `lib/services` → `lib/data` → `lib/db`, see the server guide), `<config dir>/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']`. Keep user data in the server DB, not in `localStorage` (it's tied to the `file://` origin, which changes if the app is ever served from `http://localhost`).
+- Persisted state: `<config dir>/playpex.db` (SQLite via Drizzle: profiles, watchlist, resume points, history, ratings — layered `lib/services` → `lib/data` → `lib/db`, see the server guide), `<config dir>/torrents.json` (info hashes; resume-on-start is commented out) and, in the renderer, `localStorage['playpex.subtitleProvider']` and `['playpex.deviceId']` (this client's id for the server's torrent leases: the TV app talks to its own server over loopback, a trusted "local" client, so it doesn't pair until plan step 9). Auth state lives in `playpex.db` (Better Auth tables, `devices`) and `<config dir>/auth.json` (the server's secret). Keep user data in the server DB, not in `localStorage` (it's tied to the `file://` origin, which changes if the app is ever served from `http://localhost`).
 
 ## Known gotchas / tech debt (verify before "fixing")
 
-- **Codec limits of Chromium/Electron**: video H.264 (and HEVC where hardware allows), audio **AAC/Opus/MP3 only — no AC-3, E-AC-3/DDP, DTS, TrueHD**. Releases with Dolby/DTS audio play silently; the episode ranker prefers AAC-tagged releases and the player shows a "No sound" banner. The player now probes each file and, for such audio, plays the server's ffmpeg stream (video copied, audio → AAC; seeks outside the buffer restart it at an offset — `position()` / `mediaDuration()` in the player). Needs ffmpeg/ffprobe (found by `apps/server/lib/ffmpeg.js`; not bundled yet); without them it falls back to direct play + the banner. `.avi`/XviD are not playable.
+- **Codec limits of Chromium/Electron**: video H.264 (and HEVC where hardware allows), audio **AAC/Opus/MP3 only — no AC-3, E-AC-3/DDP, DTS, TrueHD**. Releases with Dolby/DTS audio play silently; the episode ranker prefers AAC-tagged releases and the player shows a "No sound" banner. The player now probes each file and, for such audio, plays the server's ffmpeg stream (video copied, audio → AAC; seeks outside the buffer restart it at an offset — `position()` / `mediaDuration()` in the player). Needs ffmpeg/ffprobe (found by `apps/server/lib/ffmpeg.js`; bundled only in the desktop server's installers, `apps/server-desktop`); without them it falls back to direct play + the banner. `.avi`/XviD are not playable.
 - **Trailers are broken**: YouTube now requires proof-of-origin attestation; `youtubei.js` (iOS client) gets formats but googlevideo returns 403 after the first ~1 MB, even with PO tokens minted by BotGuard in jsdom or in a real Chromium window, and SABR streaming (`googlevideo`) fails with "attestation required" (tested Oct 2026). The robust option is YouTube's official IFrame player (needs the app served from `http://localhost`, YouTube embeds reject `file://`).
 - **Provider data is noisy**: TheRARBG seed counts can be months stale; EZTV's IMDb lookup sometimes returns other shows ("Breaking Brad" for Breaking Bad) — `lib/episodes.js` strictly matches `<title> [year] [US|UK…] SxxEyy` to compensate. Older shows often only exist as season packs (mostly huge HEVC/remux).
-- The server port is fixed (28470) and doesn't slide when taken; the headless server stops with `PORT_IN_USE`, the TV app reuses a running Playpex server or falls back to a free loopback port, and the UI follows via `?streamer=`. Don't reintroduce hard-coded ports.
+- The server port is fixed (28470) and doesn't slide when taken; the headless server enters recovery mode (dashboard only; `--no-recovery` exits with `PORT_IN_USE`) or exits when another Playpex server holds it, the TV app reuses a running Playpex server or falls back to a free loopback port, and the UI follows via `?streamer=`. Don't reintroduce hard-coded ports.
 - Server code logs through `apps/server/lib/logger.js`, not `console.*`.
 - Downloads and state live in per-OS user dirs (`apps/server/lib/paths.js`: Linux `~/.cache/Playpex/torrent_data` + `~/.config/Playpex/torrents.json`), never inside the app. The old in-repo `torrents/` folder is legacy; `torrent_data/` there is git-ignored — **never force-add it**.
 - Component/host elements inside the flex shell need `min-width: 0` (see `movies-page.component.scss`, `show-options.component.scss`), otherwise they grow to the width of their widest row and horizontal row scrolling silently stops working.

@@ -19,7 +19,11 @@ var rangeParser = require('range-parser'),
   progress = require('./progressbar'),
   stats = require('./stats'),
   transcode = require('./transcode'),
+  sessions = require('./sessions'),
+  settings = require('./settings'),
   middleware = require('./middleware'),
+  auth = require('./auth'),
+  authHttp = require('./auth/http'),
   errors = require('./errors'),
   protocol = require('@playpex/protocol'),
   log = require('./logger').child('http'),
@@ -33,6 +37,8 @@ api.use(middleware.requestLog);
 api.use(middleware.hostCheck);
 api.use(middleware.cors);
 api.use(legacyAliases);
+// Better Auth reads its own request bodies: before the parsers
+api.use(protocol.API_PREFIX + '/auth', clientVersion, authHttp.betterAuth);
 api.use(express.urlencoded({ extended: false }));
 api.use(express.json());
 api.use(protocol.API_PREFIX, clientVersion, v1);
@@ -67,7 +73,34 @@ function clientVersion(req, res, next) {
   next();
 }
 
+// Open to everyone: who this server is (clients probe it before pairing)
 v1.use('/server', require('./routes/server'));
+// Open to everyone: the API contract, and the client author guide (docs/api,
+// rendered by the dashboard at /docs, plan step 10)
+v1.get('/openapi.yaml', function (req, res) {
+  res.type('application/yaml');
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(require.resolve('@playpex/protocol/openapi.yaml'));
+});
+v1.get('/docs', function (req, res) {
+  res.redirect(302, '/docs');
+});
+// The dashboard's routes: the admin's session (first-run setup excepted)
+v1.use('/admin', require('./routes/admin'));
+// Recovery mode (the port belonged to another program, index.js#startOrRecover):
+// only the dashboard and its routes above are served
+v1.use(function (req, res, next) {
+  var running = require('../index').info();
+  if (running && running.recovery) {
+    return fail(res, 'BUSY', 'The server is in recovery mode (port ' + running.recovery.port +
+      ' is in use); choose another port in the dashboard');
+  }
+  next();
+});
+// Everything below: a paired device, a client on this machine, or the admin
+// (lib/auth). Without → 401 PAIRING_REQUIRED.
+v1.use(authHttp.requireClient);
+v1.use('/devices', require('./routes/devices'));
 
 function serialize(torrent) {
   if (!torrent.torrent) {
@@ -109,22 +142,30 @@ function findTorrent(req, res, next) {
   next();
 }
 
+// The calling device holds the torrent (acquires or refreshes its lease, lib/sessions.js)
+function lease(req, res, next) {
+  req.lease = sessions.acquire(req.torrent.infoHash, req);
+  next();
+}
+
+// store.add's answer: past streaming.maxTorrents → 503 BUSY
+function added(req, res, err, infoHash) {
+  if (err) {
+    return err.code === 'BUSY' ? fail(res, 'BUSY', err.message) :
+      fail(res, 'INVALID', 'Cannot read this torrent: ' + err.message);
+  }
+  sessions.acquire(infoHash, req);
+  res.send({ infoHash: infoHash });
+}
+
 v1.get('/torrents', function (req, res) {
   res.send(store.list().map(serialize));
 });
 
 v1.post('/torrents', function (req, res) {
-
-  //res.send('ur link ' + req.body.link);
-
   store.add(req.body.link, function (err, infoHash) {
-    if (err) {
-      fail(res, 'INVALID', 'Cannot read this torrent: ' + err.message);
-    } else {
-      res.send({ infoHash: infoHash });
-    }
-  });
-
+    added(req, res, err, infoHash);
+  }, { beforeAdd: sessions.canAdd });
 });
 
 v1.post('/upload', multipart(), function (req, res) {
@@ -133,17 +174,13 @@ v1.post('/upload', multipart(), function (req, res) {
     return fail(res, 'INVALID', 'file is missing');
   }
   store.add(file.path, function (err, infoHash) {
-    if (err) {
-      fail(res, 'INVALID', 'Cannot read this torrent: ' + err.message);
-    } else {
-      res.send({ infoHash: infoHash });
-    }
+    added(req, res, err, infoHash);
     fs.unlink(file.path, function (err) {
       if (err) {
         log.warn('cannot delete upload', { err: err });
       }
     });
-  });
+  }, { beforeAdd: sessions.canAdd });
 });
 
 v1.get('/torrents/:infoHash', findTorrent, function (req, res) {
@@ -194,10 +231,30 @@ v1.post('/torrents/:infoHash/resume', findTorrent, function (req, res) {
   res.json({ ok: true });
 });
 
-//delete a torrent
-
+// The calling device lets go of the torrent. It stops (and its data is
+// deleted, storage.deleteAfterWatching) 30 s after the last device let go.
 v1.delete('/torrents/:infoHash', findTorrent, function (req, res) {
-  store.remove(req.torrent.infoHash);
+  sessions.release(req.torrent.infoHash, sessions.device(req).id);
+  res.json({ ok: true });
+});
+
+// The player is still open (paused videos make no requests), with what it
+// plays: { positionS?, durationS?, paused?, title?, profileId?, file? }
+v1.post('/torrents/:infoHash/keepalive', findTorrent, lease, function (req, res) {
+  sessions.report(req.lease, req.body);
+  res.json({ ok: true });
+});
+
+// What every device plays (the dashboard's Activity)
+v1.get('/sessions', authHttp.requireAdmin, function (req, res) {
+  res.json(sessions.list());
+});
+
+// Stops a session: its streams are closed and its lease released
+v1.delete('/sessions/:id', authHttp.requireAdmin, function (req, res) {
+  if (!sessions.stopSession(req.params.id)) {
+    return fail(res, 'NOT_FOUND', 'No such session');
+  }
   res.json({ ok: true });
 });
 
@@ -236,14 +293,17 @@ function prefetchTail(file) {
     --MOST CRUSIAL PART
 */
 
-// ffmpeg / ffprobe read the file through the byte-range route below
+// ffmpeg / ffprobe read the file through the byte-range route below, as the
+// requesting device. `internal` is a per-process secret (lib/auth): it lets
+// them in without a token, and their reads don't change the session's method.
 function localFileUrl(req, file) {
   return 'http://127.0.0.1:' + req.socket.localPort + protocol.API_PREFIX + '/torrents/' + req.torrent.infoHash +
-    '/files/' + encodeURIComponent(file.path);
+    '/files/' + encodeURIComponent(file.path) + '?' + protocol.DEVICE_PARAM + '=' +
+    encodeURIComponent(req.lease.deviceId) + '&internal=' + auth.internalUrlToken();
 }
 
 // Codecs of a file: { duration, video, audio: [...], transcode }
-v1.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, lease, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
     return fail(res, 'NOT_FOUND', 'No such file in this torrent');
@@ -256,7 +316,7 @@ v1.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, function (req, res
 });
 
 // Where a transcoded stream asked to start at ?t= really starts: { time }
-v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, lease, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
     return fail(res, 'NOT_FOUND', 'No such file in this torrent');
@@ -268,23 +328,29 @@ v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req, 
 });
 
 // The file with its audio re-encoded to AAC, from ?t=<seconds>, track ?audio=<n>
-v1.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, lease, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
     return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
+  if (!sessions.takeTranscodeSlot(req.lease, file, res)) {
+    return fail(res, 'BUSY', 'This server already transcodes ' + settings.get('streaming.maxTranscodes') +
+      ' videos; try again later');
+  }
+  sessions.trackStream(req.lease, req, res, file, 'audio-transcode');
   req.socket.setTimeout(3600000);
   transcode.stream(localFileUrl(req, file), parseFloat(req.query.t) || 0,
     parseInt(req.query.audio, 10) || 0, req, res);
 });
 
-v1.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, res) {
+v1.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, lease, function (req, res) {
   var torrent = req.torrent,
       file = _.find(torrent.files, { path: req.params.path });
 
   if (!file) {
     return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
+  sessions.trackStream(req.lease, req, res, file, 'direct');
   // Download only the file being watched (season packs hold many episodes)
   torrent.files.forEach(function (f) {
     if (f === file) {
@@ -537,6 +603,21 @@ v1.use('/profiles/:profileId', require('./routes/library'));
 
 v1.use(function (req, res) {
   fail(res, 'NOT_FOUND', 'No route ' + req.method + ' ' + protocol.API_PREFIX + req.path);
+});
+
+// The dashboard (apps/dashboard, built into apps/server/public): hashed
+// assets cached for a year, every other GET page answers index.html (SPA
+// routes such as /link?user_code=…, the verification_uri of pairing)
+var DASHBOARD = path.join(__dirname, '..', 'public');
+api.use('/assets', express.static(path.join(DASHBOARD, 'assets'), { immutable: true, maxAge: '365d', fallthrough: false }));
+api.use(express.static(DASHBOARD, { index: false, maxAge: '1h' }));
+api.get(/^\/(?!api\/)[^.]*$/, function (req, res) {
+  var index = path.join(DASHBOARD, 'index.html');
+  if (!fs.existsSync(index)) {
+    return res.status(404).type('text/plain').send('The dashboard is not built: run `npm run build -w apps/dashboard`');
+  }
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(index);
 });
 
 api.use(function (req, res) {

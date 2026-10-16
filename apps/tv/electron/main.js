@@ -3,6 +3,7 @@ const path = require('path')
 const url = require('url')
 const http = require('http')
 const server = require('@playpex/server')
+require('@playpex/server/lib/host').setKind('embedded')   // GET /api/v1/admin/host
 const express = require('express')
 const shutdown = require('electron-shutdown-command');
 var electron = express();

@@ -13,8 +13,12 @@ import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
 import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
+import { ProfilesService } from '../profiles.service';
 
 const SAVE_EVERY_MS = 15000;
+// Keeps this device's lease on the torrent while the player is open (the
+// server drops leases idle for 10 min; a paused video makes no requests)
+const KEEPALIVE_EVERY_MS = 60000;
 // Mouse: the controls and the cursor hide after this long without movement
 const POINTER_IDLE_MS = 3000;
 
@@ -33,7 +37,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   controlsVisible = false;
   sidePannelVisible = false;
   moviePlayer:HTMLVideoElement;
-  link:string;
+  link:string;                // the file's stream path (TorrentFile.link); URLs: server.media()
   runtime;
   year;
   playerSub:Subscription;
@@ -75,6 +79,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   pointerSub:Subscription;
   pointerIdle;
+  keepaliveTimer;
 
   constructor(
     private server:ServerService,
@@ -87,6 +92,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private subtitlesService:SubtitlesService,
     private notificationService:NotificationService,
     private library:LibraryService,
+    private profiles:ProfilesService,
   ) { }
 
   ngOnInit(): void {
@@ -183,12 +189,17 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
     .pipe(
       switchMap(data => {
+        if (!this.torrentHash) this.startKeepalive(data['infoHash']);
         this.torrentHash = data['infoHash'];
         return this.torrentService.getTorrent(data['infoHash']);
       }),
       repeat({delay : 4000})
     )
-    .subscribe(data => {
+    .subscribe({ error: e => {
+      // e.g. 503 BUSY: the server already streams as many torrents as it allows
+      this.leavePlayer();
+      this.notificationService.sendNotification("error" , e?.error?.error || "Couldn't start this torrent. Check that the Playpex server is running.");
+    }, next: data => {
       reps += 1;
       console.log(reps);
 
@@ -204,7 +215,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           return;
         }
         this.filePath = file['path'];
-        this.link = this.server.absolute(file['link']);
+        this.link = file['link'];
         this.probeFile().then(() => this.setupPlayer());
         return;
       }
@@ -215,7 +226,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.leavePlayer();
         this.notificationService.sendNotification("error" , "Couldn't fetch the torrent's metadata (no peers?). Try again later");
       }
-    })
+    }})
 
 
 
@@ -238,6 +249,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     if (this.playerSub) this.playerSub.unsubscribe();
     if (this.statsSub) this.statsSub.unsubscribe();
+    clearInterval(this.keepaliveTimer);
     gsap.killTweensOf('.clock');
     gsap.set('.clock' , { clearProps : 'opacity' });
 
@@ -275,7 +287,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Codecs first: unplayable audio switches to the transcoded stream. If the
   // probe fails (no ffprobe), play the file directly as before.
   probeFile():Promise<void> {
-    let url = this.link.replace('/files/' , '/probe/');
+    let url = this.server.media(this.link.replace('/files/' , '/probe/'));
     return fetch(url).then(r => r.ok ? r.json() : null).then(info => {
       if (!info?.transcode) return;
       this.transcoding = true;
@@ -284,7 +296,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   streamUrl(start:number){
-    return this.link.replace('/files/' , '/transcode/') + '?t=' + start;
+    return this.server.media(this.link.replace('/files/' , '/transcode/') , { t: start });
   }
 
   position(){
@@ -359,7 +371,26 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }).subscribe({ error: () => {} });
   }
 
-  // Back to where the user came from, dropping the torrent and its data
+  // Every minute until the player closes: keeps the server's lease, and tells
+  // it what plays (its Activity view)
+  startKeepalive(hash:string) {
+    this.keepaliveTimer = setInterval(() => {
+      let player = this.moviePlayer;
+      let duration = this.playerReady ? this.mediaDuration() : NaN;
+      let code = this.playback.season ? this.playback.subtitle?.split(' ')[0] : '';
+      let state = {
+        title: [this.playback.title, code].filter(Boolean).join(' · '),
+        profileId: this.profiles.current.value?.id,
+        file: this.filePath,
+        ...(this.playerReady && player ? { positionS: this.position(), paused: player.paused } : {}),
+        ...(isFinite(duration) && duration > 0 ? { durationS: duration } : {}),
+      };
+      this.torrentService.keepTorrent(hash , state).subscribe({ error: () => {} });
+    } , KEEPALIVE_EVERY_MS);
+  }
+
+  // Back to where the user came from, releasing the torrent: the server drops
+  // it (and its data) once no other device holds it
   leavePlayer() {
     if (this.torrentHash) {
       let removeSub = this.torrentService.removeTorrent(this.torrentHash).subscribe(()=>{
@@ -462,7 +493,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
 
 
-    this.moviePlayer.src = this.transcoding ? this.streamUrl(0) : this.link;
+    this.moviePlayer.src = this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
     this.setupTimeSlider()
     this.moviePlayer.play();
     // e.g. HEVC/x265 or AVI that Chromium can't decode
@@ -671,7 +702,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       clearTimeout(this.seekTimer);
       this.seekTimer = setTimeout(() => {
         let target = time;
-        fetch(this.link.replace('/files/' , '/keyframe/') + '?t=' + target)
+        fetch(this.server.media(this.link.replace('/files/' , '/keyframe/') , { t: target }))
           .then(r => r.json()).catch(() => ({time: target}))
           .then(data => {
             if (this.pendingSeek !== target || this.router.url != "/player") return; // a newer seek won

@@ -1,0 +1,25 @@
+{
+  "comment": "Pinned LGPL ffmpeg/ffprobe builds bundled in the installers (plan §5.5, decision F). BtbN/FFmpeg-Builds keeps its month-end autobuilds; daily ones are deleted after a few weeks. To move to a newer build: pick a month-end release, copy the file names and SHA-256 from its checksums.sha256, and review the diff. No LGPL build for macOS here: the dmg ships without ffmpeg (the server then uses settings / PATH).",
+  "release": "autobuild-2026-09-30-13-08",
+  "version": "n8.1.3-9-g29e619e767",
+  "source": "https://github.com/FFmpeg/FFmpeg/tree/29e619e767 (release/8.1 branch), built with https://github.com/BtbN/FFmpeg-Builds",
+  "licence": "LGPL-2.1-or-later",
+  "builds": {
+    "win32-x64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-win64-lgpl-8.1.zip",
+      "sha256": "4a7642b2264c03e8a0ce8a3825b933ee5580656f45695a086fe7e294045ffc0a"
+    },
+    "win32-arm64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-winarm64-lgpl-8.1.zip",
+      "sha256": "9e49da7acb363b60bf60f9efad2ac0281cf68d43930ec4b1b8dd6a4f20dd7e5f"
+    },
+    "linux-x64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-linux64-lgpl-8.1.tar.xz",
+      "sha256": "dfa863a00ca81f1bdf58a372b18cff4820f0017e55de32778de8ecd8ed92a02e"
+    },
+    "linux-arm64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-linuxarm64-lgpl-8.1.tar.xz",
+      "sha256": "8463881ca7a25015ca6e00f5c91dd2f1637eb73d33c8230413cb74db760a86b3"
+    }
+  }
+}

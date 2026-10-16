@@ -4,7 +4,7 @@
 //
 //   services (lib/services)  →  repositories (lib/data)  →  database (lib/db)
 //
-// The database is opened on first use and shared; routes call
+// The database is opened on first use and shared (lib/auth uses it too); routes call
 // `userData.services().then(function (s) { return s.watchlist.list(id); })`.
 
 var database = require('./db'),
@@ -15,8 +15,7 @@ var database = require('./db'),
 
 var ready = null;
 
-/** @returns {Promise<ReturnType<typeof services.createServices>>} */
-function getServices() {
+function getState() {
   if (!ready) {
     ready = database.open().then(function (connection) {
       return {
@@ -29,7 +28,17 @@ function getServices() {
       ready = null;   // retry on the next call
     });
   }
-  return ready.then(function (state) { return state.services; });
+  return ready;
+}
+
+/** @returns {Promise<ReturnType<typeof services.createServices>>} */
+function getServices() {
+  return getState().then(function (state) { return state.services; });
+}
+
+// The Drizzle database itself, for modules outside the services (lib/auth)
+function getDatabase() {
+  return getState().then(function (state) { return state.connection.db; });
 }
 
 function close() {
@@ -43,5 +52,6 @@ function close() {
 
 module.exports = {
   services: getServices,
+  database: getDatabase,
   close: close
 };

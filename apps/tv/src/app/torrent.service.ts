@@ -9,10 +9,19 @@ export class TorrentService {
 
   constructor(private http:HttpClient, private server:ServerService) { }
 
+  // Adds the torrent and holds it for this device (server lease) until
+  // removeTorrent; a player keeps it with keepTorrent. 503 BUSY past the
+  // server's torrent limit.
   registerTorrent(magnet:string){
     return this.http.post(`${this.server.api}/torrents/` , {
       link : magnet
-    })
+    } , { params : this.server.deviceParams() })
+  }
+
+  // Every minute while the player is open (a paused video makes no
+  // requests), with what it plays: shown in the server's Activity
+  keepTorrent(hash:string , state:{ positionS?:number, durationS?:number, paused?:boolean, title?:string, profileId?:string, file?:string }){
+    return this.http.post(`${this.server.api}/torrents/${hash}/keepalive` , state , { params : this.server.deviceParams() })
   }
 
   getTorrent(hash:string){
@@ -45,7 +54,9 @@ export class TorrentService {
     })
   }
 
+  // Releases this device's lease: the server stops the torrent (and deletes
+  // its data) once no device holds it any more
   removeTorrent(hash){
-    return this.http.delete(`${this.server.api}/torrents/`+hash)
+    return this.http.delete(`${this.server.api}/torrents/`+hash , { params : this.server.deviceParams() })
   }
 }

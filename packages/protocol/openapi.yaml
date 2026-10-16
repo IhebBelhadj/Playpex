@@ -1,0 +1,2801 @@
+openapi: 3.1.0
+info:
+  title: Playpex Media Server API
+  version: '1'
+  summary: The API every Playpex client talks to (TV app, future Android TV / mobile / web clients).
+  description: |
+    Source of truth for the Playpex protocol (docs/server-separation-plan.md §6). TypeScript types are
+    generated from this file (`npm run generate -w packages/protocol` → types/api.d.ts), and the
+    server's contract test (`npm test -w apps/server`) checks real answers against it.
+
+    **Base URL**: `http://<server>:<port>/api/v1`. The default port is 28470 (the server's settings
+    can change it).
+
+    **Finding a server** (not HTTP; constants in `@playpex/protocol` `DISCOVERY`; plan §5.7). A server
+    sharing on the LAN answers both ways below; use both and merge what you find by `id`. Then confirm
+    with `GET /server` on the address found: identify a server by its `id`, never by its address, so a
+    paired client finds it again after a DHCP or port change.
+    - mDNS / DNS-SD: browse `_playpex._tcp.local`. SRV = the HTTP port in use; TXT `id` (server id),
+      `v` (apiVersion), `ver` (server version), `name` (full server name).
+    - UDP (for networks that filter multicast): send the datagram `PLAYPEX_DISCOVER 1` to port 28471
+      (broadcast `255.255.255.255` and each interface's broadcast address, or unicast). Each server answers
+      the sender with one JSON datagram `{ id, name, port, apiVersion, minApiVersion, version }`.
+    - Manual entry: an address without a port means 28470.
+
+    **Versioning**: `info.version` is the API version (`apiVersion` in `GET /server`), bumped only on
+    breaking changes. Clients may send `X-Playpex-Client: <name>/<version>; api=<n>`; the server
+    answers 426 `CLIENT_TOO_OLD` / `SERVER_TOO_OLD` when it can't serve that version.
+
+    **Errors**: every error answer is JSON `{ error, code }` (see `Error`). Some list routes add an
+    empty list next to it (`torrents: []`, `subtitles: []`).
+
+    **Auth** (`auth: "pairing"` in `GET /server`; plan §6.3):
+    - A client pairs once with the **RFC 8628 device flow**: `POST /auth/device/code` → it shows
+      `user_code` (and `verification_uri`, maybe as a QR code of `verification_uri_complete`), then polls
+      `POST /auth/device/token` every `interval` seconds until the server's admin approves the code
+      (dashboard, tray, or `playpex-server devices approve <code>`). The answer's `access_token` is the
+      device's token (valid a year, renewed while used); then `PUT /devices/me` says what the device is.
+    - Every other request carries `Authorization: Bearer <token>`; media elements that can't set
+      headers add `?access_token=<token>`. Without a valid token: **401 `PAIRING_REQUIRED`** (any route
+      but the public ones: `GET /server`, `GET /openapi.yaml`, `GET /docs`, the two device-flow routes,
+      `/admin/setup`). A revoked token
+      gets the same 401: pair again.
+    - Clients on the server machine (loopback) need no token, unless the server's setting
+      `security.requirePairingOnLoopback` is on.
+    - The dashboard signs in as the admin (`POST /auth/sign-in/username`, an HttpOnly session cookie)
+      for `/admin/*` and `/sessions` (else **401 `ADMIN_REQUIRED`**). A device token never grants admin.
+    - Device-flow errors follow RFC 8628 / RFC 6749: `{ error, error_description }` with 400
+      (`authorization_pending`, `slow_down`, `expired_token`, `access_denied`, `invalid_grant`,
+      `invalid_client`). Better Auth's other routes (`/auth/sign-in/…`) answer `{ message, code }`.
+
+    **Events**: `GET /events` upgrades to a WebSocket of JSON messages `{ topic, time, data }`
+    (see `Event`); same auth (`?access_token=` for clients that can't set headers).
+
+    **Devices and leases**: a torrent stays on the server while a device holds it. Adding it,
+    streaming its files and `POST /torrents/{infoHash}/keepalive` take or refresh the calling device's
+    lease; `DELETE /torrents/{infoHash}` releases it. The torrent stops 30 s after the last lease is
+    gone (its data is deleted unless the server keeps downloads). A lease with no request for the
+    server's idle timeout (10 min by default) is dropped, so players send a keepalive every minute
+    while open, paused or not. A paired device is the one its token names; a local client (no token)
+    names its device with the `X-Playpex-Device` header or the `device` query parameter (media URLs),
+    else the server uses its address. Past the server's limits (torrents, transcodes) answers are 503
+    `BUSY`.
+
+    Playpex is an educational project; streaming copyrighted content via torrents may be illegal
+    where you live.
+  license:
+    name: See licence.md
+servers:
+  - url: http://localhost:28470/api/v1
+
+security:
+  - deviceToken: []
+  - accessTokenParam: []
+  - adminSession: []
+  - {}   # loopback clients, unless the server requires pairing there too
+
+tags:
+  - name: server
+  - name: auth
+    description: Pairing (RFC 8628 device flow) and the admin's sign-in
+  - name: devices
+    description: A paired device's own record
+  - name: admin
+    description: The dashboard's routes (admin session)
+  - name: events
+    description: Real-time events (WebSocket)
+  - name: torrents
+    description: Torrent engine and byte-range streaming
+  - name: sessions
+    description: What every device is playing (leases on torrents)
+  - name: catalog
+    description: Movie / show data from providers (YTS, IMDb)
+  - name: releases
+    description: Torrent search and release lists (EZTV, TheRARBG, The Pirate Bay, YTS)
+  - name: subtitles
+  - name: adult
+    description: 18+ section (releases and pluggable metadata providers)
+  - name: profiles
+  - name: library
+    description: One profile's watch list, playback progress and history
+  - name: trailers
+
+paths:
+  /server:
+    get:
+      tags: [server]
+      operationId: getServer
+      summary: Who this server is (no auth). Probe it after discovery and before pairing.
+      security: []
+      responses:
+        '200':
+          description: Server identity and features
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerInfo' }
+  /openapi.yaml:
+    get:
+      tags: [server]
+      operationId: getOpenApi
+      summary: This API's OpenAPI document (no auth)
+      security: []
+      responses:
+        '200':
+          description: The spec this server implements (packages/protocol/openapi.yaml)
+          content:
+            application/yaml:
+              schema: { type: string }
+  /docs:
+    get:
+      tags: [server]
+      operationId: getDocs
+      summary: The client author guide (redirects to /docs, served by the dashboard; no auth)
+      security: []
+      responses:
+        '302':
+          description: Location `/docs`
+
+  # ── auth ────────────────────────────────────────────────────────────────────
+  /auth/device/code:
+    post:
+      tags: [auth]
+      operationId: requestDeviceCode
+      summary: Start pairing (RFC 8628 §3.1). Show the user_code; poll /auth/device/token.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ClientHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceCodeRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/DeviceCodeRequest' }
+      responses:
+        '200':
+          description: A pairing request, pending until the admin approves it
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceAuthorization' }
+        '400': { $ref: '#/components/responses/OAuthError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/device/token:
+    post:
+      tags: [auth]
+      operationId: requestDeviceToken
+      summary: Poll for the device's token (RFC 8628 §3.4); once per `interval` seconds
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceTokenRequest' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/DeviceTokenRequest' }
+      responses:
+        '200':
+          description: Approved; the token is given once
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceToken' }
+        '400': { $ref: '#/components/responses/OAuthError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/sign-in/username:
+    post:
+      tags: [auth]
+      operationId: adminSignIn
+      summary: The admin signs in (dashboard). Sets the session cookie. 5 attempts a minute per address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+                rememberMe: { type: boolean }
+      responses:
+        '200':
+          description: Signed in (Better Auth's answer; the cookie is what matters)
+          content:
+            application/json:
+              schema: { type: object, required: [user], properties: { user: { type: object } } }
+        '400': { $ref: '#/components/responses/BetterAuthError' }
+        '401': { $ref: '#/components/responses/BetterAuthError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/sign-out:
+    post:
+      tags: [auth]
+      operationId: adminSignOut
+      summary: Ends the admin's session (needs the page's Origin header, like any cookie POST)
+      security:
+        - adminSession: []
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: Signed out
+          content:
+            application/json:
+              schema: { type: object, required: [success], properties: { success: { type: boolean } } }
+        '403': { $ref: '#/components/responses/BetterAuthError' }
+  /auth/get-session:
+    get:
+      tags: [auth]
+      operationId: adminSession
+      summary: The admin's session and user, or null (device tokens get null)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Session, or null when not signed in
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: 'null'
+                  - type: object
+                    required: [session, user]
+                    properties:
+                      session: { type: object }
+                      user: { type: object }
+
+  # ── devices ─────────────────────────────────────────────────────────────────
+  /devices/me:
+    get:
+      tags: [devices]
+      operationId: getMyDevice
+      summary: The calling paired device's record (404 for local clients, which aren't paired)
+      responses:
+        '200':
+          description: This device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [devices]
+      operationId: describeMyDevice
+      summary: Say what this device is, right after pairing (and whenever it changes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceDescription' }
+      responses:
+        '200':
+          description: This device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── admin (dashboard) ───────────────────────────────────────────────────────
+  /admin/setup:
+    get:
+      tags: [admin]
+      operationId: getSetup
+      summary: Whether the first-run setup is still needed (the admin has no password yet)
+      security: []
+      responses:
+        '200':
+          description: Setup state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [needed, local]
+                properties:
+                  needed: { type: boolean }
+                  local: { type: boolean, description: 'The request comes from the server machine (where the setup is allowed)' }
+    post:
+      tags: [admin]
+      operationId: setup
+      summary: Create the admin account. From the server machine only, and only once.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminCredentials' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/password:
+    put:
+      tags: [admin]
+      operationId: changeAdminPassword
+      summary: Change the admin's password; every admin session is signed out, devices stay paired
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '403': { $ref: '#/components/responses/Error' }
+  /admin/pairing:
+    get:
+      tags: [admin]
+      operationId: listPairingRequests
+      summary: Pending pairing requests, oldest first
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Pending requests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requests]
+                properties:
+                  requests: { type: array, items: { $ref: '#/components/schemas/PairingRequest' } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/pairing/{code}/approve:
+    parameters:
+      - $ref: '#/components/parameters/UserCode'
+    post:
+      tags: [admin]
+      operationId: approvePairing
+      summary: Approve a pairing request; the device gets its token on its next poll
+      security:
+        - adminSession: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/pairing/{code}/deny:
+    parameters:
+      - $ref: '#/components/parameters/UserCode'
+    post:
+      tags: [admin]
+      operationId: denyPairing
+      summary: Deny a pairing request (the device gets access_denied)
+      security:
+        - adminSession: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/devices:
+    get:
+      tags: [admin]
+      operationId: listDevices
+      summary: Paired devices, most recently seen first
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Devices
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices: { type: array, items: { $ref: '#/components/schemas/Device' } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/devices/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [admin]
+      operationId: renameDevice
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [name], properties: { name: { type: string, minLength: 1, maxLength: 64 } } }
+      responses:
+        '200':
+          description: The device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [admin]
+      operationId: revokeDevice
+      summary: Revoke a device; its token stops working at once and its streams are closed
+      security:
+        - adminSession: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/overview:
+    get:
+      tags: [admin]
+      operationId: getOverview
+      summary: The dashboard's Overview (server, process, machine, traffic, disks, ffmpeg, providers)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Overview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Overview' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/restart:
+    post:
+      tags: [admin]
+      operationId: restartServer
+      summary: Restart the server (applies port, LAN sharing, download dir). Answers first, restarts 200 ms later.
+      description: |
+        `port` is the configured port the server will try; when another program holds it, the server starts
+        in recovery mode on a free loopback port instead (see `Overview.server.recovery`).
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Restarting
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, port, currentPort]
+                properties:
+                  ok: { const: true }
+                  port: { type: integer }
+                  currentPort: { type: [integer, 'null'] }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/host:
+    get:
+      tags: [admin]
+      operationId: getHost
+      summary: The program the server runs in, and the desktop app's own settings and updater state
+      description: |
+        `kind` is `desktop` when Playpex Media Server's desktop app (tray icon) runs the server, `headless`
+        on its own (systemd, Docker, `playpex-server`), `embedded` inside the TV app. `desktop` is null
+        unless `kind` is `desktop`. Changes arrive on the events socket as `host.updated` (admin).
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Host
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HostInfo' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+    put:
+      tags: [admin]
+      operationId: updateHost
+      summary: Change the desktop app's settings (start at login, automatic update checks)
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                openAtLogin: { type: boolean }
+                checkForUpdates: { type: boolean }
+      responses:
+        '200':
+          description: Host after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HostInfo' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '500': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+  /admin/host/update/check:
+    post:
+      tags: [admin]
+      operationId: checkForUpdate
+      summary: Ask the desktop app to look for an update now (downloaded in the background when found)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Host, with the updater's state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HostInfo' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '500': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+  /admin/host/update/install:
+    post:
+      tags: [admin]
+      operationId: installUpdate
+      summary: Restart the desktop app into the downloaded update
+      description: '409 `CONFLICT` while streams are playing, unless `force` is true. 409 too when no update is downloaded.'
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '409': { $ref: '#/components/responses/Error' }
+        '500': { $ref: '#/components/responses/Error' }
+        '501': { $ref: '#/components/responses/Error' }
+  /admin/settings:
+    get:
+      tags: [admin]
+      operationId: getSettings
+      summary: Effective settings (secrets masked), where each comes from
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsView' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+    put:
+      tags: [admin]
+      operationId: updateSettings
+      summary: Change settings (a partial object). Masked secrets sent back unchanged are kept.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsPatch' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsUpdate' }
+        '400':
+          description: Invalid values (`INVALID`); nothing saved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Error' }
+                  - type: object
+                    properties:
+                      errors: { type: array, items: { type: string } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/settings/check-port:
+    post:
+      tags: [admin]
+      operationId: checkPort
+      summary: Whether the server could listen on a port right now
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [port], properties: { port: { type: integer } } }
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PortCheck' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/logs:
+    get:
+      tags: [admin]
+      operationId: getLogs
+      summary: Recent log entries (ring buffer of 2 000), oldest first; live ones come as `log` events
+      security:
+        - adminSession: []
+      parameters:
+        - { name: level, in: query, schema: { type: string, enum: [debug, info, warn, error] }, description: 'Minimum level' }
+        - { name: area, in: query, schema: { type: string } }
+        - { name: since, in: query, schema: { type: string, format: date-time }, description: 'Only entries after this time' }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1 }, description: 'The newest N' }
+      responses:
+        '200':
+          description: Entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries, levels, file]
+                properties:
+                  entries: { type: array, items: { $ref: '#/components/schemas/LogEntry' } }
+                  levels: { type: array, items: { type: string } }
+                  file: { type: [string, 'null'], description: 'Current log file' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/logs/download:
+    get:
+      tags: [admin]
+      operationId: downloadLogs
+      summary: Every log file (current and rotated) as a zip
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Zip archive
+          content:
+            application/zip: {}
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/storage:
+    get:
+      tags: [admin]
+      operationId: getStorage
+      summary: What the download directory holds (one entry per torrent), largest first
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Storage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Storage' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/storage/clear:
+    post:
+      tags: [admin]
+      operationId: clearStorage
+      summary: Delete every entry of the download directory that no running torrent uses
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Done
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed, freedBytes]
+                properties:
+                  removed: { type: integer }
+                  freedBytes: { type: number }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/storage/items/{name}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string }, description: 'Top-level entry name (URL-encoded)' }
+    delete:
+      tags: [admin]
+      operationId: deleteStorageItem
+      summary: Delete one entry of the download directory (409 while a running torrent uses it)
+      security:
+        - adminSession: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/storage/check:
+    post:
+      tags: [admin]
+      operationId: checkDirectory
+      summary: Whether a directory can be the download directory (absolute, writable, free space)
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [dir], properties: { dir: { type: string } } }
+      responses:
+        '200':
+          description: Result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirCheck' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+
+  # ── events ──────────────────────────────────────────────────────────────────
+  /events:
+    get:
+      tags: [events]
+      operationId: events
+      summary: WebSocket of server events (an `Upgrade` to websocket)
+      description: |
+        Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
+        `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
+        `session.ended`. Admin session only: `log`, `device.paired`, `device.revoked`,
+        `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. `?topics=session,torrent.stats` keeps
+        topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
+        from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
+      parameters:
+        - { name: topics, in: query, required: false, schema: { type: string }, description: 'Comma-separated topic prefixes' }
+        - { name: access_token, in: query, required: false, schema: { type: string } }
+      responses:
+        '101': { description: Switching protocols; then `Event` messages }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+
+  # ── torrents ────────────────────────────────────────────────────────────────
+  /torrents:
+    get:
+      tags: [torrents]
+      operationId: listTorrents
+      responses:
+        '200':
+          description: Torrents the server holds
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Torrent' } }
+    post:
+      tags: [torrents]
+      operationId: addTorrent
+      summary: Add a torrent (idempotent per info hash) and hold it for the calling device. Its metadata arrives later; poll GET /torrents/{infoHash}.
+      parameters:
+        - $ref: '#/components/parameters/Device'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTorrentRequest' }
+      responses:
+        '200':
+          description: The torrent's info hash (lowercase)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InfoHash' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '503': { $ref: '#/components/responses/Busy' }
+  /upload:
+    post:
+      tags: [torrents]
+      operationId: uploadTorrent
+      summary: Add a torrent from an uploaded .torrent file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, contentMediaType: application/x-bittorrent }
+      responses:
+        '200':
+          description: The torrent's info hash
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InfoHash' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '503': { $ref: '#/components/responses/Busy' }
+  /torrents/{infoHash}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [torrents]
+      operationId: getTorrent
+      summary: The torrent; only `infoHash` until its metadata has arrived
+      responses:
+        '200':
+          description: The torrent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Torrent' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [torrents]
+      operationId: deleteTorrent
+      summary: Release the calling device's lease
+      description: |
+        The torrent stops 30 s after its last lease is released (another device may still be
+        watching it, or come back), and its data is deleted unless the server keeps downloads.
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/keepalive:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/Device'
+    post:
+      tags: [torrents]
+      operationId: keepTorrent
+      summary: Refresh the calling device's lease (every minute while a player is open), with what it plays
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeepaliveRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/stats:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [torrents]
+      operationId: getTorrentStats
+      summary: Swarm statistics; safe before the metadata has arrived
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TorrentStats' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/start/{index}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - { name: index, in: path, required: true, description: 'File index; out of range = every file', schema: { type: integer } }
+    post:
+      tags: [torrents]
+      operationId: startTorrentFile
+      summary: Download this file (or every file)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/stop/{index}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - { name: index, in: path, required: true, description: 'File index; out of range = every file', schema: { type: integer } }
+    post:
+      tags: [torrents]
+      operationId: stopTorrentFile
+      summary: Stop downloading this file (or every file)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/deselect:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [torrents]
+      operationId: deselectTorrent
+      summary: Stop downloading every file
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/pause:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [torrents]
+      operationId: pauseTorrent
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/resume:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [torrents]
+      operationId: resumeTorrent
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/files/{path}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/FilePath'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [torrents]
+      operationId: streamFile
+      summary: Stream a file (HTTP byte ranges). Only this file of the torrent is downloaded from then on.
+      description: |
+        Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
+        fetched early, where MKV keeps its index. Media elements can use the URL directly.
+      parameters:
+        - { name: Range, in: header, required: false, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Media' }
+        '206': { $ref: '#/components/responses/Media' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    head:
+      tags: [torrents]
+      operationId: headFile
+      responses:
+        '200': { description: 'Length and type of the file' }
+        '206': { description: 'Length of the range' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/probe/{path}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/FilePath'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [torrents]
+      operationId: probeFile
+      summary: Codecs and duration of a file (ffprobe)
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProbeResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /torrents/{infoHash}/keyframe/{path}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/FilePath'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [torrents]
+      operationId: getKeyframe
+      summary: Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it)
+      parameters:
+        - { name: t, in: query, required: true, schema: { type: number, minimum: 0 } }
+      responses:
+        '200':
+          description: Time in seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [time]
+                properties:
+                  time: { type: number }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /torrents/{infoHash}/transcode/{path}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+      - $ref: '#/components/parameters/FilePath'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [torrents]
+      operationId: transcodeFile
+      summary: The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
+      description: Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
+      parameters:
+        - { name: t, in: query, required: false, schema: { type: number, minimum: 0, default: 0 } }
+        - { name: audio, in: query, required: false, description: 'Audio track index (ProbeResult.audio[].index)', schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: Matroska stream
+          content:
+            video/x-matroska: {}
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503':
+          description: '`BUSY` (the server runs its maximum of transcodes; a new one from the same device and file replaces the previous) or `TRANSCODER_UNAVAILABLE`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ── sessions ────────────────────────────────────────────────────────────────
+  /sessions:
+    get:
+      tags: [sessions]
+      operationId: listSessions
+      summary: Every device's lease on a torrent, with what it plays (oldest first). Admin only.
+      security:
+        - adminSession: []
+      responses:
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Session' } }
+  /sessions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [sessions]
+      operationId: stopSession
+      summary: Stop a session (its streams are closed and its lease released). Admin only.
+      security:
+        - adminSession: []
+      responses:
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── catalog ─────────────────────────────────────────────────────────────────
+  /movies:
+    get:
+      tags: [catalog]
+      operationId: listYtsMovies
+      summary: YTS `list_movies.json`, passed through (query parameters forwarded)
+      responses:
+        '200':
+          description: YTS answer, unchanged
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/YtsResponse' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /movies/{imdbId}:
+    parameters:
+      - $ref: '#/components/parameters/ImdbId'
+    get:
+      tags: [catalog]
+      operationId: getYtsMovie
+      summary: YTS `movie_details.json` for an IMDb id, passed through (torrents, rating, runtime…)
+      responses:
+        '200':
+          description: YTS answer, unchanged (`data.movie`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/YtsResponse' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /imdb/{imdbId}:
+    parameters:
+      - $ref: '#/components/parameters/ImdbId'
+    get:
+      tags: [catalog]
+      operationId: getImdbRating
+      summary: IMDb rating of a title (cached 6 h)
+      responses:
+        '200':
+          description: Rating
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImdbRating' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /imdb/{imdbId}/episodes:
+    parameters:
+      - $ref: '#/components/parameters/ImdbId'
+    get:
+      tags: [catalog]
+      operationId: getImdbEpisodes
+      summary: IMDb ratings of a series, its seasons (mean of the rated episodes) and episodes
+      responses:
+        '200':
+          description: Ratings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImdbSeries' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+
+  # ── releases ────────────────────────────────────────────────────────────────
+  /shows/{imdbId}/torrents:
+    parameters:
+      - $ref: '#/components/parameters/ImdbId'
+    get:
+      tags: [releases]
+      operationId: findEpisodeTorrents
+      summary: Torrents of one episode (EZTV + TheRARBG), best streaming candidate first; season packs as fallback
+      parameters:
+        - { name: title, in: query, required: true, description: 'Show title, used to match release names', schema: { type: string } }
+        - { name: season, in: query, required: true, schema: { type: integer, minimum: 0 } }
+        - { name: episode, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Ranked torrents
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RankedTorrents' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /releases/providers:
+    get:
+      tags: [releases]
+      operationId: listReleaseProviders
+      parameters:
+        - $ref: '#/components/parameters/ReleaseKind'
+      responses:
+        '200':
+          description: Sources for this kind, the default first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ReleaseProvider' } }
+        '400': { $ref: '#/components/responses/Invalid' }
+  /releases/browse:
+    get:
+      tags: [releases]
+      operationId: browseReleases
+      summary: One source's releases, most seeded first
+      parameters:
+        - $ref: '#/components/parameters/ReleaseKind'
+        - { name: provider, in: query, description: 'Source id (unknown → the kind''s default)', schema: { type: string } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - $ref: '#/components/parameters/Quality'
+        - $ref: '#/components/parameters/Playable'
+        - $ref: '#/components/parameters/Page'
+        - { name: imdb, in: query, description: 'Optional IMDb id (EZTV lists that show)', schema: { type: string } }
+      responses:
+        '200':
+          description: A page of releases
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReleasePage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+
+  # ── subtitles ───────────────────────────────────────────────────────────────
+  /subtitles/providers:
+    get:
+      tags: [subtitles]
+      operationId: listSubtitleProviders
+      responses:
+        '200':
+          description: Providers, in the player's tab order (first enabled = default)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/SubtitleProvider' } }
+  /subtitles/search:
+    get:
+      tags: [subtitles]
+      operationId: searchSubtitles
+      parameters:
+        - { name: provider, in: query, description: 'Provider id (default first enabled)', schema: { type: string } }
+        - { name: imdb_id, in: query, required: true, schema: { type: string, pattern: '^tt\d+$' } }
+        - { name: season, in: query, schema: { type: integer } }
+        - { name: episode, in: query, schema: { type: integer } }
+        - { name: languages, in: query, description: 'Comma-separated ISO 639-1 codes, e.g. en,ar', schema: { type: string } }
+      responses:
+        '200':
+          description: Subtitles found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubtitleSearch' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /subtitles/file:
+    get:
+      tags: [subtitles]
+      operationId: getSubtitleFile
+      summary: A subtitle as WebVTT (for `<track>`)
+      parameters:
+        - { name: provider, in: query, required: true, schema: { type: string } }
+        - { name: ref, in: query, required: true, description: '`ref` from the search; validated by the provider', schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt: { schema: { type: string } }
+        '502': { $ref: '#/components/responses/Upstream' }
+
+  # ── 18+ ─────────────────────────────────────────────────────────────────────
+  /adult/torrents:
+    get:
+      tags: [adult]
+      operationId: findAdultTorrents
+      summary: Torrents of one adult film, matched by title (+ year), best first
+      parameters:
+        - { name: title, in: query, required: true, schema: { type: string } }
+        - { name: year, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: Ranked torrents
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RankedTorrents' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /adult/providers:
+    get:
+      tags: [adult]
+      operationId: listAdultReleaseProviders
+      summary: Same as /releases/providers?kind=adult
+      responses:
+        '200':
+          description: Sources
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ReleaseProvider' } }
+  /adult/browse:
+    get:
+      tags: [adult]
+      operationId: browseAdultReleases
+      summary: Same as /releases/browse?kind=adult
+      parameters:
+        - { name: provider, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - $ref: '#/components/parameters/Quality'
+        - $ref: '#/components/parameters/Playable'
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of releases
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReleasePage' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /adult/meta/providers:
+    get:
+      tags: [adult]
+      operationId: listAdultMetaProviders
+      responses:
+        '200':
+          description: Metadata providers (`enabled` false without their API key)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdultMetaProvider' } }
+  /adult/meta/{provider}/home:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+    get:
+      tags: [adult]
+      operationId: getAdultHome
+      responses:
+        '200':
+          description: Rows of the home page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdultHome' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /adult/meta/{provider}/rows/{key}:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+      - { name: key, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [adult]
+      operationId: getAdultRow
+      parameters:
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdultPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /adult/meta/{provider}/discover:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+    get:
+      tags: [adult]
+      operationId: discoverAdult
+      parameters:
+        - { name: studio, in: query, schema: { type: string } }
+        - { name: period, in: query, description: 'An id from the provider''s `periods`', schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [popular, newest, rated], default: popular } }
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdultPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /adult/meta/{provider}/search:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+    get:
+      tags: [adult]
+      operationId: searchAdult
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, maxLength: 100 } }
+        - { name: period, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdultPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /adult/meta/{provider}/studios:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+    get:
+      tags: [adult]
+      operationId: listAdultStudios
+      responses:
+        '200':
+          description: Studios
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Studio' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /adult/meta/{provider}/titles/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AdultMetaProvider'
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [adult]
+      operationId: getAdultTitle
+      responses:
+        '200':
+          description: A title
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdultTitle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+
+  # ── profiles ────────────────────────────────────────────────────────────────
+  /profiles:
+    get:
+      tags: [profiles]
+      operationId: listProfiles
+      responses:
+        '200':
+          description: Profiles of this server ("Who's watching?")
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileList' }
+    post:
+      tags: [profiles]
+      operationId: createProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileCreate' }
+      responses:
+        '201':
+          description: The new profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Error' }
+  /profiles/{profileId}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [profiles]
+      operationId: getProfile
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [profiles]
+      operationId: updateProfile
+      summary: Update; `preferences` are merged into the stored ones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdate' }
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [profiles]
+      operationId: deleteProfile
+      summary: Delete the profile and all its data
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/unlock:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    post:
+      tags: [profiles]
+      operationId: unlockProfile
+      summary: Pick the profile (PIN if it has one); records it as last used
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pin: { type: string, pattern: '^\d{4,6}$' }
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/Error' }
+  /profiles/{profileId}/pin:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    put:
+      tags: [profiles]
+      operationId: setProfilePin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin: { type: [string, 'null'], pattern: '^\d{4,6}$', description: 'null removes the lock' }
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── library ─────────────────────────────────────────────────────────────────
+  /profiles/{profileId}/library:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [library]
+      operationId: getLibrary
+      summary: Everything the Watch list page shows, in one call
+      responses:
+        '200':
+          description: Library
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Library' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/watchlist:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [library]
+      operationId: listWatchlist
+      parameters:
+        - { name: mediaType, in: query, schema: { $ref: '#/components/schemas/MediaType' } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Watch list, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/WatchlistItem' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/watchlist/{mediaType}/{tmdbId}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    get:
+      tags: [library]
+      operationId: inWatchlist
+      responses:
+        '200':
+          description: Whether the title is on the watch list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [inWatchlist]
+                properties:
+                  inWatchlist: { type: boolean }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [library]
+      operationId: addToWatchlist
+      summary: Add (idempotent)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Artwork' }
+      responses:
+        '200':
+          description: The entry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistItem' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [library]
+      operationId: removeFromWatchlist
+      responses:
+        '200': { $ref: '#/components/responses/Removed' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/progress/{mediaType}/{tmdbId}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    get:
+      tags: [library]
+      operationId: getProgress
+      summary: Where to resume (null under 5 % or once finished)
+      parameters:
+        - $ref: '#/components/parameters/Season'
+        - $ref: '#/components/parameters/Episode'
+      responses:
+        '200':
+          description: Resume point
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProgressState' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [library]
+      operationId: saveProgress
+      summary: Save the playback position (finished at ≥ 90 %; the first finish is added to the history)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveProgressRequest' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SaveProgressResult' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/progress/{mediaType}/{tmdbId}/episodes:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    get:
+      tags: [library]
+      operationId: getEpisodesProgress
+      summary: Progress of every episode of a show (or of the movie)
+      responses:
+        '200':
+          description: Per-episode progress
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/EpisodeProgress' } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/watched/{mediaType}/{tmdbId}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    put:
+      tags: [library]
+      operationId: markWatched
+      summary: Mark as watched without playing (logged in the history)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Artwork'
+                - type: object
+                  properties:
+                    season: { type: integer }
+                    episode: { type: integer }
+                    durationS: { type: number }
+      responses:
+        '200':
+          description: The progress row
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProgressRow' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [library]
+      operationId: markUnwatched
+      summary: Forget the progress (the history is kept)
+      parameters:
+        - $ref: '#/components/parameters/Season'
+        - $ref: '#/components/parameters/Episode'
+      responses:
+        '200': { $ref: '#/components/responses/Removed' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /profiles/{profileId}/history:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [library]
+      operationId: getHistory
+      parameters:
+        - { name: mediaType, in: query, schema: { $ref: '#/components/schemas/MediaType' } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: Finished views, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/HistoryEntry' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── trailers ────────────────────────────────────────────────────────────────
+  /youtube/{videoId}:
+    parameters:
+      - { name: videoId, in: path, required: true, schema: { type: string, pattern: '^[\w-]{11}$' } }
+    get:
+      tags: [trailers]
+      operationId: streamTrailer
+      summary: A YouTube trailer, proxied with byte ranges. Currently stops after ~1 MB (YouTube attestation).
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [video, audio] } }
+        - { name: quality, in: query, description: 'YouTube itag', schema: { type: string } }
+        - { name: Range, in: header, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Media' }
+        '206': { $ref: '#/components/responses/Media' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '416': { description: 'Range not satisfiable' }
+
+components:
+  parameters:
+    InfoHash:
+      name: infoHash
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9a-f]{40}$' }
+    Device:
+      name: device
+      in: query
+      required: false
+      description: |
+        The calling device, for local clients (no token) and media URLs that can't carry the
+        `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+        uses the client's address. Ignored for paired devices (their token names them).
+      schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
+    UserCode:
+      name: code
+      in: path
+      required: true
+      description: The code the device shows; case and dashes don't matter
+      schema: { type: string }
+    ClientHeader:
+      name: X-Playpex-Client
+      in: header
+      required: false
+      description: '`<name>/<version>; api=<n>` — shown to the admin next to the pairing request'
+      schema: { type: string }
+    FilePath:
+      name: path
+      in: path
+      required: true
+      description: The file's `path`, URL-encoded (it may contain slashes)
+      schema: { type: string }
+    ImdbId:
+      name: imdbId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tt\d+$' }
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema: { type: string }
+    MediaType:
+      name: mediaType
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/MediaType' }
+    TmdbId:
+      name: tmdbId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Season:
+      name: season
+      in: query
+      description: Episodes only
+      schema: { type: integer, minimum: 0 }
+    Episode:
+      name: episode
+      in: query
+      description: Episodes only
+      schema: { type: integer, minimum: 0 }
+    ReleaseKind:
+      name: kind
+      in: query
+      required: true
+      schema: { type: string, enum: [movie, tv, adult] }
+    Quality:
+      name: quality
+      in: query
+      description: SD also keeps 480p
+      schema: { type: string, enum: ['2160p', '1080p', '720p', SD] }
+    Playable:
+      name: playable
+      in: query
+      description: '1 / true: only releases the TV app can play (video and audio)'
+      schema: { type: string, enum: ['1', 'true', '0', 'false'] }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    AdultMetaProvider:
+      name: provider
+      in: path
+      required: true
+      description: A provider id, or `default`
+      schema: { type: string }
+
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      description: A paired device's token (from POST /auth/device/token)
+    accessTokenParam:
+      type: apiKey
+      in: query
+      name: access_token
+      description: The same token, for media elements that can't set headers
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: playpex.session_token
+      description: The admin's session (POST /auth/sign-in/username), HttpOnly
+
+  responses:
+    AdminRequired:
+      description: Not signed in as the admin (`ADMIN_REQUIRED`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    OAuthError:
+      description: RFC 8628 / RFC 6749 error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OAuthError' }
+    BetterAuthError:
+      description: Better Auth's error shape
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              code: { type: string }
+    RateLimited:
+      description: Too many requests from this address; wait (see `X-Retry-After`)
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Invalid:
+      description: Bad parameters or body (`INVALID`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not found (`NOT_FOUND`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Upstream:
+      description: A provider failed (`UPSTREAM`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Busy:
+      description: A server limit is reached (`BUSY`); try again later
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Ok:
+      description: Done
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok: { const: true }
+    Removed:
+      description: Whether something was removed
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [removed]
+            properties:
+              removed: { type: boolean }
+    Media:
+      description: Media bytes (the whole file, or the requested range with 206)
+      content:
+        video/*: {}
+        audio/*: {}
+        application/octet-stream: {}
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string, description: 'Message for people (may change)' }
+        errors: { type: array, items: { type: string }, description: 'Some INVALID answers (settings): one message per bad field' }
+        code:
+          type: string
+          description: Stable code (HTTP status in parentheses)
+          enum:
+            - INVALID                  # 400
+            - PAIRING_REQUIRED         # 401
+            - ADMIN_REQUIRED           # 401
+            - FORBIDDEN                # 403
+            - HOST_NOT_ALLOWED         # 403
+            - ORIGIN_NOT_ALLOWED       # 403
+            - NOT_FOUND                # 404
+            - CONFLICT                 # 409
+            - CLIENT_TOO_OLD           # 426
+            - SERVER_TOO_OLD           # 426
+            - TOO_MANY_ATTEMPTS        # 429
+            - INTERNAL                 # 500
+            - NOT_SUPPORTED            # 501
+            - BUSY                     # 503
+            - UPSTREAM                 # 502
+            - PROBE_FAILED             # 502
+            - PROVIDER_NOT_CONFIGURED  # 503
+            - TRANSCODER_UNAVAILABLE   # 503
+
+    ServerInfo:
+      type: object
+      required: [id, name, version, apiVersion, minApiVersion, auth, features]
+      properties:
+        id: { type: string, description: 'Stable server id (UUID); identify servers by it, not by address' }
+        name: { type: string }
+        version: { type: string, description: 'Server software version' }
+        apiVersion: { type: integer }
+        minApiVersion: { type: integer }
+        auth: { type: string, enum: [none, pairing] }
+        features:
+          type: object
+          required: [transcode, subtitles, adult]
+          properties:
+            transcode: { type: boolean, description: 'ffmpeg available (audio transcoding)' }
+            subtitles: { type: array, items: { type: string }, description: 'Enabled subtitle provider ids' }
+            adult: { type: boolean }
+
+    # ── torrents
+    AddTorrentRequest:
+      type: object
+      required: [link]
+      properties:
+        link: { type: string, description: 'Magnet link, .torrent URL, or a bare 32/40-character info hash' }
+    InfoHash:
+      type: object
+      required: [infoHash]
+      properties:
+        infoHash: { type: string }
+    Torrent:
+      type: object
+      required: [infoHash]
+      description: Everything but `infoHash` is missing until the metadata has arrived
+      properties:
+        infoHash: { type: string }
+        name: { type: string }
+        length: { type: number, description: 'Bytes' }
+        interested: { type: boolean }
+        ready: { type: boolean }
+        files: { type: array, items: { $ref: '#/components/schemas/TorrentFile' } }
+        progress: { type: array, items: { type: array, items: { type: number } }, description: 'Downloaded piece runs' }
+    KeepaliveRequest:
+      type: object
+      description: What the player plays, all optional (shown in the server's Activity)
+      properties:
+        positionS: { type: number, description: 'Playback position, seconds' }
+        durationS: { type: number }
+        paused: { type: boolean }
+        title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
+        profileId: { type: string }
+        file: { type: string, description: 'Path of the file in the torrent' }
+    Session:
+      type: object
+      required: [id, deviceId, deviceName, paired, client, address, infoHash, torrentName, file, method, streaming, since, lastActivity, playback, torrent]
+      properties:
+        id: { type: string }
+        deviceId: { type: string, description: 'A paired device''s id, else what a local client named itself (or addr:<ip>)' }
+        deviceName: { type: [string, 'null'], description: 'Paired devices: the name it gave itself / the admin gave it' }
+        paired: { type: boolean }
+        client: { type: [string, 'null'], description: '<name>/<version> from X-Playpex-Client' }
+        address: { type: string }
+        infoHash: { type: string }
+        torrentName: { type: [string, 'null'], description: 'null until the metadata has arrived' }
+        file: { type: [string, 'null'], description: 'Path of the file being played' }
+        method: { type: [string, 'null'], enum: [direct, audio-transcode, null] }
+        streaming: { type: boolean, description: 'A media response is open right now' }
+        since: { type: string, format: date-time }
+        lastActivity: { type: string, format: date-time }
+        playback:
+          type: [object, 'null']
+          description: The player's last keepalive
+          properties:
+            positionS: { type: number }
+            durationS: { type: number }
+            paused: { type: boolean }
+            title: { type: string }
+            profileId: { type: string }
+            file: { type: string }
+            updatedAt: { type: string, format: date-time }
+        torrent:
+          type: [object, 'null']
+          description: The swarm; null once the torrent has stopped
+          required: [peers, downloadSpeed, uploadSpeed, downloaded, length]
+          properties:
+            peers: { type: integer }
+            downloadSpeed: { type: number, description: 'Bytes per second' }
+            uploadSpeed: { type: number }
+            downloaded: { type: number, description: 'Bytes' }
+            length: { type: [number, 'null'], description: 'Bytes; null until the metadata has arrived' }
+    TorrentFile:
+      type: object
+      required: [name, path, link, length, offset, selected]
+      properties:
+        name: { type: string }
+        path: { type: string }
+        link: { type: string, description: 'Stream URL path (append to the server origin): /api/v1/torrents/{infoHash}/files/{path}' }
+        length: { type: number }
+        offset: { type: number }
+        selected: { type: boolean }
+    TorrentStats:
+      type: object
+      required: [metadata, peers, traffic, speed, eta]
+      properties:
+        metadata: { type: boolean }
+        peers:
+          type: object
+          properties:
+            total: { type: integer }
+            unchocked: { type: integer }
+        traffic:
+          type: object
+          properties:
+            down: { type: number, description: 'Bytes' }
+            up: { type: number }
+        speed:
+          type: object
+          properties:
+            down: { type: number, description: 'Bytes per second' }
+            up: { type: number }
+        eta: { type: [integer, 'null'], description: 'Seconds; null until known' }
+        queue: { type: number }
+        paused: { type: boolean }
+    ProbeResult:
+      type: object
+      required: [duration, video, audio, transcode]
+      properties:
+        duration: { type: [number, 'null'], description: 'Seconds' }
+        video: { type: [string, 'null'], description: 'Codec, e.g. h264, hevc' }
+        audio:
+          type: array
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              codec: { type: string }
+              language: { type: [string, 'null'] }
+              title: { type: [string, 'null'] }
+              channels: { type: integer }
+              default: { type: boolean }
+        transcode: { type: boolean, description: 'The default audio track needs /transcode to be heard in Chromium' }
+
+    # ── catalog
+    YtsResponse:
+      type: object
+      description: YTS API answer, passed through unchanged (https://yts.mx/api). A catalog API of our own replaces it later (plan §12 G).
+      properties:
+        status: { type: string }
+        data: { type: object }
+    ImdbRating:
+      type: object
+      required: [id, rating, votes]
+      properties:
+        id: { type: string }
+        rating: { type: [number, 'null'] }
+        votes: { type: [integer, 'null'] }
+    ImdbSeries:
+      allOf:
+        - $ref: '#/components/schemas/ImdbRating'
+        - type: object
+          required: [seasons]
+          properties:
+            seasons:
+              type: array
+              items:
+                type: object
+                required: [season, rating, rated, episodes]
+                properties:
+                  season: { type: integer }
+                  rating: { type: [number, 'null'], description: 'Mean of the rated episodes' }
+                  rated: { type: integer, description: 'Number of rated episodes' }
+                  episodes:
+                    type: array
+                    items:
+                      type: object
+                      required: [episode, id, rating, votes]
+                      properties:
+                        episode: { type: integer }
+                        id: { type: string }
+                        rating: { type: [number, 'null'] }
+                        votes: { type: [integer, 'null'] }
+
+    # ── releases
+    ReleaseDescription:
+      type: object
+      description: What the release name says about playability in the TV app (Chromium)
+      properties:
+        quality: { type: [string, 'null'], description: '2160p, 1080p, 720p, 480p, SD or null' }
+        codec: { type: [string, 'null'] }
+        audio: { type: [string, 'null'], description: '"unsupported" for Dolby / DTS' }
+        playable: { type: boolean, description: 'Video codec playable (no HEVC / 10-bit / XviD / 4K)' }
+    RankedTorrent:
+      allOf:
+        - $ref: '#/components/schemas/ReleaseDescription'
+        - type: object
+          required: [provider, name, hash, magnet, seeds]
+          properties:
+            provider: { type: string }
+            name: { type: string }
+            hash: { type: string, description: 'Info hash, lowercase' }
+            magnet: { type: string, description: 'Magnet with the server''s tracker list' }
+            seeds: { type: integer }
+            size: { type: [number, 'null'], description: 'Bytes' }
+            pack: { type: boolean, description: 'Season pack (the episode is one of its files)' }
+    RankedTorrents:
+      type: object
+      required: [torrents]
+      properties:
+        torrents: { type: array, items: { $ref: '#/components/schemas/RankedTorrent' } }
+        providerErrors: { type: integer, description: 'How many providers failed' }
+    ReleaseProvider:
+      type: object
+      required: [id, name, paged, default]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        paged: { type: boolean, description: 'Has more than one page' }
+        default: { type: boolean }
+    ReleaseTorrent:
+      allOf:
+        - $ref: '#/components/schemas/ReleaseDescription'
+        - type: object
+          required: [provider, name, hash, magnet, seeds]
+          properties:
+            provider: { type: string }
+            name: { type: string }
+            hash: { type: string }
+            magnet: { type: string }
+            seeds: { type: integer }
+            peers: { type: [integer, 'null'] }
+            size: { type: [number, 'null'] }
+            added: { type: number, description: 'Unix seconds, 0 if unknown' }
+            title: { type: [string, 'null'] }
+            year: { type: [integer, 'null'] }
+            studio: { type: [string, 'null'], description: '18+ only' }
+            scenes: { type: boolean, description: '18+ split scenes' }
+            season: { type: [integer, 'null'], description: 'kind tv' }
+            episode: { type: [integer, 'null'], description: 'kind tv' }
+            pack: { type: boolean, description: 'kind tv' }
+    ReleasePage:
+      type: object
+      required: [provider, page, hasMore, torrents]
+      properties:
+        provider: { type: string }
+        page: { type: integer, description: 'Last page read; ask for page + 1 next' }
+        hasMore: { type: boolean }
+        torrents: { type: array, items: { $ref: '#/components/schemas/ReleaseTorrent' } }
+
+    # ── subtitles
+    SubtitleProvider:
+      type: object
+      required: [id, name, description, supports, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        supports:
+          type: object
+          properties:
+            movie: { type: boolean }
+            episode: { type: boolean }
+        enabled: { type: boolean, description: 'false when its API key is missing' }
+    SubtitleSearch:
+      type: object
+      required: [provider, subtitles]
+      properties:
+        provider: { type: string }
+        subtitles:
+          type: array
+          items:
+            type: object
+            required: [provider, ref, language]
+            properties:
+              provider: { type: string }
+              ref: { type: string, description: 'Pass to /subtitles/file' }
+              language: { type: string, description: 'ISO 639-1' }
+              languageName: { type: string }
+              name: { type: [string, 'null'] }
+        unsupported: { type: boolean, description: 'The provider doesn''t cover this kind of title' }
+
+    # ── 18+ metadata
+    AdultMetaProvider:
+      type: object
+      required: [id, name, enabled, default]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        enabled: { type: boolean }
+        default: { type: boolean }
+        periods:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              label: { type: string }
+        sorts: { type: array, items: { type: string, enum: [popular, newest, rated] } }
+    AdultHome:
+      type: object
+      required: [provider, rows]
+      properties:
+        provider: { type: string }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [key, title]
+            properties:
+              key: { type: string }
+              title: { type: string }
+    Studio:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: [string, integer] }
+        name: { type: string }
+    AdultItem:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: [string, integer] }
+        title: { type: string }
+        year: { type: [integer, 'null'] }
+        releaseDate: { type: [string, 'null'] }
+        overview: { type: [string, 'null'] }
+        poster: { type: [string, 'null'], description: 'Full image URL' }
+        backdrop: { type: [string, 'null'] }
+        rating: { type: [number, 'null'], description: '0–10' }
+        studio:
+          oneOf:
+            - $ref: '#/components/schemas/Studio'
+            - type: 'null'
+    AdultTitle:
+      allOf:
+        - $ref: '#/components/schemas/AdultItem'
+        - type: object
+          properties:
+            runtime: { type: [integer, 'null'], description: 'Minutes' }
+            performers:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  photo: { type: [string, 'null'] }
+            director: { type: [string, 'null'] }
+            studios: { type: array, items: { $ref: '#/components/schemas/Studio' } }
+    AdultPage:
+      type: object
+      required: [items, page, totalPages]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdultItem' } }
+        page: { type: integer }
+        totalPages: { type: integer }
+
+    # ── profiles
+    Profile:
+      type: object
+      required: [id, name, avatar, isKid, hasPin, preferences, createdAt, lastUsedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        avatar: { type: [string, 'null'] }
+        isKid: { type: boolean }
+        hasPin: { type: boolean }
+        preferences: { type: object, description: 'Free-form client preferences, e.g. { adult: { layout, metadataProvider } }' }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+    ProfileList:
+      type: object
+      required: [profiles, lastUsedId, maxProfiles]
+      properties:
+        profiles: { type: array, items: { $ref: '#/components/schemas/Profile' } }
+        lastUsedId: { type: [string, 'null'] }
+        maxProfiles: { type: integer }
+    ProfileCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: 'Unique, case-insensitive' }
+        avatar: { type: string }
+        isKid: { type: boolean }
+        pin: { type: string, pattern: '^\d{4,6}$' }
+    ProfileUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        avatar: { type: string }
+        isKid: { type: boolean }
+        preferences: { type: object }
+
+    # ── library
+    MediaType:
+      type: string
+      enum: [movie, tv]
+    Artwork:
+      type: object
+      description: Sent with writes so lists render without TMDB; a write without them keeps what is stored
+      properties:
+        title: { type: string }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        genreIds: { type: array, items: { type: integer } }
+    WatchlistItem:
+      type: object
+      required: [profileId, mediaType, tmdbId, title, posterPath, backdropPath, addedAt]
+      properties:
+        profileId: { type: string }
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        title: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        addedAt: { type: string, format: date-time }
+    SaveProgressRequest:
+      allOf:
+        - $ref: '#/components/schemas/Artwork'
+        - type: object
+          required: [positionS, durationS]
+          properties:
+            season: { type: integer, description: 'Episodes only' }
+            episode: { type: integer, description: 'Episodes only' }
+            positionS: { type: number }
+            durationS: { type: number }
+            infoHash: { type: [string, 'null'], description: 'The release being played, to resume the same one' }
+            filePath: { type: [string, 'null'] }
+    ProgressRow:
+      type: object
+      required: [profileId, mediaType, tmdbId, season, episode, positionS, durationS, finished, updatedAt]
+      properties:
+        profileId: { type: string }
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        season: { type: integer, description: '0 for movies' }
+        episode: { type: integer, description: '0 for movies' }
+        title: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        positionS: { type: number }
+        durationS: { type: number }
+        infoHash: { type: [string, 'null'] }
+        filePath: { type: [string, 'null'] }
+        finished: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    SaveProgressResult:
+      type: object
+      required: [progress, finished, justFinished]
+      properties:
+        progress: { $ref: '#/components/schemas/ProgressRow' }
+        finished: { type: boolean }
+        justFinished: { type: boolean, description: 'This save finished it for the first time' }
+    ProgressState:
+      type: object
+      required: [resume, finished]
+      properties:
+        resume:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [positionS, durationS]
+              properties:
+                positionS: { type: number }
+                durationS: { type: number }
+                infoHash: { type: [string, 'null'] }
+                filePath: { type: [string, 'null'] }
+                updatedAt: { type: string, format: date-time }
+        finished: { type: boolean }
+    EpisodeProgress:
+      type: object
+      required: [season, episode, ratio, finished]
+      properties:
+        season: { type: integer }
+        episode: { type: integer }
+        positionS: { type: number }
+        durationS: { type: number }
+        ratio: { type: number, minimum: 0, maximum: 1 }
+        finished: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    ContinueWatchingItem:
+      type: object
+      required: [kind, mediaType, tmdbId, season, episode]
+      properties:
+        kind: { type: string, enum: [resume, next], description: "next: the episode after a finished one (the client resolves which)" }
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        season: { type: integer }
+        episode: { type: integer }
+        title: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        positionS: { type: number }
+        durationS: { type: number }
+        ratio: { type: number }
+        infoHash: { type: [string, 'null'] }
+        filePath: { type: [string, 'null'] }
+        updatedAt: { type: string, format: date-time }
+    WatchedTitle:
+      type: object
+      required: [mediaType, tmdbId, season, episode, watchedAt]
+      properties:
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        title: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        season: { type: integer, description: 'Latest watched episode' }
+        episode: { type: integer }
+        episodesWatched: { type: integer }
+        watchedAt: { type: string, format: date-time }
+    Library:
+      type: object
+      required: [continueWatching, watchlist, watched]
+      properties:
+        continueWatching: { type: array, items: { $ref: '#/components/schemas/ContinueWatchingItem' } }
+        watchlist: { type: array, items: { $ref: '#/components/schemas/WatchlistItem' } }
+        watched: { type: array, items: { $ref: '#/components/schemas/WatchedTitle' } }
+    HistoryEntry:
+      type: object
+      required: [id, profileId, mediaType, tmdbId, season, episode, watchedAt]
+      properties:
+        id: { type: integer }
+        profileId: { type: string }
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        season: { type: integer }
+        episode: { type: integer }
+        title: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        backdropPath: { type: [string, 'null'] }
+        genreIds: { type: array, items: { type: integer } }
+        watchedRatio: { type: number }
+        watchedAt: { type: string, format: date-time }
+
+    # ── auth, devices, events
+    DeviceCodeRequest:
+      type: object
+      required: [client_id]
+      properties:
+        client_id: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,63}$', description: 'Names the app, e.g. playpex-tv' }
+        scope: { type: string }
+    DeviceAuthorization:
+      type: object
+      required: [device_code, user_code, verification_uri, verification_uri_complete, expires_in, interval]
+      properties:
+        device_code: { type: string, description: 'Secret: only for polling' }
+        user_code: { type: string, description: 'Show it; 8 characters, no ambiguous ones (e.g. ZETWHGRK; show as ZETW-HGRK)' }
+        verification_uri: { type: string, format: uri, description: 'The dashboard page where the admin types the code' }
+        verification_uri_complete: { type: string, format: uri, description: 'Same with the code filled in (for a QR code)' }
+        expires_in: { type: integer, description: 'Seconds (the server''s security.pairingRequestMinutes)' }
+        interval: { type: integer, description: 'Seconds between polls; faster gets slow_down' }
+    DeviceTokenRequest:
+      type: object
+      required: [grant_type, device_code, client_id]
+      properties:
+        grant_type: { const: 'urn:ietf:params:oauth:grant-type:device_code' }
+        device_code: { type: string }
+        client_id: { type: string }
+    DeviceToken:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string, description: 'Keep it secret (OS keychain / encrypted storage)' }
+        token_type: { const: Bearer }
+        expires_in: { type: integer, description: 'Seconds; renewed while the device is used' }
+        scope: { type: string }
+    OAuthError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [authorization_pending, slow_down, expired_token, access_denied, invalid_grant, invalid_client, invalid_request, invalid_scope, unauthorized_client, server_error]
+        error_description: { type: string }
+    DeviceDescription:
+      type: object
+      description: All optional; null clears a field
+      properties:
+        name: { type: [string, 'null'], maxLength: 64, description: 'e.g. "Living room TV"' }
+        platform: { type: [string, 'null'], maxLength: 32, description: 'e.g. windows, linux, android-tv' }
+        deviceId: { type: [string, 'null'], maxLength: 64, description: 'The client''s own id for this install' }
+        capabilities:
+          type: [object, 'null']
+          description: What the device decodes (plan §6.5), at most 4 KB of JSON
+          properties:
+            containers: { type: array, items: { type: string } }
+            video: { type: array, items: { type: string } }
+            audio: { type: array, items: { type: string } }
+            maxHeight: { type: integer }
+    Device:
+      type: object
+      required: [id, clientId, name, platform, client, clientDeviceId, capabilities, address, lastProfileId, createdAt, lastSeenAt, expiresAt]
+      properties:
+        id: { type: string }
+        clientId: { type: string }
+        name: { type: [string, 'null'] }
+        platform: { type: [string, 'null'] }
+        client: { type: [string, 'null'], description: '<name>/<version> from X-Playpex-Client when it paired' }
+        clientDeviceId: { type: [string, 'null'] }
+        capabilities: { type: [object, 'null'] }
+        address: { type: [string, 'null'], description: 'Last address it was seen from' }
+        lastProfileId: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time, description: 'When its token expires unless used' }
+        online: { type: boolean, description: 'Admin list only: an open events socket or a request in the last 90 s' }
+    PairingRequest:
+      type: object
+      required: [userCode, clientId, client, address, requestedAt, expiresAt]
+      properties:
+        userCode: { type: string }
+        clientId: { type: [string, 'null'] }
+        client: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        requestedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: string, format: date-time }
+    AdminCredentials:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, pattern: '^[a-zA-Z0-9_.]{3,30}$' }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    Overview:
+      type: object
+      required: [server, process, system, network, activity, disks, ffmpeg, providers]
+      properties:
+        server:
+          type: object
+          required: [id, name, version, startedAt, uptimeS, port, host, urls, lanSharing, recovery, discovery]
+          properties:
+            id: { type: [string, 'null'] }
+            name: { type: string }
+            version: { type: string }
+            startedAt: { type: [string, 'null'], format: date-time }
+            uptimeS: { type: integer }
+            port: { type: [integer, 'null'] }
+            host: { type: [string, 'null'] }
+            urls: { type: array, items: { type: string } }
+            lanSharing: { type: boolean }
+            discovery: { $ref: '#/components/schemas/DiscoveryStatus' }
+            recovery:
+              type: [object, 'null']
+              description: 'Set in recovery mode: the configured port was taken, only the dashboard is served (loopback)'
+              properties:
+                reason: { type: string, enum: [PORT_IN_USE, PORT_NOT_ALLOWED] }
+                port: { type: integer }
+                message: { type: string }
+                owner:
+                  type: [object, 'null']
+                  properties:
+                    pid: { type: integer }
+                    name: { type: [string, 'null'] }
+        process:
+          type: object
+          required: [pid, node, electron, cpuPercent, rssBytes, heapUsedBytes]
+          properties:
+            pid: { type: integer }
+            node: { type: string }
+            electron: { type: [string, 'null'] }
+            cpuPercent: { type: number, description: 'Of one core, over the last 5 s' }
+            rssBytes: { type: number }
+            heapUsedBytes: { type: number }
+        system:
+          type: object
+          required: [hostname, platform, arch, release, cpus, loadAverage, totalMemBytes, freeMemBytes]
+          properties:
+            hostname: { type: string }
+            platform: { type: string }
+            arch: { type: string }
+            release: { type: string }
+            cpus: { type: integer }
+            loadAverage: { type: array, items: { type: number } }
+            totalMemBytes: { type: number }
+            freeMemBytes: { type: number }
+        network:
+          type: object
+          description: BitTorrent traffic of every running torrent
+          required: [downloadSpeed, uploadSpeed, peers, downloaded, uploaded]
+          properties:
+            downloadSpeed: { type: number, description: 'Bytes per second' }
+            uploadSpeed: { type: number }
+            peers: { type: integer }
+            downloaded: { type: number, description: 'Bytes since the server started' }
+            uploaded: { type: number }
+        activity:
+          type: object
+          required: [torrents, sessions, eventClients]
+          properties:
+            torrents: { type: integer }
+            sessions: { type: integer }
+            eventClients: { type: integer }
+        disks:
+          type: array
+          items:
+            type: object
+            required: [id, path, free, total]
+            properties:
+              id: { type: string, enum: [downloads, config, logs] }
+              path: { type: string }
+              free: { type: [number, 'null'] }
+              total: { type: [number, 'null'] }
+        ffmpeg:
+          type: object
+          required: [available, version, source, path]
+          properties:
+            available: { type: boolean }
+            version: { type: [string, 'null'] }
+            source: { type: [string, 'null'], description: 'env, settings, bundled or path' }
+            path: { type: [string, 'null'] }
+        providers:
+          type: array
+          items: { $ref: '#/components/schemas/ProviderHealth' }
+    DiscoveryStatus:
+      type: object
+      description: 'How clients on the LAN find this server (mDNS and the UDP responder)'
+      required: [enabled, reason, mdns, udp]
+      properties:
+        enabled: { type: boolean }
+        reason:
+          type: [string, 'null']
+          enum: [lanSharing, disabled, recovery, null]
+          description: 'Why discovery is off: LAN sharing off, `network.discovery` off, or recovery mode'
+        mdns:
+          type: object
+          required: [state, name, error]
+          properties:
+            state: { type: string, enum: ['off', starting, advertising, error] }
+            name: { type: [string, 'null'], description: 'The mDNS instance name advertised' }
+            error: { type: [string, 'null'] }
+        udp:
+          type: object
+          required: [state, port, error]
+          properties:
+            state: { type: string, enum: ['off', starting, listening, error] }
+            port: { type: [integer, 'null'] }
+            error: { type: [string, 'null'] }
+    ProviderHealth:
+      type: object
+      required: [id, name, ok, lastSuccess, lastFailure, lastError, failures]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        ok: { type: [boolean, 'null'], description: 'null = not used since the server started' }
+        lastSuccess: { type: [string, 'null'], format: date-time }
+        lastFailure: { type: [string, 'null'], format: date-time }
+        lastError: { type: [string, 'null'], description: 'HTTP status or network error code' }
+        failures: { type: integer, description: 'Failures in a row' }
+    Settings:
+      type: object
+      description: Every server setting (plan §5.3); secrets (`providers.*ApiKey`) masked as `••••<last 4>`
+      required: [general, network, security, storage, streaming, providers, transcoding]
+      properties:
+        general:
+          type: object
+          required: [serverName, port, logLevel]
+          properties:
+            serverName: { type: string }
+            port: { type: integer, minimum: 1024, maximum: 65535 }
+            logLevel: { type: string, enum: [debug, info, warn, error] }
+        network:
+          type: object
+          required: [lanSharing, discovery, allowedHosts, corsOrigins]
+          properties:
+            lanSharing: { type: boolean }
+            discovery: { type: boolean, description: 'Advertise on the LAN (mDNS + UDP 28471); only with lanSharing' }
+            allowedHosts: { type: array, items: { type: string } }
+            corsOrigins: { type: array, items: { type: string } }
+        security:
+          type: object
+          required: [requirePairingOnLoopback, pairingRequestMinutes]
+          properties:
+            requirePairingOnLoopback: { type: boolean }
+            pairingRequestMinutes: { type: integer, minimum: 1 }
+        storage:
+          type: object
+          required: [downloadDir, deleteAfterWatching]
+          properties:
+            downloadDir: { type: string, description: 'Empty = the default (<cache>/torrent_data)' }
+            deleteAfterWatching: { type: boolean }
+        streaming:
+          type: object
+          required: [maxTorrents, maxTranscodes, idleTimeoutMinutes]
+          properties:
+            maxTorrents: { type: integer, minimum: 1 }
+            maxTranscodes: { type: integer, minimum: 1 }
+            idleTimeoutMinutes: { type: integer, minimum: 1 }
+        providers:
+          type: object
+          required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]
+          properties:
+            tmdbApiKey: { type: string }
+            openSubtitlesApiKey: { type: string }
+            wyzieApiKey: { type: string }
+            thePornDbApiKey: { type: string }
+        transcoding:
+          type: object
+          required: [ffmpegPath, ffprobePath]
+          properties:
+            ffmpegPath: { type: string }
+            ffprobePath: { type: string }
+    SettingsPatch:
+      type: object
+      description: 'Any subset of `Settings`, same nesting (`{ general: { port: 28480 } }`)'
+      additionalProperties: { type: object, additionalProperties: true }
+    SettingsView:
+      type: object
+      required: [settings, sources, env, file, logLevels]
+      properties:
+        settings: { $ref: '#/components/schemas/Settings' }
+        sources:
+          type: object
+          description: "'general.port' → env (locked by an environment variable) / file / default"
+          additionalProperties: { type: string, enum: [env, file, default] }
+        env:
+          type: object
+          description: "'general.port' → the environment variable that sets it"
+          additionalProperties: { type: string }
+        file: { type: string, description: 'Path of settings.json' }
+        logLevels: { type: array, items: { type: string } }
+    SettingsUpdate:
+      type: object
+      required: [settings, changed, restartRequired, lockedByEnv]
+      properties:
+        settings: { $ref: '#/components/schemas/SettingsView' }
+        changed: { type: array, items: { type: string }, description: 'Keys saved' }
+        restartRequired: { type: array, items: { type: string }, description: 'Changed keys applied on the next start' }
+        lockedByEnv: { type: array, items: { type: string }, description: 'Saved, but an environment variable still wins' }
+    PortCheck:
+      type: object
+      required: [port, free, current, owner]
+      properties:
+        port: { type: integer }
+        free: { type: boolean }
+        current: { type: boolean, description: 'The port this server listens on now' }
+        owner:
+          type: [object, 'null']
+          description: 'The process holding it, when the OS tells'
+          properties:
+            pid: { type: integer }
+            name: { type: [string, 'null'] }
+    LogEntry:
+      type: object
+      required: [time, level, area, msg]
+      properties:
+        time: { type: string, format: date-time }
+        level: { type: string, enum: [debug, info, warn, error] }
+        area: { type: string }
+        msg: { type: string }
+      additionalProperties: true
+    Storage:
+      type: object
+      required: [dir, disk, totalBytes, items, deleteAfterWatching]
+      properties:
+        dir: { type: string }
+        disk:
+          type: [object, 'null']
+          required: [free, total]
+          properties:
+            free: { type: number }
+            total: { type: number }
+        totalBytes: { type: number }
+        deleteAfterWatching: { type: boolean }
+        items:
+          type: array
+          items:
+            type: object
+            required: [name, bytes, modifiedAt, infoHash, torrentName]
+            properties:
+              name: { type: string }
+              bytes: { type: number, description: 'On disk (files are sparse until downloaded)' }
+              modifiedAt: { type: [string, 'null'], format: date-time }
+              infoHash: { type: [string, 'null'], description: 'The running torrent using it (then it cannot be deleted)' }
+              torrentName: { type: [string, 'null'] }
+    DirCheck:
+      type: object
+      required: [path, exists, writable, free, total]
+      properties:
+        path: { type: string }
+        exists: { type: boolean }
+        writable: { type: boolean, description: 'The directory, or the parent it would be created in' }
+        free: { type: [number, 'null'] }
+        total: { type: [number, 'null'] }
+    HostInfo:
+      type: object
+      required: [kind, desktop]
+      properties:
+        kind: { type: string, enum: [headless, desktop, embedded] }
+        desktop:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/DesktopState'
+    DesktopState:
+      type: object
+      description: 'The desktop app (apps/server-desktop): its settings and its updater'
+      required: [appVersion, platform, openAtLogin, checkForUpdates, update]
+      properties:
+        appVersion: { type: string }
+        platform: { type: string, description: 'win32, darwin, linux' }
+        openAtLogin: { type: boolean, description: 'Starts (hidden, in the tray) when the user logs in' }
+        checkForUpdates: { type: boolean, description: 'Looks for updates at start and every 6 hours, downloads them in the background' }
+        update:
+          type: object
+          required: [state]
+          properties:
+            state:
+              type: string
+              enum: [unsupported, idle, checking, none, available, downloading, downloaded, error]
+              description: '`unsupported`: this build can''t update itself (a development run, a Linux .deb without pkexec…)'
+            version: { type: [string, 'null'], description: 'The update found or downloaded' }
+            percent: { type: [number, 'null'] }
+            checkedAt: { type: [string, 'null'], format: date-time }
+            error: { type: [string, 'null'] }
+    ServerStatusEvent:
+      type: object
+      description: '`data` of `server.status`'
+      properties:
+        uptimeS: { type: integer }
+        torrents: { type: integer }
+        sessions: { type: integer }
+        eventClients: { type: integer }
+    TorrentStatsEvent:
+      type: array
+      description: '`data` of `torrent.stats`: torrents that have a lease'
+      items:
+        type: object
+        properties:
+          infoHash: { type: string }
+          peers: { type: integer }
+          downloadSpeed: { type: number, description: 'bytes/s' }
+          uploadSpeed: { type: number, description: 'bytes/s' }
+          downloaded: { type: number, description: 'bytes' }
+    SessionEndedEvent:
+      type: object
+      description: '`data` of `session.ended` (`session.started` / `session.updated` carry a `Session`)'
+      properties:
+        id: { type: string }
+        deviceId: { type: string }
+        infoHash: { type: string }
+    Event:
+      type: object
+      required: [topic, time, data]
+      properties:
+        topic: { type: string, description: 'server.status, torrent.stats, session.*, log, device.*, pairing.*, host.updated' }
+        time: { type: string, format: date-time }
+        data: {}

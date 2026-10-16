@@ -17,6 +17,10 @@
     "test:server": "npm test -w apps/server",
     "db:generate": "npm run db:generate -w apps/server",
     "electronBuild": "npm run electronBuild -w apps/tv",
-    "make": "npm run make -w apps/tv"
+    "make": "npm run make -w apps/tv",
+    "dashboard": "npm run dev -w apps/dashboard",
+    "build:dashboard": "npm run build -w apps/dashboard",
+    "server:desktop": "npm start -w apps/server-desktop",
+    "dist:server-desktop": "npm run dist -w apps/server-desktop"
   }
 }

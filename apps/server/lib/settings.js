@@ -10,7 +10,7 @@
 //
 //   settings.get('general.port')            effective value
 //   settings.update({ general: { port: 28480 } })
-//     → { settings: <public view>, restartRequired: ['general.port'] }
+//     → { settings: <public view>, changed, restartRequired: ['general.port'], lockedByEnv }
 
 var fs = require('fs'),
   os = require('os'),
@@ -22,6 +22,10 @@ var FILE = path.join(paths.config, 'settings.json');
 var DEFAULT_PORT = 28470;
 var LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 
+// Whole numbers ≥ 1 (counts, minutes)
+var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'streaming.idleTimeoutMinutes',
+  'security.pairingRequestMinutes'];
+
 function defaults() {
   return {
     general: {
@@ -30,14 +34,31 @@ function defaults() {
       logLevel: 'info'
     },
     network: {
-      // false: loopback only (127.0.0.1). Stays off by default until pairing
-      // exists (plan step 4): with it on, anyone on the LAN can use the API.
-      lanSharing: false,
+      // true: listen on every interface (LAN clients pair first, lib/auth);
+      // false: loopback only (127.0.0.1)
+      lanSharing: true,
+      // advertise this server on the LAN (mDNS + UDP 28471, lib/discovery.js);
+      // only with lanSharing
+      discovery: true,
       allowedHosts: [],   // extra Host names (a DNS name pointing at this machine)
       corsOrigins: []     // extra web origins allowed to call the API
     },
+    security: {
+      // false: clients on this machine (loopback) need no pairing
+      requirePairingOnLoopback: false,
+      // how long a pairing code a client shows stays valid
+      pairingRequestMinutes: 10
+    },
     storage: {
-      downloadDir: ''     // '' = <cache>/torrent_data (lib/paths.js)
+      downloadDir: '',    // '' = <cache>/torrent_data (lib/paths.js)
+      // true: a torrent's data is deleted once no client holds it any more;
+      // false: only its engine stops, the files stay in the download dir
+      deleteAfterWatching: true
+    },
+    streaming: {
+      maxTorrents: 4,         // torrents at once; past it POST /torrents → 503 BUSY
+      maxTranscodes: 2,       // ffmpeg audio transcodes at once (one per device and file)
+      idleTimeoutMinutes: 10  // a client lease with no request / keepalive for this long is dropped
     },
     providers: {
       tmdbApiKey: '',
@@ -57,6 +78,7 @@ var ENV = {
   'general.port': ['PLAYPEX_PORT', 'STREAMER_PORT'],
   'general.logLevel': ['PLAYPEX_LOG_LEVEL'],
   'network.lanSharing': ['PLAYPEX_LAN_SHARING'],
+  'network.discovery': ['PLAYPEX_DISCOVERY'],
   'storage.downloadDir': ['PLAYPEX_DOWNLOAD_DIR'],
   'providers.tmdbApiKey': ['TMDB_API_KEY'],
   'providers.openSubtitlesApiKey': ['OPENSUBTITLES_API_KEY'],
@@ -67,7 +89,7 @@ var ENV = {
 };
 
 // Applied on the next start only
-var RESTART = ['general.port', 'network.lanSharing'];
+var RESTART = ['general.port', 'network.lanSharing', 'security.pairingRequestMinutes', 'storage.downloadDir'];
 
 // Never returned in full by publicView()
 var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey',
@@ -110,6 +132,9 @@ function coerce(key, value, fromEnv) {
       var err = validatePort(value);
       return err ? { error: err } : { value: n };
     }
+    if (POSITIVE_INTEGERS.indexOf(key) !== -1) {
+      return Number.isInteger(n) && n >= 1 ? { value: n } : { error: key + ' must be a whole number of at least 1' };
+    }
     return Number.isFinite(n) ? { value: n } : { error: key + ' must be a number' };
   }
   if (typeof def === 'boolean') {
@@ -138,6 +163,12 @@ function coerce(key, value, fromEnv) {
   }
   if (key === 'general.logLevel' && LOG_LEVELS.indexOf(value) === -1) {
     return { error: 'logLevel must be one of ' + LOG_LEVELS.join(', ') };
+  }
+  if (key === 'general.serverName' && !value.trim()) {
+    return { error: 'serverName must not be empty' };
+  }
+  if (key === 'storage.downloadDir' && value.trim() && !path.isAbsolute(value.trim())) {
+    return { error: 'downloadDir must be an absolute path' };
   }
   return { value: value.trim() };
 }
