@@ -58,6 +58,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   // Resume point and progress saving for the current profile
   filePath:string;
+  // Audio Chromium can't decode (Dolby/DTS): the server re-encodes it
+  // (/transcode). That stream restarts at `offset` on seeks, so <video> times
+  // are relative to it; position() / mediaDuration() give the real ones.
+  transcoding = false;
+  offset = 0;
+  knownDuration = 0;
+  cueShift = 0;
+  pendingSeek:number | null = null;   // transcoded seek waiting for its stream
+  seekTimer:any;               // seconds already taken off the subtitle cues
   resumeAt:number | null = null;
   resumeDecided = false;      // the saved state arrived (or there is none to ask for)
   resumeApplied = false;
@@ -196,8 +205,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         }
         this.filePath = file['path'];
         this.link = this.serverUrl + file['link'];
-        console.log(this.link);
-        this.setupPlayer();
+        this.probeFile().then(() => this.setupPlayer());
         return;
       }
 
@@ -217,6 +225,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     // last position, while the <video> still has it
     this.saveProgress();
+    clearTimeout(this.seekTimer);
     this.stateSub?.unsubscribe();
 
     this.menuService.sendInstruction('show' , this);
@@ -263,11 +272,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return videos.length == 1 ? videos[0] : undefined;
   }
 
+  // Codecs first: unplayable audio switches to the transcoded stream. If the
+  // probe fails (no ffprobe), play the file directly as before.
+  probeFile():Promise<void> {
+    let url = this.link.replace('/files/' , '/probe/');
+    return fetch(url).then(r => r.ok ? r.json() : null).then(info => {
+      if (!info?.transcode) return;
+      this.transcoding = true;
+      this.knownDuration = info.duration || 0;
+    }).catch(() => {});
+  }
+
+  streamUrl(start:number){
+    return this.link.replace('/files/' , '/transcode/') + '?t=' + start;
+  }
+
+  position(){
+    if (this.pendingSeek !== null) return this.pendingSeek;
+    return (this.transcoding ? this.offset : 0) + (this.moviePlayer?.currentTime || 0);
+  }
+
+  mediaDuration(){
+    return this.transcoding ? this.knownDuration : this.moviePlayer?.duration;
+  }
+
+  // Subtitle cues are in file time; the transcoded stream starts at `offset`
+  shiftCues(){
+    let cues = this.moviePlayer?.textTracks[0]?.cues;
+    let delta = this.offset - this.cueShift;
+    this.cueShift = this.offset;
+    if (!cues || !delta) return;
+    for (let i = 0; i < cues.length; i++) {
+      cues[i].startTime -= delta;
+      cues[i].endTime -= delta;
+    }
+  }
+
   // Chromium can't decode Dolby (AC-3/E-AC-3) or DTS audio: the video plays
   // silently. Say so once, a few seconds in, instead of leaving the user guessing.
   checkAudio() {
     let player = this.moviePlayer as any;
-    if (this.audioCheckDone || this.moviePlayer.currentTime < 5) return;
+    if (this.audioCheckDone || this.transcoding || this.moviePlayer.currentTime < 5) return;
     this.audioCheckDone = true;
     if (player.webkitVideoDecodedByteCount > 0 && player.webkitAudioDecodedByteCount === 0) {
       this.audioWarning = true;
@@ -288,9 +333,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   applyResume() {
     if (this.resumeApplied || !this.resumeAt || !this.moviePlayer || this.moviePlayer.readyState < 1) return;
     this.resumeApplied = true;
-    let duration = this.moviePlayer.duration;
+    let duration = this.mediaDuration();
     if (!isFinite(duration) || this.resumeAt > duration - 30) return;
-    this.moviePlayer.currentTime = this.resumeAt;
+    this.seekTo(this.resumeAt);
     this.resumeNotice = `Resuming from ${this.timeDisplayString(this.resumeAt)}`;
     setTimeout(() => this.resumeNotice = '', 5000);
   }
@@ -301,13 +346,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (!this.playback?.tmdbId || this.playback.adult || !player || !this.playerReady || !this.resumeDecided) return;
     // don't overwrite the saved position with 0:00 before jumping to it
     if (this.resumeAt && !this.resumeApplied) return;
-    let duration = player.duration;
-    if (!isFinite(duration) || duration <= 0 || player.currentTime < 1) return;
+    let duration = this.mediaDuration();
+    if (!isFinite(duration) || duration <= 0 || this.position() < 1) return;
 
     this.lastSave = Date.now();
     this.library.saveProgress(this.libraryKey(), {
       ...this.playback.artwork,
-      positionS: player.currentTime,
+      positionS: this.position(),
       durationS: duration,
       infoHash: this.torrentHash,
       filePath: this.filePath,
@@ -417,7 +462,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
 
 
-    this.moviePlayer.src = this.link;
+    this.moviePlayer.src = this.transcoding ? this.streamUrl(0) : this.link;
     this.setupTimeSlider()
     this.moviePlayer.play();
     // e.g. HEVC/x265 or AVI that Chromium can't decode
@@ -581,16 +626,19 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
 
 
+    // fires again each time the transcoded stream restarts: listen once
+    let listening = false;
     this.moviePlayer.onloadedmetadata = () => {
 
-      let duration = this.moviePlayer.duration;
-      durationDisp.innerHTML = this.timeDisplayString(duration)
+      durationDisp.innerHTML = this.timeDisplayString(this.mediaDuration())
+      if (listening) return;
+      listening = true;
 
       this.moviePlayer.addEventListener('timeupdate' , ()=>{
         this.checkAudio();
         //update Time Slider here
-        currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
-        slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
+        currentDisp.textContent = this.timeDisplayString(this.position())
+        slider.style.width = Math.floor(this.position() *100 /this.mediaDuration())+"%"
         this.updateBuffered();
 
       })
@@ -602,20 +650,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   seek(direction){
-    if (direction == 'forward') this.seekTo(this.moviePlayer.currentTime + 30);
-    else if(direction == 'backward') this.seekTo(this.moviePlayer.currentTime - 30);
+    if (direction == 'forward') this.seekTo(this.position() + 30);
+    else if(direction == 'backward') this.seekTo(this.position() - 30);
   }
 
   seekTo(time:number){
-    this.moviePlayer.currentTime = Math.max(0 , time);
+    time = Math.max(0 , time);
+    if (!this.transcoding) this.moviePlayer.currentTime = time;
+    else {
+      // restart the stream on the keyframe before `time` (where both its
+      // video and audio begin). Finding it downloads that part of the torrent,
+      // so hold the old stream meanwhile, and let quick presses add up into
+      // one lookup.
+      this.pendingSeek = time;
+      this.moviePlayer.pause();
+      if (this.playerReady) {
+        this.buffering = true;
+        document.querySelector('.playerPageContainer .loading')?.classList.remove('hidden');
+      }
+      clearTimeout(this.seekTimer);
+      this.seekTimer = setTimeout(() => {
+        let target = time;
+        fetch(this.link.replace('/files/' , '/keyframe/') + '?t=' + target)
+          .then(r => r.json()).catch(() => ({time: target}))
+          .then(data => {
+            if (this.pendingSeek !== target || this.router.url != "/player") return; // a newer seek won
+            this.offset = data['time'];
+            this.pendingSeek = null;
+            this.moviePlayer.src = this.streamUrl(this.offset);
+            this.moviePlayer.play();
+            this.shiftCues();
+          });
+      } , 500);
+    }
 
 
     let currentDisp = document.querySelector('.currentTime') as HTMLElement;
     let slider = document.querySelector('.progress') as HTMLElement;
-    let duration = this.moviePlayer.duration;
+    let duration = this.mediaDuration();
 
-    currentDisp.textContent = this.timeDisplayString(this.moviePlayer.currentTime)
-    slider.style.width = Math.floor(this.moviePlayer.currentTime *100 /duration)+"%"
+    currentDisp.textContent = this.timeDisplayString(time)
+    slider.style.width = Math.floor(time *100 /duration)+"%"
     this.updateBuffered();
   }
 
@@ -645,14 +720,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   // The timeline seeks where it's clicked (data-pointer="own": no select key)
   onTimelineClick(e:MouseEvent){
-    let duration = this.moviePlayer?.duration;
+    let duration = this.mediaDuration();
     if (!this.playerReady || !isFinite(duration)) return;
     this.seekTo(this.timelineFraction(e) * duration);
   }
 
   onTimelineHover(e:MouseEvent){
     let label = document.querySelector('.playerPageContainer .hoverTime') as HTMLElement;
-    let duration = this.moviePlayer?.duration;
+    let duration = this.mediaDuration();
     if (!label || !isFinite(duration)) return;
     let fraction = this.timelineFraction(e);
     label.style.left = (fraction * 100) + '%';
@@ -668,14 +743,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // playhead, so it shows how far ahead playback can go without waiting)
   updateBuffered(){
     let bar = document.querySelector('.playerPageContainer .buffered') as HTMLElement;
-    let duration = this.moviePlayer.duration;
+    let duration = this.mediaDuration();
+    let offset = this.transcoding ? this.offset : 0;
     if (!bar || !duration) return;
 
     let ranges = this.moviePlayer.buffered;
     let current = this.moviePlayer.currentTime;
     for (let i = 0; i < ranges.length; i++) {
       if (ranges.start(i) <= current + 0.5 && ranges.end(i) >= current) {
-        bar.style.left = (ranges.start(i) * 100 / duration) + "%";
+        bar.style.left = ((ranges.start(i) + offset) * 100 / duration) + "%";
         bar.style.width = ((ranges.end(i) - ranges.start(i)) * 100 / duration) + "%";
         return;
       }
@@ -842,7 +918,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     track.src = this.subtitlesService.fileUrl(subtitle);
     track.default = true;
     this.moviePlayer.appendChild(track);
-    track.addEventListener('load', () => track.track.mode = 'showing');
+    track.addEventListener('load', () => {
+      track.track.mode = 'showing';
+      this.cueShift = 0;
+      this.shiftCues();
+    });
   }
 
 }

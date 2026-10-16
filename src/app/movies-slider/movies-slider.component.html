@@ -3,10 +3,8 @@
   pxSection="slider" [leaveFor]="{ left: '@menu', up: '@sectionToolbar' }"
   [pxStack]="stackId" align="row-top" motion="transform">
   <div class="overlay"></div>
-  <!-- the section's search (movies-page): while it runs, or finds nothing -->
-  <p class="searchNote" *ngIf="catalog.search && !(movies[catalog.search.row] || []).length">
-    {{ catalog.search.loaded ? 'No ' + (catalog.media == 'tv' ? 'TV shows' : 'movies') + ' match “' + catalog.search.query + '”. Try other words.' : 'Searching…' }}
-  </p>
+  <!-- the section's search / filters (movies-page): while they load, or find nothing -->
+  <p class="searchNote" *ngIf="catalog.search && searchEmpty">{{ searchNote }}</p>
   <div class="content" pxTrack>
     <ng-container *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
     <!-- rows are created in category order; empty ones are still loading -->

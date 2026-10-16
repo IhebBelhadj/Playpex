@@ -1,0 +1,110 @@
+// The list page's filter panel: the 18+ filter panel's frame and chips
+// (white ring = chosen, white fill = focused), without its wine accent
+$ink: #fff;
+$muted: rgba(255, 255, 255, .62);
+
+.catalogFilters {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, .92);
+  backdrop-filter: blur(6px);
+  color: $ink;
+}
+
+.panelBody {
+  width: 1060px;
+  max-height: 100vh;
+  // a pxStack: scrolls when the groups don't fit; room for the chips' zoom
+  padding: 36px 10px;
+  box-sizing: border-box;
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: 'NetflixBd';
+  font-weight: normal;
+  font-size: 32px;
+}
+
+.groupTitle {
+  margin: 26px 0 12px;
+  font-family: 'NetflixBk';
+  font-weight: normal;
+  font-size: 15px;
+  color: $muted;
+}
+
+.genreGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.chipLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  height: 42px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 21px;
+  background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .72);
+  font-family: 'NetflixBk';
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all .15s;
+
+  &.selected {
+    color: $ink;
+    background: rgba(255, 255, 255, .14);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+  }
+
+  &.focused {
+    background: $ink;
+    color: #000;
+    box-shadow: none;
+    transform: scale(1.06);
+  }
+}
+
+.panelActions {
+  display: flex;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.actionBtn {
+  padding: 12px 30px;
+  border: 1px solid #808080;
+  background: transparent;
+  color: $muted;
+  font-family: 'NetflixBk';
+  font-size: 17px;
+  transition: all .15s;
+
+  &.primary {
+    border-color: $ink;
+    color: $ink;
+  }
+
+  &.focused {
+    background: $ink;
+    border-color: $ink;
+    color: #141414;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip, .actionBtn { transition: none; }
+}

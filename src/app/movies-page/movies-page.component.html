@@ -1,16 +1,21 @@
 <!-- A scrolling pxStack (src/app/movement): its entries are the routed page's
      rows (the list's translated rows, a detail page's buttons and rows) -->
 <div class="pageContainer" pxStack>
-  <!-- List page: search this section (results stand in for the rows) -->
+  <!-- List page: search and filter this section (their rows stand in for the section's) -->
   <div class="sectionToolbar" *ngIf="onList" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
-    <button class="searchField focusable" [class.empty]="!catalog.search">
+    <button class="searchField focusable" [class.empty]="!catalog.query">
       <img src="assets/icons/search.svg" alt="">
-      <span class="fieldText">{{ catalog.search?.query || searchHint }}</span>
+      <span class="fieldText">{{ catalog.query || searchHint }}</span>
+    </button>
+    <button class="filterBtn focusable" [class.active]="filtered">
+      <img src="assets/icons/opts.svg" alt="">
+      <span class="fieldText">{{ filterLabel }}</span>
     </button>
     <button class="clearSearch focusable" *ngIf="catalog.search">Clear</button>
   </div>
   <!-- an episode page shows its own title block -->
-  <movie-description *ngIf="!onEpisode"></movie-description>
+  <!-- (nor while a search / filters show nothing: it would describe an earlier title) -->
+  <movie-description *ngIf="!onEpisode && !(onList && viewEmpty)"></movie-description>
   <router-outlet></router-outlet>
 
 </div>
@@ -18,10 +23,18 @@
 <text-keyboard *ngIf="catalog.typing"
   [title]="searchHint"
   [placeholder]="catalog.media == 'tv' ? 'Show title' : 'Movie title'"
-  [value]="catalog.search?.query || ''"
+  [value]="catalog.query"
   [maxLength]="60"
   [capitalizeWords]="false"
   doneLabel="Search"
   (done)="onSearchDone($event)"
   (cancelled)="onSearchCancelled()">
 </text-keyboard>
+
+<catalog-filter-panel *ngIf="catalog.filtering"
+  [media]="catalog.media"
+  [filters]="catalog.filters"
+  [genres]="genres"
+  (applied)="onFiltersApplied($event)"
+  (cancelled)="closeFilters()">
+</catalog-filter-panel>

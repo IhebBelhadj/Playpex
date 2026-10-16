@@ -1,5 +1,6 @@
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { Category } from './categories';
+import { CatalogFilters, NO_FILTERS } from './catalog-filters';
 
 export type MediaType = 'movie' | 'tv';
 
@@ -15,12 +16,17 @@ export class Catalog {
   // Last TMDB page fetched per category
   reachedPages: { [category: string]: number } = {};
 
-  // The section's search (the search bar above the rows): while set, one row
-  // of results stands in for the category rows (`categories`, `items` and
-  // `reachedPages` are the search's; the section's wait in `browsing`)
-  search: { query: string, row: string, loaded: boolean } | null = null;
-  // the search's on-screen keyboard is open: the rows ignore click / back
+  // The section's search and filters (the toolbar above the rows): while set,
+  // their rows stand in for the category rows (`categories`, `items` and
+  // `reachedPages` are the view's; the section's wait in `browsing`). A query
+  // gives one row of results (narrowed by the filters), filters alone give
+  // popular / top rated / newest rows. `pending`: rows whose first page
+  // hasn't arrived yet.
+  search: { query: string, filters: CatalogFilters, rows: string[], pending: number } | null = null;
+  // the search's on-screen keyboard or the filter panel is open: the rows
+  // ignore click / back
   typing = false;
+  filtering = false;
   private browsing: { categories: Category[], items: { [category: string]: any[] }, reachedPages: { [category: string]: number } } | null = null;
 
   private pageRequests = new Subject<{ category: string, page: number }>();
@@ -33,16 +39,29 @@ export class Catalog {
     private detailBaseUrl: string,
   ) { }
 
-  // A search of this section: `category` fetches its results (TMDB search
-  // endpoint, paged like the rows); the page fetches page 1
-  startSearch(query: string, category: Category) {
+  get query(): string {
+    return this.search?.query || '';
+  }
+
+  get filters(): CatalogFilters {
+    return this.search?.filters || NO_FILTERS;
+  }
+
+  // A search / filtered view of this section: `categories` fetch its rows
+  // (TMDB search or discover, paged like the rows); the page fetches page 1
+  startSearch(query: string, filters: CatalogFilters, categories: Category[]) {
     if (!this.browsing) {
       this.browsing = { categories: this.categories, items: this.items.value, reachedPages: this.reachedPages };
     }
-    this.search = { query, row: category.name, loaded: false };
-    this.categories = [category];
-    this.reachedPages = { [category.name]: 1 };
-    this.items.next({ [category.name]: [] });
+    this.search = { query, filters, rows: categories.map(c => c.name), pending: categories.length };
+    this.categories = categories;
+    this.reachedPages = {};
+    let items = {};
+    categories.forEach(c => {
+      this.reachedPages[c.name] = 1;
+      items[c.name] = [];
+    });
+    this.items.next(items);
   }
 
   // Back to the section's rows, as they were

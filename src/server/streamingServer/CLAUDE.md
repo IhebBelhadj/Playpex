@@ -194,6 +194,6 @@ On startup the saved hash list is read but **resume is commented out** in `store
 ## Gotchas
 - **Trailers**: YouTube enforces proof-of-origin. Every approach tested in Oct 2026 stops at ~1 MB (403): `youtubei.js` clients (iOS works only for the first chunk), PO tokens minted with `bgutils-js` in jsdom and in a real hidden Chromium window, and SABR via `googlevideo` ("attestation required"). `ytdl-core` and `@distube/ytdl-core` are dead. Realistic fix: official IFrame player in the UI.
 - **Swarm reality**: provider seed counts are often stale; streams can sit at 0 kB/s with few peers. An MKV whose index sits at the end used to take ~55 s to start on a slow swarm; `prefetchTail` addresses that.
-- Chromium can't decode Dolby/DTS audio (see root CLAUDE.md); there is no transcoding here.
+- Chromium can't decode Dolby/DTS audio: `lib/transcode.js` + `GET /torrents/:hash/probe/:path` (ffprobe: `{duration, video, audio, transcode}`) and `GET /torrents/:hash/transcode/:path?t=&audio=` (ffmpeg: video copied, audio → AAC stereo, live Matroska — fMP4 lost the audio/video gap after `-ss` and drifted by seconds; not byte-seekable, so every seek restarts it at `t` = the keyframe from `GET /torrents/:hash/keyframe/:path?t=` with `-noaccurate_seek`, so video and audio start together). Binaries from `FFMPEG_PATH`/`FFPROBE_PATH` or the PATH; not bundled in installers yet.
 - `torrent-stream`, `socket.io@2`, `read-torrent` are old but working.
 - Never hard-code the port in the UI; it comes from `server.ready` via `?streamer=`.

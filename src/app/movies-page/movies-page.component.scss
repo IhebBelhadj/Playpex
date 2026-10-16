@@ -31,6 +31,7 @@
 }
 
 .searchField,
+.filterBtn,
 .clearSearch {
   display: flex;
   align-items: center;
@@ -72,6 +73,23 @@
 
   &.empty .fieldText { color: rgba(255, 255, 255, .38); }
   &.empty.focused .fieldText { color: rgba(20, 20, 20, .55); }
+}
+
+// shows the filters in use: "Comedy, 1990s, 7 and up"
+.filterBtn {
+  max-width: 420px;
+
+  .fieldText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // filters are on: the ring of a chosen chip
+  &.active:not(.focused) {
+    background: rgba(255, 255, 255, .14);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+  }
 }
 
 .clearSearch:not(.focused) {

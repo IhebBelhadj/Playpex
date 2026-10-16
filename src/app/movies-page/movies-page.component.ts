@@ -6,13 +6,16 @@ import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { switchMap, Subscription, map, Observable, filter } from 'rxjs';
 import { Catalog } from '../catalog';
 import { Category } from '../categories';
-import { FocusEngine } from '../movement/movement';
+import { FocusEngine, PositionStore } from '../movement/movement';
+import { CatalogFilters, Genre, filterCategories, filtersLabel, hasFilters, matchesFilters, sameFilters } from '../catalog-filters';
 import { ImdbService } from '../imdb.service';
 
 // Home page of a section (movies or TV shows, from route data `media`):
 // loads the category rows into the section's Catalog and enriches the
-// focused item for <movie-description>. On the list page, a search bar above
-// searches the section (TMDB): one row of results stands in for the rows
+// focused item for <movie-description>. On the list page, a toolbar above
+// searches (TMDB search: one row of results) and filters (genre, period,
+// score, language: popular / top rated / newest TMDB discover rows, or a
+// narrowed search) the section; their rows stand in for the section's
 // (Catalog.startSearch / endSearch) until Clear.
 @Component({
   selector: 'movies-page',
@@ -30,6 +33,9 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   onList = false;
   onEpisode = false;
   toolbarExits = {};
+  genres:Genre[] = [];
+  private inFlight = new Set<string>();     // rows with a page on the way
+  private lastPage:{ [category:string]:number } = {};
 
   constructor(
     private moviesService:MoviesService,
@@ -39,7 +45,23 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     private router:Router,
     private engine:FocusEngine,
     private imdb:ImdbService,
+    private positions:PositionStore,
   ) { }
+
+  get filtered():boolean {
+    return hasFilters(this.catalog.filters);
+  }
+
+  // the search / filters have no rows to show (loading, or nothing found)
+  get viewEmpty():boolean {
+    let search = this.catalog.search;
+    let items = this.catalog.items.value;
+    return !!search && search.rows.every(row => !(items[row] || []).length);
+  }
+
+  get filterLabel():string {
+    return filtersLabel(this.catalog.filters, this.genres);
+  }
 
   get searchHint():string {
     return this.catalog.media == 'tv' ? 'Search TV shows' : 'Search movies';
@@ -62,10 +84,13 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
         this.onEpisode = this.router.url.includes('/episode/');
       });
 
+    this.moviesService.getGenres(this.catalog.media).subscribe(genres => this.genres = genres);
+
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction != 'click' || this.router.url != this.catalog.listUrl || this.catalog.typing) return;
+      if (instruction != 'click' || this.router.url != this.catalog.listUrl || this.catalog.typing || this.catalog.filtering) return;
       let active = document.activeElement as HTMLElement;
       if (active.classList.contains('searchField')) this.catalog.typing = true;
+      else if (active.classList.contains('filterBtn')) this.catalog.filtering = true;
       else if (active.classList.contains('clearSearch')) this.clearSearch();
     });
 
@@ -98,13 +123,19 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
 
     this.subscribeToSelections();
 
-    // Slider reached the end of a row: append the next TMDB page
+    // Slider reached the end of a row: append the next TMDB page. A search /
+    // filter row isn't 20 posters per page (results are dropped), so it just
+    // reads its next page when none is on the way
     this.pageRequestSub = this.catalog.onPageRequest().subscribe(request => {
-      let query = this.catalog.findCategory(request.category).query;
-      query['params']['page'] = request.page;
+      let category = this.catalog.findCategory(request.category);
+      if (!category) return;
+      let query = category.query;
+      let reached = this.catalog.reachedPages[request.category];
+      let next = this.catalog.search ? reached + 1 : request.page;
 
-      if (request.page > this.catalog.reachedPages[request.category]) {
-        this.catalog.reachedPages[request.category] += 1;
+      if (next > reached && next <= (this.lastPage[request.category] || 500) && !this.inFlight.has(request.category)) {
+        query['params']['page'] = next;
+        this.catalog.reachedPages[request.category] = next;
         this.getMovies(request.category , query);
       }
     })
@@ -116,41 +147,62 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     this.routeSub?.unsubscribe();
     this.navSub?.unsubscribe();
     this.catalog.typing = false;
+    this.catalog.filtering = false;
   }
 
-  // ── search ──────────────────────────────────────────────────────────────
+  // ── search and filters ──────────────────────────────────────────────────────────────
 
   onSearchDone(query:string) {
     this.catalog.typing = false;
     query = query.trim();
-    if (!query) this.clearSearch();
-    else if (query != this.catalog.search?.query) this.search(query);
-    this.focusSearchField();
+    if (query != this.catalog.query) this.show(query, this.catalog.filters);
+    this.focusToolbar('.searchField');
   }
 
   onSearchCancelled() {
     this.catalog.typing = false;
-    this.focusSearchField();
+    this.focusToolbar('.searchField');
   }
 
-  // One row of TMDB search results (paged like the rows, by the slider)
-  private search(query:string) {
+  onFiltersApplied(filters:CatalogFilters) {
+    this.catalog.filtering = false;
+    if (!sameFilters(filters, this.catalog.filters)) this.show(this.catalog.query, filters);
+    this.focusToolbar('.filterBtn');
+  }
+
+  closeFilters() {
+    this.catalog.filtering = false;
+    this.focusToolbar('.filterBtn');
+  }
+
+  // The rows for a search and / or filters: a query → one row of TMDB search
+  // results (kept by the filters); filters alone → popular / top rated /
+  // newest discover rows; neither → the section's own rows
+  private show(query:string, filters:CatalogFilters) {
+    if (!query && !hasFilters(filters)) {
+      this.catalog.endSearch();
+      return;
+    }
     let kind = this.catalog.media == 'tv' ? 'tv' : 'movie';
-    let category = new Category(`Results for “${query}”`, {
-      url: `https://api.themoviedb.org/3/search/${kind}?api_key=<<api_key>>&language=en-US&include_adult=false`,
-      params: { query, page: 1 },
-    });
-    this.catalog.startSearch(query, category);
-    this.getMovies(category.name, category.query);
+    let categories = query
+      ? [new Category(`Results for “${query}”`, {
+          url: `https://api.themoviedb.org/3/search/${kind}?api_key=<<api_key>>&language=en-US&include_adult=false`,
+          params: { query, page: 1 },
+        })]
+      : filterCategories(this.catalog.media, filters, this.genres);
+    // rows of an earlier view with the same name start over
+    categories.forEach(c => this.positions.clear(`catalog:${this.catalog.media}/${c.name}`));
+    this.catalog.startSearch(query, filters, categories);
+    categories.forEach(c => this.getMovies(c.name, c.query));
   }
 
   private clearSearch() {
     this.catalog.endSearch();
-    this.focusSearchField();
+    this.focusToolbar('.searchField');
   }
 
-  private focusSearchField() {
-    setTimeout(() => (document.querySelector('.sectionToolbar .searchField') as HTMLElement)?.focus({ preventScroll: true }), 0);
+  private focusToolbar(selector:string) {
+    setTimeout(() => (document.querySelector(`.sectionToolbar ${selector}`) as HTMLElement)?.focus({ preventScroll: true }), 0);
   }
 
   subscribeToSelections(){
@@ -218,18 +270,36 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     // still lands in its own rows
     let items = this.catalog.items.value;
     let search = this.catalog.search;
+    let page = query['params']?.['page'] || 1;
+    this.inFlight.add(category);
     this.moviesService.getMovies(query).subscribe(res => {
-      // append the new page to the row (or start it); search results without
-      // a poster can't be shown in a row of posters
-      let results = search ? (res['results'] || []).filter(r => r['poster_path']) : res['results'];
+      this.inFlight.delete(category);
+      this.lastPage[category] = Math.min(500, res['total_pages'] || 500);
+      // append the new page to the row (or start it); results without a
+      // poster can't be shown in a row of posters; a search's results are
+      // narrowed by the filters here (TMDB search can't filter)
+      let results = res['results'] || [];
+      if (search) results = results.filter(r => r['poster_path'] && (!search.query || matchesFilters(r, search.filters)));
       let first = !(items[category] || []).length;
       items[category] = (items[category] || []).concat(results);
-      if (search) search.loaded = true;
       if (items !== this.catalog.items.value) return;
+
+      // a filtered search can keep nothing of a page: read on (a few pages)
+      // rather than leave the row empty
+      if (search && first && !results.length && page < (res['total_pages'] || 0) && page < 6) {
+        this.catalog.reachedPages[category] = page + 1;
+        this.getMovies(category, { ...query, params: { ...query['params'], page: page + 1 } });
+        return;
+      }
+      if (search && first) search.pending = Math.max(0, search.pending - 1);
       this.catalog.items.next(items);
       // new results: the first one is described until a poster is focused
-      if (search && first && results.length) this.catalog.select(results[0]['id'], category, '0');
+      if (search && first && results.length && search.rows[0] == category) this.catalog.select(results[0]['id'], category, '0');
+    }, () => {
+      this.inFlight.delete(category);
+      if (search && !(items[category] || []).length) search.pending = Math.max(0, search.pending - 1);
     })
   }
+
 
 }

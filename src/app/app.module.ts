@@ -21,6 +21,7 @@ import { PowerPageComponent } from './power-page/power-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
+import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filter-panel.component';
 import { RouterModule } from "@angular/router";
 
 import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
@@ -41,6 +42,7 @@ import { MOVEMENT_DIRECTIVES } from './movement/movement';
     AppComponent,
     EpisodePageComponent,
     SeasonCurveComponent,
+    CatalogFilterPanelComponent,
     MenuComponent,
     MovieDescriptionComponent,
     MoviesSliderComponent,

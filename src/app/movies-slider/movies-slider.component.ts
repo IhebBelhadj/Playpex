@@ -2,6 +2,7 @@ import { NavigationService } from './../navigation.service';
 import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { MoviesService } from '../movies.service';
+import { hasFilters } from '../catalog-filters';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
@@ -63,7 +64,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
     this.navSub = this.navigation.executeCommand().subscribe(instruction => {
       // (the search's keyboard handles its own keys)
-      if (this.router.url != this.catalog.listUrl || this.catalog.typing) return;
+      if (this.router.url != this.catalog.listUrl || this.catalog.typing || this.catalog.filtering) return;
       if (instruction == "leave") {
         // the shell's Back button: out to the power menu at once
         this.navSub.unsubscribe();
@@ -149,4 +150,18 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   }
 
   unsorted(){ return 0; }
+
+  // every row of the search / filters is empty (still loading, or nothing found)
+  get searchEmpty():boolean {
+    return this.catalog.search.rows.every(row => !(this.movies[row] || []).length);
+  }
+
+  get searchNote():string {
+    let search = this.catalog.search;
+    let noun = this.catalog.media == 'tv' ? 'TV shows' : 'movies';
+    if (search.pending) return search.query ? 'Searching…' : `Finding ${noun}…`;
+    if (!search.query) return `No ${noun} match these filters. Try a wider period or a lower score.`;
+    if (hasFilters(search.filters)) return `No ${noun} match “${search.query}” with these filters. Try other words or fewer filters.`;
+    return `No ${noun} match “${search.query}”. Try other words.`;
+  }
 }

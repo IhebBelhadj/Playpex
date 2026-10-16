@@ -1,7 +1,7 @@
 import { YoutubeService } from './youtube.service';
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http'
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of, map, catchError, shareReplay } from 'rxjs';
 import { Catalog, MediaType } from './catalog';
 import { categories, showCategories } from './categories';
 import { STREAMING_SERVER } from './server-config';
@@ -66,6 +66,22 @@ export class MoviesService {
 
 
   //****Tmdb API endpoints setup****
+
+  // TMDB's genres of a kind ('movie' | 'tv'), fetched once
+  private genres$ = {};
+  getGenres(kind:string):Observable<{ id:number, name:string }[]> {
+    if (!this.genres$[kind]) {
+      this.genres$[kind] = this.http.get(`https://api.themoviedb.org/3/genre/${kind}/list?api_key=${this.tmdb_key}&language=en-US`).pipe(
+        map(data => data['genres'] || []),
+        catchError(() => {
+          this.genres$[kind] = null;
+          return of([]);
+        }),
+        shareReplay(1),
+      );
+    }
+    return this.genres$[kind];
+  }
 
   getMovies(query){
     let params = query.params;

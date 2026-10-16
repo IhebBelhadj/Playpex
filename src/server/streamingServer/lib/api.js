@@ -19,6 +19,7 @@ var rangeParser = require('range-parser'),
   store = require('./store'),
   progress = require('./progressbar'),
   stats = require('./stats'),
+  transcode = require('./transcode'),
   api = express(),
   axios = require('axios').default;
 
@@ -201,6 +202,48 @@ function prefetchTail(file) {
 /*
     --MOST CRUSIAL PART
 */
+
+// ffmpeg / ffprobe read the file through the byte-range route below
+function localFileUrl(req, file) {
+  return 'http://127.0.0.1:' + req.socket.localPort + '/torrents/' + req.torrent.infoHash +
+    '/files/' + encodeURIComponent(file.path);
+}
+
+// Codecs of a file: { duration, video, audio: [...], transcode }
+api.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, function (req, res) {
+  var file = _.find(req.torrent.files, { path: req.params.path });
+  if (!file) {
+    return res.sendStatus(404);
+  }
+  transcode.probe(localFileUrl(req, file)).then(function (info) {
+    res.json(info);
+  }, function (e) {
+    res.status(502).json({ error: e.message });
+  });
+});
+
+// Where a transcoded stream asked to start at ?t= really starts: { time }
+api.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req, res) {
+  var file = _.find(req.torrent.files, { path: req.params.path });
+  if (!file) {
+    return res.sendStatus(404);
+  }
+  var t = Math.max(0, parseFloat(req.query.t) || 0);
+  transcode.keyframe(localFileUrl(req, file), t).then(function (time) {
+    res.json({ time: time });
+  });
+});
+
+// The file with its audio re-encoded to AAC, from ?t=<seconds>, track ?audio=<n>
+api.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, function (req, res) {
+  var file = _.find(req.torrent.files, { path: req.params.path });
+  if (!file) {
+    return res.sendStatus(404);
+  }
+  req.socket.setTimeout(3600000);
+  transcode.stream(localFileUrl(req, file), parseFloat(req.query.t) || 0,
+    parseInt(req.query.audio, 10) || 0, req, res);
+});
 
 api.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, res) {
   var torrent = req.torrent,
