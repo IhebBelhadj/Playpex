@@ -1,6 +1,6 @@
 'use strict';
 
-// /api/profiles: the "Who's watching?" screen and the profile editor.
+// /api/v1/profiles: the "Who's watching?" screen and the profile editor.
 // Thin HTTP adapter over lib/services/profiles.js; every request is answered
 // (ServiceError → its status, anything else → 500).
 

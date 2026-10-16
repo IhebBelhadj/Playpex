@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { EMPTY, Observable } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
 
 // The current profile's watch list, playback progress and history
@@ -81,7 +81,7 @@ export interface EpisodeProgress {
 })
 export class LibraryService {
 
-  constructor(private http:HttpClient, private profiles:ProfilesService) { }
+  constructor(private http:HttpClient, private profiles:ProfilesService, private server:ServerService) { }
 
   library():Observable<Library> {
     return this.call(base => this.http.get<Library>(`${base}/library`));
@@ -132,7 +132,7 @@ export class LibraryService {
   // Everything here belongs to the current profile; none → nothing to do
   private call<T>(request:(base:string) => Observable<T>):Observable<T> {
     let profile = this.profiles.current.value;
-    return profile ? request(`${STREAMING_SERVER}/api/profiles/${profile.id}`) : EMPTY;
+    return profile ? request(`${this.server.api}/profiles/${profile.id}`) : EMPTY;
   }
 
   private episodeParams(key:EpisodeKey):{ [param:string]:string } {

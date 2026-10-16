@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, catchError, shareReplay } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 
 // IMDb ratings via the local server (lib/imdb.js): a title's, and a series'
 // seasons (mean of the rated episodes) and episodes. Cached per id for the
@@ -39,14 +39,14 @@ export class ImdbService {
   private titles = new Map<string, Observable<ImdbRating | null>>();
   private series = new Map<string, Observable<ImdbSeries | null>>();
 
-  constructor(private http:HttpClient) { }
+  constructor(private http:HttpClient, private server:ServerService) { }
 
   title(imdbId:string):Observable<ImdbRating | null> {
-    return this.cached(this.titles, imdbId, `${STREAMING_SERVER}/api/imdb/${imdbId}`);
+    return this.cached(this.titles, imdbId, `${this.server.api}/imdb/${imdbId}`);
   }
 
   episodes(imdbId:string):Observable<ImdbSeries | null> {
-    return this.cached(this.series, imdbId, `${STREAMING_SERVER}/api/imdb/${imdbId}/episodes`);
+    return this.cached(this.series, imdbId, `${this.server.api}/imdb/${imdbId}/episodes`);
   }
 
   static season(series:ImdbSeries | null, season:number):ImdbSeason | null {

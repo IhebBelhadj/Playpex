@@ -14,6 +14,7 @@
     "test": "npm test -w apps/tv",
     "electron": "npm run electron -w apps/tv",
     "server": "npm start -w apps/server",
+    "test:server": "npm test -w apps/server",
     "db:generate": "npm run db:generate -w apps/server",
     "electronBuild": "npm run electronBuild -w apps/tv",
     "make": "npm run make -w apps/tv"

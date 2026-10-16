@@ -4,7 +4,7 @@ import {HttpClient} from '@angular/common/http'
 import { BehaviorSubject, Observable, of, map, catchError, shareReplay } from 'rxjs';
 import { Catalog, MediaType } from './catalog';
 import { categories, showCategories } from './categories';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 
 // TMDB search endpoints: 'multi' = movies, TV shows and people together
 export type SearchKind = 'multi' | 'movie' | 'tv' | 'person';
@@ -62,6 +62,7 @@ export class MoviesService {
 
   constructor(
     private http:HttpClient,
+    private server:ServerService,
     ) { }
 
 
@@ -120,7 +121,7 @@ export class MoviesService {
   }
 
   getYTSMovieDetails(id){
-    return this.http.get(`${STREAMING_SERVER}/api/movies/${id}`)
+    return this.http.get(`${this.server.api}/movies/${id}`)
   }
 
   // TV: details incl. imdb id (for torrents/subtitles) and trailers

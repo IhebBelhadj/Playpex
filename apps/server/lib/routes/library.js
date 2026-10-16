@@ -1,6 +1,6 @@
 'use strict';
 
-// /api/profiles/:profileId/… — one profile's watch list, playback progress and
+// /api/v1/profiles/:profileId/… — one profile's watch list, playback progress and
 // history. Thin adapter over lib/services (watchlist, playback).
 //
 // A title is /:mediaType/:tmdbId (mediaType 'movie' | 'tv'); episodes add

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
 import { Artwork } from './library.service';
 
@@ -107,7 +107,7 @@ export class ReleasesService {
 
   private providers$:Partial<Record<ReleasesKind, Observable<ReleaseProvider[]>>> = {};
 
-  constructor(private http:HttpClient, private router:Router, profiles:ProfilesService) {
+  constructor(private http:HttpClient, private router:Router, profiles:ProfilesService, private server:ServerService) {
     // what one profile searched isn't the next one's business (a preferences
     // update re-emits the same profile: keep the states then)
     profiles.current.pipe(map(p => p?.id || null), distinctUntilChanged()).subscribe(() => this.reset());
@@ -126,7 +126,7 @@ export class ReleasesService {
 
   providers(kind:ReleasesKind): Observable<ReleaseProvider[]> {
     if (!this.providers$[kind]) {
-      this.providers$[kind] = this.http.get<ReleaseProvider[]>(`${STREAMING_SERVER}/api/releases/providers`, { params: { kind } }).pipe(
+      this.providers$[kind] = this.http.get<ReleaseProvider[]>(`${this.server.api}/releases/providers`, { params: { kind } }).pipe(
         catchError(() => {
           this.providers$[kind] = null;     // try again next time
           return of([]);
@@ -144,7 +144,7 @@ export class ReleasesService {
     if (state.imdb) params.imdb = state.imdb;
     if (state.quality) params.quality = state.quality;
     if (state.playableOnly) params.playable = 1;
-    return this.http.get<any>(`${STREAMING_SERVER}/api/releases/browse`, { params });
+    return this.http.get<any>(`${this.server.api}/releases/browse`, { params });
   }
 
   // Forget every list (another profile)

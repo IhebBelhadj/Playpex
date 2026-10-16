@@ -20,8 +20,11 @@ var rangeParser = require('range-parser'),
   stats = require('./stats'),
   transcode = require('./transcode'),
   middleware = require('./middleware'),
+  errors = require('./errors'),
+  protocol = require('@playpex/protocol'),
   log = require('./logger').child('http'),
   api = express(),
+  v1 = express.Router(),
   axios = require('axios').default;
 
 
@@ -29,10 +32,42 @@ api.disable('x-powered-by');
 api.use(middleware.requestLog);
 api.use(middleware.hostCheck);
 api.use(middleware.cors);
+api.use(legacyAliases);
 api.use(express.urlencoded({ extended: false }));
 api.use(express.json());
+api.use(protocol.API_PREFIX, clientVersion, v1);
 
-api.use('/api/v1/server', require('./routes/server'));
+var fail = errors.fail;
+
+// Every route lives under /api/v1 (docs/server-separation-plan.md §6.1). The
+// unversioned paths the TV app used before (/torrents/…, /upload, /youtube/…,
+// /api/…) are rewritten onto it until the TV client is separated (step 9).
+function legacyAliases(req, res, next) {
+  if (/^\/(torrents|upload|youtube)(\/|\?|$)/.test(req.url)) {
+    req.url = protocol.API_PREFIX + req.url;
+  } else if (/^\/api\/(?!v\d+(\/|\?|$))/.test(req.url)) {
+    req.url = protocol.API_PREFIX + req.url.slice(4);
+  }
+  next();
+}
+
+// Optional `X-Playpex-Client: <name>/<version>; api=<n>`: refuse API versions
+// this server can't serve. Clients that send nothing are served.
+function clientVersion(req, res, next) {
+  var client = protocol.parseClientHeader(req.get(protocol.CLIENT_HEADER));
+  if (client && client.api !== null) {
+    if (client.api < protocol.MIN_API_VERSION) {
+      return fail(res, 'CLIENT_TOO_OLD', 'This server needs API version ' + protocol.MIN_API_VERSION +
+        ' or newer; update ' + (client.name || 'the client'));
+    }
+    if (client.api > protocol.API_VERSION) {
+      return fail(res, 'SERVER_TOO_OLD', 'This server speaks API version ' + protocol.API_VERSION + '; update the server');
+    }
+  }
+  next();
+}
+
+v1.use('/server', require('./routes/server'));
 
 function serialize(torrent) {
   if (!torrent.torrent) {
@@ -54,7 +89,7 @@ function serialize(torrent) {
       return {
         name: f.name,
         path: f.path,
-        link: '/torrents/' + torrent.infoHash + '/files/' + encodeURIComponent(f.path),
+        link: protocol.API_PREFIX + '/torrents/' + torrent.infoHash + '/files/' + encodeURIComponent(f.path),
         length: f.length,
         offset: f.offset,
         selected: torrent.selection.some(function (s) {
@@ -69,22 +104,22 @@ function serialize(torrent) {
 function findTorrent(req, res, next) {
   var torrent = req.torrent = store.get(req.params.infoHash);
   if (!torrent) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'No such torrent: ' + req.params.infoHash);
   }
   next();
 }
 
-api.get('/torrents', function (req, res) {
+v1.get('/torrents', function (req, res) {
   res.send(store.list().map(serialize));
 });
 
-api.post('/torrents', function (req, res) {
+v1.post('/torrents', function (req, res) {
 
   //res.send('ur link ' + req.body.link);
 
   store.add(req.body.link, function (err, infoHash) {
     if (err) {
-      res.status(500).send(err);
+      fail(res, 'INVALID', 'Cannot read this torrent: ' + err.message);
     } else {
       res.send({ infoHash: infoHash });
     }
@@ -92,14 +127,14 @@ api.post('/torrents', function (req, res) {
 
 });
 
-api.post('/upload', multipart(), function (req, res) {
+v1.post('/upload', multipart(), function (req, res) {
   var file = req.files && req.files.file;
   if (!file) {
-    return res.status(500).send('file is missing');
+    return fail(res, 'INVALID', 'file is missing');
   }
   store.add(file.path, function (err, infoHash) {
     if (err) {
-      res.status(500).send(err);
+      fail(res, 'INVALID', 'Cannot read this torrent: ' + err.message);
     } else {
       res.send({ infoHash: infoHash });
     }
@@ -111,7 +146,7 @@ api.post('/upload', multipart(), function (req, res) {
   });
 });
 
-api.get('/torrents/:infoHash', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash', findTorrent, function (req, res) {
   res.send(serialize(req.torrent));
 
 });
@@ -119,7 +154,7 @@ api.get('/torrents/:infoHash', findTorrent, function (req, res) {
 
 //starts a torrent file download || or all torrent files
 
-api.post('/torrents/:infoHash/start/:index?', findTorrent, function (req, res) {
+v1.post('/torrents/:infoHash/start/:index?', findTorrent, function (req, res) {
   var index = parseInt(req.params.index);
   if (index >= 0 && index < req.torrent.files.length) {
     req.torrent.files[index].select();
@@ -128,12 +163,12 @@ api.post('/torrents/:infoHash/start/:index?', findTorrent, function (req, res) {
       f.select();
     });
   }
-  res.sendStatus(200);
+  res.json({ ok: true });
 });
 
 //stops a torrent file download || or all torrent files
 
-api.post('/torrents/:infoHash/stop/:index?', findTorrent, function (req, res) {
+v1.post('/torrents/:infoHash/stop/:index?', findTorrent, function (req, res) {
   var index = parseInt(req.params.index);
   if (index >= 0 && index < req.torrent.files.length) {
     req.torrent.files[index].deselect();
@@ -142,42 +177,42 @@ api.post('/torrents/:infoHash/stop/:index?', findTorrent, function (req, res) {
       f.deselect();
     });
   }
-  res.sendStatus(200);
+  res.json({ ok: true });
 });
 
 //pause a torrent
 
-api.post('/torrents/:infoHash/pause', findTorrent, function (req, res) {
+v1.post('/torrents/:infoHash/pause', findTorrent, function (req, res) {
   req.torrent.swarm.pause();
-  res.sendStatus(200);
+  res.json({ ok: true });
 });
 
 //resume a torrent
 
-api.post('/torrents/:infoHash/resume', findTorrent, function (req, res) {
+v1.post('/torrents/:infoHash/resume', findTorrent, function (req, res) {
   req.torrent.swarm.resume();
-  res.sendStatus(200);
+  res.json({ ok: true });
 });
 
 //delete a torrent
 
-api.delete('/torrents/:infoHash', findTorrent, function (req, res) {
+v1.delete('/torrents/:infoHash', findTorrent, function (req, res) {
   store.remove(req.torrent.infoHash);
-  res.sendStatus(200);
+  res.json({ ok: true });
 });
 
 // get a torrent stats
 
-api.get('/torrents/:infoHash/stats', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/stats', findTorrent, function (req, res) {
   res.send(stats(req.torrent));
 });
 
 // deselects every file (POST: no state-changing GET)
-api.post('/torrents/:infoHash/deselect', findTorrent, function (req, res) {
+v1.post('/torrents/:infoHash/deselect', findTorrent, function (req, res) {
   req.torrent.files.forEach(function (f) {
     f.deselect();
   });
-  res.sendStatus(200)
+  res.json({ ok: true });
 });
 
 
@@ -203,28 +238,28 @@ function prefetchTail(file) {
 
 // ffmpeg / ffprobe read the file through the byte-range route below
 function localFileUrl(req, file) {
-  return 'http://127.0.0.1:' + req.socket.localPort + '/torrents/' + req.torrent.infoHash +
+  return 'http://127.0.0.1:' + req.socket.localPort + protocol.API_PREFIX + '/torrents/' + req.torrent.infoHash +
     '/files/' + encodeURIComponent(file.path);
 }
 
 // Codecs of a file: { duration, video, audio: [...], transcode }
-api.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
   transcode.probe(localFileUrl(req, file)).then(function (info) {
     res.json(info);
   }, function (e) {
-    res.status(502).json({ error: e.message });
+    fail(res, e.code === 'ENOENT' ? 'TRANSCODER_UNAVAILABLE' : 'PROBE_FAILED', e.message);
   });
 });
 
 // Where a transcoded stream asked to start at ?t= really starts: { time }
-api.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
   var t = Math.max(0, parseFloat(req.query.t) || 0);
   transcode.keyframe(localFileUrl(req, file), t).then(function (time) {
@@ -233,22 +268,22 @@ api.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, function (req,
 });
 
 // The file with its audio re-encoded to AAC, from ?t=<seconds>, track ?audio=<n>
-api.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, function (req, res) {
+v1.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, function (req, res) {
   var file = _.find(req.torrent.files, { path: req.params.path });
   if (!file) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
   req.socket.setTimeout(3600000);
   transcode.stream(localFileUrl(req, file), parseFloat(req.query.t) || 0,
     parseInt(req.query.audio, 10) || 0, req, res);
 });
 
-api.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, res) {
+v1.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, res) {
   var torrent = req.torrent,
       file = _.find(torrent.files, { path: req.params.path });
 
   if (!file) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'No such file in this torrent');
   }
   // Download only the file being watched (season packs hold many episodes)
   torrent.files.forEach(function (f) {
@@ -289,50 +324,41 @@ api.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, function (req, re
 
 
 
-api.get('/subtitles/:imdb_id', function (req, res) {
-  var imdb_id = req.params.imdb_id;
-
-  res.send({
-    body : imdb_id
-  })
-
-})
-
 //YTS movie API (torrents, rating, runtime), via lib/providers/yts.js
 // (mirror list there: yts.mx stopped answering in 2026)
 
 var ytsGet = yts.get;
 
-api.get('/api/movies', function (req, res) {
+v1.get('/movies', function (req, res) {
   ytsGet('list_movies.json', req.query)
   .then(function (response) {
     res.json(response.data)
   })
   .catch(function (err) {
     log.warn('yts list: ' + err.message);
-    res.status(502).json({ error: err.message });
+    fail(res, 'UPSTREAM', err.message);
   })
 });
 
-api.get('/api/movies/:imdb_id', function (req, res) {
+v1.get('/movies/:imdb_id', function (req, res) {
   ytsGet('movie_details.json', { imdb_id: req.params.imdb_id })
   .then(function (response) {
     res.json(response.data)
   })
   .catch(function (err) {
     log.warn('yts details: ' + err.message);
-    res.status(502).json({ error: err.message });
+    fail(res, 'UPSTREAM', err.message);
   })
 });
 
 //TV episode torrents (EZTV + TheRARBG), best match first
 
-api.get('/api/shows/:imdb_id/torrents', function (req, res) {
+v1.get('/shows/:imdb_id/torrents', function (req, res) {
   var season = parseInt(req.query.season, 10),
       episode = parseInt(req.query.episode, 10);
 
   if (!(season >= 0) || !(episode >= 1)) {
-    return res.status(400).send({ error: 'season and episode are required' });
+    return fail(res, 'INVALID', 'season and episode are required');
   }
 
   episodes.findEpisodeTorrents(req.params.imdb_id, req.query.title, season, episode)
@@ -341,7 +367,7 @@ api.get('/api/shows/:imdb_id/torrents', function (req, res) {
     })
     .catch(function (error) {
       log.warn('episode torrents: ' + error.message);
-      res.status(502).send({ error: error.message });
+      fail(res, 'UPSTREAM', error.message);
     });
 });
 
@@ -353,7 +379,7 @@ function imdbRoute(read) {
   return function (req, res) {
     var id = String(req.params.id || '');
     if (!imdb.isImdbId(id)) {
-      return res.status(400).json({ error: 'not an IMDb id: ' + id });
+      return fail(res, 'INVALID', 'not an IMDb id: ' + id);
     }
     read(id)
       .then(function (result) {
@@ -361,21 +387,21 @@ function imdbRoute(read) {
       })
       .catch(function (error) {
         log.warn('imdb ' + id + ': ' + error.message);
-        res.status(502).json({ error: error.message });
+        fail(res, 'UPSTREAM', error.message);
       });
   };
 }
 
-api.get('/api/imdb/:id', imdbRoute(imdb.title));
-api.get('/api/imdb/:id/episodes', imdbRoute(imdb.episodes));
+v1.get('/imdb/:id', imdbRoute(imdb.title));
+v1.get('/imdb/:id/episodes', imdbRoute(imdb.episodes));
 
 //18+ movie torrents (TheRARBG XXX + The Pirate Bay), best match first.
 // ?title=&year= — these movies are matched by name, YTS has none of them
 
-api.get('/api/adult/torrents', function (req, res) {
+v1.get('/adult/torrents', function (req, res) {
   var title = String(req.query.title || '').trim();
   if (!title) {
-    return res.status(400).send({ error: 'title is required' });
+    return fail(res, 'INVALID', 'title is required');
   }
 
   adult.findAdultTorrents(title, parseInt(req.query.year, 10))
@@ -384,18 +410,18 @@ api.get('/api/adult/torrents', function (req, res) {
     })
     .catch(function (error) {
       log.warn('adult torrents: ' + error.message);
-      res.status(502).send({ error: error.message });
+      fail(res, 'UPSTREAM', error.message);
     });
 });
 
 //18+ section: one provider's list, most seeded first (lib/adult.js#browse)
 // ?provider=piratebay|therarbg&q=&quality=2160p|1080p|720p|SD&playable=1&page=
 
-api.get('/api/adult/providers', function (req, res) {
+v1.get('/adult/providers', function (req, res) {
   res.json(adult.browseProviders());
 });
 
-api.get('/api/adult/browse', function (req, res) {
+v1.get('/adult/browse', function (req, res) {
   adult.browse({
     provider: String(req.query.provider || ''),
     q: String(req.query.q || '').slice(0, 100),
@@ -408,7 +434,7 @@ api.get('/api/adult/browse', function (req, res) {
     })
     .catch(function (error) {
       log.warn('adult browse: ' + error.message);
-      res.status(502).send({ error: error.message, torrents: [] });
+      fail(res, 'UPSTREAM', error.message, { torrents: [] });
     });
 });
 
@@ -418,18 +444,18 @@ api.get('/api/adult/browse', function (req, res) {
 // GET /api/releases/browse?kind=&provider=&q=&quality=2160p|1080p|720p|SD&playable=1&page=&imdb=tt…
 //   → { provider, page, hasMore, torrents }; `imdb` is optional context (EZTV lists that show)
 
-api.get('/api/releases/providers', function (req, res) {
+v1.get('/releases/providers', function (req, res) {
   var kind = String(req.query.kind || '');
   if (!releases.isKind(kind)) {
-    return res.status(400).json({ error: 'kind must be one of: ' + releases.KINDS.join(', ') });
+    return fail(res, 'INVALID', 'kind must be one of: ' + releases.KINDS.join(', '));
   }
   res.json(releases.providers(kind));
 });
 
-api.get('/api/releases/browse', function (req, res) {
+v1.get('/releases/browse', function (req, res) {
   var kind = String(req.query.kind || '');
   if (!releases.isKind(kind)) {
-    return res.status(400).json({ error: 'kind must be one of: ' + releases.KINDS.join(', '), torrents: [] });
+    return fail(res, 'INVALID', 'kind must be one of: ' + releases.KINDS.join(', '), { torrents: [] });
   }
 
   releases.browse({
@@ -446,21 +472,21 @@ api.get('/api/releases/browse', function (req, res) {
     })
     .catch(function (error) {
       log.warn(kind + ' releases: ' + error.message);
-      res.status(502).send({ error: error.message, torrents: [] });
+      fail(res, 'UPSTREAM', error.message, { torrents: [] });
     });
 });
 
 //Subtitles (see lib/subtitles: several providers, chosen by the player)
 
-api.get('/api/subtitles/providers', function (req, res) {
+v1.get('/subtitles/providers', function (req, res) {
   res.json(subtitles.list());
 });
 
 // ?provider=&imdb_id=tt…&season=&episode=&languages=en,ar
-api.get('/api/subtitles/search', function (req, res) {
+v1.get('/subtitles/search', function (req, res) {
   var imdbId = String(req.query.imdb_id || '');
   if (!/^tt\d+$/.test(imdbId)) {
-    return res.status(400).json({ error: 'imdb_id (tt…) is required' });
+    return fail(res, 'INVALID', 'imdb_id (tt…) is required');
   }
   var query = { imdbId: imdbId };
   if (req.query.season && req.query.episode) {
@@ -474,12 +500,12 @@ api.get('/api/subtitles/search', function (req, res) {
     })
     .catch(function (error) {
       log.warn('subtitles search: ' + error.message);
-      res.status(502).json({ error: error.message, subtitles: [] });
+      fail(res, 'UPSTREAM', error.message, { subtitles: [] });
     });
 });
 
 // ?provider=&ref=&lang= -> WebVTT for <track>
-api.get('/api/subtitles/file', function (req, res) {
+v1.get('/subtitles/file', function (req, res) {
   subtitles.file(req.query.provider, String(req.query.ref || ''), req.query.lang)
     .then(function (vtt) {
       res.setHeader('content-type', 'text/vtt; charset=utf-8');
@@ -487,26 +513,43 @@ api.get('/api/subtitles/file', function (req, res) {
     })
     .catch(function (error) {
       log.warn('subtitles file: ' + error.message);
-      res.sendStatus(502);
+      fail(res, 'UPSTREAM', error.message);
     });
 });
 
 
 //youtube streaming api (see lib/youtube.js)
 
-api.all('/youtube/:videoId/:type', function (req, res) {
+v1.all('/youtube/:videoId/:type', function (req, res) {
   youtube.stream(req, res, req.params.type);
 });
 
-api.all('/youtube/:videoId/', function (req, res) {
+v1.all('/youtube/:videoId/', function (req, res) {
   youtube.stream(req, res, req.query.type);
 });
 
 // Per-profile user data (lib/services via lib/userData.js)
 // 18+ section catalog (lib/adultMeta: TMDB, ThePornDB, …)
-api.use('/api/adult/meta', require('./routes/adultMeta'));
+v1.use('/adult/meta', require('./routes/adultMeta'));
 
-api.use('/api/profiles', require('./routes/profiles'));
-api.use('/api/profiles/:profileId', require('./routes/library'));
+v1.use('/profiles', require('./routes/profiles'));
+v1.use('/profiles/:profileId', require('./routes/library'));
+
+v1.use(function (req, res) {
+  fail(res, 'NOT_FOUND', 'No route ' + req.method + ' ' + protocol.API_PREFIX + req.path);
+});
+
+api.use(function (req, res) {
+  fail(res, 'NOT_FOUND', 'No route ' + req.method + ' ' + req.path + ' (the API is under ' + protocol.API_PREFIX + ')');
+});
+
+// Malformed JSON bodies and anything a route threw
+api.use(function (err, req, res, next) {   // jshint ignore:line
+  if (err.type === 'entity.parse.failed' || err.status === 400) {
+    return fail(res, 'INVALID', 'Malformed request body');
+  }
+  log.error(req.method + ' ' + req.path + ' failed', { err: err });
+  fail(res, 'INTERNAL', 'Internal error');
+});
 
 module.exports = api;

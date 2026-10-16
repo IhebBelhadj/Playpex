@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 
 // Profiles live in the server's database (apps/server/lib/services/profiles.js).
 export interface Profile {
@@ -37,9 +37,9 @@ export class ProfilesService {
   // "Who's watching?" state kept across trips to the editor
   picker = { managing: false, focusId: null as string | null };
 
-  private base = `${STREAMING_SERVER}/api/profiles`;
+  private base = `${this.server.api}/profiles`;
 
-  constructor(private http:HttpClient) { }
+  constructor(private http:HttpClient, private server:ServerService) { }
 
   static avatarUrl(avatar:string | null):string {
     return `assets/avatars/${AVATARS.includes(avatar) ? avatar : AVATARS[0]}.svg`;

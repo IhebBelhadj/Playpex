@@ -9,7 +9,7 @@ import {  repeat, switchMap , takeWhile, filter, catchError } from "rxjs/operato
 import { gsap } from 'gsap'
 import { EMPTY, Subscription, timer } from 'rxjs';
 import { Router } from '@angular/router';
-import { STREAMING_SERVER } from '../server-config';
+import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
 import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
@@ -43,7 +43,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   lastSubFocused;
   arrowKeyEvents;
   subFocusListener;
-  serverUrl = STREAMING_SERVER
   subtitles:Subtitle[];
   subtitleProviders:SubtitleProvider[] = [];
   subtitleProvider:string;
@@ -78,6 +77,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   pointerIdle;
 
   constructor(
+    private server:ServerService,
     private playbackService:PlaybackService,
     private menuService:MenuServiceService,
     private torrentService:TorrentService,
@@ -204,7 +204,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           return;
         }
         this.filePath = file['path'];
-        this.link = this.serverUrl + file['link'];
+        this.link = this.server.absolute(file['link']);
         this.probeFile().then(() => this.setupPlayer());
         return;
       }

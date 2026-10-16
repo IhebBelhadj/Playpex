@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 
 export interface SubtitleProvider {
   id: string;
@@ -26,10 +26,10 @@ const PROVIDER_KEY = "playpex.subtitleProvider";
 })
 export class SubtitlesService {
 
-  constructor(private http:HttpClient) { }
+  constructor(private http:HttpClient, private server:ServerService) { }
 
   getProviders():Observable<SubtitleProvider[]> {
-    return this.http.get<SubtitleProvider[]>(`${STREAMING_SERVER}/api/subtitles/providers`);
+    return this.http.get<SubtitleProvider[]>(`${this.server.api}/subtitles/providers`);
   }
 
   // query: movie or show IMDb id, plus season/episode for TV
@@ -40,13 +40,13 @@ export class SubtitlesService {
       params.season = query.season;
       params.episode = query.episode;
     }
-    return this.http.get<any>(`${STREAMING_SERVER}/api/subtitles/search`, { params });
+    return this.http.get<any>(`${this.server.api}/subtitles/search`, { params });
   }
 
   // WebVTT URL for <track src>
   fileUrl(subtitle:Subtitle):string {
     let params = new URLSearchParams({ provider: subtitle.provider, ref: subtitle.ref, lang: subtitle.language });
-    return `${STREAMING_SERVER}/api/subtitles/file?${params}`;
+    return `${this.server.api}/subtitles/file?${params}`;
   }
 
   // The player remembers the provider picked last time

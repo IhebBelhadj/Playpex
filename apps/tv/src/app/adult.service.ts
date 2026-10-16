@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } from 'rxjs';
-import { STREAMING_SERVER } from './server-config';
+import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
 
 // ── catalog (metadata providers, lib/adultMeta) ─────────────────────────────
@@ -101,9 +101,9 @@ export class AdultService {
   openedTitle:AdultTitle | null = null;
 
   private metaProviders$:Observable<MetaProvider[]>;
-  private meta = `${STREAMING_SERVER}/api/adult/meta`;
+  private meta = `${this.server.api}/adult/meta`;
 
-  constructor(private http:HttpClient, private profiles:ProfilesService) {
+  constructor(private http:HttpClient, private profiles:ProfilesService, private server:ServerService) {
     // what one profile searched isn't the next one's business (a preferences
     // update re-emits the same profile: keep the state then)
     profiles.current.pipe(map(p => p?.id || null), distinctUntilChanged()).subscribe(() => this.reset());

@@ -17,10 +17,12 @@ The torrent part (`store`/`engine`/`progressbar`/`serialize`) follows the struct
 | `lib/middleware.js` | Runs before every route: `requestLog` (one entry per request, no query string; successful GETs at debug), `hostCheck` (DNS-rebinding defence: IP literals, `localhost`, this machine's name / `.local`, `network.allowedHosts`, else 403 `HOST_NOT_ALLOWED`), `cors` (allowed origins: `file://`, `null`, `http://localhost:4200`, same origin, `network.corsOrigins`; another origin gets no CORS headers and its non-GET requests are refused, 403 `ORIGIN_NOT_ALLOWED`). |
 | `lib/identity.js`, `lib/routes/server.js` | `<config>/server.json` `{id}` (UUID, made once) + name/version/`apiVersion` 1 → `GET /api/v1/server` (no auth): `{id, name, version, apiVersion, minApiVersion, auth: 'none', features: {transcode, subtitles: [enabled ids], adult}}`. |
 | `lib/ffmpeg.js` | Which ffmpeg/ffprobe to run: env (`FFMPEG_PATH`/`FFPROBE_PATH`) → settings → bundled (`PLAYPEX_FFMPEG_DIR`, `start({ffmpegDir})`, `<server>/vendor/ffmpeg`) → PATH. `paths()`, `info()` (available, version, source). |
-| `lib/api.js` | **All HTTP routes**: torrents + byte-range file streaming, YTS proxy, TV episode torrents, release lists, subtitles, YouTube. |
+| `lib/api.js` | Middleware order, `legacyAliases`, `clientVersion`, the **`v1` router with the routes** (torrents + byte-range file streaming, YTS proxy, TV episode torrents, release lists, subtitles, YouTube; profiles / library / 18+ meta / server mounted from `lib/routes/`), 404 + error handlers. |
+| `lib/errors.js` | `fail(res, code, message, extra?)` → `{error, code}` with the code's status; `codeForStatus(status)`. |
+| `test/contract.test.js` | Contract test (`node:test` + ajv): real server on a free port with temp dirs, every answer checked against `openapi.yaml`; prints which operations it didn't exercise. |
 | `lib/releases.js` | "Find releases" lists (`browse`, `providers`) per kind `adult` / `movie` / `tv`: `PROVIDERS` table, paging, quality/playable filters, most seeded first. See **Release lists** below. |
 | `lib/present.js` | Release name → display fields: `adult(name)` (`title, studio, year`, porn naming) and `release(name, kind)` (`title, year, studio: null` + for `tv` `season, episode, pack`). |
-| `lib/providers/yts.js` | YTS API: `MIRRORS` (`movies-api.accel.li` first; yts.mx is dead), `get(endpoint, params)` (used by the `/api/movies` proxy), `browse()` for the movie release list. |
+| `lib/providers/yts.js` | YTS API: `MIRRORS` (`movies-api.accel.li` first; yts.mx is dead), `get(endpoint, params)` (used by the `/movies` proxy), `browse()` for the movie release list. |
 | `lib/providers/piratebay.js` | apibay.org (The Pirate Bay's JSON API): `searchAdult`, `browse(keywords, {lists, searchCategory, categories})` (+ `browseAdult`). |
 | `lib/episodes.js` | `findEpisodeTorrents(imdbId, title, season, episode)`: queries providers in parallel, keeps exact episode / single-season pack matches, dedupes by hash (merging trackers), ranks. |
 | `lib/providers/eztv.js` | EZTV official API (`/api/get-torrents?imdb_id=`), all pages fetched once per show and cached 30 min; mirrors `eztvx.to`, `eztv.wf`, `eztv.tf`. Episode `0` = season pack. `browse(keywords, imdbId, page)`: a show's torrents (paged locally) or, without `imdbId`, the site's latest uploads. |
@@ -34,18 +36,19 @@ The torrent part (`store`/`engine`/`progressbar`/`serialize`) follows the struct
 | `lib/paths.js` | Per-OS data locations (never inside the app — packaged apps are read-only): `config` (Linux `~/.config/Playpex`, macOS `~/Library/Application Support/Playpex`, Windows `%APPDATA%\Playpex`), `cache` (`~/.cache/Playpex`, `~/Library/Caches/Playpex`, `%LOCALAPPDATA%\Playpex\Cache`), `logs` (`~/.local/state/Playpex/logs`, `~/Library/Logs/Playpex`, `%LOCALAPPDATA%\Playpex\Logs`), `downloads` = `<cache>/torrent_data` (default of `storage.downloadDir`). Overrides: `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR`, `PLAYPEX_LOG_DIR`. |
 | `lib/store.js` | In-memory torrent registry (`EventEmitter`): `add`, `get`, `remove`, `list`, `load`. Adds `lib/trackers.js` to every torrent's trackers (also as the engine's `trackers` option). Persists hashes to `<config>/torrents.json`; optional engine options merged from `<config>/config.json`. `init({downloads})` (once, from `start()`), `destroyAll(cb)` (from `stop()`); no signal handlers of its own. |
 | `lib/engine.js` | `torrent-stream` factory; downloads to `<cache>/torrent_data/` (metadata cache in `<cache>/torrent-stream/`); on `ready` auto-selects the largest file (the stream endpoint narrows the selection); free BitTorrent port from 6881. |
-| `lib/socket.js`, `lib/remoteSocketManager.js` | **Dead since step 1** (no longer started; socket.io was removed from the deps): socket.io v2 torrent events and the :9500 phone-remote stub. To delete; plan §6.4 replaces them with a `ws` events socket. |
 | `lib/util.js` | Unused helpers. |
 | `lib/stats.js`, `lib/progressbar.js` | Torrent stats / piece-bitfield → progress runs. |
-| `lib/routes/profiles.js`, `lib/routes/library.js`, `lib/routes/handle.js` | `/api/profiles` and `/api/profiles/:profileId/…` routers (mounted at the end of `lib/api.js`); `handle(work)` = shared JSON/error adapter. |
+| `lib/routes/profiles.js`, `lib/routes/library.js`, `lib/routes/handle.js` | `/api/v1/profiles` and `/api/v1/profiles/:profileId/…` routers (mounted at the end of `lib/api.js`); `handle(work)` = shared JSON/error adapter. |
 | `lib/db/`, `lib/data/`, `lib/services/`, `lib/userData.js`, `lib/tmdb.js` | Per-profile user data (profiles, watchlist, resume points, history, ratings, recommendations) — see **User data** below. |
 | `torrents/` | **Legacy** location of state and downloads (before `lib/paths.js`); no longer written. `torrent_data/` is git-ignored — never force-add. |
 
 ## HTTP API (`lib/api.js`)
 
-`/api/v1/server` is the first versioned route; the others move under `/api/v1` in plan step 2.
+**Every route lives under `/api/v1`** (a `v1` router in `lib/api.js`); the paths in the tables below are relative to it (`GET /torrents` = `GET /api/v1/torrents`). The contract is **`packages/protocol/openapi.yaml`**: change a route or an answer there first, regenerate the types (`npm run generate -w packages/protocol`), and run the contract test (`npm test -w apps/server`; `PLAYPEX_TEST_NETWORK=1` adds the provider routes). Unversioned paths from before (`/torrents/…`, `/upload`, `/youtube/…`, `/api/<x>`) are rewritten onto v1 by `legacyAliases` until plan step 9.
 
-Every upstream-backed route answers on failure (`502` + JSON `error`) — keep it that way; a hanging request leaves the UI spinning forever.
+- **Errors**: always `{ error, code }` through `lib/errors.js#fail(res, code, message, extra?)`; codes and statuses in `@playpex/protocol` `ERROR_CODES` (`INVALID` 400, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_ATTEMPTS`, `INTERNAL`, `UPSTREAM` 502, `PROBE_FAILED`, `PROVIDER_NOT_CONFIGURED` 503, `TRANSCODER_UNAVAILABLE` 503, + `HOST_NOT_ALLOWED` / `ORIGIN_NOT_ALLOWED` 403, `CLIENT_TOO_OLD` / `SERVER_TOO_OLD` 426). Some list routes keep an empty list next to it (`torrents: []`, `subtitles: []`). Unknown routes → 404 `NOT_FOUND`, malformed JSON → 400 `INVALID`. Actions without data answer `{ ok: true }`.
+- **Versions**: optional `X-Playpex-Client: <name>/<version>; api=<n>` → 426 when outside `MIN_API_VERSION`…`API_VERSION`.
+- Every upstream-backed route answers on failure (`502 UPSTREAM`) — keep it that way; a hanging request leaves the UI spinning forever.
 
 ### Torrents
 | Method & path | Behavior |
@@ -60,39 +63,39 @@ Every upstream-backed route answers on failure (`502` + JSON `error`) — keep i
 | `GET /torrents/:infoHash/stats` | `stats()` output: `metadata` (bool), `peers`, `speed`, `traffic`, `eta` (null until metadata). Safe before metadata arrives; the player polls it while loading/buffering. |
 | `GET\|HEAD /torrents/:infoHash/files/:path` | **The streaming endpoint.** Selects only this file (deselects the rest — season packs), starts `prefetchTail` (last 2 MB, where MKV keeps its index), parses `Range`, responds `206` and `pump(file.createReadStream(range), res)`. Socket timeout 1 h. |
 
-Serialized torrent: `{ infoHash, name, length, interested, ready, files: [{ name, path, link, length, offset, selected }], progress }`.
+Serialized torrent: `{ infoHash, name, length, interested, ready, files: [{ name, path, link, length, offset, selected }], progress }`; `link` = `/api/v1/torrents/:hash/files/:path` (clients prepend the server origin).
 
 ### Movies (YTS)
 | Path | Notes |
 |---|---|
-| `GET /api/movies?…`, `GET /api/movies/:imdb_id` | `list_movies.json` / `movie_details.json` via `lib/providers/yts.js` (`MIRRORS`: `movies-api.accel.li` first; yts.mx is dead). UI reads `data.movie.torrents/rating/runtime/mpa_rating/yt_trailer_code`. |
+| `GET /movies?…`, `GET /movies/:imdb_id` | `list_movies.json` / `movie_details.json` via `lib/providers/yts.js` (`MIRRORS`: `movies-api.accel.li` first; yts.mx is dead). UI reads `data.movie.torrents/rating/runtime/mpa_rating/yt_trailer_code`. |
 
 ### TV episodes
 | Path | Notes |
 |---|---|
-| `GET /api/shows/:imdb_id/torrents?title=&season=&episode=` | `{ torrents: [...], providerErrors }`, best first. Torrent: `{ provider, name, hash, magnet, seeds, size, quality, codec, audio, playable, pack }`. 400 without season/episode. |
+| `GET /shows/:imdb_id/torrents?title=&season=&episode=` | `{ torrents: [...], providerErrors }`, best first. Torrent: `{ provider, name, hash, magnet, seeds, size, quality, codec, audio, playable, pack }`. 400 without season/episode. |
 
 Ranking (`episodes.js#compare`): `playable` video (no HEVC/10-bit/XviD/4K) → `audio` (AAC/Opus/MP3 > untagged > Dolby/DTS, which Chromium can't decode) → ≥10 seeders → single episode before pack → resolution (1080p > 720p > 480p/SD > 2160p) → seeders. Matching (`matchKind`): normalized name must start with the show title, optional year and country (`US|UK|AU|NZ|CA`), then `SxxEyy` with no episode range after it (or `Sxx` / `Season x` for a pack, never multi-season). Both rules are unit-checkable by evaluating the module source in Node.
 
 ### IMDb ratings (`lib/imdb.js`)
 | Path | Notes |
 |---|---|
-| `GET /api/imdb/:id` | `{ id, rating, votes }` (`rating` null when unrated) |
-| `GET /api/imdb/:id/episodes` | `{ id, rating, votes, seasons: [{ season, rating, rated, episodes: [{ episode, id, rating, votes }] }] }` — episodes IMDb lists without a season / episode number are left out |
+| `GET /imdb/:id` | `{ id, rating, votes }` (`rating` null when unrated) |
+| `GET /imdb/:id/episodes` | `{ id, rating, votes, seasons: [{ season, rating, rated, episodes: [{ episode, id, rating, votes }] }] }` — episodes IMDb lists without a season / episode number are left out |
 Not an IMDb id → 400 `{error}`; upstream failure → 502 `{error}`.
 
 ### 18+ (`lib/adult.js`, providers `lib/providers/piratebay.js` + `therarbg.js`)
 | Path | Notes |
 |---|---|
-| `GET /api/adult/torrents?title=&year=` | torrents for one TMDB `adult: true` movie (movie page Play); matched by title (+year) in the release name, ranked like episodes |
-| `GET /api/adult/providers`, `GET /api/adult/browse?…` | = `/api/releases/{providers,browse}` with `kind=adult` (kept for the 18+ section; `adult.browse`/`browseProviders` are wrappers over `lib/releases.js`) |
+| `GET /adult/torrents?title=&year=` | torrents for one TMDB `adult: true` movie (movie page Play); matched by title (+year) in the release name, ranked like episodes |
+| `GET /adult/providers`, `GET /adult/browse?…` | = `/releases/{providers,browse}` with `kind=adult` (kept for the 18+ section; `adult.browse`/`browseProviders` are wrappers over `lib/releases.js`) |
 
 ### Release lists (`lib/releases.js`) — movies, TV shows, 18+
 "Find releases": one source's releases for a kind, **most seeded first**, with quality / playable filters, keywords and paging for paged sources.
 | Path | Notes |
 |---|---|
-| `GET /api/releases/providers?kind=movie\|tv\|adult` | `[{ id, name, paged, default }]`, first = default. Unknown kind → 400 `{error}` |
-| `GET /api/releases/browse?kind=&provider=&q=&quality=2160p\|1080p\|720p\|SD&playable=1&page=&imdb=tt…` | `{ provider, page, hasMore, torrents }`. Unknown provider → the kind's default. `imdb` is optional context (EZTV). 400 `{error, torrents: []}` for an unknown kind, 502 `{error, torrents: []}` on upstream failure |
+| `GET /releases/providers?kind=movie\|tv\|adult` | `[{ id, name, paged, default }]`, first = default. Unknown kind → 400 `INVALID` |
+| `GET /releases/browse?kind=&provider=&q=&quality=2160p\|1080p\|720p\|SD&playable=1&page=&imdb=tt…` | `{ provider, page, hasMore, torrents }`. Unknown provider → the kind's default. `imdb` is optional context (EZTV). 400 `{error, torrents: []}` for an unknown kind, 502 `{error, torrents: []}` on upstream failure |
 
 Each torrent: `provider, name, hash, magnet, seeds, peers, size, added` (unix s, 0 if unknown) + `describe()` (`quality, codec, audio, playable`) + presented `title, year, studio` (`studio` only for 18+, else null) + `scenes` (18+ split scenes, else false); kind `tv` adds `season` / `episode` (numbers or null) and `pack` (season / multi-season / complete pack without one episode). Presenters in `lib/present.js`; fields a provider sets itself (YTS `title`/`year`) win over the parsed ones. `playable=1` keeps `playable && audio !== 'unsupported'`; `SD` also keeps `480p`. A paged source reads up to 3 pages per call to keep ≥ 20 results after filtering (`page` in the answer = last page read; ask for `page + 1` next). Non-paged sources answer `page > 1` with an empty list.
 
@@ -114,8 +117,8 @@ Don't put the resolution in TheRARBG keywords: it then ranks by name, not seeder
 Metadata for the poster layout from **pluggable providers** (contract at the top of `lib/adultMeta/index.js`; add a module to `PROVIDERS`). Every provider answers the same shapes with full image URLs: `Item { id, title, year, releaseDate, overview, poster, backdrop, rating, studio }`, `Title` = Item + `{ runtime, performers: [{name, photo}], director, studios, browsableStudio }`, `Page { items, page, totalPages }`.
 | Path | Notes |
 |---|---|
-| `GET /api/adult/meta/providers` | `[{ id, name, description, enabled, default, periods, sorts }]` — `enabled` false without its key; default = first enabled |
-| `GET /api/adult/meta/:provider/home` | `{ provider, rows: [{ key, title }] }`; `:provider` = `default` for the server's default |
+| `GET /adult/meta/providers` | `[{ id, name, description, enabled, default, periods, sorts }]` — `enabled` false without its key; default = first enabled |
+| `GET /adult/meta/:provider/home` | `{ provider, rows: [{ key, title }] }`; `:provider` = `default` for the server's default |
 | `GET …/:provider/rows/:key?page=` · `…/discover?studio=&period=&sort=popular\|newest\|rated&page=` · `…/search?q=&period=&page=` | Page |
 | `GET …/:provider/studios` · `…/titles/:id` | `[{ id, name }]` · Title |
 Errors: unknown provider 404, provider without key 503, upstream 502 — always `{ error }`.
@@ -125,9 +128,9 @@ Errors: unknown provider 404, provider without key 503, upstream 502 — always 
 ### Subtitles
 | Path | Notes |
 |---|---|
-| `GET /api/subtitles/providers` | `[{ id, name, description, supports: {movie, episode}, enabled }]` — `enabled` false when a key is missing. |
-| `GET /api/subtitles/search?provider=&imdb_id=tt…&season=&episode=&languages=en,ar` | `{ provider, subtitles: [{ provider, ref, language (639-1), languageName, name }], unsupported? }`. Without `provider`: first enabled one. |
-| `GET /api/subtitles/file?provider=&ref=&lang=` | `text/vtt`. `ref` is provider-specific and validated (allowed hosts / id formats) before fetching — no open proxy. |
+| `GET /subtitles/providers` | `[{ id, name, description, supports: {movie, episode}, enabled }]` — `enabled` false when a key is missing. |
+| `GET /subtitles/search?provider=&imdb_id=tt…&season=&episode=&languages=en,ar` | `{ provider, subtitles: [{ provider, ref, language (639-1), languageName, name }], unsupported? }`. Without `provider`: first enabled one. |
+| `GET /subtitles/file?provider=&ref=&lang=` | `text/vtt`. `ref` is provider-specific and validated (allowed hosts / id formats) before fetching — no open proxy. |
 
 Adding a subtitle provider: write `lib/subtitles/providers/<id>.js` exporting `id, name, description, supports, isConfigured(), search(query) → [{ref, language, name}], fetch(ref) → {buffer, format}` and add it to `PROVIDERS` in `lib/subtitles/index.js` (order = order of the player's tabs; first enabled = default).
 
@@ -136,18 +139,18 @@ Adding a torrent provider: module with `search(...)` returning `{ provider, name
 ### Profiles (`lib/routes/profiles.js` → `services.profiles`)
 | Method & path | Behavior |
 |---|---|
-| `GET /api/profiles` | `{ profiles: [...], lastUsedId, maxProfiles }` |
-| `POST /api/profiles` body `{name, avatar?, isKid?, pin?}` | 201 + profile; 409 duplicate name / too many |
-| `GET\|PUT\|DELETE /api/profiles/:id` | PUT body `{name?, avatar?, isKid?, preferences?}` (preferences merged); DELETE cascades to all the profile's data |
-| `POST /api/profiles/:id/unlock` body `{pin?}` | the profile (and records it as last used); 403 wrong PIN, 429 after 5 failures (30 s) |
-| `PUT /api/profiles/:id/pin` body `{pin}` / `{pin: null}` | set / remove the lock |
+| `GET /profiles` | `{ profiles: [...], lastUsedId, maxProfiles }` |
+| `POST /profiles` body `{name, avatar?, isKid?, pin?}` | 201 + profile; 409 duplicate name / too many |
+| `GET\|PUT\|DELETE /profiles/:id` | PUT body `{name?, avatar?, isKid?, preferences?}` (preferences merged); DELETE cascades to all the profile's data |
+| `POST /profiles/:id/unlock` body `{pin?}` | the profile (and records it as last used); 403 wrong PIN, 429 after 5 failures (30 s) |
+| `PUT /profiles/:id/pin` body `{pin}` / `{pin: null}` | set / remove the lock |
 
 ### Library of a profile (`lib/routes/library.js` → `services.watchlist` / `services.playback`)
 Title = `/:mediaType/:tmdbId` (`movie`|`tv`); episodes add `season`/`episode` (query or body). Writes carry `title, posterPath, backdropPath, genreIds?` so rows render without TMDB; a write without them keeps what is stored.
 | Method & path | Behavior |
 |---|---|
-| `GET /api/profiles/:pid/library` | `{ continueWatching, watchlist, watched }` — everything the Watch list page shows. `watched` = one entry per title (latest episode, `episodesWatched`) |
-| `GET /api/profiles/:pid/watchlist` · `GET\|PUT\|DELETE …/watchlist/:mediaType/:tmdbId` | list · `{inWatchlist}` · add (idempotent) · `{removed}` |
+| `GET /profiles/:pid/library` | `{ continueWatching, watchlist, watched }` — everything the Watch list page shows. `watched` = one entry per title (latest episode, `episodesWatched`) |
+| `GET /profiles/:pid/watchlist` · `GET\|PUT\|DELETE …/watchlist/:mediaType/:tmdbId` | list · `{inWatchlist}` · add (idempotent) · `{removed}` |
 | `PUT …/progress/:mediaType/:tmdbId` body `{positionS, durationS, season?, episode?, infoHash?, filePath?, …artwork}` | save position; `{progress, finished, justFinished}` (first finish → history) |
 | `GET …/progress/:mediaType/:tmdbId?season&episode` | `{ resume: {positionS, durationS, infoHash, filePath} \| null, finished }` |
 | `GET …/progress/:mediaType/:tmdbId/episodes` | every episode's `{season, episode, ratio, finished}` |

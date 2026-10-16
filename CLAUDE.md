@@ -39,18 +39,18 @@ More detailed guides live next to the code:
 │  waits for the port in use, then                                                          │
 │  BrowserWindow (fullscreen, frameless) ──loads──► file://…/apps/tv/dist/playpex/index.html?streamer=<port>
 └───────────────────────────────────────────────────────────────────────────────────────────┘
-                 │ renderer = Angular SPA (apps/tv/src/app); STREAMING_SERVER = http://localhost:<port>
+                 │ renderer = Angular SPA (apps/tv/src/app); ServerService.api = http://localhost:<port>/api/v1 (= <api>)
                  ├── TMDB REST (api.themoviedb.org)        ← direct, key in movies.service.ts
-                 ├── STREAMING_SERVER/api/movies/:imdb_id  → YTS (movie torrents, rating, runtime)
-                 ├── STREAMING_SERVER/api/shows/:imdb_id/torrents?title&season&episode → EZTV + TheRARBG
-                 ├── STREAMING_SERVER/torrents …           → add magnet, poll metadata, remove
-                 ├── <video src="STREAMING_SERVER/torrents/:hash/files/:path">  ← byte-range stream
-                 ├── STREAMING_SERVER/api/subtitles/{providers,search,file}  → WebVTT for <track>
-                 ├── STREAMING_SERVER/youtube/:id?type=video|audio  → trailers (youtubei.js)
+                 ├── <api>/movies/:imdb_id                → YTS (movie torrents, rating, runtime)
+                 ├── <api>/shows/:imdb_id/torrents?title&season&episode → EZTV + TheRARBG
+                 ├── <api>/torrents …                      → add magnet, poll metadata, remove
+                 ├── <video src="<api>/torrents/:hash/files/:path">  ← byte-range stream
+                 ├── <api>/subtitles/{providers,search,file}  → WebVTT for <track>
+                 ├── <api>/youtube/:id?type=video|audio    → trailers (youtubei.js)
                  └── http://localhost:3344/power/:action   → Electron quits / OS shutdown
 ```
 
-`apps/tv/src/app/server-config.ts` reads `?streamer=` once and removes it from the URL **before Angular boots** (the router only strips a trailing `index.html` from `file://` URLs; any query/hash would make the initial route match nothing → `NG04002`, blank app).
+The API is versioned (`/api/v1`) and described in **`packages/protocol/openapi.yaml`** (the contract for every client; types generated from it, checked by the server's contract test). `apps/tv/src/app/server-config.ts` reads `?streamer=` once and removes it from the URL **before Angular boots** (the router only strips a trailing `index.html` from `file://` URLs; any query/hash would make the initial route match nothing → `NG04002`, blank app).
 
 ### Start: "Who's watching?"
 The app opens on `/profiles` (Netflix-style picker, under the splash video). Profiles live in the server's SQLite DB (`/api/profiles`); picking one (PIN if locked) sets `ProfilesService.current` and opens `/movies/list`. Pages that need a profile are guarded. The menu's top item shows the current profile and returns to the picker.
@@ -108,7 +108,8 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 │   ├── dashboard/                placeholder (server web dashboard, plan §7)
 │   └── server-desktop/           placeholder (tray supervisor + installers, plan §8)
 └── packages/
-    └── protocol/                 placeholder (OpenAPI spec + shared types, plan §6)
+    └── protocol/                 @playpex/protocol — the API contract: openapi.yaml, types/api.d.ts (generated, committed),
+                                  index.js constants (API_VERSION, ports, ERROR_CODES, client header) used by server and clients
 ```
 
 ---
@@ -122,6 +123,7 @@ The app opens on `/profiles` (Netflix-style picker, under the splash video). Pro
 | Build UI | `npm run build` | must use `--base-href ./` (already in script). In non-interactive shells run, from `apps/tv`, `NG_CLI_ANALYTICS=false npx ng build --base-href ./ < /dev/null` — the CLI can otherwise sit waiting on a prompt |
 | UI only in browser | `npm start` | `ng serve -o` on :4200; needs the server running separately (`npm run server`, :28470) |
 | Server only (headless) | `npm run server` (= `node apps/server/bin/playpex-server.js`; or `ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron apps/server/bin/playpex-server.js` to use Electron's Node 24) | :28470, loopback only unless `network.lanSharing`. `npm run server -- set-port <n>` when the port is taken. `npm run electron` while it runs uses this server instead of starting its own. No power API |
+| API contract | `npm run generate -w packages/protocol` after editing `openapi.yaml` (regenerates `types/api.d.ts`); `npm run test:server` = contract test (`PLAYPEX_TEST_NETWORK=1` adds provider routes) | change the spec first, then server and clients |
 | DB migration after a schema change | `npm run db:generate` | drizzle-kit; runs in `apps/server`; diffs `lib/db/schema.js` into `lib/db/migrations/` |
 | Unit tests | from `apps/tv`: `CHROME_BIN=/opt/google/chrome/chrome npx ng test --watch=false --browsers=ChromeHeadless` (`--include src/app/movement` for the movement specs) | Karma/Jasmine; besides the movement specs, mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
 | Package installer | `npm run electronBuild` (electron-builder 23) or `npm run make` (forge) | config in `apps/tv/package.json`; not re-verified since the Electron 44 upgrade nor since the move to workspaces (the plan replaces it in steps 6 and 9) |
@@ -149,7 +151,7 @@ The server's settings live in **`<config dir>/settings.json`** (`apps/server/lib
 
 | What | Where |
 |---|---|
-| Streaming server base URL | **only** `apps/tv/src/app/server-config.ts` (`STREAMING_SERVER`); every service/component imports it — never hard-code `localhost:<port>` |
+| Server base URL | resolved once in `apps/tv/src/app/server-config.ts`; every service/component injects `ServerService` (`server.api`) — never hard-code `localhost:<port>` or `/api/v1` |
 | Power API `http://localhost:3344` | `power.service.ts`, `apps/tv/electron/main.js` |
 | Remote WS `ws://localhost:5000` (unused; service never injected) | `remoteSocket.service.ts` |
 | TMDB API key | `movies.service.ts#tmdb_key`; `categories.ts` URLs use a `<<api_key>>` placeholder; the server reads `TMDB_API_KEY` from `.env` |

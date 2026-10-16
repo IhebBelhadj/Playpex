@@ -104,7 +104,7 @@ function stream(url, start, audioIndex, req, res) {
   var child = spawn(ffmpeg.paths().ffmpeg, args);
   child.on('error', function (e) {
     if (!res.headersSent) {
-      res.status(502).json({ error: 'ffmpeg unavailable: ' + e.message });
+      res.status(503).json({ error: 'ffmpeg unavailable: ' + e.message, code: 'TRANSCODER_UNAVAILABLE' });
     }
   });
   child.stderr.on('data', function (d) { log.warn(String(d).trim()); });

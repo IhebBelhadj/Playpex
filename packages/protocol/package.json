@@ -1,6 +1,21 @@
 {
   "name": "@playpex/protocol",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Placeholder: OpenAPI spec and shared types of the Playpex API (step 2 of docs/server-separation-plan.md)"
+  "description": "The Playpex client/server protocol: OpenAPI spec, TypeScript types generated from it, shared constants",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "openapi.yaml",
+    "types/"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript openapi.yaml -o types/api.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
+  }
 }

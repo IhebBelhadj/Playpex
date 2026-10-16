@@ -1,6 +1,6 @@
 'use strict';
 
-// /api/adult/meta: the 18+ section's catalog (lib/adultMeta). Every request
+// /api/v1/adult/meta: the 18+ section's catalog (lib/adultMeta). Every request
 // is answered: provider errors → their status, upstream failures → 502.
 //   GET /providers
 //   GET /:provider/home                       → { rows: [{ key, title }] }
@@ -13,7 +13,8 @@
 
 var express = require('express'),
   adultMeta = require('../adultMeta'),
-  log = require('../logger').child('provider');
+  log = require('../logger').child('provider'),
+  errors = require('../errors');
 
 var router = express.Router();
 
@@ -29,7 +30,7 @@ function answer(work) {
       if (status >= 500) {
         log.warn('adult meta ' + req.path + ': ' + err.message);
       }
-      res.status(status).json({ error: err.message });
+      errors.fail(res, errors.codeForStatus(status), err.message);
     });
   };
 }

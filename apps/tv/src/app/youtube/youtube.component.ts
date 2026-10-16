@@ -5,7 +5,7 @@ import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { YoutubeService } from '../youtube.service';
 import { Subscription } from 'rxjs';
 import { gsap ,Power1} from 'gsap'
-import { STREAMING_SERVER } from '../server-config';
+import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
 
 
@@ -16,7 +16,7 @@ import { actionForKey } from '../keymap';
 })
 export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
 
-  baseUrl = STREAMING_SERVER + "/youtube/";
+  baseUrl = this.server.api + "/youtube/";
   video_id;
   player:HTMLVideoElement;
   audioTrack:HTMLVideoElement;
@@ -25,6 +25,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
   playerPaused:boolean = false;
   keydownListener;
   constructor(
+    private server:ServerService,
     private ytService:YoutubeService,
     private activeRoute:ActivatedRoute,
     private menuService:MenuServiceService,

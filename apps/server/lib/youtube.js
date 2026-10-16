@@ -5,7 +5,8 @@
 // browser's Range requests from it so seeking works without re-encoding.
 
 var rangeParser = require('range-parser');
-var log = require('./logger').child('youtube');
+var log = require('./logger').child('youtube'),
+  fail = require('./errors').fail;
 
 var VIDEO_ID = /^[\w-]{11}$/;
 
@@ -148,7 +149,7 @@ function stream(req, res, type, retried) {
   var id = req.params.videoId;
 
   if (!VIDEO_ID.test(id)) {
-    return res.sendStatus(404);
+    return fail(res, 'NOT_FOUND', 'Not a YouTube video id');
   }
 
   return resolve(id, type, req.query.quality)
@@ -200,7 +201,7 @@ function stream(req, res, type, retried) {
     .catch(function (err) {
       log.warn('youtube ' + id + ': ' + err.message);
       if (!res.headersSent) {
-        res.sendStatus(404);
+        fail(res, 'NOT_FOUND', 'Trailer unavailable');
       } else {
         res.destroy();
       }
