@@ -1,6 +1,6 @@
 # Movement system rewrite: plan
 
-Status (2026-10-15): **done** — Steps 0–4 and the motion strategies (§15). Every page is on the engine (§16 lists how the remaining ones were migrated and what was left out on purpose). Decisions A, B, C confirmed by the user with the defaults (§11). How the system works today and how to migrate a page: the "Movement system" section of `src/app/CLAUDE.md`; what differs from this plan: §14. Read the root `CLAUDE.md` and `src/app/CLAUDE.md` first; this plan assumes them.
+Status (2026-10-15): **done** — Steps 0–4 and the motion strategies (§15). Every page is on the engine (§16 lists how the remaining ones were migrated and what was left out on purpose). Decisions A, B, C confirmed by the user with the defaults (§11). How the system works today and how to migrate a page: the "Movement system" section of `apps/tv/src/app/CLAUDE.md`; what differs from this plan: §14. Read the root `CLAUDE.md` and `apps/tv/src/app/CLAUDE.md` first; this plan assumes them.
 
 ## 1. Goal
 
@@ -19,14 +19,14 @@ Non-goals for this work: replacing the vendored spatial-navigation library entir
 
 | Layer | Where | What it does |
 |---|---|---|
-| Spatial navigation (vendored js-spatial-navigation, MPL-2.0) | `src/plugins/spacialNavigation.js` | Picks the next focusable element **by on-screen geometry**, per "section" (`add/remove/focus`, `restrict`, `leaveFor`, `enterTo`, `straightOnly`). Fires `sn:willmove` (**cancelable**), `sn:willfocus`, `sn:focused`, `sn:unfocused`, `sn:navigatefailed`. Keys come from `keymap.ts` via `setKeyMap()`. |
-| Section registration | every page, via `NavigationService.updateNavigation('add'/'remove'/'focus', …)` → `AppComponent` → library | Each page registers / removes its section ids by hand (ids listed in `src/app/CLAUDE.md`). Forgetting a `remove` breaks the next visit. |
+| Spatial navigation (vendored js-spatial-navigation, MPL-2.0) | `apps/tv/src/plugins/spacialNavigation.js` | Picks the next focusable element **by on-screen geometry**, per "section" (`add/remove/focus`, `restrict`, `leaveFor`, `enterTo`, `straightOnly`). Fires `sn:willmove` (**cancelable**), `sn:willfocus`, `sn:focused`, `sn:unfocused`, `sn:navigatefailed`. Keys come from `keymap.ts` via `setKeyMap()`. |
+| Section registration | every page, via `NavigationService.updateNavigation('add'/'remove'/'focus', …)` → `AppComponent` → library | Each page registers / removes its section ids by hand (ids listed in `apps/tv/src/app/CLAUDE.md`). Forgetting a `remove` breaks the next visit. |
 | Row-to-row movement | per page: `data-sn-up` / `data-sn-down` selectors pointing at the neighbour row's `.lastSelected`; each page maintains `.lastSelected` itself | Movies slider `neighbour()`, watch list `neighbour()`, search `neighbour()`, show page `updateLastSelected()`, movie page `updateLastSelected()`, 18+ browse `neighbour()` |
 | Scrolling | per page, mostly **`transform`** | Movies slider: `translateX` per row + `translateY` on the rows (`updateNavigation`, `alignRow`). Watch list and 18+ browse: same pattern in `onFocus`. Search: `scrollRowTo` / `setRowOffset` / `setPageOffset` (transforms) + paddle state. Show page: `scrollRowTo` / `ensureRowVisible` / `setPageOffset` (transforms). Movie page: **native** (`.nativeScroll`, `scrollTo({behavior:'smooth'})`). 18+ compact list: `translateY` on the list. |
 | Position memory | per page | `Catalog.navigationData` (movies/TV), module-level `lastFocusKey` (watch list), `SearchState.focusKey`, `AdultService.state.focusKey` / `browseState.focusKey`. |
 | Paging ("load more") | per page, triggered **only by focus** | Slider `catalog.requestPage` at index ≥ length − 10, 18+ browse `LOAD_MORE_AHEAD`, compact list `LOAD_MORE_AHEAD`. |
-| Mouse | `src/app/pointer.service.ts` | Hover → `spatialNavigation.focus(el)` (sets `isPointerFocus()` so pages skip scrolling); click → synthetic `select` keydown; right click / button 3 → `back`; **wheel → synthetic up/down arrow keys** (`WHEEL_STEP`, `WHEEL_INTERVAL`, `WHEEL_SETTLE`), horizontal wheel ignored; `pagedIndex()` for paddles reads the row's transform; `NO_HOVER_SELECTOR` (`data-pointer-hover="off"`) for rows peeking below the current one. |
-| Global CSS | `src/styles.scss` | Cursor, `body.pointer-hidden`, `.pagedRow > .rowPaddle` paddles (shown on hover with the cursor visible), `.section.atStart/.atEnd` hide paddles. |
+| Mouse | `apps/tv/src/app/pointer.service.ts` | Hover → `spatialNavigation.focus(el)` (sets `isPointerFocus()` so pages skip scrolling); click → synthetic `select` keydown; right click / button 3 → `back`; **wheel → synthetic up/down arrow keys** (`WHEEL_STEP`, `WHEEL_INTERVAL`, `WHEEL_SETTLE`), horizontal wheel ignored; `pagedIndex()` for paddles reads the row's transform; `NO_HOVER_SELECTOR` (`data-pointer-hover="off"`) for rows peeking below the current one. |
+| Global CSS | `apps/tv/src/styles.scss` | Cursor, `body.pointer-hidden`, `.pagedRow > .rowPaddle` paddles (shown on hover with the cursor visible), `.section.atStart/.atEnd` hide paddles. |
 
 Problems:
 - Content is **moved, not scrolled**, so the browser can't scroll it: horizontal mouse scrolling is impossible, and the wheel had to be faked as arrow keys.
@@ -37,7 +37,7 @@ Problems:
 
 ## 3. Target architecture
 
-New folder `src/app/movement/` (declared in `AppModule`, no lazy loading, matching the app).
+New folder `apps/tv/src/app/movement/` (declared in `AppModule`, no lazy loading, matching the app).
 
 ```
  input sources                movement core                          DOM (real scroll containers)
@@ -178,7 +178,7 @@ On the first arrow key after pointer activity (`FocusEngine.lastInput == 'pointe
 - Unchanged path: `PointerService.onClick` → focus + synthetic `select`. Decision B (§11): open directly.
 - The paddles stay plain `(click)` elements outside sections; they call the row's `page(direction)`.
 
-## 7. CSS foundations (`src/styles.scss` + per component)
+## 7. CSS foundations (`apps/tv/src/styles.scss` + per component)
 
 - Utility classes: `.px-scroll-x`, `.px-scroll-y` (overflow, hidden scrollbars, overscroll-behavior), `.px-row-pad` (vertical padding for zoom; e.g. `padding-block: 16px` around 270 px posters scaled 1.1, i.e. 13.5 px each side).
 - **Rows next to the menu**: today `.sliderContainer` uses `overflow: clip` + `overflow-clip-margin: 10px` so posters scrolled to the left don't show over the menu. With real `overflow-x: auto` the clip is automatic; the left padding / first-item zoom must stay visible: give rows `padding-inline-start` equal to the zoom overhang and `scroll-padding-inline-start` matching, or align to `start` minus that padding.
@@ -195,11 +195,11 @@ Each step ends with a build (`NG_CLI_ANALYTICS=false npx ng build --base-href ./
 2. **ThePornDB provider fixes** (§12.2): independent of movement; can be done any time.
 
 ### Step 1: core (no page changes)
-1. `src/app/movement/`: `scroller.ts` (tween + alignment pure functions), `position-store.service.ts`, `focus-engine.service.ts`, directives `px-item`, `px-row`, `px-stack`, `px-grid`, `px-section`; `movement.ts` barrel; declare in `AppModule`.
+1. `apps/tv/src/app/movement/`: `scroller.ts` (tween + alignment pure functions), `position-store.service.ts`, `focus-engine.service.ts`, directives `px-item`, `px-row`, `px-stack`, `px-grid`, `px-section`; `movement.ts` barrel; declare in `AppModule`.
 2. `FocusEngine.init()` called from `AppComponent` constructor right after `spatialNavigation.init()`.
 3. `PointerService`: per-page wheel mode (§6.1), scroll-pauses-hover (§6.2), `lastInput` reporting to the engine, paddles helper that works on `scrollLeft` (keep `pagedIndex()` for old pages until they migrate).
 4. Unit tests (Jasmine, `*.spec.ts` next to files): alignment math, clamp, tween re-targeting (fake rAF), next-index logic for row/stack/grid incl. empty rows and edges, PositionStore key/index fallback.
-5. Docs: new "Movement system" section in `src/app/CLAUDE.md` (APIs, rules, how to migrate a page), and update the section-id list.
+5. Docs: new "Movement system" section in `apps/tv/src/app/CLAUDE.md` (APIs, rules, how to migrate a page), and update the section-id list.
 
 ### Step 2: pilot on the 18+ pages
 - `adult-browse`: toolbar → `pxSection` (`leaveFor.down: ['stack:adult-browse']`); rows container → `pxStack` (`row-top`); each row → `pxRow` (`start`, `loadAhead` 6, `nearEnd` → `loadMore`); remove `onFocus` transform code, `neighbour()`, `pageRow()`, `restoreFocus()` position parts, `browseState.focusKey`; the description header still updates on focus (keep the `sn:focused` listener for **data**, not for scrolling). Menu `leaveFor.right`: `['stack:adult-browse', '@adultToolbar']`.
@@ -219,7 +219,7 @@ Recommended order (simplest first):
 
 ### Step 4: cleanup
 - Delete per-page transform scrolling, `neighbour()` / `data-sn-up/down` row selectors, `.lastSelected` bookkeeping, `pagedIndex()`, `NO_HOVER_SELECTOR` usage, `wheelMode 'focus'` (once nothing uses it), `Catalog.navigationData`.
-- Update `src/app/CLAUDE.md` (component index entries mention transforms in many places; rewrite them) and the root `CLAUDE.md` input-model bullet.
+- Update `apps/tv/src/app/CLAUDE.md` (component index entries mention transforms in many places; rewrite them) and the root `CLAUDE.md` input-model bullet.
 
 ## 9. Verification (do for every migrated page)
 
@@ -240,7 +240,7 @@ Checklist:
 - [ ] Profile switch clears positions.
 
 ### Testing harness (used during the 18+ work and the movement pilot)
-- Server: `STREAMER_PORT=9100 REMOTE_PORT=9600 ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron src/server/streamingServer/server.js` (port 9000 is usually taken on the dev machine). Stop it with `pkill -f "[s]treamingServer/server.js"` **in a separate command** (a pattern matching the same shell command line kills the shell).
+- Server: `STREAMER_PORT=9100 REMOTE_PORT=9600 ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron apps/server/server.js` (port 9000 is usually taken on the dev machine). Stop it with `pkill -f "[s]treamingServer/server.js"` **in a separate command** (a pattern matching the same shell command line kills the shell).
 - UI: build, then a small Electron script (scratchpad) that opens `dist/playpex/index.html?streamer=9100` in an offscreen 1440×900 `BrowserWindow` (`backgroundThrottling: false`), waits ~9 s for the splash, sends Enter to pick the profile, navigates with `history.pushState({}, '', '<route>'); dispatchEvent(new PopStateEvent('popstate'))`, runs steps from a JSON file (`{route}`, `{js}` evaluated as an async function body, `{key:'Right'}`, `{move:{x,y}}`, `{wheel:{x,y,dx,dy}}`, `{shot:'name.png'}`) and saves `webContents.capturePage()` PNGs. Useful probes: the active element's `data-*`, each `[data-px-container]`'s `scrollLeft` / `scrollTop` sampled during a held key.
 
 ## 10. Later (optional, not part of this plan)
@@ -264,14 +264,14 @@ The user asked about all three; the defaults below are the recommended ones. **C
 Fixed: the empty state always has a Clear search / Clear filters or Try again button inside `.titleInfo` (part of the `adultPosters` section, so the menu's `@adultPosters` always lands somewhere), the toolbar's `down` targets it, and `restoreFocus()` falls back to it / the search field. The migration must keep this guarantee (empty stack → focus the empty state or the toolbar).
 
 Original report:
-`src/app/adult-browse/adult-browse.component.*`: when a search or filter returns no titles, the page has nothing focusable except the toolbar, and:
+`apps/tv/src/app/adult-browse/adult-browse.component.*`: when a search or filter returns no titles, the page has nothing focusable except the toolbar, and:
 - `restoreFocus()` focuses nothing when there are no cards (coming back to `/adult/browse` with an empty result leaves focus on the menu);
 - the menu section's `leaveFor.right` is `'@adultPosters'`, which is empty, so right does nothing;
 - the "No titles" header only shows a button on `loadError` (Retry).
 
 Fix: in the empty state render a **Clear search / Clear filters** `actionBtn` inside `.titleInfo` (it belongs to the `adultPosters` section via its `.titleInfo .focusable` selector; selecting it does what the toolbar's Clear does); in `restoreFocus()` fall back to `.adultBrowse .clearAll` or `.searchField` when there's no card; register the menu with `leaveFor.right` pointing at the toolbar when `state.rows` is empty (re-register on change), or, after Step 1, `['stack:adult-browse', '@adultToolbar']`. Check the compact layout (`adult-page`) the same way (it has its rail, so it's OK today; keep it so).
 
-### 12.2 ThePornDB provider (`src/server/streamingServer/lib/adultMeta/providers/theporndb.js`)
+### 12.2 ThePornDB provider (`apps/server/lib/adultMeta/providers/theporndb.js`)
 **Fixed 2026-10-15**: curated `SITES`, `sorts: ['newest']` exposed by `/api/adult/meta/providers` and used by `adult-browse` `rowSpecs()`, future-dated / cover-less items dropped, "New releases" = merge of the home studios, periods via `year=`. Note: movie covers turned out to be **portrait** (`image`, `posters.*`); the landscape images seen at first belonged to scraped junk entries, so no landscape card variant is needed. Details below are the original findings.
 
 Tested with a real key (2026-10-15): the key works, but
@@ -284,16 +284,16 @@ Tested with a real key (2026-10-15): the key works, but
 
 ## 13. Files you will touch (summary)
 
-New: `src/app/movement/*` (+ specs), `docs/movement-system-plan.md` (this file: update its status as you go).
-Changed in Step 1: `src/app/app.module.ts`, `src/app/app.component.ts` (engine init), `src/app/pointer.service.ts`, `src/styles.scss`, `src/app/CLAUDE.md`.
-Pilot: `src/app/adult-browse/*`, `src/app/adult-title/*`, `src/app/adult-page/*`, `src/app/text-keyboard/*`, `src/app/adult.service.ts` (drop focus keys).
+New: `apps/tv/src/app/movement/*` (+ specs), `docs/movement-system-plan.md` (this file: update its status as you go).
+Changed in Step 1: `apps/tv/src/app/app.module.ts`, `apps/tv/src/app/app.component.ts` (engine init), `apps/tv/src/app/pointer.service.ts`, `apps/tv/src/styles.scss`, `apps/tv/src/app/CLAUDE.md`.
+Pilot: `apps/tv/src/app/adult-browse/*`, `apps/tv/src/app/adult-title/*`, `apps/tv/src/app/adult-page/*`, `apps/tv/src/app/text-keyboard/*`, `apps/tv/src/app/adult.service.ts` (drop focus keys).
 Later: `watchlist-page/*`, `search-page/*`, `show-options/*`, `movie-options/*`, `movies-slider/*`, `movies-page/*`, `catalog.ts`, `movies.service.ts` (`SearchState`), profile pages, power page.
 
 Conventions to keep (from the CLAUDE.md files): Angular 14 NgModule, no standalone components; RxJS subjects in root services; listener hygiene (store handlers, remove in `ngOnDestroy`, never assign `addEventListener`'s return value); key bindings only in `keymap.ts`; match the surrounding code style and comment density; the streaming server URL only from `server-config.ts`.
 
 ## 14. Implementation notes (what differs from the plan, 2026-10-15)
 
-- **Library patch** (`src/plugins/spacialNavigation.js`, marked "Playpex"): a `leaveFor` value may be a function (called when leaving; returns an element, `false` = nothing, `null` = blocked), and `navigableElements(sectionId)` is public. `FocusEngine.target([...])` builds those functions for `'stack:'/'row:'/'grid:'` targets and fallback chains; `PointerService.canReach` asks `FocusEngine.leads()`.
+- **Library patch** (`apps/tv/src/plugins/spacialNavigation.js`, marked "Playpex"): a `leaveFor` value may be a function (called when leaving; returns an element, `false` = nothing, `null` = blocked), and `navigableElements(sectionId)` is public. `FocusEngine.target([...])` builds those functions for `'stack:'/'row:'/'grid:'` targets and fallback chains; `PointerService.canReach` asks `FocusEngine.leads()`.
 - **Focus causes**: `key`, `pointer`, `select` (the plan's `click`: any Enter / click remembers the item, so Enter on a hovered poster comes back to it), `restore`.
 - **`enter="nearest"`** on containers (new): keyboards and filter grids enter at the on-screen entry nearest to where focus comes from instead of the remembered one.
 - **Short button lines** (filter panel actions / periods, title page actions, keyboard's bottom row) are one-line `pxGrid`s, not `pxRow`s: a `pxRow` always scrolls sideways, which clips its items' zoom vertically.
@@ -303,12 +303,12 @@ Conventions to keep (from the CLAUDE.md files): Angular 14 NgModule, no standalo
 - **Row snapping** (added after the pilot, user request): `row-top` stacks snap wheel / trackpad scrolling to a row at the top (`scroll-snap-type: y mandatory` on the stack, `scroll-snap-align: start` on each block). The Scroller turns snapping off while it tweens (`.px-snap-paused`), since Chromium snaps every programmatic scroll write. `[snap]="false"` opts out.
 - Rows get 10px of sideways zoom room (not 14): the 1.1 zoom of a 180px poster needs 9px and the 10px gap keeps the previous poster hidden.
 - Handoff (§6.3) counts a stack entry as on screen when a third of it shows (a row peeking in under the current one, hovered, stays the starting point); rows / grids need the item whole.
-- `angular.json`'s test target loaded the library from a URL, which broke `ng test`; removed (the app imports the vendored copy). Movement specs: `src/app/movement/*.spec.ts`, 24 passing.
+- `angular.json`'s test target loaded the library from a URL, which broke `ng test`; removed (the app imports the vendored copy). Movement specs: `apps/tv/src/app/movement/*.spec.ts`, 24 passing.
 - Verified with the harness (§9) on `/adult/browse`, `/adult/title`, `/adult/releases`, the filter panel, the text keyboard and `/watchlist`; `/movies/list` (unmigrated) checked for regressions. Not checked: `prefers-reduced-motion` in a real window (the Scroller reads the media query), a real trackpad, and a hands-on session in `npm run electron`.
 
 ## 15. Motion strategies (added 2026-10-15, user decision)
 
-Principle 1 ("real scrolling everywhere") is now per container: the user found translations snappier for the category views (cards in rows), so how a container moves became a strategy of the engine (`src/app/movement/motion.ts`), chosen with `motion="scroll" | "transform"`; nested containers inherit it.
+Principle 1 ("real scrolling everywhere") is now per container: the user found translations snappier for the category views (cards in rows), so how a container moves became a strategy of the engine (`apps/tv/src/app/movement/motion.ts`), chosen with `motion="scroll" | "transform"`; nested containers inherit it.
 
 - `ScrollMotion`: what §3–§7 describe (Scroller tweens, native wheel, CSS snapping).
 - `TransformMotion`: the host clips (`.px-clip`), its `pxTrack` child (or, for rows, the host itself) gets `translate3d` with a 250 ms easeOutCubic CSS transition. It runs on the compositor, so it stays smooth while Angular is busy; a new target re-targets the running transition (held keys glide). Offsets live in the motion (no `scrollLeft`). The wheel is the engine's: `FocusEngine.wheel()` (called by `PointerService`) accumulates 40 px of travel, then steps the stack one row (vertical) or the row under the cursor one poster (sideways: trackpad, tilt, shift + wheel), at most every 140 ms; hover pauses 350 ms. Trackpad momentum is not emulated (the user's choice between free and stepped sideways movement was left open; stepping was picked to match the keys and row snapping).

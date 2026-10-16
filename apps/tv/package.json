@@ -1,0 +1,119 @@
+{
+  "name": "@playpex/tv",
+  "version": "0.9.0",
+  "private": true,
+  "description": "This is a media streaming App with a tv interface experience",
+  "author": "Iheb Belhaj",
+  "keywords": [
+    "Playpex",
+    "Streamer",
+    "media",
+    "tv",
+    "movies",
+    "Media Player"
+  ],
+  "main": "electron/main.js",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve -o",
+    "build": "ng build --base-href ./",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "electron": "ng build --base-href ./ && electron .",
+    "forge-start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "electronBuild": "electron-builder"
+  },
+  "config": {
+    "forge": {
+      "make_targets": {
+        "win32": [
+          "squirrel"
+        ],
+        "darwin": [
+          "zip"
+        ],
+        "linux": [
+          "deb",
+          "rpm"
+        ]
+      },
+      "electronPackagerConfig": {
+        "packageManager": "npm"
+      },
+      "electronWinstallerConfig": {
+        "name": "Playpex"
+      },
+      "electronInstallerDebian": {},
+      "electronInstallerRedhat": {},
+      "github_repository": {
+        "owner": "Iheb Belhaj",
+        "name": "codduck"
+      },
+      "windowsStoreConfig": {
+        "packageName": "",
+        "name": "Playpex"
+      }
+    }
+  },
+  "build": {
+    "appId": "Playpex",
+    "files": [
+      "dist/playpex/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "installerIcon": "favicon.ico",
+      "uninstallerIcon": "favicon.ico",
+      "uninstallDisplayName": "Playpex-unistaller",
+      "license": "../../licence.md",
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "@angular/animations": "^14.0.0",
+    "@angular/common": "^14.0.0",
+    "@angular/compiler": "^14.0.0",
+    "@angular/core": "^14.0.0",
+    "@angular/forms": "^14.0.0",
+    "@angular/platform-browser": "^14.0.0",
+    "@angular/platform-browser-dynamic": "^14.0.0",
+    "@angular/router": "^14.0.0",
+    "@playpex/server": "*",
+    "@types/gsap": "^3.0.0",
+    "@types/youtube": "^0.0.47",
+    "electron-shutdown-command": "^2.0.1",
+    "express": "^4.17.1",
+    "gsap": "^3.10.4",
+    "rxjs": "~7.5.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.11.4"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^14.0.2",
+    "@angular/cli": "~14.0.2",
+    "@angular/compiler-cli": "^14.0.0",
+    "@electron-forge/cli": "^6.0.0-beta.67",
+    "@types/jasmine": "~4.0.0",
+    "electron": "^44.7.0",
+    "electron-builder": "^23.6.0",
+    "electron-packager": "^16.0.0",
+    "jasmine-core": "~4.1.0",
+    "karma": "~6.3.0",
+    "karma-chrome-launcher": "~3.1.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.0.0",
+    "karma-jasmine-html-reporter": "~1.7.0",
+    "typescript": "~4.7.2"
+  }
+}

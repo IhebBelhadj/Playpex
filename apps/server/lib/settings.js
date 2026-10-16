@@ -1,0 +1,283 @@
+'use strict';
+
+// Server settings: <config>/settings.json (docs/server-separation-plan.md §5.3),
+// meant to be edited from the dashboard. Read by start() before anything else
+// (port, bind address, download dir are needed first).
+//
+// Environment variables win over the file (Docker, the dev .env); `sources()`
+// tells which keys they lock. Only keys of defaults() exist: unknown keys in
+// the file are dropped, wrong types fall back to the default.
+//
+//   settings.get('general.port')            effective value
+//   settings.update({ general: { port: 28480 } })
+//     → { settings: <public view>, restartRequired: ['general.port'] }
+
+var fs = require('fs'),
+  os = require('os'),
+  path = require('path'),
+  paths = require('./paths');
+
+var FILE = path.join(paths.config, 'settings.json');
+
+var DEFAULT_PORT = 28470;
+var LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
+
+function defaults() {
+  return {
+    general: {
+      serverName: os.hostname(),
+      port: DEFAULT_PORT,
+      logLevel: 'info'
+    },
+    network: {
+      // false: loopback only (127.0.0.1). Stays off by default until pairing
+      // exists (plan step 4): with it on, anyone on the LAN can use the API.
+      lanSharing: false,
+      allowedHosts: [],   // extra Host names (a DNS name pointing at this machine)
+      corsOrigins: []     // extra web origins allowed to call the API
+    },
+    storage: {
+      downloadDir: ''     // '' = <cache>/torrent_data (lib/paths.js)
+    },
+    providers: {
+      tmdbApiKey: '',
+      openSubtitlesApiKey: '',
+      wyzieApiKey: '',
+      thePornDbApiKey: ''
+    },
+    transcoding: {
+      ffmpegPath: '',     // '' = bundled copy, else the PATH (lib/ffmpeg.js)
+      ffprobePath: ''
+    }
+  };
+}
+
+// key → environment variables, first set one wins
+var ENV = {
+  'general.port': ['PLAYPEX_PORT', 'STREAMER_PORT'],
+  'general.logLevel': ['PLAYPEX_LOG_LEVEL'],
+  'network.lanSharing': ['PLAYPEX_LAN_SHARING'],
+  'storage.downloadDir': ['PLAYPEX_DOWNLOAD_DIR'],
+  'providers.tmdbApiKey': ['TMDB_API_KEY'],
+  'providers.openSubtitlesApiKey': ['OPENSUBTITLES_API_KEY'],
+  'providers.wyzieApiKey': ['WYZIE_API_KEY'],
+  'providers.thePornDbApiKey': ['THEPORNDB_API_KEY'],
+  'transcoding.ffmpegPath': ['FFMPEG_PATH'],
+  'transcoding.ffprobePath': ['FFPROBE_PATH']
+};
+
+// Applied on the next start only
+var RESTART = ['general.port', 'network.lanSharing'];
+
+// Never returned in full by publicView()
+var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey',
+  'providers.thePornDbApiKey'];
+
+var stored = null,      // what settings.json holds (validated)
+  effective = null,     // stored + environment
+  envKeys = {};         // key → env var that set it
+
+function keys(obj, prefix) {
+  return Object.keys(obj).reduce(function (all, k) {
+    var v = obj[k], key = prefix ? prefix + '.' + k : k;
+    return all.concat(v && typeof v === 'object' && !Array.isArray(v) ? keys(v, key) : [key]);
+  }, []);
+}
+
+function read(obj, key) {
+  return key.split('.').reduce(function (o, k) { return o == null ? undefined : o[k]; }, obj);
+}
+
+function write(obj, key, value) {
+  var parts = key.split('.'), last = parts.pop();
+  parts.reduce(function (o, k) { return o[k]; }, obj)[last] = value;
+}
+
+function validatePort(value) {
+  var port = Number(value);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    return 'port must be a whole number between 1024 and 65535';
+  }
+  return null;
+}
+
+// value converted to the default's type, or an error message
+function coerce(key, value, fromEnv) {
+  var def = read(defaults(), key);
+  if (typeof def === 'number') {
+    var n = Number(value);
+    if (key === 'general.port') {
+      var err = validatePort(value);
+      return err ? { error: err } : { value: n };
+    }
+    return Number.isFinite(n) ? { value: n } : { error: key + ' must be a number' };
+  }
+  if (typeof def === 'boolean') {
+    if (typeof value === 'boolean') {
+      return { value: value };
+    }
+    if (fromEnv && /^(1|true|yes|on)$/i.test(value)) {
+      return { value: true };
+    }
+    if (fromEnv && /^(0|false|no|off)$/i.test(value)) {
+      return { value: false };
+    }
+    return { error: key + ' must be true or false' };
+  }
+  if (Array.isArray(def)) {
+    if (fromEnv) {
+      value = String(value).split(',');
+    }
+    if (!Array.isArray(value) || value.some(function (v) { return typeof v !== 'string'; })) {
+      return { error: key + ' must be a list of strings' };
+    }
+    return { value: value.map(function (v) { return v.trim(); }).filter(Boolean) };
+  }
+  if (typeof value !== 'string') {
+    return { error: key + ' must be a string' };
+  }
+  if (key === 'general.logLevel' && LOG_LEVELS.indexOf(value) === -1) {
+    return { error: 'logLevel must be one of ' + LOG_LEVELS.join(', ') };
+  }
+  return { value: value.trim() };
+}
+
+function compute() {
+  effective = JSON.parse(JSON.stringify(stored));
+  envKeys = {};
+  Object.keys(ENV).forEach(function (key) {
+    var name = ENV[key].filter(function (n) { return process.env[n] !== undefined && process.env[n] !== ''; })[0];
+    if (!name) {
+      return;
+    }
+    var result = coerce(key, process.env[name], true);
+    if (result.error) {
+      warn('ignoring ' + name + ': ' + result.error);
+      return;
+    }
+    write(effective, key, result.value);
+    envKeys[key] = name;
+  });
+}
+
+// lib/logger requires nothing from here, but is configured from these settings:
+// require it late
+function warn(msg) {
+  require('./logger').child('settings').warn(msg);
+}
+
+// (Re)reads settings.json. A broken file is reported and left untouched (the
+// defaults are used), so a typo never wipes the user's settings.
+function load() {
+  var data = {};
+  try {
+    data = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      warn('settings.json unreadable, using defaults: ' + e.message);
+    }
+  }
+  stored = defaults();
+  keys(stored).forEach(function (key) {
+    var value = read(data, key);
+    if (value === undefined) {
+      return;
+    }
+    var result = coerce(key, value, false);
+    if (result.error) {
+      warn('settings.json: ' + result.error + ', using the default');
+    } else {
+      write(stored, key, result.value);
+    }
+  });
+  compute();
+  return effective;
+}
+
+function ensure() {
+  if (!effective) {
+    load();
+  }
+}
+
+function get(key) {
+  ensure();
+  return read(effective, key);
+}
+
+// 'env' (locked by an environment variable), 'file' or 'default'
+function sources() {
+  ensure();
+  var def = defaults();
+  return keys(def).reduce(function (all, key) {
+    all[key] = envKeys[key] ? 'env' : (JSON.stringify(read(stored, key)) !== JSON.stringify(read(def, key)) ? 'file' : 'default');
+    return all;
+  }, {});
+}
+
+function mask(value) {
+  return value ? '••••' + value.slice(-4) : '';
+}
+
+// For the dashboard: effective values with secrets masked, and where each comes from
+function publicView() {
+  ensure();
+  var view = JSON.parse(JSON.stringify(effective));
+  SECRETS.forEach(function (key) { write(view, key, mask(read(view, key))); });
+  return { settings: view, sources: sources(), env: Object.assign({}, envKeys) };
+}
+
+// Merges `patch` into settings.json (atomically). Throws an Error with
+// code 'INVALID_SETTINGS' and the list of problems; nothing is saved then.
+// A masked secret sent back unchanged is ignored.
+function update(patch) {
+  ensure();
+  var next = JSON.parse(JSON.stringify(stored)),
+    changed = [],
+    errors = [];
+  keys(defaults()).forEach(function (key) {
+    var value = read(patch || {}, key);
+    if (value === undefined || (SECRETS.indexOf(key) !== -1 && value === mask(read(stored, key)) && value)) {
+      return;
+    }
+    var result = coerce(key, value, false);
+    if (result.error) {
+      errors.push(result.error);
+    } else if (JSON.stringify(result.value) !== JSON.stringify(read(next, key))) {
+      write(next, key, result.value);
+      changed.push(key);
+    }
+  });
+  if (errors.length) {
+    var err = new Error(errors.join('; '));
+    err.code = 'INVALID_SETTINGS';
+    err.errors = errors;
+    throw err;
+  }
+  if (changed.length) {
+    fs.mkdirSync(path.dirname(FILE), { recursive: true });
+    var tmp = FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2) + '\n');
+    fs.renameSync(tmp, FILE);
+    stored = next;
+    compute();
+  }
+  return {
+    settings: publicView(),
+    changed: changed,
+    restartRequired: changed.filter(function (k) { return RESTART.indexOf(k) !== -1; }),
+    lockedByEnv: changed.filter(function (k) { return envKeys[k]; })
+  };
+}
+
+module.exports = {
+  FILE: FILE,
+  DEFAULT_PORT: DEFAULT_PORT,
+  LOG_LEVELS: LOG_LEVELS,
+  load: load,
+  get: get,
+  sources: sources,
+  publicView: publicView,
+  update: update,
+  validatePort: validatePort
+};

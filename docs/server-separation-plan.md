@@ -1,6 +1,6 @@
 # Playpex Media Server + separate clients: plan
 
-Status (2026-10-16): **proposal**, nothing implemented. Revision 2: the server is now its own installable product (bundled runtime, background process, tray icon, web dashboard, like Plex Media Server), and clients are separate apps; the Electron TV app is the first of several. Decided: E (fixed port 28470, user can change it; §5.9) and H (Windows install without admin rights; §8.2). The other decisions in §12 still need the user's confirmation (defaults given). Read the root `CLAUDE.md`, `src/app/CLAUDE.md` and `src/server/streamingServer/CLAUDE.md` first; this plan assumes them.
+Status (2026-10-16): **in progress — steps 0 and 1 done** (§11). Revision 2: the server is its own installable product (bundled runtime, background process, tray icon, web dashboard, like Plex Media Server), and clients are separate apps; the Electron TV app is the first of several. All decisions in §12 are taken. Read the root `CLAUDE.md`, `apps/tv/src/app/CLAUDE.md` and `apps/server/CLAUDE.md` first; this plan assumes them. (§2 describes the code before the split, with its old paths.)
 
 ## 1. Goal
 
@@ -79,13 +79,13 @@ Principles:
 /
 ├── package.json                 workspaces: apps/*, packages/*; root scripts only
 ├── apps/
-│   ├── server/                  server core (today's src/server/streamingServer), CommonJS, pure Node
-│   │   ├── src/ …                 lib/, routes/, db/, providers/, subtitles/, discovery, auth, logger, settings
+│   ├── server/                  server core (was src/server/streamingServer), CommonJS, pure Node
+│   │   ├── server.js, lib/ …      lib/ keeps its layout (routes/, db/, providers/, subtitles/); discovery, auth, logger, settings go in lib/ too
 │   │   ├── public/                built dashboard (generated, git-ignored)
 │   │   └── bin/playpex-server.js  headless entry (start/stop, signals)
 │   ├── server-desktop/          Electron supervisor: tray, autostart, updater, installers (electron-builder)
 │   ├── dashboard/               dashboard SPA (§7), builds into apps/server/public
-│   └── tv/                      today's Angular 14 app + its own Electron shell (no server), installer "Playpex TV"
+│   └── tv/                      the Angular 14 app (src/) + its Electron shell (electron/main.js; still boots the server until step 9), installer "Playpex TV"
 ├── packages/
 │   ├── protocol/                OpenAPI spec, TS types of every API shape, discovery/pairing constants, apiVersion
 │   └── client-sdk/              small TS SDK: base URL + token, typed calls, media URL builder, error mapping
@@ -96,11 +96,12 @@ Principles:
 - Each app has its own `package.json` (the server's lists only its runtime deps, so packaging copies a small `node_modules`).
 - `apps/tv` keeps Angular 14 untouched for now. The dashboard is a separate app, so it can use a current framework without upgrading the TV UI (§12 D).
 - The move is mostly `git mv` (step 0). `CLAUDE.md` files move with their code and their paths are updated.
+- `.env` stays at the repo root (dev only); `apps/server/server.js` reads it from there.
 
 ## 5. Server core (`apps/server`)
 
 ### 5.1 Lifecycle and entry points
-- `src/index.js` exports `start(options) → Promise<{port, urls}>` and `stop()`. Nothing listens on `require`.
+- `index.js` (next to `server.js`) exports `start(options) → Promise<{port, urls}>` and `stop()`. Nothing listens on `require`.
 - `bin/playpex-server.js`: headless entry. Reads settings and env, calls `start()`, and on SIGINT/SIGTERM stops gracefully (sends the mDNS goodbye, closes HTTP, destroys engines).
 - In the desktop edition the supervisor runs this same entry in a `utilityProcess` and receives status over `process.parentPort` messages (`{type:'status', port, streams, clients, …}`, `{type:'log', …}`).
 - Uncaught exceptions are logged and the process exits with a code. The supervisor (or systemd/Docker) restarts it, with back-off.
@@ -263,8 +264,8 @@ Every step is shippable. The current all-in-one app keeps working until step 9.
 
 | # | Step | Verify |
 |---|---|---|
-| 0 | **Monorepo**: npm workspaces, `git mv` into `apps/server`, `apps/tv`, empty `apps/dashboard`, `apps/server-desktop`, `packages/protocol`; split `package.json`s; TV Electron still requires the server via the workspace (temporary) | `npm run electron` unchanged; `npm run -w apps/server start` runs headless |
-| 1 | **Server core basics**: `start/stop` + `bin/playpex-server.js`, `server.json` id, `settings.json` (+ env overrides; `.env` dev only), logger (files + ring buffer, replaces console/morgan), bind/Host check/CORS list, `POST` instead of state-changing `GET`, ffmpeg resolution order | headless start/stop; logs rotate; LAN `curl` refused when sharing off |
+| 0 ✅ | **Monorepo**: npm workspaces, `git mv` into `apps/server`, `apps/tv`, empty `apps/dashboard`, `apps/server-desktop`, `packages/protocol`; split `package.json`s; TV Electron still requires the server via the workspace (temporary) | `npm run electron` unchanged; `npm run -w apps/server start` runs headless |
+| 1 ✅ | **Server core basics**: `start/stop` + `bin/playpex-server.js`, `server.json` id, `settings.json` (+ env overrides; `.env` dev only), logger (files + ring buffer, replaces console/morgan), bind/Host check/CORS list, `POST` instead of state-changing `GET`, ffmpeg resolution order | headless start/stop; logs rotate; LAN `curl` refused when sharing off |
 | 2 | **API v1 + protocol package**: `/api/v1` routes (old ones aliased), error codes, `GET /api/v1/server`, OpenAPI spec + generated types + contract test; TV client on `ServerService` + v1 | all TV flows (movie, episode, subtitles, transcode, 18+, watch list) |
 | 3 | **Leases, reaper, limits, sessions** (+ 3b capabilities / playback decision, can trail) | two clients on one torrent; killed client cleaned up; `BUSY` on the limit |
 | 4 | **Auth**: admin account + session, devices table + migration, pairing codes, tokens, loopback trust, events WebSocket | LAN request w/o token → 401; pair → works; revoke → 401 |
@@ -275,9 +276,13 @@ Every step is shippable. The current all-in-one app keeps working until step 9.
 | 9 | **TV client separation**: Electron shell without server, preload/IPC, header injection, `/connect` + pairing UI, lost-connection modal, own installer; remove old unversioned routes and `:3344` | fresh client install pairs with a server on the LAN; local server auto-connects without pairing |
 | 10 | **Docs**: `docs/api/` client author guide (discovery, pairing, auth, streaming, capabilities), update all `CLAUDE.md` files (architecture, hard-coded values, commands per app) | a reviewer can sketch a client from the docs alone |
 
+Step 0 notes (done 2026-10-16): `src/server/streamingServer` → `apps/server` (`@playpex/server`, `npm run server`), Angular app → `apps/tv/src`, `src/electron.js` → `apps/tv/electron/main.js` (`require('@playpex/server')`), `drizzle.config.js` → `apps/server`. Placeholder packages for `apps/dashboard`, `apps/server-desktop`, `packages/protocol`. Unused deps dropped: `serve-static`, `nodemon`, `ngx-electron`, `spatial-navigation-js`, `electron-compile`, `electron-squirrel-startup`, `electron-prebuilt-compile`. Verified: headless server answers, `ng build`, Electron app loads the UI and the server, movement specs (29), `db:generate` (no diff). Not verified: electron-builder / forge packaging (unverified before too; replaced in steps 6/9).
+
+Step 1 notes (done 2026-10-16): `index.js` (`start`/`stop`), `bin/playpex-server.js` (+ `set-port`), `lib/settings.js`, `lib/logger.js`, `lib/identity.js` + `GET /api/v1/server` (pulled forward from step 2: the TV app uses it to reuse a running server), `lib/middleware.js` (Host check, CORS allow list + refusal of state-changing cross-origin requests), `lib/ffmpeg.js`; `deselect` is `POST`; socket.io servers (:9000 events, :9500 remote stub) no longer started, `morgan`/`cors`/`socket.io` removed from the deps (`lib/socket.js`, `lib/remoteSocketManager.js` left to delete). Deviations: **own logger instead of pino** (pino's file transports run in worker threads, fragile in packaged Electron/utilityProcess; same features: JSON lines, daily + 10 MB rotation, 7 files, ring buffer); **`lanSharing` defaults to off** until pairing exists (step 4); settings only list what is wired now (each later step adds its own keys); no recovery mode yet (it is a dashboard page, step 5): a taken port makes the headless server exit with `PORT_IN_USE` and a hint, and the TV app reuses a running Playpex server or falls back to a free loopback port. Not done: naming the process that holds the port. Verified headless (Host/Origin checks, loopback-only bind, LAN with `PLAYPEX_LAN_SHARING=1`, `set-port`, broken `settings.json`, graceful SIGINT, log file, a torrent added/streamed 206/deleted) and the TV app in its three start cases.
+
 Rough size: 0–2 medium (mostly moving and renaming), 3–4 medium, 5 large (new app), 6–7 large (packaging, VMs on three OSes, signing), 8 medium, 9 medium, 10 small.
 
-## 12. Decisions to confirm (defaults in bold)
+## 12. Decisions (all taken 2026-10-16: the bold option)
 
 - **A. Desktop server host**: **Electron as a windowless supervisor** (Node 24 included, tray/autostart/updater/installers already known, ~100 MB) / bundled Node binary + a small native tray helper (lighter, but tray, updater and installers to build ourselves) / Tauri (Rust) launcher spawning bundled Node (light, adds a Rust toolchain).
 - **B. Pairing**: **rotating 6-digit code shown in dashboard/tray, typed on the client** / approve a pending device in the dashboard / static server PIN.
