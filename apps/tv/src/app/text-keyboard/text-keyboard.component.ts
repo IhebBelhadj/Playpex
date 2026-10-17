@@ -22,6 +22,8 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   // on-screen keys are capitals: capitalize word starts (names) or type lower case (searches)
   @Input() capitalizeWords = true;
   @Input() doneLabel = 'Done';
+  // extra keys after the digits, e.g. ['.', ':'] for an address
+  @Input() symbols:string[] = [];
   @Output() done = new EventEmitter<string>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -49,7 +51,7 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
 
     this.keyListener = (e:KeyboardEvent) => {
       if (e.key == 'Backspace') this.press('del');
-      else if (e.key.length == 1 && /[\p{L}\p{N} '\-&.]/u.test(e.key)) {
+      else if (e.key.length == 1 && (/[\p{L}\p{N} '\-&.]/u.test(e.key) || this.symbols.includes(e.key))) {
         // typed, not pressed on screen: space would also "click" the
         // focused key button
         e.preventDefault();

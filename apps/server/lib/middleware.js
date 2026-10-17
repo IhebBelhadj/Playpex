@@ -9,9 +9,11 @@ var net = require('net'),
   settings = require('./settings'),
   log = require('./logger').child('http');
 
-// Origins always allowed: the TV client on file:// (Chromium sends "file://"
-// or "null") and `ng serve` during development
-var BUILTIN_ORIGINS = ['file://', 'null', 'http://localhost:4200', 'http://127.0.0.1:4200'];
+// Origins always allowed: the TV UI under `ng serve` during development. The
+// TV app itself (file://) sends no Origin: its Electron shell removes it and
+// answers CORS itself (apps/tv/electron/auth.js), so `null`, which any
+// sandboxed iframe on the web sends too, isn't trusted.
+var BUILTIN_ORIGINS = ['http://localhost:4200', 'http://127.0.0.1:4200'];
 
 function hostname(hostHeader) {
   if (!hostHeader) {

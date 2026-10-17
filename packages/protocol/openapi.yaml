@@ -471,7 +471,7 @@ paths:
       summary: The program the server runs in, and the desktop app's own settings and updater state
       description: |
         `kind` is `desktop` when Playpex Media Server's desktop app (tray icon) runs the server, `headless`
-        on its own (systemd, Docker, `playpex-server`), `embedded` inside the TV app. `desktop` is null
+        on its own (systemd, Docker, `playpex-server`). `desktop` is null
         unless `kind` is `desktop`. Changes arrive on the events socket as `host.updated` (admin).
       security:
         - adminSession: []
@@ -2740,7 +2740,7 @@ components:
       type: object
       required: [kind, desktop]
       properties:
-        kind: { type: string, enum: [headless, desktop, embedded] }
+        kind: { type: string, enum: [headless, desktop] }
         desktop:
           oneOf:
             - type: 'null'

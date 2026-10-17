@@ -4,6 +4,7 @@
   <div class="keyGrid" pxGrid enter="nearest">
     <button *ngFor="let k of letters" class="key" pxItem [attr.data-key]="k">{{ k }}</button>
     <button *ngFor="let k of digits" class="key" pxItem [attr.data-key]="k">{{ k }}</button>
+    <button *ngFor="let k of symbols" class="key" pxItem [attr.data-key]="k">{{ k }}</button>
   </div>
   <div class="keyRow" pxGrid enter="nearest">
     <button class="key wide" pxItem data-key="space"><img src="assets/icons/spacebar.svg" alt="Space"></button>

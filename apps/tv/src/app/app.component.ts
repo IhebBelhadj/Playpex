@@ -11,6 +11,7 @@ import { delay } from 'rxjs';
 import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { TorrentPickerService } from './torrent-picker.service';
 import { PlayChoiceService } from './play-choice.service';
+import { ConnectionService } from './connection.service';
 import { PointerService } from './pointer.service';
 import { FocusEngine } from './movement/movement';
 @Component({
@@ -42,6 +43,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     private moviesService:MoviesService,
     private torrentPicker:TorrentPickerService,
     private playChoice:PlayChoiceService,
+    private connection:ConnectionService,
     private pointer:PointerService,
     private focusEngine:FocusEngine,
     ){
@@ -106,9 +108,10 @@ export class AppComponent implements AfterViewInit , OnInit{
     document.addEventListener('keydown' , (e)=>{
       let action = actionForKey(e);
 
-      // An open modal (torrent picker, resume/start-over) takes select/back;
-      // the page behind must not react
-      let modal = this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
+      // An open modal (lost connection, torrent picker, resume/start-over)
+      // takes select/back; the page behind must not react
+      let modal = this.connection.isOpen ? this.connection
+        : this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
       if (modal) {
         if (action == 'select' || action == 'back') {
           e.preventDefault();

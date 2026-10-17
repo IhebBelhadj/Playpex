@@ -2,46 +2,39 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, shareReplay } from 'rxjs';
 import type { Schema } from '@playpex/protocol';
-import { API_PREFIX, SERVER_URL } from './server-config';
+import { API_PREFIX, connection } from './server-config';
 
 export type ServerInfo = Schema<'ServerInfo'>;
 
-const DEVICE_KEY = 'playpex.deviceId';
 const DEVICE_PARAM = 'device';   // @playpex/protocol DEVICE_PARAM
 
-// This client's id for the server's torrent leases, made once. Until pairing
-// gives each device a token (plan step 4); the Electron shell will own it
-// when the client is separated (step 9).
-function deviceId():string {
-  const fresh = 'tv-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
-  try {
-    let id = localStorage.getItem(DEVICE_KEY);
-    if (!id) {
-      id = fresh;
-      localStorage.setItem(DEVICE_KEY, id);
-    }
-    return id;
-  } catch (e) {
-    return fresh;   // not remembered: a new device per start
-  }
-}
-
-// The Playpex server this client uses (resolved in server-config.ts). Every
-// service builds its URLs from `api`; the API is described in
-// packages/protocol/openapi.yaml.
+// The Playpex server this client uses (resolved before boot in
+// server-config.ts; none → the /connect page, ServerGuard). Every service
+// builds its URLs from `api`; the API is described in
+// packages/protocol/openapi.yaml. In the Electron app the shell adds the
+// device token and client headers to every request (apps/tv/electron/auth.js).
 @Injectable({
   providedIn: 'root'
 })
 export class ServerService {
 
-  /** Origin of the server, e.g. http://localhost:28470 */
-  readonly url = SERVER_URL;
+  /** false → no usable server: the app shows /connect */
+  readonly connected = !!connection?.server;
+
+  /** Origin of the server, e.g. http://192.168.1.20:28470 ('' when not connected) */
+  readonly url = connection?.server?.url || '';
+
+  /** Its name, for the menu and messages */
+  readonly name = connection?.server?.name || '';
+
+  /** On this machine (loopback: no pairing) */
+  readonly local = !!connection?.server?.local;
 
   /** Base of every API call: <url>/api/v1 */
-  readonly api = `${SERVER_URL}${API_PREFIX}`;
+  readonly api = `${this.url}${API_PREFIX}`;
 
-  /** Sent as `?device=` with torrent calls and media URLs (leases: who holds which torrent) */
-  readonly deviceId = deviceId();
+  /** This install's id (client.json in Electron): `?device=` on torrent calls and media URLs (leases) */
+  readonly deviceId = connection?.deviceId || '';
 
   private info$:Observable<ServerInfo> | null = null;
 

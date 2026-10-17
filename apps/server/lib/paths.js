@@ -25,19 +25,8 @@ var path = require('path');
 var APP_NAME = 'Playpex';
 var home = os.homedir();
 
-function configDir() {
-  if (process.env.PLAYPEX_CONFIG_DIR) {
-    return process.env.PLAYPEX_CONFIG_DIR;
-  }
-  switch (process.platform) {
-    case 'win32':
-      return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), APP_NAME);
-    case 'darwin':
-      return path.join(home, 'Library', 'Application Support', APP_NAME);
-    default:
-      return path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), APP_NAME);
-  }
-}
+// Shared with clients on the same machine (@playpex/protocol/local)
+var configDir = require('@playpex/protocol/local').configDir;
 
 function cacheDir() {
   if (process.env.PLAYPEX_CACHE_DIR) {

@@ -244,7 +244,7 @@ test('auth: pairing (RFC 8628), device tokens, admin session, revoke', function 
     .then(function () { return call('GET', '/admin/setup', undefined, { expect: 200 }); })
     .then(function (res) { assert.equal(res.body.needed, true); })
     .then(function () { return call('POST', '/admin/setup', { username: 'admin', password: 'short' }, { expect: 400 }); })
-    // a sandboxed iframe on any site sends Origin: null (allowed by CORS for the TV app)
+    // a sandboxed iframe on any site sends Origin: null
     .then(function () {
       return call('POST', '/admin/setup', { username: 'evil', password: 'evil-password' },
         { expect: 403, headers: { Origin: 'null' } });
@@ -556,14 +556,17 @@ test('host: headless, then a (fake) desktop supervisor over parentPort', functio
   });
 });
 
-test('legacy unversioned routes still answer (until plan step 9)', function () {
+test('no unversioned routes, no Origin: null (plan step 9)', function () {
   return Promise.all([
-    call('GET', '/api/profiles', undefined, { expect: 200, raw: true }),
-    call('GET', '/torrents', undefined, { expect: 200, raw: true }),
-    call('GET', '/elsewhere.json', undefined, { expect: 404, raw: true })   // paths without a dot are dashboard pages
+    call('GET', '/api/profiles', undefined, { expect: 404, raw: true }),
+    call('GET', '/elsewhere.json', undefined, { expect: 404, raw: true }),   // paths without a dot are dashboard pages
+    // the TV app sends no Origin (its shell removes it); a sandboxed iframe sends `null`
+    call('POST', '/api/v1/profiles', { name: 'Iframe' }, { expect: 403, raw: true, headers: { Origin: 'null' } }),
+    call('POST', '/api/v1/profiles', { name: 'File page' }, { expect: 403, raw: true, headers: { Origin: 'file://' } })
   ]).then(function (r) {
-    assert.ok(Array.isArray(r[0].body.profiles));
-    assert.equal(r[2].body.code, 'NOT_FOUND');
+    assert.equal(r[0].body.code, 'NOT_FOUND');
+    assert.equal(r[1].body.code, 'NOT_FOUND');
+    assert.equal(r[2].body.code, 'ORIGIN_NOT_ALLOWED');
   });
 });
 

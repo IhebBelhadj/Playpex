@@ -20,6 +20,7 @@ const { createTray } = require('./lib/tray');
 const autostart = require('./lib/autostart');
 const updater = require('./lib/updater');
 const state = require('./lib/state');
+const local = require('@playpex/protocol/local');
 
 const APP_ID = 'app.playpex.mediaserver';
 
@@ -194,6 +195,25 @@ function onServerEvent(event) {
   }
 }
 
+// Where this app is installed, for Playpex TV on this machine: it starts us
+// when it finds no server (<config dir>/desktop-app.json, @playpex/protocol/local).
+// An AppImage runs from a temporary mount: its file is APPIMAGE.
+function rememberInstall() {
+  if (!app.isPackaged) {
+    return;
+  }
+  try {
+    local.writeDesktopApp({
+      executable: process.execPath,
+      appImage: process.env.APPIMAGE || null,
+      version: app.getVersion(),
+      platform: process.platform
+    });
+  } catch (e) {
+    console.error('Could not record the install location: ' + e.message);
+  }
+}
+
 // ── start ──────────────────────────────────────────────────────────────────
 
 function start() {
@@ -207,6 +227,7 @@ function start() {
   // First packaged launch: start at login on by default (plan §8.1). A
   // development run never registers itself.
   state.load();
+  rememberInstall();
   if (state.get('openAtLogin') === null && app.isPackaged) {
     setOpenAtLogin(true);
   } else if (process.platform === 'linux' && app.isPackaged && autostart.get()) {

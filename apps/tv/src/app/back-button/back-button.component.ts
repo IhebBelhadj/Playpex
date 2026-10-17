@@ -5,10 +5,11 @@ import { NavigationService } from '../navigation.service';
 import { MoviesService } from '../movies.service';
 import { TorrentPickerService } from '../torrent-picker.service';
 import { PlayChoiceService } from '../play-choice.service';
+import { ConnectionService } from '../connection.service';
 
 // "Back" for mouse users, top left of the shell under the menu's logo. Shown only while the cursor
 // is (`body.pointer-hidden` hides it), on pages there is a "back" from: titles,
-// the player, search (it has no menu), the power menu. Not on the picker and
+// the player, search (it has no menu), the power menu. Not on the picker, the server picker (/connect) and
 // the profile editor (full-screen layers with their own Cancel), nor on the
 // sections the menu shows next to (movies / TV lists, watch list, 18+): there
 // the menu is the way around. A plain (click)
@@ -36,6 +37,7 @@ export class BackButtonComponent implements OnDestroy {
     private moviesService:MoviesService,
     private torrentPicker:TorrentPickerService,
     private playChoice:PlayChoiceService,
+    private connection:ConnectionService,
   ) {
     this.routeSub = this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
@@ -44,7 +46,7 @@ export class BackButtonComponent implements OnDestroy {
 
   private showsOn(url:string) {
     let path = url.split('?')[0];
-    return path != '/' && !path.startsWith('/profiles')
+    return path != '/' && !path.startsWith('/profiles') && path != '/connect'
       && !['/watchlist', '/adult', '/adult/browse', '/adult/releases'].includes(path)
       // release lists: their own "Back to <title>" in the rail
       && !path.startsWith('/releases/')
@@ -53,7 +55,8 @@ export class BackButtonComponent implements OnDestroy {
 
   back() {
     // the modals take Escape too (AppComponent); same here
-    let modal = this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
+    let modal = this.connection.isOpen ? this.connection
+      : this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
     if (modal) modal.sendCommand('back');
     else this.navigation.addCommand('leave');
   }

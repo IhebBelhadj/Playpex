@@ -334,7 +334,7 @@ export interface paths {
         /**
          * The program the server runs in, and the desktop app's own settings and updater state
          * @description `kind` is `desktop` when Playpex Media Server's desktop app (tray icon) runs the server, `headless`
-         *     on its own (systemd, Docker, `playpex-server`), `embedded` inside the TV app. `desktop` is null
+         *     on its own (systemd, Docker, `playpex-server`). `desktop` is null
          *     unless `kind` is `desktop`. Changes arrive on the events socket as `host.updated` (admin).
          */
         get: operations["getHost"];
@@ -2314,7 +2314,7 @@ export interface components {
         };
         HostInfo: {
             /** @enum {string} */
-            kind: "headless" | "desktop" | "embedded";
+            kind: "headless" | "desktop";
             desktop: null | components["schemas"]["DesktopState"];
         };
         /** @description The desktop app (apps/server-desktop): its settings and its updater */

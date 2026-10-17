@@ -71,10 +71,9 @@ function requireAdmin(req, res, next) {
   });
 }
 
-// From the server machine, and not from a web page of another origin: the
-// CORS allow list accepts `Origin: null` (the TV app on file://), which a
-// sandboxed iframe on any site sends too. The dashboard is same-origin; the
-// CLI and curl send no Origin.
+// From the server machine, and not from a web page of another origin (the
+// CORS allow list has `ng serve`'s origins). The dashboard is same-origin; the
+// CLI, curl and the TV app send no Origin.
 function localOnly(req, res, next) {
   if (!auth.isLoopback(req)) {
     return errors.fail(res, 'FORBIDDEN', 'Only allowed from the server machine');

@@ -68,7 +68,7 @@ The admin can change the first three (Settings › Streaming).
 - **Traffic on the LAN is plain HTTP today.** Tokens, PINs and the admin's password cross the network unencrypted; anyone able to capture the network's traffic can reuse a device token. Run the server on a network you trust (WPA2/WPA3, not a guest network). HTTPS with a self-signed certificate that clients pin at pairing is proposed (plan §12 K): clients written now should keep the scheme (`http`/`https`) as part of a stored server URL rather than assume `http`.
 - Store tokens in the platform's secret storage; send them in the `Authorization` header rather than in URLs where the player allows it.
 - Access from outside the home network isn't supported (no TLS, no relay). Users who want it can join the server's network with a VPN such as Tailscale or WireGuard.
-- Browsers: the server only allows its own origin, `file://` pages and origins the admin listed, and checks `Host` against DNS rebinding. A web client must be served from an allowed origin.
+- Browsers: the server only allows its own origin and origins the admin listed (Settings › Network, `network.corsOrigins`), and checks `Host` against DNS rebinding. A web client must be served from an allowed origin. `Origin: null` (sandboxed iframes, `file://` pages in browsers) and `file://` are not trusted: a desktop shell that loads its UI from files, like Playpex TV, removes the `Origin` header in its own network layer and is then treated like any non-browser client (see the [worked example](README.md#a-worked-example-playpex-tv)).
 
 ## The spec
 

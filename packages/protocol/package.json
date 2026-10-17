@@ -9,6 +9,7 @@
     "index.js",
     "index.d.ts",
     "mdns.js",
+    "local.js",
     "openapi.yaml",
     "types/"
   ],

@@ -1,0 +1,16 @@
+<div class="connectionLost" *ngIf="connection.isOpen" pxSection="connectionLost" [trap]="true" pxSelector=".choice">
+  <div class="panel">
+    <h2 class="title">Lost connection to {{ connection.serverName }}</h2>
+    <p class="subtitle" *ngIf="!connection.stillLost">Playpex can't reach the server. Check that it is running and on the same network as this device.</p>
+    <p class="subtitle warning" *ngIf="connection.stillLost">Still can't reach {{ connection.serverName }}. It may be off, or on another network.</p>
+
+    <button class="choice" data-choice="retry">
+      <span class="label">{{ connection.retrying ? 'Looking for the server…' : 'Retry' }}</span>
+      <span class="detail">Also finds it at a new address</span>
+    </button>
+    <button class="choice" data-choice="servers">
+      <span class="label">Choose server</span>
+      <span class="detail">Servers on this network, or enter an address</span>
+    </button>
+  </div>
+</div>

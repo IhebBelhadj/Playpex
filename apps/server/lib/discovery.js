@@ -90,8 +90,8 @@ function reply(info) {
 
 function startUdp(info, port) {
   state.udp = { state: 'starting', port: port, error: null };
-  // reuseAddr: a second Playpex server on this machine (a test, the TV app's
-  // embedded one) can listen too; broadcasts reach every socket on the port
+  // reuseAddr: a second Playpex server on this machine (a test) can listen
+  // too; broadcasts reach every socket on the port
   var sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
   socket = sock;
   sock.on('error', function (err) {

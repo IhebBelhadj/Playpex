@@ -1,9 +1,12 @@
 {
   "name": "@playpex/tv",
+  "productName": "Playpex TV",
   "version": "0.9.0",
   "private": true,
-  "description": "This is a media streaming App with a tv interface experience",
+  "description": "Playpex TV: a 10-foot client of Playpex Media Server",
   "author": "Iheb Belhaj",
+  "homepage": "https://github.com/IhebBelhadj/Playpex",
+  "license": "SEE LICENSE IN licence.md",
   "keywords": [
     "Playpex",
     "Streamer",
@@ -13,6 +16,7 @@
     "Media Player"
   ],
   "main": "electron/main.js",
+  "desktopName": "playpex-tv.desktop",
   "scripts": {
     "ng": "ng",
     "start": "ng serve -o",
@@ -20,102 +24,142 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "electron": "ng build --base-href ./ && electron .",
-    "forge-start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "electronBuild": "electron-builder"
-  },
-  "config": {
-    "forge": {
-      "make_targets": {
-        "win32": [
-          "squirrel"
-        ],
-        "darwin": [
-          "zip"
-        ],
-        "linux": [
-          "deb",
-          "rpm"
-        ]
-      },
-      "electronPackagerConfig": {
-        "packageManager": "npm"
-      },
-      "electronWinstallerConfig": {
-        "name": "Playpex"
-      },
-      "electronInstallerDebian": {},
-      "electronInstallerRedhat": {},
-      "github_repository": {
-        "owner": "Iheb Belhaj",
-        "name": "codduck"
-      },
-      "windowsStoreConfig": {
-        "packageName": "",
-        "name": "Playpex"
-      }
-    }
-  },
-  "build": {
-    "appId": "Playpex",
-    "files": [
-      "dist/playpex/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "asar": true,
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "favicon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "installerIcon": "favicon.ico",
-      "uninstallerIcon": "favicon.ico",
-      "uninstallDisplayName": "Playpex-unistaller",
-      "license": "../../licence.md",
-      "allowToChangeInstallationDirectory": true
-    }
+    "pack": "ng build --base-href ./ && electron-builder --dir",
+    "dist": "ng build --base-href ./ && electron-builder",
+    "dist:linux": "ng build --base-href ./ && electron-builder --linux",
+    "dist:win": "ng build --base-href ./ && electron-builder --win",
+    "dist:mac": "ng build --base-href ./ && electron-builder --mac"
   },
   "dependencies": {
+    "@playpex/protocol": "*",
+    "bonjour-service": "^1.4.4",
+    "electron-shutdown-command": "^2.0.1",
+    "electron-updater": "^6.8.9",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^14.0.2",
     "@angular/animations": "^14.0.0",
+    "@angular/cli": "~14.0.2",
     "@angular/common": "^14.0.0",
     "@angular/compiler": "^14.0.0",
+    "@angular/compiler-cli": "^14.0.0",
     "@angular/core": "^14.0.0",
     "@angular/forms": "^14.0.0",
     "@angular/platform-browser": "^14.0.0",
     "@angular/platform-browser-dynamic": "^14.0.0",
     "@angular/router": "^14.0.0",
-    "@playpex/protocol": "*",
-    "@playpex/server": "*",
     "@types/gsap": "^3.0.0",
-    "@types/youtube": "^0.0.47",
-    "bonjour-service": "^1.4.4",
-    "electron-shutdown-command": "^2.0.1",
-    "express": "^4.17.1",
-    "gsap": "^3.10.4",
-    "rxjs": "~7.5.0",
-    "tslib": "^2.3.0",
-    "zone.js": "~0.11.4"
-  },
-  "devDependencies": {
-    "@angular-devkit/build-angular": "^14.0.2",
-    "@angular/cli": "~14.0.2",
-    "@angular/compiler-cli": "^14.0.0",
-    "@electron-forge/cli": "^6.0.0-beta.67",
     "@types/jasmine": "~4.0.0",
-    "electron": "^44.7.0",
-    "electron-builder": "^23.6.0",
-    "electron-packager": "^16.0.0",
+    "@types/youtube": "^0.0.47",
+    "electron": "44.7.0",
+    "electron-builder": "^26.15.3",
+    "gsap": "^3.10.4",
     "jasmine-core": "~4.1.0",
     "karma": "~6.3.0",
     "karma-chrome-launcher": "~3.1.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.0.0",
     "karma-jasmine-html-reporter": "~1.7.0",
-    "typescript": "~4.7.2"
+    "rxjs": "~7.5.0",
+    "tslib": "^2.3.0",
+    "typescript": "~4.7.2",
+    "zone.js": "~0.11.4"
+  },
+  "build": {
+    "appId": "app.playpex.tv",
+    "productName": "Playpex TV",
+    "executableName": "playpex-tv",
+    "copyright": "Iheb Belhaj",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/playpex/**/*",
+      "electron/**/*",
+      "!electron/remoteWs.js",
+      "package.json",
+      "!node_modules/@playpex/protocol/{README.md,openapi.yaml,types}{,/**}"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "../../licence.md",
+        "to": "licence.md"
+      }
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/IhebBelhadj/Playpex/releases/download/tv-channel"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Playpex TV",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "license": "../../licence.md",
+      "artifactName": "Playpex-TV-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.entertainment",
+      "icon": "build/icon.png",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Playpex TV looks for Playpex Media Server on your local network.",
+        "NSBonjourServices": [
+          "_playpex._tcp"
+        ]
+      }
+    },
+    "dmg": {
+      "artifactName": "Playpex-TV-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "build/icon.png",
+      "synopsis": "Playpex TV, a client of Playpex Media Server",
+      "maintainer": "Iheb Belhaj <noreply@playpex.app>",
+      "artifactName": "Playpex-TV-${version}-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "Playpex TV",
+          "Comment": "Watch movies and series from your Playpex Media Server"
+        }
+      }
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0"
+      ]
+    }
   }
 }

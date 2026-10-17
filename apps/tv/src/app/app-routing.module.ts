@@ -16,6 +16,8 @@ import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
 import { ReleasesPageComponent } from './releases-page/releases-page.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
+import { ConnectPageComponent } from './connect-page/connect-page.component';
+import { ServerGuard } from './server.guard';
 
 const routes: Routes = [
   {
@@ -23,17 +25,26 @@ const routes: Routes = [
     redirectTo : '/profiles',
     pathMatch : 'full',
   },
-  // "Who's watching?" (start page) and the profile editor
+  // Which server: shown when there is none (ServerGuard), and from the menu
+  {
+    path : 'connect',
+    component : ConnectPageComponent
+  },
+  // "Who's watching?" (start page) and the profile editor; every other page
+  // needs a profile, so ServerGuard on these covers the app
   {
     path : 'profiles',
+    canActivate : [ServerGuard],
     component : ProfilePickerComponent
   },
   {
     path : 'profiles/new',
+    canActivate : [ServerGuard],
     component : ProfileEditorComponent
   },
   {
     path : 'profiles/:id/edit',
+    canActivate : [ServerGuard],
     component : ProfileEditorComponent
   },
   // The home page and slider serve both sections; `media` picks the catalog

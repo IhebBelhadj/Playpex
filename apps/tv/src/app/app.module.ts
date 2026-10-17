@@ -1,6 +1,6 @@
 import { MoviesService } from './movies.service';
 import { NgModule } from '@angular/core';
-import { HttpClientModule ,HttpClientJsonpModule} from '@angular/common/http';
+import { HttpClientModule ,HttpClientJsonpModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -36,6 +36,9 @@ import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
 import { BackButtonComponent } from './back-button/back-button.component';
 import { MOVEMENT_DIRECTIVES } from './movement/movement';
+import { ConnectPageComponent } from './connect-page/connect-page.component';
+import { ConnectionLostComponent } from './connection-lost/connection-lost.component';
+import { ServerErrorsInterceptor } from './server-errors.interceptor';
 
 @NgModule({
   declarations: [
@@ -68,6 +71,8 @@ import { MOVEMENT_DIRECTIVES } from './movement/movement';
     AdultBrowseComponent,
     AdultTitleComponent,
     BackButtonComponent,
+    ConnectPageComponent,
+    ConnectionLostComponent,
     ...MOVEMENT_DIRECTIVES,
   ],
   imports: [
@@ -79,6 +84,7 @@ import { MOVEMENT_DIRECTIVES } from './movement/movement';
   ],
   providers: [
     MoviesService,
+    { provide: HTTP_INTERCEPTORS, useClass: ServerErrorsInterceptor, multi: true },
   ],
   bootstrap: [AppComponent]
 })

@@ -44,9 +44,15 @@
     </button>
   </div>
 
-  <!-- Who's watching, anchored at the bottom like an account control: Enter
-       switches profile -->
+  <!-- The server in use (Enter → /connect) and who's watching (Enter →
+       switch profile), anchored at the bottom like account controls -->
   <div class="tabs account" *ngIf="profile">
+    <button *ngIf="serverName" class="tabGroup element menuItem serverItem" data-destination="connect">
+      <div class="inner">
+        <img src="assets/icons/server.svg" alt="">
+        <span class="description">{{ serverName }}</span>
+      </div>
+    </button>
     <button class="tabGroup element menuItem profileItem" data-destination="profiles">
       <div class="inner">
         <img class="profileAvatar" [src]="avatarUrl(profile.avatar)" alt="">

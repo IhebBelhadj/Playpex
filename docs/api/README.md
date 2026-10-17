@@ -79,3 +79,19 @@ API version **1**. What exists today and what is planned (`docs/server-separatio
 | Catalog through the server (`/api/v1/catalog/*`, TMDB key on the server) | **Planned** (plan §12 G). Until then clients call TMDB with their own key |
 | HTTPS with a pinned certificate on the LAN | **Proposed** (plan §12 K). Today the LAN traffic is plain HTTP ([security notes](errors-and-versions.md#security-notes)) |
 | A JS/TS client SDK (`packages/client-sdk`) | **Planned** (plan §6.6). Meanwhile use the generated types `@playpex/protocol/types/api` with any OpenAPI client (e.g. `openapi-fetch`, as the dashboard does) |
+
+## A worked example: Playpex TV
+
+The TV app in this repository (`apps/tv`, an Electron shell around an Angular UI) is the first client built on this guide. Where each step lives, to read alongside the chapters:
+
+| Step | Playpex TV | Chapter |
+|---|---|---|
+| Find servers: mDNS + UDP broadcast + a probe of this machine, merged by `id`, confirmed with `GET /server`; manual entry probes one address | `apps/tv/electron/discovery.js` | [discovery](discovery.md) |
+| Pick the server at start: the last one used at its saved URL, else found again by `id` (new port or address), else one on this machine; nothing usable → the server picker | `apps/tv/electron/connection.js` | [discovery](discovery.md), [auth](auth.md#clients-on-the-server-machine) |
+| Pair: `POST /auth/device/code` (`client_id: playpex-tv`), show the code split in two, the `verification_uri` and a QR code of `verification_uri_complete`, poll `/auth/device/token` (`slow_down`, `expired_token`, `access_denied` handled), then `PUT /devices/me` with its name and codecs | `apps/tv/electron/pairing.js`, the `/connect` page (`apps/tv/src/app/connect-page/`) | [auth](auth.md) |
+| Store tokens: `client.json` in the app's own data folder, tokens encrypted with Electron `safeStorage`; without a keyring (Linux) stored as plain text and the picker says so | `apps/tv/electron/clientConfig.js` | [auth](auth.md#storing-tokens) |
+| Send the token: the UI never sees it. The shell's network layer adds `Authorization`, `X-Playpex-Client: playpex-tv/<version>; api=1` and `X-Playpex-Device` to every request to the current server, `<video>` and `<track>` included, so media URLs carry no `access_token` | `apps/tv/electron/auth.js` | [auth](auth.md#making-requests) |
+| Errors: `401 PAIRING_REQUIRED` → forget the token, back to the picker ("This device was removed from …"); `426` → "Update Playpex TV" / "Update the server" screens; 3 network failures in a row → "Lost connection" with Retry (rediscovers by `id`) / Choose server | `apps/tv/src/app/server-errors.interceptor.ts`, `connection.service.ts` | [errors and versions](errors-and-versions.md) |
+| Leases: `?device=<deviceId>` on media URLs, keepalive every 60 s while the player is open, `DELETE …?device=` on leaving | `apps/tv/src/app/player-page/`, `torrent.service.ts` | [playback](playback.md) |
+
+On the server machine it connects over loopback without pairing, and starts an installed but stopped Playpex Media Server (whose install location the desktop app records in `<config dir>/desktop-app.json`, `@playpex/protocol/local`).

@@ -4,7 +4,6 @@
 //   'headless'  bin/playpex-server.js on its own (systemd, Docker, `npm run server`)
 //   'desktop'   the same entry, run by the desktop supervisor (apps/server-desktop)
 //               in an Electron utilityProcess: messages over process.parentPort
-//   'embedded'  inside the TV app (apps/tv/electron/main.js, until plan step 9)
 //
 // Messages with the desktop supervisor (plain objects, both ways):
 //   supervisor → server
@@ -20,7 +19,7 @@
 //     { type: 'request', id, action, args }     desktop.set / update.check / update.install
 //     { type: 'reply', … }
 //
-//   host.kind()                       'headless' | 'desktop' | 'embedded'
+//   host.kind()                       'headless' | 'desktop'
 //   host.desktop()                    the supervisor's last state, or null
 //   host.request(action, args)        → Promise (rejects with code NOT_SUPPORTED when not desktop)
 

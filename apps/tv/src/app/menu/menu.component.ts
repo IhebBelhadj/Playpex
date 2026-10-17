@@ -5,6 +5,7 @@ import { Component, OnInit, AfterViewInit, AfterContentInit } from '@angular/cor
 import { gsap ,Power1} from 'gsap'
 import { filter, map, Subscription } from 'rxjs';
 import { Profile, ProfilesService } from '../profiles.service';
+import { ServerService } from '../server.service';
 
 
 @Component({
@@ -16,12 +17,15 @@ export class MenuComponent implements OnInit , AfterViewInit{
   subscription: Subscription;
   currentUrl:string = "/movies/list";
   profile:Profile | null = null;
+  serverName:string;
   constructor(
     private menuService:MenuServiceService,
     private navigation:NavigationService,
     private router:Router,
     private profiles:ProfilesService,
+    server:ServerService,
   ) {
+    this.serverName = server.name;
 
     // Who's watching: shown at the top of the menu, Enter → switch profile
     this.profiles.current.subscribe(profile => this.profile = profile);
@@ -158,6 +162,9 @@ export class MenuComponent implements OnInit , AfterViewInit{
         break;
       case "profiles":
         this.router.navigateByUrl("/profiles")
+        break;
+      case "connect":
+        this.router.navigateByUrl("/connect")
         break;
       default:
         break;

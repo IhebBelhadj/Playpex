@@ -1,0 +1,130 @@
+<div class="connectPage">
+  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+
+  <div class="connectLayout" pxSection="serverPicker" pxStack>
+    <div class="sources">
+      <h1 class="heading">{{ heading }}</h1>
+      <p class="hint">{{ hint }}</p>
+
+      <ng-container *ngIf="bridge; else browser">
+        <div class="serverList" pxGrid>
+          <button *ngFor="let s of servers" class="sourceRow focusable" pxItem [pxItemKey]="s.id"
+            [attr.data-id]="s.id" data-action="server" (focus)="focusedKey = s.id"
+            [class.current]="s.current && server.connected" [class.incompatible]="!s.compatible">
+            <span class="sourceName">{{ s.name }}</span>
+            <span class="sourceMark" [ngClass]="mark(s)">
+              <img *ngIf="mark(s) == 'locked'" src="assets/icons/lock.svg" alt="">
+              {{ status(s) }}
+            </span>
+          </button>
+
+          <button *ngIf="showStartLocal" class="sourceRow startLocal focusable" pxItem pxItemKey="startLocal"
+            data-action="startLocal" (focus)="focusedKey = 'startLocal'">
+            <span class="sourceName">{{ startingLocal ? 'Starting Playpex Media Server…' : 'Playpex Media Server' }}</span>
+            <span class="sourceMark">{{ startingLocal ? '' : 'Not running' }}</span>
+          </button>
+        </div>
+
+        <div class="scanLine" [class.active]="scanning">
+          <span class="scanLabel">{{ scanLabel }}</span>
+        </div>
+
+        <p class="nothingFound" *ngIf="nothingFound">
+          Install Playpex Media Server on a computer on this network: <b>{{ downloadUrl }}</b>
+        </p>
+
+        <div class="actions" pxGrid>
+          <button *ngIf="needsAppUpdate" class="actionBtn primary focusable" pxItem pxItemKey="update"
+            data-action="update" (focus)="focusedKey = 'update'">{{ updateLabel }}</button>
+          <button class="actionBtn focusable" pxItem pxItemKey="address" data-action="address"
+            (focus)="focusedKey = 'address'">Enter address</button>
+          <button class="actionBtn focusable" pxItem pxItemKey="rescan" data-action="rescan"
+            (focus)="focusedKey = 'rescan'">Search again</button>
+        </div>
+      </ng-container>
+
+      <ng-template #browser>
+        <p class="browserNote">Finding and pairing servers needs the Playpex TV app. Here the UI uses <b>{{ server.url || 'no server' }}</b>; enter another address to switch.</p>
+        <div class="actions" pxGrid>
+          <button class="actionBtn focusable" pxItem pxItemKey="address" data-action="address">Enter address</button>
+        </div>
+      </ng-template>
+
+      <p class="message" *ngIf="message">{{ message }}</p>
+    </div>
+
+    <!-- What the focused row is and what OK does with it -->
+    <aside class="detail" *ngIf="bridge">
+      <ng-container *ngIf="detail as d">
+        <p class="detailName">{{ d.title }}</p>
+        <p class="detailWhere" *ngFor="let line of d.facts">{{ line }}</p>
+        <p class="detailText" *ngFor="let line of d.text">{{ line }}</p>
+        <p class="detailAction" *ngIf="d.action"><span class="key">OK</span>{{ d.action }}</p>
+      </ng-container>
+    </aside>
+  </div>
+
+  <p class="footer">
+    <span *ngIf="state?.tokenStorage == 'plain'" class="plainWarning">No keyring on this system: pairing tokens are stored unencrypted on this device.</span>
+    <span *ngIf="state?.version">Playpex TV {{ state.version }}</span>
+  </p>
+
+  <!-- Pairing: the code, where to approve it, a QR code for a phone -->
+  <div class="pairingOverlay" *ngIf="pairing" pxSection="pairing" [trap]="true">
+    <div class="pairingPanel">
+      <p class="panelTitle">Pair this TV with {{ pairing.server.name }}</p>
+
+      <ng-container *ngIf="pairing.code; else requesting">
+        <div class="codeCells" [class.dim]="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
+          [class.approved]="pairing.state == 'approved'" [attr.aria-label]="splitCode(pairing.code.userCode)">
+          <ng-container *ngFor="let c of codeChars(pairing.code.userCode); let i = index">
+            <span class="gap" *ngIf="i == 4"></span>
+            <span class="cell">{{ c }}</span>
+          </ng-container>
+        </div>
+        <div class="timeBar" *ngIf="pairing.state == 'waiting'">
+          <span class="timeFill" [style.width.%]="100 * pairing.secondsLeft / pairing.code.expiresIn"></span>
+        </div>
+
+        <div class="pairingBody">
+          <ol class="steps">
+            <li>On a phone or computer, open <b>{{ pairing.code.verificationUri }}</b>, or scan the QR code.</li>
+            <li>Sign in as the server's admin and check that the code matches this screen.</li>
+            <li>Approve it. This TV connects by itself. You can also approve it from the Playpex Media Server tray icon.</li>
+          </ol>
+          <img class="qr" *ngIf="pairing.code.qr" [src]="pairing.code.qr" alt="QR code of the approval page">
+        </div>
+
+        <p class="pairStatus" [ngSwitch]="pairing.state">
+          <span *ngSwitchCase="'waiting'">{{ pairing.message || 'Waiting for approval' }}, {{ timeLeft(pairing.secondsLeft) }} left</span>
+          <span *ngSwitchCase="'approved'" class="good">Approved. Connecting…</span>
+          <span *ngSwitchCase="'denied'" class="bad">The server's admin refused this TV.</span>
+          <span *ngSwitchCase="'expired'" class="bad">The code expired. Get a new one to try again.</span>
+          <span *ngSwitchCase="'error'" class="bad">{{ pairing.message || 'Pairing failed.' }}</span>
+        </p>
+      </ng-container>
+      <ng-template #requesting>
+        <p class="pairStatus" *ngIf="pairing.state == 'requesting'">Asking {{ pairing.server.name }} for a code…</p>
+        <p class="pairStatus bad" *ngIf="pairing.state == 'error'">{{ pairing.message }}</p>
+      </ng-template>
+
+      <div class="pairButtons" pxGrid>
+        <button *ngIf="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
+          class="actionBtn primary focusable" pxItem pxItemKey="again" data-pair="again">Get a new code</button>
+        <button class="actionBtn focusable" pxItem pxItemKey="cancel" data-pair="cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <text-keyboard *ngIf="typing"
+    title="Server address"
+    placeholder="192.168.1.20 or nas.local:28470"
+    [value]="address"
+    [maxLength]="60"
+    [capitalizeWords]="false"
+    [symbols]="['.', ':', '-']"
+    doneLabel="Connect"
+    (done)="onAddressDone($event)"
+    (cancelled)="onAddressCancelled()">
+  </text-keyboard>
+</div>

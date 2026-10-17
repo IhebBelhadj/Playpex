@@ -1,0 +1,551 @@
+// Full-screen over the shell like "Who's watching?" (z 10), under the splash
+// video (z 12) and the lost-connection modal (z 11)
+// Laid out like a TV's source menu: the servers as a list of big names on the
+// left, a panel on the right saying what the focused row is and what OK does.
+$ink: #141414;
+$plate: #1d1d1d;
+$bone: #e5e5e5;
+$ash: #8c8c8c;
+$live: #46d369;
+$caution: #F5A524;
+
+.connectPage {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: $ink;
+}
+
+.brand {
+  position: absolute;
+  top: 34px;
+  left: 48px;
+  height: 34px;
+}
+
+.connectLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 660px) 460px;
+  justify-content: center;
+  align-items: center;
+  column-gap: 96px;
+  height: 100vh;
+  padding: 110px 64px 80px;
+  box-sizing: border-box;
+}
+
+.sources {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.heading {
+  font-family: 'NetflixBk';
+  font-weight: normal;
+  font-size: 48px;
+  line-height: 1.1;
+  margin: 0 0 14px;
+}
+
+.hint {
+  font-family: 'Netflixlt';
+  font-size: 20px;
+  line-height: 1.45;
+  color: $ash;
+  max-width: 34em;
+  margin: 0 0 40px;
+}
+
+// ── the servers ────────────────────────────────────────────────────────────
+
+.serverList {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  // room for the focused row's plate to overhang the column
+  margin: 0 -24px;
+  padding: 4px 0;
+}
+
+.sourceRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: none;
+  padding: 16px 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: $bone;
+  text-align: left;
+
+  .sourceName {
+    flex: 1;
+    min-width: 0;
+    font-family: 'NetflixBd';
+    font-size: 38px;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sourceMark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+    font-family: 'NetflixBk';
+    font-size: 18px;
+    color: $ash;
+
+    // a dot before "Watching now", "Paired", "This computer"
+    &.live::before,
+    &.ready::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      box-sizing: border-box;
+      border: 2px solid currentColor;
+    }
+
+    &.live {
+      color: $live;
+
+      &::before {
+        background: currentColor;
+      }
+    }
+
+    &.warn {
+      color: $caution;
+    }
+
+    img {
+      width: 18px;
+      height: 18px;
+      opacity: .6;
+    }
+  }
+
+  // the server in use: a bar on its left edge, like the active tab of the menu
+  &.current::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 22px;
+    bottom: 22px;
+    width: 4px;
+    border-radius: 2px;
+    background: $live;
+  }
+
+  &.incompatible .sourceName {
+    color: $ash;
+  }
+
+  &.startLocal .sourceName {
+    font-family: 'NetflixBk';
+    color: $ash;
+  }
+
+  &.focused {
+    background: #fff;
+    color: $ink;
+
+    .sourceName {
+      color: $ink;
+    }
+
+    .sourceMark {
+      color: #5c5c5c;
+
+      &.live {
+        color: #1a8a3b;
+      }
+
+      &.warn {
+        color: #a86700;
+      }
+
+      img {
+        filter: invert(1);
+      }
+    }
+
+    &.current::after {
+      display: none;
+    }
+  }
+}
+
+// The one moving thing while discovery runs: a light sweeping a hairline
+.scanLine {
+  position: relative;
+  flex: none;
+  height: 2px;
+  margin: 18px 0 0;
+  background: rgba(255, 255, 255, .1);
+  overflow: visible;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 160px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, $bone, transparent);
+    opacity: 0;
+  }
+
+  &.active::before {
+    opacity: 1;
+    animation: sweep 1.8s ease-in-out infinite;
+  }
+
+  .scanLabel {
+    position: absolute;
+    top: 14px;
+    left: 0;
+    font-family: 'NetflixBk';
+    font-size: 16px;
+    color: $ash;
+    white-space: nowrap;
+  }
+}
+
+@keyframes sweep {
+  from { transform: translateX(-160px); }
+  to { transform: translateX(660px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanLine.active::before {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: .35;
+  }
+}
+
+.nothingFound {
+  flex: none;
+  font-family: 'Netflixlt';
+  font-size: 18px;
+  line-height: 1.45;
+  color: $ash;
+  margin: 48px 0 -24px;
+
+  b {
+    font-family: 'NetflixBd';
+    color: $bone;
+  }
+}
+
+.browserNote {
+  font-family: 'Netflixlt';
+  font-size: 18px;
+  line-height: 1.45;
+  color: $ash;
+  margin: 0 0 28px;
+
+  b {
+    font-family: 'NetflixBd';
+    color: $bone;
+  }
+}
+
+.actions,
+.pairButtons {
+  display: flex;
+  gap: 16px;
+}
+
+.actions {
+  flex: none;
+  margin-top: 64px;
+}
+
+.actionBtn {
+  padding: 13px 28px;
+  border: 2px solid rgba(255, 255, 255, .22);
+  border-radius: 6px;
+  background: transparent;
+  color: $bone;
+  font-family: 'NetflixBk';
+  font-size: 19px;
+
+  &.primary {
+    background: $bone;
+    border-color: $bone;
+    color: $ink;
+    font-family: 'NetflixBd';
+  }
+
+  &.focused {
+    background: #fff;
+    border-color: #fff;
+    color: $ink;
+  }
+}
+
+.message {
+  flex: none;
+  font-family: 'NetflixBk';
+  font-size: 18px;
+  line-height: 1.4;
+  color: $caution;
+  margin: 24px 0 0;
+}
+
+// ── what the focused row is ────────────────────────────────────────────────
+
+.detail {
+  align-self: center;
+  min-height: 380px;
+  padding: 40px 40px 36px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: $plate;
+  display: flex;
+  flex-direction: column;
+
+  p {
+    margin: 0;
+  }
+
+  .detailName {
+    font-family: 'NetflixBd';
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .detailWhere {
+    font-family: 'NetflixBk';
+    font-size: 17px;
+    line-height: 1.5;
+    color: $ash;
+  }
+
+  .detailText {
+    font-family: 'Netflixlt';
+    font-size: 19px;
+    line-height: 1.5;
+    color: #c9c9c9;
+    margin-top: 22px;
+
+    & + .detailText {
+      margin-top: 10px;
+    }
+  }
+
+  // "[OK] Pair this TV": what the remote's OK button does here
+  .detailAction {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: auto;
+    padding-top: 32px;
+    font-family: 'NetflixBd';
+    font-size: 21px;
+    color: $bone;
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      height: 34px;
+      padding: 0 8px;
+      box-sizing: border-box;
+      border: 2px solid $ash;
+      border-radius: 17px;
+      font-family: 'NetflixBk';
+      font-size: 14px;
+      color: $ash;
+    }
+  }
+}
+
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: 'Netflixlt';
+  font-size: 14px;
+  color: #6b6b6b;
+
+  .plainWarning {
+    color: #b0884a;
+  }
+}
+
+// ── pairing ────────────────────────────────────────────────────────────────
+
+.pairingOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, .92);
+  backdrop-filter: blur(6px);
+}
+
+.pairingPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 960px;
+  padding: 48px 56px 44px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: $plate;
+
+  .panelTitle {
+    font-family: 'NetflixBk';
+    font-size: 34px;
+    margin: 0 0 32px;
+  }
+}
+
+// The code is the screen: one cell per character, like a TV activation code
+.codeCells {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 100px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background: #2a2a2a;
+    font-family: 'NetflixBd';
+    font-size: 58px;
+    color: #fff;
+    transition: border-color .3s ease, color .3s ease, opacity .3s ease;
+  }
+
+  .gap {
+    width: 22px;
+    height: 4px;
+    margin: 0 8px;
+    border-radius: 2px;
+    background: #555;
+  }
+
+  &.dim .cell {
+    opacity: .35;
+  }
+
+  &.approved .cell {
+    border-color: $live;
+    color: $live;
+  }
+}
+
+// Time left, draining under the code
+.timeBar {
+  width: 100%;
+  height: 4px;
+  margin-top: 16px;
+  border-radius: 2px;
+  background: #2a2a2a;
+  overflow: hidden;
+
+  .timeFill {
+    display: block;
+    height: 100%;
+    background: $ash;
+    transition: width 1s linear;
+  }
+}
+
+.pairingBody {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  width: 100%;
+  margin-top: 36px;
+}
+
+.steps {
+  flex: 1;
+  margin: 0;
+  padding: 0 0 0 26px;
+  font-family: 'Netflixlt';
+  font-size: 19px;
+  line-height: 1.45;
+  color: #c9c9c9;
+
+  li {
+    padding-left: 6px;
+
+    & + li {
+      margin-top: 14px;
+    }
+
+    &::marker {
+      font-family: 'NetflixBd';
+      color: $ash;
+    }
+  }
+
+  b {
+    font-family: 'NetflixBd';
+    color: #fff;
+    overflow-wrap: anywhere;
+  }
+}
+
+.qr {
+  flex: none;
+  width: 200px;
+  height: 200px;
+  border-radius: 6px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+
+.pairStatus {
+  font-family: 'NetflixBk';
+  font-size: 18px;
+  color: $ash;
+  margin: 30px 0 26px;
+
+  .good {
+    color: $live;
+  }
+
+  .bad,
+  &.bad {
+    color: $caution;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codeCells .cell,
+  .timeBar .timeFill {
+    transition: none;
+  }
+}

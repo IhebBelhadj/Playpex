@@ -13,7 +13,6 @@ import { MenuServiceService } from '../menu-service.service';
 export class PowerPageComponent implements AfterViewInit , OnDestroy{
 
   navSub:Subscription;
-  powersub:Subscription;
 
   constructor(
     private navigation:NavigationService,
@@ -45,9 +44,7 @@ export class PowerPageComponent implements AfterViewInit , OnDestroy{
         if (active.classList.contains('powerBtn')) {
           instruction = active.dataset['instruction'];
           console.log(instruction);
-          this.powersub = this.power.sendPowerInstruction(instruction).subscribe(data=>{
-            this.powersub.unsubscribe();
-          })
+          this.power.sendPowerInstruction(instruction).subscribe();
 
         }
       }

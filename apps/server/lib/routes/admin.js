@@ -137,7 +137,7 @@ function hostView() {
   return { kind: host.kind(), desktop: host.desktop() };
 }
 
-// { kind: 'headless' | 'desktop' | 'embedded', desktop }: desktop is the
+// { kind: 'headless' | 'desktop', desktop }: desktop is the
 // supervisor's state (start at login, updates), null outside the desktop app
 router.get('/host', function (req, res) {
   res.json(hostView());

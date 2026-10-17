@@ -36,7 +36,6 @@ api.disable('x-powered-by');
 api.use(middleware.requestLog);
 api.use(middleware.hostCheck);
 api.use(middleware.cors);
-api.use(legacyAliases);
 // Better Auth reads its own request bodies: before the parsers
 api.use(protocol.API_PREFIX + '/auth', clientVersion, authHttp.betterAuth);
 api.use(express.urlencoded({ extended: false }));
@@ -45,17 +44,8 @@ api.use(protocol.API_PREFIX, clientVersion, v1);
 
 var fail = errors.fail;
 
-// Every route lives under /api/v1 (docs/server-separation-plan.md §6.1). The
-// unversioned paths the TV app used before (/torrents/…, /upload, /youtube/…,
-// /api/…) are rewritten onto it until the TV client is separated (step 9).
-function legacyAliases(req, res, next) {
-  if (/^\/(torrents|upload|youtube)(\/|\?|$)/.test(req.url)) {
-    req.url = protocol.API_PREFIX + req.url;
-  } else if (/^\/api\/(?!v\d+(\/|\?|$))/.test(req.url)) {
-    req.url = protocol.API_PREFIX + req.url.slice(4);
-  }
-  next();
-}
+// Every route lives under /api/v1 (docs/server-separation-plan.md §6.1); the
+// unversioned aliases the TV app used before were removed with step 9.
 
 // Optional `X-Playpex-Client: <name>/<version>; api=<n>`: refuse API versions
 // this server can't serve. Clients that send nothing are served.

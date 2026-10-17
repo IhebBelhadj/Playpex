@@ -3,7 +3,7 @@
 // Playpex Media Server core (docs/server-separation-plan.md §5.1). Nothing
 // listens on require: a host calls start() / stop().
 //   headless (systemd, Docker, `npm run server`): bin/playpex-server.js
-//   embedded in the TV app until it's separated:   apps/tv/electron/main.js
+//   desktop app (tray icon): apps/server-desktop, the same entry in a utilityProcess
 //
 //   start(options) → Promise<{ port, host, urls, id, name }>
 //     rejects with err.code 'PORT_IN_USE' / 'PORT_NOT_ALLOWED' (+ err.port)
@@ -82,8 +82,7 @@ function listen(server, port, host) {
 
 /**
  * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number, recovery?: object }} [options]
- *   port / host: override the settings for this run (the embedded TV server
- *   uses port 0 on 127.0.0.1 when the fixed port belongs to something else);
+ *   port / host: override the settings for this run (tests);
  *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg;
  *   discoveryPort: UDP port of the discovery responder (tests; default 28471);
  *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback

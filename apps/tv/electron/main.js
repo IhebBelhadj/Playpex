@@ -1,191 +1,220 @@
-const { app, BrowserWindow } = require('electron')
-const path = require('path')
-const url = require('url')
-const http = require('http')
-const server = require('@playpex/server')
-require('@playpex/server/lib/host').setKind('embedded')   // GET /api/v1/admin/host
-const express = require('express')
-const shutdown = require('electron-shutdown-command');
-var electron = express();
-electron.listen(3344);
+'use strict';
 
-let win;
+// Playpex TV, a client of Playpex Media Server (docs/server-separation-plan.md
+// §10). It carries no server: it finds one on this machine or the LAN
+// (discovery.js), pairs with it (pairing.js), adds this device's headers to
+// every request to it (auth.js) and remembers it (clientConfig.js). The
+// renderer reaches the main process only through preload.js (window.playpex).
+//
+//   npm run electron      development run (builds the UI first); finds the server
+//                         of `npm run server` / the desktop app, or starts one
 
-// The TV app still carries the server (until it's separated: step 9 of
-// docs/server-separation-plan.md). If a Playpex server already runs on its
-// port (e.g. `npm run server`), use that one; if something else holds the
-// port, run ours on a free loopback port. Resolves with the port to use.
-const serverPort = server.start().then(info => info.port, err => {
-    if (err.code !== 'PORT_IN_USE') {
-        throw err
-    }
-    return isPlaypexServer(err.port).then(found => {
-        if (found) {
-            console.log('Using the Playpex server already running on port ' + err.port)
-            return err.port
-        }
-        return server.start({ port: 0, host: '127.0.0.1' }).then(info => info.port)
-    })
-})
+const { app, BrowserWindow, ipcMain, session } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const protocol = require('@playpex/protocol');
+const local = require('@playpex/protocol/local');
 
-function isPlaypexServer(port) {
-    return new Promise(resolve => {
-        const req = http.get({ host: '127.0.0.1', port, path: '/api/v1/server', timeout: 2000 }, res => {
-            let body = ''
-            res.on('data', d => body += d)
-            res.on('end', () => {
-                try {
-                    const info = JSON.parse(body)
-                    resolve(res.statusCode === 200 && !!info.id && info.apiVersion >= 1)
-                } catch (e) {
-                    resolve(false)
-                }
-            })
-        })
-        req.on('timeout', () => req.destroy())
-        req.on('error', () => resolve(false))
-    })
+const INDEX = path.join(__dirname, '..', 'dist', 'playpex', 'index.html');
+const CLIENT_HEADER = protocol.clientHeader('playpex-tv', app.getVersion());
+
+let win = null;
+let resolving = null;     // Promise of the connection being resolved
+let picker = null;        // the /connect page's discovery, while it is open
+
+// Before step 9 the app was "@playpex/tv" (development runs) with its own
+// userData: carry its Local Storage over once (subtitle provider, deviceId)
+function carryOverStorage() {
+  const target = app.getPath('userData');
+  if (fs.existsSync(target)) {
+    return;
+  }
+  const old = path.join(app.getPath('appData'), '@playpex', 'tv', 'Local Storage');
+  if (fs.existsSync(old)) {
+    try {
+      fs.mkdirSync(target, { recursive: true });
+      fs.cpSync(old, path.join(target, 'Local Storage'), { recursive: true });
+    } catch (e) { /* start clean */ }
+  }
 }
 
-function isDev() {
-    return process.mainModule.filename.indexOf('app.asar') === -1;
-};
+function load() {
+  if (win) {
+    win.loadFile(INDEX);
+  }
+}
+
 function createWindow() {
-
-    win = new BrowserWindow({
-        fullscreen : true  ,
-        frame: false ,
-        height:780,
-        width:1270,
-        webPreferences: {
-            nodeIntegrationInWorker: true
-        },
-        icon : path.join(__dirname, '..', 'favicon.ico')
-    });
-    win.setBackgroundColor('#000');
-    // Tell the UI which port the streaming server got (see src/app/server-config.ts)
-    serverPort.then(port => {
-        win.loadURL(url.format({
-            pathname: path.join(__dirname, '../dist/playpex/index.html'),
-            protocol: 'file',
-            slashes: true,
-            query: { streamer: port }
-        }));
-    });
-    /*if (isDev()) {
-        win.webContents.openDevTools()
-    }*/
-    win.on('closed', () => {
-        win = null
-    })
+  win = new BrowserWindow({
+    fullscreen: true,
+    frame: false,
+    height: 780,
+    width: 1270,
+    backgroundColor: '#000',
+    icon: path.join(__dirname, '..', 'favicon.ico'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  });
+  // our own pages only: no pop-ups, no navigating away from the app
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file://')) {
+      event.preventDefault();
+    }
+  });
+  win.on('closed', () => {
+    win = null;
+    stopPicker();
+  });
+  load();
 }
-app.on('ready', createWindow)
 
-// Let the server destroy its torrent engines before quitting
-let serverStopped = false
-app.on('before-quit', event => {
-    if (serverStopped) {
-        return
+function send(channel, value) {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send(channel, value);
+  }
+}
+
+// Answers only our own window
+function handle(channel, fn) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!win || event.sender !== win.webContents) {
+      throw new Error('Not allowed');
     }
-    event.preventDefault()
-    server.stop().catch(() => {}).then(() => {
-        serverStopped = true
-        app.quit()
-    })
-})
-app.on('window-all-closed', () => {
+    return fn(...args);
+  });
+}
+
+function stopPicker() {
+  if (picker) {
+    picker.stop();
+    picker = null;
+  }
+}
+
+function connectIpc() {
+  const config = require('./clientConfig');
+  const connection = require('./connection');
+  const discovery = require('./discovery');
+  const pairing = require('./pairing');
+  const localServer = require('./localServer');
+  const power = require('./power');
+  const updater = require('./updater');
+
+  const resolveAgain = () => {
+    resolving = connection.resolve();
+    return resolving;
+  };
+  const view = state => Object.assign({}, state, {
+    deviceId: config.deviceId(),
+    deviceIdIsNew: config.deviceIdIsNew(),
+    tokenStorage: config.tokenStorage(),
+    version: app.getVersion(),
+    platform: process.platform
+  });
+
+  handle('connection:current', () => resolving.then(view));
+  handle('connection:adoptDeviceId', id => config.adoptDeviceId(id));
+  // Another server, or the same one after pairing: the UI starts again clean
+  handle('connection:choose', server => {
+    pairing.cancel();
+    resolving = connection.choose(server);
+    return resolving.then(state => {
+      load();
+      return view(state);
+    });
+  });
+  handle('connection:reconnect', () => resolveAgain().then(state => {
+    if (state.server) {
+      load();
+    }
+    return view(state);
+  }));
+  handle('connection:drop', (reason, detail) => {
+    resolving = Promise.resolve(connection.drop(reason, detail));
+    return resolving.then(state => {
+      load();
+      return view(state);
+    });
+  });
+  handle('connection:forget', id => {
+    config.forget(id);
+    return true;
+  });
+
+  handle('discovery:start', () => {
+    if (!picker) {
+      picker = discovery.createDiscovery({
+        localPort: local.configuredPort(),
+        onChange: servers => send('discovery:servers', servers.map(connection.annotate))
+      });
+      picker.start();
+    }
+    return picker.servers().map(connection.annotate);
+  });
+  handle('discovery:stop', () => stopPicker());
+  handle('discovery:rescan', () => {
+    if (picker) {
+      picker.rescan();
+    }
+  });
+  handle('discovery:probe', address => discovery.probe(address).then(connection.annotate));
+
+  handle('pairing:start', server => pairing.start(server, CLIENT_HEADER, update => send('pairing:update', update)));
+  handle('pairing:cancel', () => pairing.cancel());
+
+  handle('local:status', () => localServer.status());
+  handle('local:start', () => localServer.start().then(info => connection.annotate({
+    id: info.id, name: info.name, url: info.url, local: true, compatible: true
+  })));
+
+  handle('power', action => power.run(action));
+
+  updater.init(state => send('updater:state', state));
+  handle('updater:state', () => updater.state());
+  handle('updater:check', () => updater.check());
+  handle('updater:install', () => updater.install());
+
+  app.on('before-quit', () => {
+    pairing.cancel();
+    stopPicker();
+    localServer.stop();
+  });
+
+  return resolveAgain;
+}
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  carryOverStorage();
+  app.on('second-instance', () => {
+    if (win) {
+      if (win.isMinimized()) {
+        win.restore();
+      }
+      win.focus();
+    }
+  });
+  app.whenReady().then(() => {
+    const connection = require('./connection');
+    require('./auth').install(session.defaultSession, connection.auth, CLIENT_HEADER);
+    const resolve = connectIpc();
+    resolve();
+    createWindow();
+  });
+  app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
-        app.quit()
-    }
-})
-app.on('activate', () => {
-    if (win === null) {
-        createWindow()
-    }
-})
-
-electron.get('/power/:action' , function(req , res){
-  var action = req.params.action;
-  console.log(action);
-  switch (action) {
-    case "quit":
       app.quit();
-      break;
-    case "shutdown":
-      shutdown.shutdown();
-      break;
-    case "sleep":
-      shutdown.sleep();
-      break;
-    case "restart":
-      shutdown.reboot();
-      break;
-    default:
-      console.log("unidentified request");
-      break;
-  }
-})
-
-function handleSquirrelEvent(application) {
-  if (process.argv.length === 1) {
-      return false;
-  }
-
-  const ChildProcess = require('child_process');
-  const path = require('path');
-
-  const appFolder = path.resolve(process.execPath, '..');
-  const rootAtomFolder = path.resolve(appFolder, '..');
-  const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
-  const exeName = path.basename(process.execPath);
-
-  const spawn = function(command, args) {
-      let spawnedProcess, error;
-
-      try {
-          spawnedProcess = ChildProcess.spawn(command, args, {
-              detached: true
-          });
-      } catch (error) {}
-
-      return spawnedProcess;
-  };
-
-  const spawnUpdate = function(args) {
-      return spawn(updateDotExe, args);
-  };
-
-  const squirrelEvent = process.argv[1];
-  switch (squirrelEvent) {
-      case '--squirrel-install':
-      case '--squirrel-updated':
-          // Optionally do things such as:
-          // - Add your .exe to the PATH
-          // - Write to the registry for things like file associations and
-          //   explorer context menus
-
-          // Install desktop and start menu shortcuts
-          spawnUpdate(['--createShortcut', exeName]);
-
-          setTimeout(application.quit, 1000);
-          return true;
-
-      case '--squirrel-uninstall':
-          // Undo anything you did in the --squirrel-install and
-          // --squirrel-updated handlers
-
-          // Remove desktop and start menu shortcuts
-          spawnUpdate(['--removeShortcut', exeName]);
-
-          setTimeout(application.quit, 1000);
-          return true;
-
-      case '--squirrel-obsolete':
-          // This is called on the outgoing version of your app before
-          // we update to the new version - it's the opposite of
-          // --squirrel-updated
-
-          application.quit();
-          return true;
-  }
-};
+    }
+  });
+  app.on('activate', () => {
+    if (win === null) {
+      createWindow();
+    }
+  });
+}
