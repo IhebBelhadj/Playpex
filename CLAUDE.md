@@ -18,6 +18,8 @@ Data sources:
 
 Movement system: **[`docs/movement-system-plan.md`](docs/movement-system-plan.md)** (plan + status) and the "Movement system" section of [`apps/tv/src/app/CLAUDE.md`](apps/tv/src/app/CLAUDE.md): focus movement and positioning through shared directives (`apps/tv/src/app/movement/`), with a per-container motion: `transform` (translated tracks, for category rows of posters) or `scroll` (native scrolling, for everything else). Every page uses it (the player excepted). Read both before touching focus movement, scrolling or `PointerService`.
 
+Navigation system: **[`docs/navigation-system-plan.md`](docs/navigation-system-plan.md)** (plan, proposed 2026-10-19, nothing built): one navigator owning the history (a stack of screen entries; the router only renders), screens declared once (`defineScreen`: id, path, kind, requirements, chrome, back policy, menu entry) and opened by intent, one back ladder (layers → in-page steps → previous entry → root policy), layers for modals and panels, input sent only to the top owner; the primitives future plugins will use. Read it before changing routes, Back behaviour, modals or `NavigationService`.
+
 Server / client split: **[`docs/server-separation-plan.md`](docs/server-separation-plan.md)** (plan + status, in progress): the server becomes its own product (Playpex Media Server) and the TV app one of several clients over a versioned API (`packages/protocol/openapi.yaml`). Read its status line before working on the server, the API or packaging.
 
 More detailed guides live next to the code:
