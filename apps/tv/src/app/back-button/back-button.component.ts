@@ -1,11 +1,6 @@
 import { Component, OnDestroy } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
-import { filter, Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
-import { MoviesService } from '../movies.service';
-import { TorrentPickerService } from '../torrent-picker.service';
-import { PlayChoiceService } from '../play-choice.service';
-import { ConnectionService } from '../connection.service';
+import { Subscription } from 'rxjs';
+import { InputDispatcher, Navigator } from '../nav/public-api';
 
 // "Back" for mouse users, top left of the shell under the menu's logo. Shown only while the cursor
 // is (`body.pointer-hidden` hides it), on pages there is a "back" from: titles,
@@ -18,9 +13,9 @@ import { ConnectionService } from '../connection.service';
 //
 // It sends 'leave' instead of 'back': Escape steps back inside a page first
 // (posters → menu → out), the button leaves the page at once: a title page →
-// where it was opened from, a section page (movies, TV shows, search, watch
-// list, 18+) → the power menu, like the last Escape there. An open panel
-// (keyboard, PIN pad, filters, editor panels) closes first, as with Escape.
+// where it was opened from, search → the power menu, like the last Escape
+// there. An open layer (modal, keyboard, PIN pad, filters, editor panels)
+// closes first, as with Escape.
 @Component({
   selector: 'back-button',
   templateUrl: './back-button.component.html',
@@ -29,39 +24,23 @@ import { ConnectionService } from '../connection.service';
 export class BackButtonComponent implements OnDestroy {
 
   visible = false;
-  private routeSub:Subscription;
+  private sub:Subscription;
 
-  constructor(
-    private router:Router,
-    private navigation:NavigationService,
-    private moviesService:MoviesService,
-    private torrentPicker:TorrentPickerService,
-    private playChoice:PlayChoiceService,
-    private connection:ConnectionService,
-  ) {
-    this.routeSub = this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(e => this.visible = this.showsOn(e.urlAfterRedirects));
+  constructor(navigator:Navigator, private dispatcher:InputDispatcher) {
+    // the screen's `chrome.backButton`; by default on everything but sections
+    // and roots (src/app/nav/screens.ts)
+    this.sub = navigator.current$.subscribe(entry => {
+      let screen = entry?.screen;
+      this.visible = !!screen && (screen.chrome?.backButton ?? (screen.kind != 'section' && screen.kind != 'root'));
+    });
   }
 
-  private showsOn(url:string) {
-    let path = url.split('?')[0];
-    return path != '/' && !path.startsWith('/profiles') && path != '/connect'
-      && !['/watchlist', '/adult', '/adult/browse', '/adult/releases'].includes(path)
-      // release lists: their own "Back to <title>" in the rail
-      && !path.startsWith('/releases/')
-      && !this.moviesService.catalogForUrl(path);
-  }
-
+  // = the `leave` action: an open layer (modal, panel) closes first
   back() {
-    // the modals take Escape too (AppComponent); same here
-    let modal = this.connection.isOpen ? this.connection
-      : this.torrentPicker.isOpen ? this.torrentPicker : this.playChoice.isOpen ? this.playChoice : null;
-    if (modal) modal.sendCommand('back');
-    else this.navigation.addCommand('leave');
+    this.dispatcher.dispatch('leave', 'button');
   }
 
   ngOnDestroy(): void {
-    this.routeSub?.unsubscribe();
+    this.sub?.unsubscribe();
   }
 }

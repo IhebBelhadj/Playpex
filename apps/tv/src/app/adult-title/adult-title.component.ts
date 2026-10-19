@@ -1,6 +1,5 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, of, Subscription, switchMap } from 'rxjs';
+import { catchError, of, Subscription } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
 import { NotificationService } from '../notification.service';
@@ -9,13 +8,16 @@ import { TorrentPickerService } from '../torrent-picker.service';
 import { PlaybackService } from '../playback.service';
 import { AdultService, AdultTitle, AdultTitleDetails, MetaProvider } from '../adult.service';
 import { ReleasesService } from '../releases.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 // /adult/title/:provider/:id — one 18+ title from a metadata provider, laid out
 // and styled like the movie page (title info, action tiles, cast row, "More
 // from <studio>" row). Play finds its torrents by title + year (TheRARBG XXX +
 // The Pirate Bay, server lib/adult.js) → torrent picker → player; nothing is
 // saved to the profile. "Find releases" opens the compact list searched for
-// the title, Enter on a performer searches it for them.
+// the title, Enter on a performer searches it for them. Screen core.adult.title
+// (src/app/nav): params { provider, id }, payload the title as listed (it
+// renders before the details arrive).
 @Component({
   selector: 'app-adult-title',
   templateUrl: './adult-title.component.html',
@@ -31,8 +33,8 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
   error = '';
   findingTorrents = false;
 
-  private paramSub:Subscription;
-  private navSub:Subscription;
+  private titleSub:Subscription;
+  private screen = useScreen<{ provider:string, id:string }, AdultTitle>();
 
   constructor(
     private adult:AdultService,
@@ -43,8 +45,7 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     private torrents:TorrentService,
     private torrentPicker:TorrentPickerService,
     private playback:PlaybackService,
-    private route:ActivatedRoute,
-    private router:Router,
+    private navigator:Navigator,
   ) { }
 
   get studio() {
@@ -52,21 +53,14 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // "More from" opens another title on this same page
-    this.paramSub = this.route.paramMap.pipe(
-      switchMap(params => {
-        this.providerId = params.get('provider');
-        this.adult.metaProviders().subscribe(list => this.provider = list.find(p => p.id == this.providerId) || null);
-        let id = params.get('id');
-        let opened = this.adult.openedTitle;
-        this.item = opened?.id == id ? opened : null;
-        this.details = opened && 'performers' in opened ? opened as AdultTitleDetails : null;
-        this.more = [];
-        this.error = '';
-        if (this.item?.backdrop) this.background.sendImage(this.item.backdrop);
-        return this.adult.title(this.providerId, id).pipe(catchError(() => of(null)));
-      }),
-    ).subscribe(details => {
+    let { provider, id } = this.screen.params;
+    this.providerId = provider;
+    this.adult.metaProviders().subscribe(list => this.provider = list.find(p => p.id == this.providerId) || null);
+    let opened = this.screen.payload;
+    this.item = opened?.id == id ? opened : null;
+    this.details = opened && 'performers' in opened ? opened as AdultTitleDetails : null;
+    if (this.item?.backdrop) this.background.sendImage(this.item.backdrop);
+    this.titleSub = this.adult.title(this.providerId, id).pipe(catchError(() => of(null))).subscribe(details => {
       if (!details) {
         if (!this.item) this.error = "Couldn't load this title. Check your connection, then go back and try again.";
         setTimeout(() => this.focusSelector('.adultTitle .option'), 0);
@@ -76,7 +70,7 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
       this.item = this.item || details;
       if (details.backdrop) this.background.sendImage(details.backdrop);
       this.loadMore(details);
-      setTimeout(() => this.focusSelector('.adultTitle [data-action="play"]'), 0);
+      setTimeout(() => this.focusStart(), 0);
     });
   }
 
@@ -89,33 +83,26 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
       restrict: 'self-only',
       leaveFor: { right: '@adultTitle' },
     });
-    setTimeout(() => this.focusSelector('.adultTitle [data-action="play"]'), 0);
+    setTimeout(() => this.focusStart(), 0);
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (!this.router.url.startsWith('/adult/title/')) return;
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'leave') {
-        this.navigation.goBack();
-        return;
-      }
-      if (instruction == 'back') {
-        if (active.classList.contains('menuItem')) this.focusSelector('.adultTitle [data-action="play"]');
-        else this.navigation.goBack();
-        return;
-      }
-      if (instruction != 'click' || active.classList.contains('menuItem')) return;
+    // Back on the menu: into the page again (then out, the nav system's pop)
+    this.screen.onBack(() => {
+      if (!document.activeElement?.classList.contains('menuItem')) return false;
+      this.focusSelector('.adultTitle [data-action="play"]');
+      return true;
+    });
+    this.screen.onSelect(active => {
       let action = active.dataset['action'];
       if (action == 'play') this.play();
       else if (action == 'releases') this.findReleases(this.item?.title);
       else if (active.dataset['performer'] !== undefined) this.findReleases(this.details?.performers[Number(active.dataset['performer'])]?.name);
-      else if (action == 'back') this.navigation.goBack();
+      else if (action == 'back') this.navigator.back();
       else if (active.classList.contains('card')) this.open(this.more[Number(active.dataset['index'])]);
     });
   }
 
   ngOnDestroy(): void {
-    this.paramSub?.unsubscribe();
-    this.navSub?.unsubscribe();
+    this.titleSub?.unsubscribe();
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
@@ -142,7 +129,6 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
             magnet: t['magnet'],
             adult: true,
           });
-          this.router.navigateByUrl('/player');
         });
       },
       error: () => {
@@ -156,13 +142,13 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
   // release source
   private findReleases(query:string | undefined) {
     if (!query) return;
-    this.releases.open('adult', query, { label: this.item?.title || query, url: this.router.url });
+    this.releases.open('adult', query, { label: this.item?.title || query });
   }
 
+  // "More from": that title's page, over this one
   private open(item:AdultTitle | undefined) {
     if (!item) return;
-    this.adult.openedTitle = item;
-    this.router.navigateByUrl(`/adult/title/${this.providerId}/${encodeURIComponent(item.id)}`);
+    this.navigator.open({ screen: 'core.adult.title', params: { provider: this.providerId, id: item.id }, payload: item });
   }
 
   // ── "More from <studio>" ────────────────────────────────────────────────
@@ -184,6 +170,11 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   initials(name:string):string {
     return name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  // Play, or back from the player / a release list: what was focused
+  private focusStart() {
+    if (!this.screen.ready()) this.focusSelector('.adultTitle [data-action="play"]');
   }
 
   private focusSelector(selector:string) {

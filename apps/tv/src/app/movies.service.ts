@@ -47,14 +47,13 @@ export class MoviesService {
 
   // Browsable sections; the home page/slider pick one via route data `media`
   catalogs: { [media in MediaType]: Catalog } = {
-    movie: new Catalog('movie', categories, '/movies/list', '/movies/movie'),
-    tv: new Catalog('tv', showCategories, '/shows/list', '/shows/show'),
+    movie: new Catalog('movie', categories, 'core.movies', 'core.movie'),
+    tv: new Catalog('tv', showCategories, 'core.shows', 'core.show'),
   };
 
   // Item shown in <movie-description>: a TMDB movie, or a TV show (media_type 'tv')
   selectedmovie = new BehaviorSubject({});
   searchData = new BehaviorSubject<SearchState>(EMPTY_SEARCH);
-  movieAppHistory = [];
 
   private tmdb_key = "0067d3f9de200e949bc7f144b1ff83f1";
 
@@ -133,10 +132,6 @@ export class MoviesService {
     return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?api_key=${this.tmdb_key}&language=en-US`)
   }
 
-  catalogForUrl(url:string):Catalog {
-    return Object.values(this.catalogs).find(c => c.listUrl === url);
-  }
-
   getMovieVideos(tmdb_id){
     return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}/videos?api_key=${this.tmdb_key}&language=en-US`)
   }
@@ -156,50 +151,5 @@ export class MoviesService {
       checkSelection():Observable<any>{
         return this.selectedmovie.asObservable();
       }
-
-  //keeps track of the movies you opened (from slider or similar movies or from search page)
-  //and creates a stack to not get the data each time
-
-      addMovieToHistory(movie){
-        let canAdd = true;
-        this.movieAppHistory.forEach(el => {
-          if (movie['id'] == el['id']) {
-            canAdd = false;
-          }
-        });
-
-        if (canAdd) this.movieAppHistory.push(movie);
-
-      }
-
-      getAppMovieHistory():Array<Object>{
-        return this.movieAppHistory;
-      }
-
-      popFromHistoryStack(id){
-        this.movieAppHistory = this.movieAppHistory.filter(movie => movie.id != id)
-      }
-
-      getMovieFromStack(id){
-        console.log(this.movieAppHistory);
-
-        var element = undefined;
-        for (let i = 0; i < this.movieAppHistory.length; i++) {
-
-          if (this.movieAppHistory[i]['id'] == id) {
-            element = this.movieAppHistory[i];
-            break;
-          }
-
-        }
-
-        return element;
-      }
-
-
-
-
-
-
 
 }

@@ -1,10 +1,11 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ConnectionService } from '../connection.service';
+import { LayerRef, LayerStack, LAYER_PRIORITY } from '../nav/public-api';
 
 // Modal "Lost connection to <server>": Retry / Choose server
-// (ConnectionService). Same frame and key handling as <play-choice>:
-// AppComponent forwards select/back here while it is open.
+// (ConnectionService). Same frame as <play-choice>; a global layer of the
+// nav system while open, above every other one (src/app/nav): Back closes it.
 @Component({
   selector: 'connection-lost',
   templateUrl: './connection-lost.component.html',
@@ -12,45 +13,46 @@ import { ConnectionService } from '../connection.service';
 })
 export class ConnectionLostComponent implements OnInit, OnDestroy {
 
-  private previousFocus:HTMLElement;
-  private subscriptions:Subscription[] = [];
-  private wasOpen = false;
+  private layer:LayerRef | null = null;
+  private subscription:Subscription;
 
-  constructor(public connection:ConnectionService) { }
+  constructor(public connection:ConnectionService, private layers:LayerStack) { }
 
   ngOnInit(): void {
-    this.subscriptions.push(
-      this.connection.onChange().subscribe(() => {
-        if (this.connection.isOpen && !this.wasOpen) {
-          this.previousFocus = document.activeElement as HTMLElement;
-          this.focus('retry');
-          // after the page's own reaction to the failure (it may focus a button)
-          setTimeout(() => {
-            if (this.connection.isOpen && !document.activeElement?.closest('.connectionLost')) this.focus('retry');
-          }, 400);
-        } else if (!this.connection.isOpen && this.wasOpen) {
-          this.previousFocus?.focus({ preventScroll: true });
-        }
-        this.wasOpen = this.connection.isOpen;
-      }),
-      this.connection.onCommand().subscribe(action => {
-        if (action == 'back') this.connection.close();
-        if (action != 'select') return;
-        const active = document.activeElement as HTMLElement;
-        // a page behind may have taken the focus (e.g. its own error's button)
-        if (!active?.closest('.connectionLost')) {
-          this.focus('retry');
-          return;
-        }
-        const choice = active.dataset['choice'];
-        if (choice == 'retry') this.connection.retry();
-        if (choice == 'servers') this.connection.chooseServer();
-      }),
-    );
+    this.subscription = this.connection.onChange().subscribe(() => {
+      if (this.connection.isOpen && !this.layer) this.open();
+      else if (!this.connection.isOpen && this.layer) this.layer.close();
+    });
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(s => s.unsubscribe());
+    this.subscription?.unsubscribe();
+    this.layer?.close();
+  }
+
+  private open() {
+    let layer = this.layer = this.layers.open({
+      id: 'connectionLost',
+      priority: LAYER_PRIORITY.system,
+      global: true,
+      element: () => document.querySelector('.connectionLost'),
+    });
+    // a page behind may take the focus (its own reaction to the failure):
+    // select brings it back here first
+    layer.onSelect(() => {
+      this.focus('retry');
+      return true;
+    });
+    layer.result$.subscribe({
+      complete: () => {
+        this.layer = null;
+        if (this.connection.isOpen) this.connection.close();
+      },
+    });
+    this.focus('retry');
+    setTimeout(() => {
+      if (this.layer === layer && !document.activeElement?.closest('.connectionLost')) this.focus('retry');
+    }, 400);
   }
 
   private focus(choice:string) {

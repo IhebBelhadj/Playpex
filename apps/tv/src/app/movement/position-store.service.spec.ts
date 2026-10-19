@@ -32,4 +32,21 @@ describe('movement PositionStore', () => {
     current.next({ id: 2 });
     expect(store.get('stacker')).toBeUndefined();
   });
+
+  it('scopes keys (the navigator sets the scope) and clears one scope', () => {
+    let store = new PositionStore({ current: new BehaviorSubject<any>(null) } as any);
+    store.save('catalog', { index: 1 });
+    store.setScope('e4:');
+    store.save('cast', { index: 2 });
+    expect(store.get('catalog')).toBeUndefined();
+    expect(store.get('catalog', '')).toEqual({ index: 1 });
+    store.save('cast', { scrollLeft: 30 }, 'e5:');
+    store.setScope('e5:');
+    expect(store.get('cast')).toEqual({ scrollLeft: 30 });
+    store.clearScope('e4:');
+    expect(store.get('cast', 'e4:')).toBeUndefined();
+    expect(store.get('cast')).toEqual({ scrollLeft: 30 });
+    store.clearScope('');
+    expect(store.get('catalog', '')).toEqual({ index: 1 });
+  });
 });

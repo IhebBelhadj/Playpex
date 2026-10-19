@@ -3,15 +3,15 @@
 <div class="pageContainer" pxStack>
   <!-- List page: search and filter this section (their rows stand in for the section's) -->
   <div class="sectionToolbar" *ngIf="onList" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
-    <button class="searchField focusable" [class.empty]="!catalog.query">
+    <button class="searchField focusable" [class.empty]="!catalog.query" (pxSelect)="catalog.typing = true">
       <img src="assets/icons/search.svg" alt="">
       <span class="fieldText">{{ catalog.query || searchHint }}</span>
     </button>
-    <button class="filterBtn focusable" [class.active]="filtered">
+    <button class="filterBtn focusable" [class.active]="filtered" (pxSelect)="catalog.filtering = true">
       <img src="assets/icons/opts.svg" alt="">
       <span class="fieldText">{{ filterLabel }}</span>
     </button>
-    <button class="clearSearch focusable" *ngIf="catalog.search">Clear</button>
+    <button class="clearSearch focusable" *ngIf="catalog.search" (pxSelect)="clearSearch()">Clear</button>
   </div>
   <!-- an episode page shows its own title block -->
   <!-- (nor while a search / filters show nothing: it would describe an earlier title) -->

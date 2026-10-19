@@ -1,51 +1,55 @@
-import { NavigationService } from './../navigation.service';
 import { NotificationService } from './../notification.service';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { LayerRef, LayerStack, LAYER_PRIORITY } from '../nav/public-api';
 
+// Error popup with an "ok" button: a global layer of the nav system while
+// shown (src/app/nav), so it survives the navigation that often follows an
+// error (the player leaving) and takes select / back (both close it)
 @Component({
   selector: 'notification-handler',
   templateUrl: './notification-handler.component.html',
   styleUrls: ['./notification-handler.component.scss']
 })
-export class NotificationHandlerComponent implements OnInit {
+export class NotificationHandlerComponent implements OnInit, OnDestroy {
   displayError = false;
   errorContent = "";
+  private layer:LayerRef | null = null;
+  private subscription:Subscription;
+
   constructor(
     private notificationService:NotificationService,
-    private navigation:NavigationService,
+    private layers:LayerStack,
     ) { }
 
   ngOnInit(): void {
-
-    this.navigation.executeCommand().subscribe(instruction =>{
-      if (instruction == "click" && document.activeElement.classList.contains('okBtn')) {
-          (document.querySelector('.errorHandler') as HTMLElement).style.display = 'none';
-          this.navigation.updateNavigation('remove' , {sectionId : 'okBtn'});
+    this.subscription = this.notificationService.getNotification().subscribe((notification)=>{
+      if (notification.type != "error") return;
+      this.errorContent = notification.data;
+      this.displayError = true;
+      if (!this.layer) {
+        let layer = this.layer = this.layers.open({
+          id: 'notification',
+          priority: LAYER_PRIORITY.alert,
+          global: true,
+          element: () => document.querySelector('.errorHandler'),
+        });
+        layer.result$.subscribe({ complete: () => {
+          this.layer = null;
+          this.displayError = false;
+        } });
       }
+      setTimeout(() => (document.querySelector('.errorWrapper .okBtn') as HTMLElement)?.focus({ preventScroll: true }), 100);
     })
+  }
 
-    this.notificationService.getNotification().subscribe((notification)=>{
-      if(notification.type == "error"){
-        this.displayError = true;
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+    this.layer?.close();
+  }
 
-        let errorHandler = document.querySelector('.errorHandler') as HTMLElement;
-        let okBtn = document.querySelector('.errorWrapper .okBtn') as HTMLElement;
-
-        errorHandler.style.display = 'block';
-        this.navigation.updateNavigation('add' , {
-          id: 'okBtn',
-          selector: '.errorWrapper .okBtn',
-          restrict : "self-only",
-        })
-        setTimeout(()=>{
-          console.log(okBtn);
-
-          okBtn.focus({preventScroll:true})
-        } , 100)
-
-        this.errorContent = notification.data;
-      }
-    })
+  close() {
+    this.layer?.close();
   }
 
 }

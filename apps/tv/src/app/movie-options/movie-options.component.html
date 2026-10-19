@@ -2,20 +2,20 @@
      cast row, the similar titles row -->
 <div class="optionsMasterContainer" pxSection="options" [leaveFor]="{ left: '@menu' }">
   <div class="optionPannel" pxGrid>
-    <button class="option focusable play" pxItem pxItemKey="play">
+    <button class="option focusable play" pxItem pxItemKey="play" (pxSelect)="onPlay()">
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
       </div>
       <span>{{ findingTorrents ? 'Finding torrents…' : resumeLabel || 'Play' }}</span>
     </button>
-    <button class="option focusable trailer" pxItem pxItemKey="trailer">
+    <button class="option focusable trailer" pxItem pxItemKey="trailer" (pxSelect)="onTrailer()">
       <div class="imgContainer">
         <img src="assets/icons/trailer.svg" alt="">
       </div>
       <span>Trailer</span>
     </button>
     <!-- every source's releases of this movie, not only YTS' -->
-    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+    <button class="option focusable findReleases" pxItem pxItemKey="releases" (pxSelect)="findReleases()">
       <div class="imgContainer">
         <img src="assets/icons/search.svg" alt="">
       </div>
@@ -23,13 +23,13 @@
     </button>
     <!-- 18+ titles never go in the profile's library -->
     <ng-container *ngIf="!isAdult">
-    <button class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist">
+    <button class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist" (pxSelect)="toggleWatchlist()">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
       </div>
       <span>{{ inWatchlist ? 'In your watch list' : 'Add to watch list' }}</span>
     </button>
-    <button class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched">
+    <button class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched" (pxSelect)="toggleWatched()">
       <div class="imgContainer">
         <img [src]="watched ? 'assets/icons/tick.svg' : 'assets/icons/mark.svg'" alt="">
       </div>
@@ -66,7 +66,8 @@
           <button class="displayedElem focusable" pxItem [pxItemKey]="movie.id"
             *ngIf="movie.poster_path && movie.original_language == 'en'"
             [attr.data-index]="i"
-            [attr.data-id]="movie.id">
+            [attr.data-id]="movie.id"
+            (pxSelect)="openSimilar(movie)">
               <div class="imgContainer">
                 <img src="{{profileImgBase + movie?.poster_path}}" alt="">
               </div>

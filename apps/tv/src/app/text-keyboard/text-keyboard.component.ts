@@ -1,13 +1,12 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
+import { LayerRef, LayerStack } from '../nav/public-api';
 
 // Full-screen on-screen keyboard (A–Z, 0–9, space / delete / clear / done) for
 // the remote; typing on a physical keyboard works too (taken as is). Emits
 // `done` with the text or `cancelled` on back. While open it owns the
 // `textKeyboard` navigation section (a trapping pxSection: keys and mouse stay
-// in it; arrows move by key grid lines, src/app/movement); hosts must ignore
-// click/back meanwhile.
+// in it; arrows move by key grid lines, src/app/movement) and is a layer of
+// the nav system (src/app/nav): the host gets no select / back meanwhile.
 @Component({
   selector: 'text-keyboard',
   templateUrl: './text-keyboard.component.html',
@@ -30,23 +29,22 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   digits = '1234567890'.split('');
 
-  private navSub:Subscription;
+  private layer:LayerRef;
   private keyListener;
 
-  constructor(private navigation:NavigationService) { }
+  constructor(private layers:LayerStack, private host:ElementRef<HTMLElement>) { }
 
   ngAfterViewInit(): void {
     setTimeout(() => (document.querySelector('.textKeyboard [data-key="A"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction == 'back' || instruction == 'leave') {
-        this.cancelled.emit();
-        return;
-      }
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'click' && active.classList.contains('key')) {
-        this.press(active.dataset['key']);
-      }
+    // a layer of the nav system: select / back are its own while it's open
+    this.layer = this.layers.open({ id: 'textKeyboard', element: this.host.nativeElement });
+    this.layer.onSelect(el => {
+      if (el.classList.contains('key')) this.press(el.dataset['key']);
+    });
+    this.layer.onBack(() => {
+      this.cancelled.emit();
+      return true;
     });
 
     this.keyListener = (e:KeyboardEvent) => {
@@ -62,7 +60,7 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
+    this.layer?.close();
     document.removeEventListener('keydown', this.keyListener);
   }
 

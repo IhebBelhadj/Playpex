@@ -1,12 +1,11 @@
-import { NavigationService } from './../navigation.service';
-import { MenuServiceService } from './../menu-service.service';
-import { ActivatedRoute, Router } from '@angular/router';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
-import { YoutubeService } from '../youtube.service';
-import { Subscription } from 'rxjs';
-import { gsap ,Power1} from 'gsap'
+import { gsap } from 'gsap'
 import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
+import { useScreen } from '../nav/public-api';
+
+// Trailer player (core.trailer, params { id }: the YouTube video id). Enter
+// pauses / plays, ←/→ seek 5 s; Back leaves (the nav system's pop)
 
 
 @Component({
@@ -20,27 +19,16 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
   video_id;
   player:HTMLVideoElement;
   audioTrack:HTMLVideoElement;
-  navigationSub:Subscription;
   canplay:boolean = false;
   playerPaused:boolean = false;
   keydownListener;
-  constructor(
-    private server:ServerService,
-    private ytService:YoutubeService,
-    private activeRoute:ActivatedRoute,
-    private menuService:MenuServiceService,
-    private navigation:NavigationService,
-    private router:Router,
-  ) {
+  private screen = useScreen<{ id:string }>();
 
-    this.menuService.sendInstruction('hide' , this);
-  }
+  constructor(private server:ServerService) { }
 
   ngOnInit(): void {
-    this.video_id = this.activeRoute.snapshot.params['id'];
-
-    this.navigationHandler();
-
+    this.video_id = this.screen.params.id;
+    this.screen.onSelect(() => this.togglePause());
   }
 
   ngAfterViewInit(): void {
@@ -86,8 +74,7 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
     })
 
     this.keydownListener = (e)=>{
-      if(!this.router.url.includes('/ytplayer')) return;
-      if(!this.canplay) return;
+      if(!this.screen.active || !this.canplay) return;
       if (
         actionForKey(e) == 'right'
       ) {
@@ -110,8 +97,6 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
   }
 
   ngOnDestroy(): void {
-    this.menuService.sendInstruction('show' , this);
-    this.navigationSub.unsubscribe();
     document.removeEventListener('keydown' , this.keydownListener);
     this.player.src = "";
     this.audioTrack.src = "";
@@ -145,35 +130,17 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
     slider.style.width = Math.floor(this.player.currentTime *100 /duration)+"%"
   }
 
-  navigationHandler(){
-    this.navigationSub = this.navigation.executeCommand().subscribe(instruction =>{
-      if(!this.router.url.includes('/ytplayer')) return;
-      console.log('instruction');
-
-      switch (instruction) {
-        case 'back':
-        case 'leave':
-            this.navigation.goBack();
-          break;
-        case 'click':
-          if (this.canplay) {
-            if (!this.playerPaused) {
-              this.player.pause();
-              this.animateIndicator('.isPausingIndicator img')
-              this.playerPaused = true;
-            }else {
-              this.player.play();
-              this.animateIndicator('.isPlayingIndicator img')
-              this.playerPaused = false;
-
-            }
-          }
-          break;
-        default:
-          break;
-      }
-
-    })
+  togglePause(){
+    if (!this.canplay) return;
+    if (!this.playerPaused) {
+      this.player.pause();
+      this.animateIndicator('.isPausingIndicator img')
+      this.playerPaused = true;
+    }else {
+      this.player.play();
+      this.animateIndicator('.isPlayingIndicator img')
+      this.playerPaused = false;
+    }
   }
 
   animateIndicator(indicatorCssClass){

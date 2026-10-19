@@ -22,7 +22,7 @@ import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
 import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filter-panel.component';
-import { RouterModule } from "@angular/router";
+import { RouteReuseStrategy, RouterModule } from "@angular/router";
 
 import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
 import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
@@ -36,6 +36,8 @@ import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
 import { AdultTitleComponent } from './adult-title/adult-title.component';
 import { BackButtonComponent } from './back-button/back-button.component';
 import { MOVEMENT_DIRECTIVES } from './movement/movement';
+import { NAV_DIRECTIVES } from './nav/public-api';
+import { NavReuseStrategy } from './nav/reuse-strategy';
 import { ConnectPageComponent } from './connect-page/connect-page.component';
 import { ConnectionLostComponent } from './connection-lost/connection-lost.component';
 import { ServerErrorsInterceptor } from './server-errors.interceptor';
@@ -74,6 +76,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     ConnectPageComponent,
     ConnectionLostComponent,
     ...MOVEMENT_DIRECTIVES,
+    ...NAV_DIRECTIVES,
   ],
   imports: [
     BrowserModule,
@@ -85,6 +88,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
   providers: [
     MoviesService,
     { provide: HTTP_INTERCEPTORS, useClass: ServerErrorsInterceptor, multi: true },
+    { provide: RouteReuseStrategy, useClass: NavReuseStrategy },
   ],
   bootstrap: [AppComponent]
 })

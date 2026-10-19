@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Router } from '@angular/router';
 import { defaultIfEmpty } from 'rxjs';
 import { NotificationService } from './notification.service';
 import { PlaybackService } from './playback.service';
@@ -11,7 +10,7 @@ import { PlayChoiceService } from './play-choice.service';
 // Playing one episode of a show, shared by the show page and the episode page:
 // with a saved position, Resume / Play from the beginning first; then the
 // episode's torrents (EZTV + TheRARBG via the server, best match first) → the
-// torrent picker → the player.
+// torrent picker → the player (PlaybackService.play).
 
 export interface EpisodeTarget {
   show: any;                 // TMDB show details
@@ -29,7 +28,6 @@ export class EpisodePlaybackService {
   resolving:string | null = null;
 
   constructor(
-    private router:Router,
     private notificationService:NotificationService,
     private torrentService:TorrentService,
     private torrentPicker:TorrentPickerService,
@@ -130,6 +128,5 @@ export class EpisodePlaybackService {
       startAt,
       adult: !!target.show['adult'],
     });
-    this.router.navigateByUrl('/player');
   }
 }

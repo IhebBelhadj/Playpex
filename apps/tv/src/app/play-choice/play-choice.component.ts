@@ -1,10 +1,11 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
-import { PlayChoiceRequest, PlayChoiceService } from '../play-choice.service';
+import { PlayChoice, PlayChoiceRequest, PlayChoiceService } from '../play-choice.service';
+import { LayerRef, LayerStack, LAYER_PRIORITY } from '../nav/public-api';
 
 // Modal: Resume (from the saved position) or Play from the beginning.
-// Own spatial-nav section; AppComponent forwards select/back here while open.
+// Own spatial-nav section; a layer of the nav system while open (like the
+// torrent picker): Back cancels, the focus goes back where it was.
 @Component({
   selector: 'play-choice',
   templateUrl: './play-choice.component.html',
@@ -13,12 +14,12 @@ import { PlayChoiceRequest, PlayChoiceService } from '../play-choice.service';
 export class PlayChoiceComponent implements OnInit, OnDestroy {
 
   request:PlayChoiceRequest;
-  private previousFocus:HTMLElement;
-  private subscriptions:Subscription[] = [];
+  private layer:LayerRef<PlayChoice> | null = null;
+  private subscription:Subscription;
 
   constructor(
     private choices:PlayChoiceService,
-    private navigation:NavigationService,
+    private layers:LayerStack,
   ) { }
 
   get progress():number {
@@ -30,24 +31,31 @@ export class PlayChoiceComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.subscriptions.push(
-      this.choices.onRequest().subscribe(request => this.open(request)),
-      this.choices.onCommand().subscribe(action => {
-        if (action == 'select') this.pickFocused();
-        if (action == 'back') this.close();
-      }),
-    );
+    this.subscription = this.choices.onRequest().subscribe(request => this.open(request));
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(s => s.unsubscribe());
+    this.subscription?.unsubscribe();
+    this.layer?.close();
   }
 
   open(request:PlayChoiceRequest) {
-    if (this.request) this.request.cancel();
+    this.layer?.close(undefined, false);
     this.request = request;
-    this.choices.isOpen = true;
-    this.previousFocus = document.activeElement as HTMLElement;
+    let layer = this.layer = this.layers.open<PlayChoice>({
+      id: 'playChoice',
+      priority: LAYER_PRIORITY.modal,
+      element: () => document.querySelector('.playChoice'),
+    });
+    layer.result$.subscribe({
+      next: choice => request.pick(choice),
+      complete: () => {
+        request.cancel();
+        if (this.layer !== layer) return;
+        this.layer = null;
+        this.request = undefined;
+      },
+    });
 
     // the trapping section is a pxSection in the template
     setTimeout(() => {
@@ -55,20 +63,8 @@ export class PlayChoiceComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  pickFocused() {
-    let active = document.activeElement as HTMLElement;
-    if (!this.request || !active.classList.contains('choice')) return;
-    let choice = active.dataset['choice'] as 'resume' | 'restart';
-    let request = this.request;
-    this.close(() => request.pick(choice));
-  }
-
-  close(done = () => this.request?.cancel()) {
-    if (!this.request) return;
-    this.previousFocus?.focus({ preventScroll: true });
-    done();
-    this.request = undefined;
-    this.choices.isOpen = false;
+  pick(choice:PlayChoice) {
+    this.layer?.close(choice);
   }
 
   // 0:42:13 → "42:13", 1:02:05 → "1:02:05"

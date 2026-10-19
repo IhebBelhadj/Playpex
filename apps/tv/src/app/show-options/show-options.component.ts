@@ -1,5 +1,4 @@
 import { Component, AfterViewInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
@@ -7,21 +6,20 @@ import { MoviesService } from '../movies.service';
 import { NavigationService } from '../navigation.service';
 import { NotificationService } from '../notification.service';
 import { EpisodeProgress, LibraryService } from '../library.service';
-import { FocusEngine, PositionStore } from '../movement/movement';
+import { FocusEngine } from '../movement/movement';
+import { Navigator, useScreen } from '../nav/public-api';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbSeries, ImdbService } from '../imdb.service';
-
-// The show and season last shown, so coming back from an episode page or the
-// player lands on the same season and episode
-let lastShown:{ showId:number , season:number } = null;
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes, with IMDb ratings (the series', each season's
 // mean, each episode's). Movement and scrolling are the movement system's:
 // the buttons and rows are entries of the section page's pxStack. Enter on an
-// episode opens its page (/shows/show/:id/season/:s/episode/:e); "Play" plays
-// the season's first aired episode (EpisodePlaybackService).
+// episode opens its page (core.episode); "Play" plays the season's first
+// aired episode (EpisodePlaybackService). The season shown is kept in the
+// history entry (`state`), so coming back from an episode page or the player
+// lands on the same season and episode.
 @Component({
   selector: 'app-show-options',
   templateUrl: './show-options.component.html',
@@ -54,10 +52,11 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   private focusListener;
   private today = new Date().toISOString().slice(0, 10);
   private restoreEpisode = false;    // back on the show: focus the remembered episode
+  // params { id } (TMDB TV id); state: the season shown
+  private screen = useScreen<{ id:string }>();
 
   constructor(
-    private route:ActivatedRoute,
-    private router:Router,
+    private navigator:Navigator,
     private moviesService:MoviesService,
     private navigation:NavigationService,
     private menu:MenuServiceService,
@@ -67,7 +66,6 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     public episodePlayback:EpisodePlaybackService,
     private imdbService:ImdbService,
     private engine:FocusEngine,
-    private positions:PositionStore,
   ) { }
 
   ngAfterViewInit(): void {
@@ -84,8 +82,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     })
     this.navigation.updateNavigation('focus' , {sectionId : 'showOptions'})
 
+    this.loadShow(this.screen.params.id);
     this.subscriptions.push(
-      this.route.params.subscribe(params => this.loadShow(params['id'])),
 
       // Latest focused season wins; earlier requests are cancelled
       this.seasonRequests.pipe(
@@ -97,7 +95,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       ).subscribe(({ request, data }) => {
         this.loadingEpisodes = false;
         this.selectedSeason = request.season;
-        lastShown = { showId : request.showId , season : request.season };
+        this.screen.setState('season', request.season);
         this.seasonName = data['name'];
         this.focusedEpisode = null;
         this.episodes = (data['episodes'] || []).map(ep => ({
@@ -108,16 +106,16 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
         this.restoreEpisode = false;
         setTimeout(() => {
           let row = this.engine.find('row:episodes');
-          // back from an episode: on it again; another season: its first episode
+          // back from an episode, the player, a release list: what was
+          // focused (else the remembered episode); another season: its first episode
           if (!restore) row?.home();
-          else if (!row?.focusRemembered('restore')) this.focusPlay();
+          else if (!this.screen.ready() && !row?.focusRemembered('restore')) this.focusPlay();
         }, 0);
       } , () => {
         this.loadingEpisodes = false;
         this.notificationService.sendNotification("error" , "Couldn't load this season's episodes");
       }),
 
-      this.navigation.executeCommand().subscribe(instruction => this.onCommand(instruction)),
     );
 
     this.focusListener = (e) => this.onFocus(e.target as HTMLElement);
@@ -133,12 +131,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   loadShow(id){
-    let returning = lastShown?.showId === Number(id);
-    if (!returning) {
-      // another show: no remembered season / episode
-      this.positions.clear('seasons');
-      this.positions.clear('episodes');
-    }
+    let lastSeason = this.screen.returning ? this.screen.entry?.state['season'] : undefined;
     this.imdb = null;
     this.moviesService.getTvDetails(id).subscribe(show => {
       this.show = show;
@@ -156,8 +149,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       this.loadLibraryState();
 
       let season = this.seasons[0]?.season_number;
-      if (returning && this.seasons.some(s => s.season_number === lastShown.season)) {
-        season = lastShown.season;
+      if (lastSeason !== undefined && this.seasons.some(s => s.season_number === lastSeason)) {
+        season = lastSeason;
         this.restoreEpisode = true;
       }
       if (season !== undefined) {
@@ -252,41 +245,22 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     return trailer?.key;
   }
 
-  onCommand(instruction){
-    if (!this.router.url.includes('/shows/show')) return;
-    let active = document.activeElement as HTMLElement;
+  // Play: the season's first aired episode
+  play(){
+    if (!this.show) return;
+    let next = this.episodes.find(ep => !ep.upcoming);
+    if (next) this.episodePlayback.play({ show : this.show , imdbId : this.imdbId , season : this.selectedSeason , episode : next });
+    else this.notificationService.sendNotification("error" , "No aired episodes in this season yet");
+  }
 
-    if (instruction == 'back' || instruction == 'leave') {
-      this.navigation.goBack();
-      return;
-    }
-    if (instruction != 'click') return;
+  playTrailer(){
+    if (this.trailer) this.showYtVid(this.trailer);
+    else this.notificationService.sendNotification("error" , "No trailer found");
+  }
 
-    switch (true) {
-      case active.classList.contains('play'):
-        let next = this.episodes.find(ep => !ep.upcoming);
-        if (next) this.episodePlayback.play({ show : this.show , imdbId : this.imdbId , season : this.selectedSeason , episode : next });
-        else this.notificationService.sendNotification("error" , "No aired episodes in this season yet");
-        break;
-      case active.classList.contains('addWatchlist'):
-        this.toggleWatchlist();
-        break;
-      case active.classList.contains('findReleases'):
-        this.findReleases();
-        break;
-      case active.classList.contains('trailer'):
-        if (this.trailer) this.showYtVid(this.trailer);
-        else this.notificationService.sendNotification("error" , "No trailer found");
-        break;
-      case active.classList.contains('season'):
-        this.engine.find('row:episodes')?.focusRemembered('key');
-        break;
-      case active.classList.contains('episodeBtn'):
-        this.openEpisode(this.episodes[Number(active.dataset['index'])]);
-        break;
-      default:
-        break;
-    }
+  // Enter on a season: into its episodes
+  enterEpisodes(){
+    this.engine.find('row:episodes')?.focusRemembered('key');
   }
 
   // Every source's releases of this show (EZTV by its IMDb id, the others by
@@ -297,7 +271,6 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     let title = this.show['name'];
     this.releases.open(this.isAdult ? 'adult' : 'tv', title, {
       label: title,
-      url: this.router.url,
       context: this.isAdult ? undefined : {
         mediaType: 'tv',
         tmdbId: Number(this.show['id']),
@@ -312,12 +285,12 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   // The episode's own page: its details, ratings, Play and Find releases
   openEpisode(ep){
     if (!ep) return;
-    this.router.navigateByUrl(`/shows/show/${this.show['id']}/season/${this.selectedSeason}/episode/${ep.episode_number}`);
+    this.navigator.open({ screen: 'core.episode', params: { id: this.show['id'], season: this.selectedSeason, episode: ep.episode_number } });
   }
 
   // A focused season loads its episodes (scrolling is the movement system's)
   onFocus(node:HTMLElement){
-    if (!this.router.url.includes('/shows/show')) return;
+    if (!this.screen.active) return;
     this.focusedEpisode = node.classList.contains('episodeBtn')
       ? this.episodes[Number(node.dataset['index'])]?.episode_number ?? null
       : null;
@@ -333,7 +306,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       ease : Power1.easeOut ,
       onComplete : ()=>{
         gsap.set(document.querySelector('.masterContainer'), { clearProps: true });
-        this.router.navigateByUrl('/ytplayer/' + vidId);
+        this.navigator.open({ screen: 'core.trailer', params: { id: vidId } });
       }
     })
   }

@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, UrlTree } from '@angular/router';
 import { ProfilesService } from './profiles.service';
-import { AdultService } from './adult.service';
 
 // Pages that need someone watching: without a current profile → "Who's watching?"
 @Injectable({
@@ -28,18 +27,5 @@ export class AdultGuard implements CanActivate {
     let profile = this.profiles.current.value;
     if (!profile) return this.router.parseUrl('/profiles');
     return profile.isKid ? this.router.parseUrl('/movies/list') : true;
-  }
-}
-
-// /adult itself: the profile's layout (posters or the compact release list)
-@Injectable({
-  providedIn: 'root'
-})
-export class AdultLayoutGuard implements CanActivate {
-
-  constructor(private adult:AdultService, private router:Router) { }
-
-  canActivate():UrlTree {
-    return this.router.parseUrl(this.adult.layoutUrl());
   }
 }

@@ -1,11 +1,10 @@
-import { Router } from '@angular/router';
 import { EMPTY_SEARCH, MoviesService, SearchItem, SearchKind, SearchRow, SearchState } from './../movies.service';
 import { catchError, debounceTime, first, forkJoin, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
-import { MenuServiceService } from './../menu-service.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { ProfilesService } from '../profiles.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 interface Filter {
   id: string;
@@ -37,15 +36,14 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   state:SearchState = EMPTY_SEARCH;
   loading = false;
 
-  navSub:Subscription;
   searchSub:Subscription;
   private searches = new Subject<{query:string , filter:string}>();
+  private screen = useScreen();
 
   constructor(
     private navigation:NavigationService,
-    private menuService:MenuServiceService,
     private moviesService:MoviesService,
-    private router:Router,
+    private navigator:Navigator,
     private profiles:ProfilesService,
     private engine:FocusEngine,
     private positions:PositionStore,
@@ -60,10 +58,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   }
 
   ngOnInit(): void {
-    setTimeout(()=>{
-      this.menuService.sendInstruction('hide' , this);
-    } , 0)
-
     this.state = this.moviesService.searchData.value;
     // left over from another profile
     if (this.isKid && this.state.filter == 'adult') this.state = EMPTY_SEARCH;
@@ -83,27 +77,21 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       this.update({ rows : (rows || []).filter(r => r.items.length) , searched : true });
     });
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction=>{
-      if(!(this.router.url == "/search")) return;
-      let active = document.activeElement as HTMLElement;
+    this.screen.onSelect(active => {
+      if (active.classList.contains('keyboardBtn')) this.typeKey(active);
+      else if (active.classList.contains('filterChip')) this.setFilter(active.dataset['filter']);
+      else if (active.classList.contains('result')) this.open(this.itemFor(active));
+    });
 
-      if (instruction == "click" && active.classList.contains('keyboardBtn')) {
-        this.typeKey(active);
-      }
-      else if (instruction == "click" && active.classList.contains('filterChip')) {
-        this.setFilter(active.dataset['filter']);
-      }
-      else if (instruction == "click" && active.classList.contains('result')) {
-        this.open(this.itemFor(active));
-      }
-
-      // a section without the menu: out to the power menu at once
-      if (instruction == 'back' || instruction == 'leave') {
-        this.moviesService.searchData.next(EMPTY_SEARCH);
-        this.positions.clear(STACK);
-        this.navigation.openPowerMenu();
-      }
-    })
+    // a section without the menu: out to the power menu at once (the
+    // section's back policy), starting over next time
+    let clear = () => {
+      this.moviesService.searchData.next(EMPTY_SEARCH);
+      this.positions.clear(STACK);
+      return false;
+    };
+    this.screen.onBack(clear);
+    this.screen.onLeave(clear);
   }
 
   // Sections `keyboard`, `searchFilters` and `searches` are pxSection
@@ -117,8 +105,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.menuService.sendInstruction('show' , this);
-    this.navSub?.unsubscribe();
     this.searchSub?.unsubscribe();
   }
 
@@ -250,14 +236,9 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     if (item.kind == 'person') {
       this.showCredits(item);
     }
-    else if (item.kind == 'tv') {
-      this.router.navigateByUrl(`/shows/show/${item.id}`);
-    }
+    // its page, over this one (the movie page loads the movie's details)
     else {
-      this.moviesService.getTmdbMovieDetails(item.id).pipe(first()).subscribe(data=>{
-        this.moviesService.addMovieToHistory(data);
-        this.router.navigateByUrl(`/movies/movie/${data['id']}`);
-      })
+      this.navigator.open({ screen: item.kind == 'tv' ? 'core.show' : 'core.movie', params: { id: item.id } });
     }
   }
 

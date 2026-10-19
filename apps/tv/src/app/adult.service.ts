@@ -97,8 +97,6 @@ export const EMPTY_BROWSE_STATE: BrowseState = {
 export class AdultService {
 
   browseState:BrowseState = { ...EMPTY_BROWSE_STATE };
-  // the title being opened, so its page renders before the details arrive
-  openedTitle:AdultTitle | null = null;
 
   private metaProviders$:Observable<MetaProvider[]>;
   private meta = `${this.server.api}/adult/meta`;
@@ -127,8 +125,9 @@ export class AdultService {
     return this.profiles.update(profile.id, { preferences: { adult: next } }).pipe(map(() => this.preferences));
   }
 
-  layoutUrl(layout:AdultLayout = this.preferences.layout):string {
-    return layout == 'compact' ? '/adult/releases' : '/adult/browse';
+  // The screen of a layout (src/app/nav/screens.ts)
+  layoutScreen(layout:AdultLayout = this.preferences.layout):string {
+    return layout == 'compact' ? 'core.adult.releases' : 'core.adult.browse';
   }
 
   // ── catalog ─────────────────────────────────────────────────────────────

@@ -1,11 +1,13 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { NavigationService } from '../navigation.service';
-import { TorrentPickRequest, TorrentPickerService } from '../torrent-picker.service';
+import { TorrentOption, TorrentPickRequest, TorrentPickerService } from '../torrent-picker.service';
+import { LayerRef, LayerStack, LAYER_PRIORITY } from '../nav/public-api';
 
 // Modal list of torrents shown before playback (movies and episodes).
-// Own trapping section (pxSection) over a scrolling list (pxGrid);
-// AppComponent forwards select/back here while open.
+// Own trapping section (pxSection) over a scrolling list (pxGrid); a layer
+// of the nav system while open (src/app/nav): it gets select / back, Back
+// cancels, the focus goes back where it was.
 @Component({
   selector: 'torrent-picker',
   templateUrl: './torrent-picker.component.html',
@@ -14,33 +16,41 @@ import { TorrentPickRequest, TorrentPickerService } from '../torrent-picker.serv
 export class TorrentPickerComponent implements OnInit , OnDestroy {
 
   request:TorrentPickRequest;
-  private previousFocus:HTMLElement;
-  private subscriptions:Subscription[] = [];
+  private layer:LayerRef<TorrentOption> | null = null;
+  private subscription:Subscription;
 
   constructor(
     private picker:TorrentPickerService,
     private navigation:NavigationService,
+    private layers:LayerStack,
   ) { }
 
   ngOnInit(): void {
-    this.subscriptions.push(
-      this.picker.onRequest().subscribe(request => this.open(request)),
-      this.picker.onCommand().subscribe(action => {
-        if (action == 'select') this.pickFocused();
-        if (action == 'back') this.close();
-      }),
-    );
+    this.subscription = this.picker.onRequest().subscribe(request => this.open(request));
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(s => s.unsubscribe());
+    this.subscription?.unsubscribe();
+    this.layer?.close();
   }
 
   open(request:TorrentPickRequest){
-    if (this.request) this.request.cancel();
+    this.layer?.close(undefined, false);
     this.request = request;
-    this.picker.isOpen = true;
-    this.previousFocus = document.activeElement as HTMLElement;
+    let layer = this.layer = this.layers.open<TorrentOption>({
+      id: 'torrentPicker',
+      priority: LAYER_PRIORITY.modal,
+      element: () => document.querySelector('.torrentPicker'),
+    });
+    layer.result$.subscribe({
+      next: option => request.pick(option),
+      complete: () => {
+        request.cancel();
+        if (this.layer !== layer) return;
+        this.layer = null;
+        this.request = undefined;
+      },
+    });
 
     // wait for the options to render
     setTimeout(() => {
@@ -50,19 +60,8 @@ export class TorrentPickerComponent implements OnInit , OnDestroy {
     } , 0);
   }
 
-  pickFocused(){
-    let active = document.activeElement as HTMLElement;
-    if (!this.request || !active.classList.contains('torrentOption')) return;
-    let option = this.request.options[Number(active.dataset['index'])];
-    this.close(() => this.request.pick(option));
-  }
-
-  close(done = () => this.request?.cancel()){
-    if (!this.request) return;
-    this.previousFocus?.focus({preventScroll : true});
-    done();
-    this.request = undefined;
-    this.picker.isOpen = false;
+  pick(option:TorrentOption){
+    this.layer?.close(option);
   }
 
 }

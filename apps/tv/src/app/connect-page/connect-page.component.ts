@@ -1,14 +1,12 @@
 import { AfterViewInit, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
-import { MenuServiceService } from '../menu-service.service';
 import { SplashService } from '../splash.service';
 import { ServerService } from '../server.service';
 import { connection, useBrowserServer } from '../server-config';
 import {
   ConnectedServer, ConnectionState, desktop, DiscoveredServer, LocalServerStatus, PairingCode, PairingUpdate, UpdaterState
 } from '../desktop';
+import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
 
 const DOWNLOAD_URL = 'github.com/IhebBelhadj/Playpex/releases';
 const API_VERSION = 1;   // @playpex/protocol API_VERSION
@@ -38,8 +36,9 @@ type PairingView = {
 // /link address and a QR code, until the admin approves it. Choosing a server
 // makes the shell store it and reload the app. An installed Playpex Media
 // Server that isn't running is started for the user.
-// Back: the pairing panel closes; with a server in use → where it came from;
-// else → /power.
+// A root screen (core.connect, src/app/nav). Back: the pairing panel (a layer)
+// closes; opened from the menu → where it came from; else the power menu.
+// Payload (browser dev): { reason, code } when the server refused this device.
 @Component({
   selector: 'app-connect-page',
   templateUrl: './connect-page.component.html',
@@ -63,8 +62,9 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   updater:UpdaterState | null = null;
   focusedKey:string | null = null;   // what the detail panel describes
 
-  private navSub:Subscription;
   private splashSub:Subscription;
+  private pairingLayer:LayerRef | null = null;
+  private screen = useScreen<{}, { reason:string, code?:string }>();
   private unsubscribes:Array<() => void> = [];
   private timers:any[] = [];
   private countdown:any;
@@ -74,15 +74,14 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   private keyListener = () => this.touched = true;
 
   constructor(
-    private navigation:NavigationService,
-    private menuService:MenuServiceService,
+    private navigator:Navigator,
+    private layers:LayerStack,
     private splashService:SplashService,
     private server:ServerService,
-    private router:Router,
     private zone:NgZone,
   ) {
     // browser dev: a refused server navigates here with the reason
-    const nav = this.router.getCurrentNavigation()?.extras?.state;
+    const nav = this.screen.payload;
     if (nav && !this.bridge && this.state) {
       this.state = Object.assign({}, this.state, { reason: nav['reason'], detail: nav['code'] || this.state.server?.name });
     }
@@ -254,7 +253,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── life cycle ──────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    setTimeout(() => this.menuService.sendInstruction('hide', this), 0);
     if (!this.bridge) {
       this.scanning = false;
       return;
@@ -284,33 +282,20 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url != '/connect' || this.typing || this.leaving) return;
-      if (!this.splashService.cleared) return;
-      const active = document.activeElement as HTMLElement;
-
-      if (instruction == 'click') {
-        if (this.pairing) {
-          if (active?.dataset['pair'] == 'cancel') this.cancelPairing();
-          if (active?.dataset['pair'] == 'again') this.startPairing(this.pairing.server);
-          return;
-        }
-        const action = active?.dataset['action'];
-        if (action == 'server') this.choose(this.servers.find(s => s.id == active.dataset['id']));
-        if (action == 'startLocal') this.startLocal();
-        if (action == 'address') this.typing = true;
-        if (action == 'rescan') this.rescan();
-        if (action == 'update') this.update();
-      }
-      if (instruction == 'back' || instruction == 'leave') {
-        if (this.pairing && instruction == 'back') {
-          this.cancelPairing();
-          return;
-        }
-        this.cancelPairing();
-        this.leave();
-      }
+    // (the keyboard and the pairing panel are layers: their own keys)
+    this.screen.onSelect(active => {
+      if (this.leaving || !this.splashService.cleared) return;
+      const action = active?.dataset['action'];
+      if (action == 'server') this.choose(this.servers.find(s => s.id == active.dataset['id']));
+      if (action == 'startLocal') this.startLocal();
+      if (action == 'address') this.typing = true;
+      if (action == 'rescan') this.rescan();
+      if (action == 'update') this.update();
     });
+    // connecting, or under the splash: stay
+    const busy = () => this.leaving || !this.splashService.cleared;
+    this.screen.onBack(busy);
+    this.screen.onLeave(busy);
 
     document.addEventListener('keydown', this.keyListener);
     if (!this.splashService.cleared) {
@@ -322,7 +307,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
+    this.pairingLayer?.close(undefined, false);
     this.splashSub?.unsubscribe();
     this.unsubscribes.forEach(off => off());
     this.timers.forEach(t => clearTimeout(t));
@@ -332,7 +317,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
       this.bridge.discovery.stop();
       if (this.pairing) this.bridge.pairing.cancel();
     }
-    this.menuService.sendInstruction('show', this);
   }
 
   // ── servers ─────────────────────────────────────────────────────────────
@@ -361,7 +345,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     // the server in use, at the address in use (a typed address of the same
     // server is a choice of that address)
     if (found.current && this.server.connected && sameOrigin(server.url, this.server.url)) {
-      this.router.navigateByUrl('/profiles');
+      this.navigator.reset({ screen: 'core.profiles' });
       return;
     }
     if (found.needsPairing) {
@@ -445,20 +429,13 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     else this.bridge.updater.check().then(state => this.zone.run(() => this.updater = state));
   }
 
-  private leave() {
-    if (this.server.connected) {
-      this.navigation.goBack();
-    } else {
-      this.router.navigateByUrl('/power');
-    }
-  }
-
   // ── pairing ─────────────────────────────────────────────────────────────
 
   startPairing(server:ConnectedServer) {
     if (!this.bridge) return;
     clearInterval(this.countdown);
     this.pairing = { server, code: null, state: 'requesting', message: null, secondsLeft: 0 };
+    this.openPairingLayer();
     this.focusPairing('cancel');
     this.bridge.pairing.start({ id: server.id, name: server.name, url: server.url }).then(code => this.zone.run(() => {
       if (!this.pairing || this.pairing.server.id != server.id) return;
@@ -491,7 +468,24 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pairing = null;
     clearInterval(this.countdown);
     this.bridge?.pairing.cancel();
+    this.pairingLayer?.close(undefined, false);
+    this.pairingLayer = null;
     this.focusServer(id);
+  }
+
+  // The panel is a layer of the nav system: its own select / back (Back cancels)
+  private openPairingLayer() {
+    if (this.pairingLayer) return;
+    const layer = this.pairingLayer = this.layers.open({ id: 'pairing', element: () => document.querySelector('.pairingPanel') });
+    layer.onSelect(active => {
+      if (!this.pairing || this.leaving) return;
+      if (active?.dataset['pair'] == 'cancel') this.cancelPairing();
+      if (active?.dataset['pair'] == 'again') this.startPairing(this.pairing.server);
+    });
+    layer.onBack(() => {
+      if (!this.leaving) this.cancelPairing();
+      return true;
+    });
   }
 
   // ── focus ───────────────────────────────────────────────────────────────

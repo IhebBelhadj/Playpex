@@ -1,18 +1,18 @@
 import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { gsap, Power2 } from 'gsap';
-import { NavigationService } from '../navigation.service';
-import { MenuServiceService } from '../menu-service.service';
 import { SplashService } from '../splash.service';
 import { NotificationService } from '../notification.service';
 import { Profile, ProfilesService } from '../profiles.service';
 import { PinPadComponent } from '../pin-pad/pin-pad.component';
+import { Navigator, useScreen } from '../nav/public-api';
 
 // "Who's watching?" — the app's start page. Enter on a profile selects it
 // (asking for the PIN when it has one) and opens the movies; "Manage Profiles"
-// switches the tiles to edit mode (→ /profiles/:id/edit); "Add Profile" → /profiles/new.
-// Back: leaves manage mode, otherwise opens /power.
+// switches the tiles to edit mode (→ the editor); "Add Profile" → a new one.
+// A root screen (core.profiles, src/app/nav): choosing a profile starts the
+// history over on the movies. Back: leaves manage mode, otherwise opens the
+// power menu (the root's back policy).
 @Component({
   selector: 'app-profile-picker',
   templateUrl: './profile-picker.component.html',
@@ -29,44 +29,38 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
 
   @ViewChild(PinPadComponent) pinPad:PinPadComponent;
 
-  private navSub:Subscription;
   private splashSub:Subscription;
   private focusListener;
   private entering = false;
+  private screen = useScreen();
 
   constructor(
     private profilesService:ProfilesService,
-    private navigation:NavigationService,
-    private menuService:MenuServiceService,
+    private navigator:Navigator,
     private splashService:SplashService,
     private notification:NotificationService,
-    private router:Router,
   ) { }
 
   ngOnInit(): void {
     this.managing = this.profilesService.picker.managing;
-    setTimeout(() => this.menuService.sendInstruction('hide', this), 0);
     this.load();
   }
 
   // Section `profiles` is a pxSection in the template (tiles: a pxGrid)
   ngAfterViewInit(): void {
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      // the PIN pad handles its own keys while it is open
-      if (this.router.url != '/profiles' || this.pinProfile || this.entering) return;
-      if (!this.splashService.cleared) return;
-
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'click') {
-        if (active.classList.contains('retryBtn')) this.load();
-        else if (active.classList.contains('manageBtn')) this.toggleManage();
-        else if (active.classList.contains('profileTile')) this.choose(active.dataset['id']);
-      }
-      if (instruction == 'back') {
-        if (this.managing) this.toggleManage();
-        else this.router.navigateByUrl('/power');
-      }
+    // (the PIN pad is a layer: it takes the keys while it's open)
+    this.screen.onSelect(active => {
+      if (this.entering || !this.splashService.cleared) return;
+      if (active.classList.contains('retryBtn')) this.load();
+      else if (active.classList.contains('manageBtn')) this.toggleManage();
+      else if (active.classList.contains('profileTile')) this.choose(active.dataset['id']);
+    });
+    this.screen.onBack(() => {
+      if (this.entering || !this.splashService.cleared) return true;
+      if (!this.managing) return false;
+      this.toggleManage();
+      return true;
     });
 
     // Remember the focused tile for the next visit (back from the editor / player)
@@ -87,10 +81,8 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
     this.splashSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
-    this.menuService.sendInstruction('show', this);
   }
 
   load() {
@@ -119,11 +111,11 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
 
   choose(id:string) {
     if (id == 'new') {
-      this.router.navigateByUrl('/profiles/new');
+      this.navigator.open({ screen: 'core.profiles.new' });
       return;
     }
     if (this.managing) {
-      this.router.navigateByUrl(`/profiles/${id}/edit`);
+      this.navigator.open({ screen: 'core.profiles.edit', params: { id } });
       return;
     }
     let profile = this.profiles.find(p => p.id == id);
@@ -156,7 +148,7 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
           opacity: 0, scale: 1.08, duration: .35, ease: Power2.easeIn,
           onComplete: () => {
             this.pinProfile = null;
-            this.router.navigateByUrl('/movies/list');
+            this.navigator.reset({ screen: 'core.movies' });
           }
         });
       },

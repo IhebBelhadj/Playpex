@@ -42,7 +42,7 @@
   </header>
 
   <div class="optionPannel" pxGrid>
-    <button class="option focusable play" pxItem pxItemKey="play">
+    <button class="option focusable play" pxItem pxItemKey="play" (pxSelect)="play()">
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
         <div class="resumeLine" *ngIf="resumeRatio && !resolving">
@@ -52,14 +52,14 @@
       <span>{{ resolving ? 'Finding torrents…' : resumeLabel || 'Play ' + code }}</span>
     </button>
     <!-- every source's releases of this episode -->
-    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+    <button class="option focusable findReleases" pxItem pxItemKey="releases" (pxSelect)="findReleases()">
       <div class="imgContainer">
         <img src="assets/icons/search.svg" alt="">
       </div>
       <span>Find releases</span>
     </button>
     <!-- 18+ titles never go in the profile's library -->
-    <button *ngIf="!isAdult" class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched">
+    <button *ngIf="!isAdult" class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched" (pxSelect)="toggleWatched()">
       <div class="imgContainer">
         <img [src]="watched ? 'assets/icons/tick.svg' : 'assets/icons/mark.svg'" alt="">
       </div>
@@ -82,7 +82,8 @@
           [class.upcoming]="ep.upcoming" [class.current]="ep === episode">
           <button class="displayedElem focusable episodeBtn"
             pxItem [pxItemKey]="ep.episode_number"
-            [attr.data-index]="i">
+            [attr.data-index]="i"
+            (pxSelect)="openEpisode(ep)">
             <div class="imgContainer">
               <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
               <span class="badge nowBadge" *ngIf="ep === episode">On this page</span>

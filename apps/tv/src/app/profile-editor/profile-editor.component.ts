@@ -1,20 +1,20 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { concatMap, Observable, of, Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
-import { MenuServiceService } from '../menu-service.service';
+import { concatMap, Observable, of } from 'rxjs';
 import { NotificationService } from '../notification.service';
 import { AVATARS, Profile, ProfilesService } from '../profiles.service';
+import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
 
 type Panel = null | 'keyboard' | 'avatars' | 'pin' | 'confirmDelete';
 
-// Overlay panels and their navigation sections (restrict self-only while open).
-// The name keyboard (<text-keyboard>) and the PIN pad own their sections.
+// Overlay panels and their navigation sections (restrict self-only while
+// open), each a layer of the nav system: the avatars and the delete
+// confirmation here, the name keyboard (<text-keyboard>) and the PIN pad
+// their own.
 const NAME_MAX = 30;
 
 // /profiles/new and /profiles/:id/edit. Changes are kept locally and sent on
 // Save (profile fields, then the PIN if it changed). Back closes the open panel,
-// otherwise cancels.
+// otherwise cancels (back to the picker: the nav system's pop).
 @Component({
   selector: 'app-profile-editor',
   templateUrl: './profile-editor.component.html',
@@ -37,16 +37,15 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   avatars = AVATARS;
   nameMax = NAME_MAX;
 
-  private navSub:Subscription;
   private returnFocus:string | null = null;
+  private panelLayer:LayerRef | null = null;
+  private screen = useScreen<{ id?:string }>();
 
   constructor(
     private profilesService:ProfilesService,
-    private navigation:NavigationService,
-    private menuService:MenuServiceService,
+    private navigator:Navigator,
+    private layers:LayerStack,
     private notification:NotificationService,
-    private route:ActivatedRoute,
-    private router:Router,
   ) { }
 
   get pinActive():boolean {
@@ -54,15 +53,14 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnInit(): void {
-    setTimeout(() => this.menuService.sendInstruction('hide', this), 0);
-    this.id = this.route.snapshot.paramMap.get('id');
+    this.id = this.screen.params.id || null;
 
     if (this.id) {
       this.profilesService.get(this.id).subscribe({
         next: p => this.fill(p),
         error: err => {
           this.notification.sendNotification('error', ProfilesService.errorMessage(err));
-          this.router.navigateByUrl('/profiles');
+          this.toPicker();
         }
       });
     } else {
@@ -82,30 +80,19 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   // pxSection directives in the template (the panels' are traps)
   ngAfterViewInit(): void {
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (!this.router.url.startsWith('/profiles/') || this.saving) return;
-      // the PIN pad and the keyboard handle their own keys
-      if (this.panel == 'pin' || this.panel == 'keyboard') return;
-
-      if (instruction == 'back' || instruction == 'leave') {
-        if (this.panel) this.closePanel();
-        else this.cancel();
-        return;
-      }
-      if (instruction != 'click') return;
-
-      let active = document.activeElement as HTMLElement;
+    this.screen.onSelect(active => {
+      if (this.saving) return;
       let data = active.dataset;
-      if (this.panel == 'avatars' && data['avatar']) this.chooseAvatar(data['avatar']);
-      else if (this.panel == 'confirmDelete' && data['confirm']) data['confirm'] == 'yes' ? this.remove() : this.closePanel();
-      else if (!this.panel && data['field']) this.activateField(data['field']);
-      else if (!this.panel && data['action']) this.activateAction(data['action']);
+      if (data['field']) this.activateField(data['field']);
+      else if (data['action']) this.activateAction(data['action']);
     });
+    // saving: stay until it's done
+    this.screen.onBack(() => this.saving);
+    this.screen.onLeave(() => this.saving);
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
-    this.menuService.sendInstruction('show', this);
+    this.panelLayer?.close();
   }
 
   avatarUrl(avatar:string | null) {
@@ -148,6 +135,21 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null, focusSelector:string) {
     this.panel = panel;
     this.returnFocus = returnFocus;
+    let layer = this.panelLayer = this.layers.open({
+      id: panel,
+      element: () => document.querySelector(panel == 'avatars' ? '.avatarPanel' : '.confirmPanel'),
+      restoreFocus: false,
+    });
+    layer.onSelect(active => {
+      let data = active.dataset;
+      if (this.saving) return;
+      if (data['avatar']) this.chooseAvatar(data['avatar']);
+      else if (data['confirm']) data['confirm'] == 'yes' ? this.remove() : this.closePanel();
+    });
+    layer.onBack(() => {
+      if (!this.saving) this.closePanel();
+      return true;
+    });
     setTimeout(() => {
       (document.querySelector(focusSelector) as HTMLElement)?.focus({ preventScroll: true });
     }, 0);
@@ -156,6 +158,8 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   closePanel() {
     let returnTo = this.panel == 'confirmDelete' ? '[data-action="delete"]' : null;
     this.panel = null;
+    this.panelLayer?.close();
+    this.panelLayer = null;
     if (returnTo) this.focus(returnTo);
     else this.show(this.returnFocus || 'name');
   }
@@ -208,7 +212,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     request.subscribe({
       next: p => {
         this.profilesService.picker.focusId = p.id;
-        this.router.navigateByUrl('/profiles');
+        this.toPicker();
       },
       error: err => {
         this.saving = false;
@@ -223,7 +227,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.profilesService.remove(this.id).subscribe({
       next: () => {
         this.profilesService.picker.focusId = null;
-        this.router.navigateByUrl('/profiles');
+        this.toPicker();
       },
       error: err => {
         this.saving = false;
@@ -234,7 +238,12 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private cancel() {
-    this.router.navigateByUrl('/profiles');
+    this.toPicker();
+  }
+
+  // Back to "Who's watching?" (below in the history, else a fresh one)
+  private toPicker() {
+    this.navigator.backTo('core.profiles').then(ok => ok || this.navigator.reset({ screen: 'core.profiles' }));
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

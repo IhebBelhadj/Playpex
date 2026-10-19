@@ -23,8 +23,8 @@ export class Catalog {
   // popular / top rated / newest rows. `pending`: rows whose first page
   // hasn't arrived yet.
   search: { query: string, filters: CatalogFilters, rows: string[], pending: number } | null = null;
-  // the search's on-screen keyboard or the filter panel is open: the rows
-  // ignore click / back
+  // the search's on-screen keyboard or the filter panel is open (both are
+  // layers of the nav system: the rows get no select / back meanwhile)
   typing = false;
   filtering = false;
   private browsing: { categories: Category[], items: { [category: string]: any[] }, reachedPages: { [category: string]: number } } | null = null;
@@ -35,8 +35,8 @@ export class Catalog {
   constructor(
     public media: MediaType,
     public categories: Category[],
-    public listUrl: string,
-    private detailBaseUrl: string,
+    public listScreen: string,       // src/app/nav/screens.ts
+    public detailScreen: string,
   ) { }
 
   get query(): string {
@@ -72,10 +72,6 @@ export class Catalog {
     this.items.next(this.browsing.items);
     this.browsing = null;
     this.search = null;
-  }
-
-  detailUrl(id): string {
-    return `${this.detailBaseUrl}/${id}`;
   }
 
   findCategory(name: string): Category {

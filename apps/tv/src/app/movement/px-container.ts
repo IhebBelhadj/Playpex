@@ -313,15 +313,17 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     this.updateEdges();
     this.checkScrollEnd();
     clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.saveScroll(), SAVE_DELAY);
+    // the history entry it scrolled in (the navigator may move on meanwhile)
+    let scope = this.positions.scope;
+    this.saveTimer = setTimeout(() => this.saveScroll(scope), SAVE_DELAY);
   }
 
-  private saveScroll() {
+  private saveScroll(scope:string) {
     let key = this.storeKey;
     if (!key || !this.host.isConnected || !this.host.clientWidth) return;
     let patch = {};
     this.scrollAxes().forEach(axis => patch[axis == 'left' ? 'scrollLeft' : 'scrollTop'] = this.mover.offset(this.host, axis));
-    this.positions.save(key, patch);
+    this.positions.save(key, patch, scope);
   }
 
   protected contentChanged() {

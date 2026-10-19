@@ -1,19 +1,18 @@
 import { NotificationService } from './../notification.service';
 import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
-import { PlaybackRequest, PlaybackService } from './../playback.service';
+import { PlaybackRequest } from './../playback.service';
 import { NavigationService } from './../navigation.service';
 import { TorrentService } from './../torrent.service';
-import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import {  repeat, switchMap , takeWhile, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
 import { EMPTY, Subscription, timer } from 'rxjs';
-import { Router } from '@angular/router';
 import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
 import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
 import { ProfilesService } from '../profiles.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -22,6 +21,10 @@ const KEEPALIVE_EVERY_MS = 60000;
 // Mouse: the controls and the cursor hide after this long without movement
 const POINTER_IDLE_MS = 3000;
 
+// The player (core.player, src/app/nav): plays its entry's payload, a
+// PlaybackRequest (PlaybackService.play). However it's left (Back, the Back
+// button, an error, "Choose server" when the connection is lost), the
+// torrent's lease is released (the screen's beforeLeave).
 
 @Component({
   selector: 'app-player-page',
@@ -41,8 +44,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   runtime;
   year;
   playerSub:Subscription;
-  controlsSub:Subscription;
-  leaveSub:Subscription;
   controlsEvent;
   lastSubFocused;
   arrowKeyEvents;
@@ -80,14 +81,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   pointerSub:Subscription;
   pointerIdle;
   keepaliveTimer;
+  private screen = useScreen<{}, PlaybackRequest>();
 
   constructor(
     private server:ServerService,
-    private playbackService:PlaybackService,
-    private menuService:MenuServiceService,
     private torrentService:TorrentService,
     private navigation:NavigationService,
-    private router:Router,
+    private navigator:Navigator,
     private pointer:PointerService,
     private subtitlesService:SubtitlesService,
     private notificationService:NotificationService,
@@ -96,14 +96,18 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   ) { }
 
   ngOnInit(): void {
-    this.menuService.sendInstruction('hide' , this);
     document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
 
-    this.playback = this.playbackService.current;
+    this.playback = this.screen.payload;
     if (!this.playback) {
-      this.navigation.goBack();
+      this.navigator.back();
       return;
     }
+
+    // every way out: release this device's lease on the torrent
+    this.screen.beforeLeave(() => this.releaseTorrent());
+    this.screen.onSelect(() => this.select());
+    this.screen.onBack(() => this.back());
 
     this.runtime = this.timeObject((this.playback.runtimeMinutes || 0)*60);
 
@@ -123,12 +127,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       });
     }
 
-    let escClicked = false;
-
     //Moving through time on arrow presses
 
     this.controlsEvent = (e)=>{
-      if(this.router.url != "/player") return;
+      if(!this.screen.active) return;
 
       if (
         actionForKey(e) == 'right' &&
@@ -148,21 +150,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.seek("backward")
       }
 
-      // Leaving before playback starts: same cleanup as a normal exit
-      if(actionForKey(e) == 'back' && !this.playerReady && !escClicked){
-        escClicked = true;
-        this.leavePlayer();
-      }
-
     }
     document.addEventListener('keydown' , this.controlsEvent);
-
-    // The shell's Back button (mouse): out at once, loading or playing
-    this.leaveSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction != 'leave' || this.router.url != "/player" || escClicked) return;
-      escClicked = true;
-      this.leavePlayer();
-    });
 
     this.subFocusListener = (e)=>{
 
@@ -239,13 +228,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.seekTimer);
     this.stateSub?.unsubscribe();
 
-    this.menuService.sendInstruction('show' , this);
     this.controlsVisible = false;
     this.pointer.wheelNavigation = true;
     this.pointerSub?.unsubscribe();
     clearTimeout(this.pointerIdle);
-    if (this.controlsSub) this.controlsSub.unsubscribe();
-    this.leaveSub?.unsubscribe();
 
     if (this.playerSub) this.playerSub.unsubscribe();
     if (this.statsSub) this.statsSub.unsubscribe();
@@ -389,15 +375,18 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     } , KEEPALIVE_EVERY_MS);
   }
 
-  // Back to where the user came from, releasing the torrent: the server drops
-  // it (and its data) once no other device holds it
+  // Back to where the user came from (the lease goes in beforeLeave)
   leavePlayer() {
-    if (this.torrentHash) {
-      let removeSub = this.torrentService.removeTorrent(this.torrentHash).subscribe(()=>{
-        removeSub.unsubscribe();
-      })
-    }
-    this.navigation.goBack();
+    this.navigator.back();
+  }
+
+  // The server drops the torrent (and its data) once no other device holds it
+  private releaseTorrent() {
+    if (!this.torrentHash) return;
+    let hash = this.torrentHash;
+    this.torrentHash = undefined;
+    clearInterval(this.keepaliveTimer);
+    this.torrentService.removeTorrent(hash).subscribe({ error: () => {} });
   }
 
   getExtension(filename) {
@@ -405,74 +394,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return parts[parts.length - 1];
   }
 
+  // Enter: shows the controls, then plays / pauses or acts on the focused control
+  private select() {
+    if (!this.moviePlayer) return;
+    let active = document.activeElement as HTMLElement;
+    if (!this.controlsVisible) {
+      this.showControls();
+      return;
+    }
+    if (!active.classList.contains('controlsElem') || active.classList.contains('playBtn') || active.classList.contains('progress')) {
+      if (this.moviePlayer.paused) this.resumePlayer();
+      else this.pausePlayer();
+    }
+    if (active.classList.contains('statsBtn')) this.statsVisible = !this.statsVisible;
+    if (active.classList.contains('ccBtn')) {
+      this.showSidePanel();
+      this.fetchSubs();
+    }
+    if (active.classList.contains('providerTab')) this.switchSubtitleProvider(active.dataset['provider']);
+    if (active.classList.contains('subtitle')) {
+      this.showSubtitle(this.subtitles[Number(active.dataset['index'])]);
+      document.querySelectorAll('.sidePannel .subtitle').forEach(subtitle => subtitle.classList.remove('selected'));
+      active.classList.add('selected');
+    }
+  }
+
+  // In-page steps once playing: subtitles panel → controls → stats panel;
+  // then out (before playback is ready: out at once)
+  private back():boolean {
+    if (!this.playerReady) return false;
+    if (this.sidePannelVisible) this.hideSidePannel();
+    else if (this.controlsVisible) this.hideControls();
+    else if (this.statsVisible) this.statsVisible = false;
+    else return false;
+    return true;
+  }
+
   setupPlayer(){
     this.moviePlayer = document.querySelector('.moviePlayer');
     this.setupNavigation();
-    this.controlsSub = this.navigation.executeCommand().subscribe(instruction=>{
-
-      if (instruction == "click" && this.router.url == "/player" ) {
-
-        if (!this.controlsVisible) {
-          this.showControls();
-        }
-        else {
-          if (
-            !document.activeElement.classList.contains('controlsElem') ||
-            document.activeElement.classList.contains('playBtn') ||
-            document.activeElement.classList.contains('progress')
-          ) {
-            if (this.moviePlayer.paused) {
-              this.resumePlayer()
-
-            }
-            else {
-              this.pausePlayer()
-            }
-          }
-
-
-          if (document.activeElement.classList.contains('statsBtn')) {
-            this.statsVisible = !this.statsVisible;
-          }
-
-          if (document.activeElement.classList.contains('ccBtn')) {
-            this.showSidePanel();
-            this.fetchSubs();
-          }
-
-          if (document.activeElement.classList.contains('providerTab')) {
-            this.switchSubtitleProvider((document.activeElement as HTMLElement).dataset['provider']);
-          }
-
-          if (document.activeElement.classList.contains('subtitle')) {
-            let active = document.activeElement as HTMLElement;
-            this.showSubtitle(this.subtitles[Number(active.dataset['index'])]);
-
-            document.querySelectorAll('.sidePannel .subtitle').forEach(subtitle => {
-              subtitle.classList.remove('selected')
-            });
-            active.classList.add('selected');
-          }
-        }
-
-      }
-
-      if (instruction == "back" && this.playerReady) {
-        console.log('back');
-        console.log(this.sidePannelVisible);
-        if (!this.sidePannelVisible && !this.controlsVisible) {
-          if (this.statsVisible) this.statsVisible = false;
-          else this.leavePlayer();
-        }else {
-          if(this.sidePannelVisible) this.hideSidePannel();
-          else if(this.controlsVisible) this.hideControls();
-        }
-      }
-    })
-
-
     this.arrowKeyEvents = (e)=>{
-      if(this.router.url != "/player") return;
+      if(!this.screen.active) return;
 
       if (actionForKey(e) == 'down' && !this.controlsVisible) {
         this.showControls();
@@ -498,7 +460,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.moviePlayer.play();
     // e.g. HEVC/x265 or AVI that Chromium can't decode
     this.moviePlayer.addEventListener('error', () => {
-      if (this.router.url != "/player" || !this.moviePlayer.getAttribute('src')) return;
+      if (!this.screen.active || !this.moviePlayer.getAttribute('src')) return;
       this.leavePlayer();
       this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
     });
@@ -705,7 +667,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         fetch(this.server.media(this.link.replace('/files/' , '/keyframe/') , { t: target }))
           .then(r => r.json()).catch(() => ({time: target}))
           .then(data => {
-            if (this.pendingSeek !== target || this.router.url != "/player") return; // a newer seek won
+            if (this.pendingSeek !== target || !this.screen.active) return; // a newer seek won
             this.offset = data['time'];
             this.pendingSeek = null;
             this.moviePlayer.src = this.streamUrl(this.offset);

@@ -5,7 +5,8 @@
 
     <!-- a one-column pxGrid: scrolls natively (src/app/movement) -->
     <div class="options" pxGrid>
-      <button class="torrentOption" pxItem *ngFor="let option of request.options; let i = index" [attr.data-index]="i">
+      <button class="torrentOption" pxItem *ngFor="let option of request.options; let i = index" [attr.data-index]="i"
+        (pxSelect)="pick(option)">
         <div class="main">
           <span class="quality">{{option.quality}}</span>
           <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>

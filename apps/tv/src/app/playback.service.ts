@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Artwork, LibraryService, MediaType } from './library.service';
+import { Navigator } from './nav/navigator.service';
 
-// What /player should play. Set it, then navigate to /player.
+// What the player plays: the payload of its screen (core.player), opened by
+// PlaybackService.play().
 export interface PlaybackRequest {
   title: string;            // movie or show title
   subtitle?: string;        // e.g. "S01E03 · The Bear"; shown instead of year/runtime
@@ -36,10 +38,11 @@ const TRACKERS = [
 })
 export class PlaybackService {
 
-  current: PlaybackRequest;
+  constructor(private navigator:Navigator) { }
 
+  // The player, over the current screen (Back returns to it)
   play(request: PlaybackRequest) {
-    this.current = request;
+    this.navigator.open({ screen: 'core.player', payload: request });
   }
 
   // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;

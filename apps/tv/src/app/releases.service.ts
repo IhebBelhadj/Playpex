@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
+import { Navigator } from './nav/navigator.service';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } from 'rxjs';
 import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
@@ -56,14 +56,12 @@ export interface ReleasesContext {
   artwork?: Artwork;
 }
 
-// The page a release list was opened from ("Find releases" on a title page),
-// passed as the navigation's history state (`RELEASES_FROM`), so it survives a
+// The page a release list was opened from ("Find releases" on a title page):
+// the payload of the list's history entry (src/app/nav), so it survives a
 // trip to the player and back. The list then offers "Back to <label>" and
 // Escape returns there.
-export const RELEASES_FROM = 'releasesFrom';
 export interface ReleasesOrigin {
   label: string;     // the title, shown as "Back to <label>"
-  url: string;
   context?: ReleasesContext;
 }
 
@@ -92,10 +90,11 @@ export const EMPTY_RELEASES_STATE: ReleasesState = {
   loaded: false,
 };
 
-const URLS: Record<ReleasesKind, string> = {
-  adult: '/adult/releases',
-  movie: '/releases/movies',
-  tv: '/releases/shows',
+// src/app/nav/screens.ts
+const SCREENS: Record<ReleasesKind, string> = {
+  adult: 'core.adult.releases',
+  movie: 'core.releases.movies',
+  tv: 'core.releases.shows',
 };
 
 @Injectable({
@@ -107,21 +106,17 @@ export class ReleasesService {
 
   private providers$:Partial<Record<ReleasesKind, Observable<ReleaseProvider[]>>> = {};
 
-  constructor(private http:HttpClient, private router:Router, profiles:ProfilesService, private server:ServerService) {
+  constructor(private http:HttpClient, private navigator:Navigator, profiles:ProfilesService, private server:ServerService) {
     // what one profile searched isn't the next one's business (a preferences
     // update re-emits the same profile: keep the states then)
     profiles.current.pipe(map(p => p?.id || null), distinctUntilChanged()).subscribe(() => this.reset());
-  }
-
-  url(kind:ReleasesKind):string {
-    return URLS[kind];
   }
 
   // "Find releases" on a title page: a new list searched for `query`, on the
   // source last used for this kind; Back on it returns to `origin`
   open(kind:ReleasesKind, query:string, origin:ReleasesOrigin, imdb:string | null = null) {
     this.states[kind] = { ...EMPTY_RELEASES_STATE, provider: this.states[kind].provider, query, imdb };
-    this.router.navigateByUrl(URLS[kind], { state: { [RELEASES_FROM]: origin } });
+    this.navigator.open({ screen: SCREENS[kind], payload: origin });
   }
 
   providers(kind:ReleasesKind): Observable<ReleaseProvider[]> {

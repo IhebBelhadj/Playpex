@@ -1,155 +1,17 @@
-import { PowerPageComponent } from './power-page/power-page.component';
-import { EpisodePageComponent } from './episode-page/episode-page.component';
-import { ShowOptionsComponent } from './show-options/show-options.component';
-import { YoutubeComponent } from './youtube/youtube.component';
-import { SearchPageComponent } from './search-page/search-page.component';
-import { PlayerPageComponent } from './player-page/player-page.component';
-import { MovieOptionsComponent } from './movie-options/movie-options.component';
-import { MoviesSliderComponent } from './movies-slider/movies-slider.component';
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
-import { MoviesPageComponent } from './movies-page/movies-page.component';
-import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
-import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
-import { AdultGuard, AdultLayoutGuard, ProfileGuard } from './profile.guard';
-import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
-import { AdultTitleComponent } from './adult-title/adult-title.component';
-import { ReleasesPageComponent } from './releases-page/releases-page.component';
-import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
-import { ConnectPageComponent } from './connect-page/connect-page.component';
+import { RouterModule } from '@angular/router';
+import { AdultGuard, ProfileGuard } from './profile.guard';
 import { ServerGuard } from './server.guard';
+import { SCREENS } from './nav/screen-registry';
+import './nav/screens';
 
-const routes: Routes = [
-  {
-    path:'',
-    redirectTo : '/profiles',
-    pathMatch : 'full',
-  },
-  // Which server: shown when there is none (ServerGuard), and from the menu
-  {
-    path : 'connect',
-    component : ConnectPageComponent
-  },
-  // "Who's watching?" (start page) and the profile editor; every other page
-  // needs a profile, so ServerGuard on these covers the app
-  {
-    path : 'profiles',
-    canActivate : [ServerGuard],
-    component : ProfilePickerComponent
-  },
-  {
-    path : 'profiles/new',
-    canActivate : [ServerGuard],
-    component : ProfileEditorComponent
-  },
-  {
-    path : 'profiles/:id/edit',
-    canActivate : [ServerGuard],
-    component : ProfileEditorComponent
-  },
-  // The home page and slider serve both sections; `media` picks the catalog
-  // (see MoviesService.catalogs)
-  {
-    path : 'movies' ,
-    canActivate : [ProfileGuard],
-    component : MoviesPageComponent,
-    data : { media : 'movie' },
-    children : [
-      {
-        path : 'movie/:id',
-        component : MovieOptionsComponent
-      },
-      {
-        path : 'list',
-        component : MoviesSliderComponent,
-        data : { media : 'movie' },
-      },
-    ]
-  },
-  {
-    path : 'shows' ,
-    canActivate : [ProfileGuard],
-    component : MoviesPageComponent,
-    data : { media : 'tv' },
-    children : [
-      {
-        path : 'show/:id',
-        component : ShowOptionsComponent
-      },
-      {
-        path : 'show/:id/season/:season/episode/:episode',
-        component : EpisodePageComponent
-      },
-      {
-        path : 'list',
-        component : MoviesSliderComponent,
-        data : { media : 'tv' },
-      },
-    ]
-  },
-  {
-    path : 'watchlist',
-    canActivate : [ProfileGuard],
-    component : WatchlistPageComponent
-  },
-  // 18+ section: not for kids profiles. /adult opens the profile's layout:
-  // posters (metadata provider) or the compact list of releases
-  {
-    path : 'adult',
-    pathMatch : 'full',
-    canActivate : [AdultGuard, AdultLayoutGuard],
-    children : [],
-  },
-  {
-    path : 'adult/browse',
-    canActivate : [AdultGuard],
-    component : AdultBrowseComponent
-  },
-  {
-    path : 'adult/title/:provider/:id',
-    canActivate : [AdultGuard],
-    component : AdultTitleComponent
-  },
-  {
-    path : 'adult/releases',
-    canActivate : [AdultGuard],
-    component : ReleasesPageComponent,
-    data : { kind : 'adult' },
-  },
-  // "Find releases" on a movie / show page (ReleasesService.open); under no
-  // section path, but /movies and /shows keep the menu's section highlighted
-  {
-    path : 'releases/movies',
-    canActivate : [ProfileGuard],
-    component : ReleasesPageComponent,
-    data : { kind : 'movie' },
-  },
-  {
-    path : 'releases/shows',
-    canActivate : [ProfileGuard],
-    component : ReleasesPageComponent,
-    data : { kind : 'tv' },
-  },
-  {
-    path : 'player',
-    canActivate : [ProfileGuard],
-    component : PlayerPageComponent
-  },
-  {
-    path: 'search',
-    canActivate : [ProfileGuard],
-    component:SearchPageComponent
-  },
-  {
-    path: 'ytplayer/:id',
-    canActivate : [ProfileGuard],
-    component : YoutubeComponent
-  },
-  {
-    path : 'power',
-    component : PowerPageComponent
-  }
-];
+// The routes are generated from the screens (src/app/nav/screens.ts): frames
+// become parent routes, `requires` become guards. Nothing navigates with the
+// router directly: the Navigator does (src/app/nav).
+const routes = SCREENS.buildRoutes(
+  { server: ServerGuard, profile: ProfileGuard, adult: AdultGuard },
+  [{ path: '', redirectTo: '/profiles', pathMatch: 'full' }],
+);
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

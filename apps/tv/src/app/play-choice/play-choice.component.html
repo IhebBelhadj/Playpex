@@ -3,12 +3,12 @@
     <h2 class="title">{{ request.title }}</h2>
     <p class="subtitle">You stopped at {{ time(request.positionS) }}.</p>
 
-    <button class="choice" data-choice="resume">
+    <button class="choice" data-choice="resume" (pxSelect)="pick('resume')">
       <span class="label">Resume</span>
       <span class="detail">From {{ time(request.positionS) }}, {{ minutesLeft }} min left</span>
       <span class="progress"><span [style.width.%]="progress * 100"></span></span>
     </button>
-    <button class="choice" data-choice="restart">
+    <button class="choice" data-choice="restart" (pxSelect)="pick('restart')">
       <span class="label">Play from the beginning</span>
       <span class="detail">Choose a source and start at 0:00</span>
     </button>

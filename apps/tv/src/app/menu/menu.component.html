@@ -4,39 +4,18 @@
     <img src="assets/icons/logo.svg" alt="">
   </div>
 
-  <!-- Places to browse, centered -->
+  <!-- Places to browse, centered: the sections declared with a menu entry
+       (src/app/nav/screens.ts), in their order -->
   <div class="tabs sections">
-    <button class="tabGroup element menuItem" data-destination="searchPage">
+    <button *ngFor="let section of sections; trackBy: trackById" class="tabGroup element menuItem"
+      [class.active]="section.id == activeSection" (pxSelect)="openSection(section)">
       <div class="inner">
-        <img src="assets/icons/search.svg" alt="">
-        <span class="description">Search</span>
+        <img [src]="'assets/icons/' + section.menu.icon + '.svg'" alt="">
+        <span class="description">{{ section.menu.label }}</span>
       </div>
     </button>
-    <button [class.active] = "currentUrl.includes('/movies')" class="tabGroup element menuItem" data-destination="moviesPage">
-      <div class="inner">
-        <img src="assets/icons/film.svg" alt="">
-        <span class="description">Movies</span>
-      </div>
-    </button>
-    <button [class.active] = "currentUrl.includes('/shows')" class="tabGroup element menuItem" data-destination="showsPage">
-      <div class="inner">
-        <img src="assets/icons/tv.svg" alt="">
-        <span class="description">Tv shows</span>
-      </div>
-    </button>
-    <button [class.active] = "currentUrl.includes('/watchlist')" class="tabGroup element menuItem" data-destination="watchPage">
-      <div class="inner">
-        <img src="assets/icons/list.svg" alt="">
-        <span class="description">Watch list</span>
-      </div>
-    </button>
-    <button *ngIf="profile && !profile.isKid" [class.active] = "currentUrl.includes('/adult')" class="tabGroup element menuItem" data-destination="adultPage">
-      <div class="inner">
-        <img src="assets/icons/adult.svg" alt="">
-        <span class="description">18+</span>
-      </div>
-    </button>
-    <button class="tabGroup element menuItem" data-destination="settingsPage">
+    <!-- placeholder until there is a Settings screen -->
+    <button class="tabGroup element menuItem">
       <div class="inner">
         <img src="assets/icons/settings.svg" alt="">
         <span class="description">Settings</span>
@@ -47,13 +26,13 @@
   <!-- The server in use (Enter → /connect) and who's watching (Enter →
        switch profile), anchored at the bottom like account controls -->
   <div class="tabs account" *ngIf="profile">
-    <button *ngIf="serverName" class="tabGroup element menuItem serverItem" data-destination="connect">
+    <button *ngIf="serverName" class="tabGroup element menuItem serverItem" (pxSelect)="openConnect()">
       <div class="inner">
         <img src="assets/icons/server.svg" alt="">
         <span class="description">{{ serverName }}</span>
       </div>
     </button>
-    <button class="tabGroup element menuItem profileItem" data-destination="profiles">
+    <button class="tabGroup element menuItem profileItem" (pxSelect)="openProfiles()">
       <div class="inner">
         <img class="profileAvatar" [src]="avatarUrl(profile.avatar)" alt="">
         <span class="description">{{ profile.name }}</span>

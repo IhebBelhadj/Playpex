@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
-import { InputAction } from './keymap';
 
 // One choice in the picker, normalized from YTS (movies) or the server's
 // episode search (EZTV / TheRARBG)
@@ -30,9 +29,7 @@ export interface TorrentPickRequest {
 })
 export class TorrentPickerService {
 
-  isOpen = false;
   private requests = new Subject<TorrentPickRequest>();
-  private commands = new Subject<InputAction>();
 
   choose(title:string , options:TorrentOption[]): Observable<TorrentOption> {
     return new Observable(subscriber => {
@@ -47,15 +44,6 @@ export class TorrentPickerService {
 
   onRequest(): Observable<TorrentPickRequest> {
     return this.requests.asObservable();
-  }
-
-  // While the picker is open it receives select/back instead of the pages
-  sendCommand(action:InputAction){
-    this.commands.next(action);
-  }
-
-  onCommand(): Observable<InputAction> {
-    return this.commands.asObservable();
   }
 
   // YTS torrent: {hash, quality, type, video_codec, bit_depth, audio_channels, seeds, peers, size}

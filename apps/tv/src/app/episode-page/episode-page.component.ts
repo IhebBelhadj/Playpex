@@ -1,5 +1,4 @@
 import { Component, AfterViewInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, Observable, Subscription } from 'rxjs';
 import { MenuServiceService } from '../menu-service.service';
 import { MoviesService } from '../movies.service';
@@ -11,15 +10,17 @@ import { FocusEngine, PositionStore } from '../movement/movement';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbEpisode, ImdbSeries, ImdbService } from '../imdb.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 // One episode of a show (/shows/show/:id/season/:season/episode/:episode),
 // laid out like the movie page: the episode's title block (IMDb rating and
 // votes, TMDB score, air date, runtime, overview, director / writers), Play
 // (or Resume) / Find releases (this episode's releases) / Mark as watched,
 // then the season's episodes (with the season's IMDb curve; Enter shows that
-// episode here, replacing this one in the history) and the guest stars.
-// Movement: the buttons (`pxGrid`) and both rows are entries of movies-page's
-// scrolling `.pageContainer` stack. Back → the show page (`goBack()`).
+// episode here, replacing this one in the history: Navigator.replace, the
+// component stays) and the guest stars. Movement: the buttons (`pxGrid`) and
+// both rows are entries of movies-page's scrolling `.pageContainer` stack.
+// Back → the show page (the nav system's pop).
 @Component({
   selector: 'app-episode-page',
   templateUrl: './episode-page.component.html',
@@ -56,10 +57,11 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   private subscriptions:Subscription[] = [];
   private focusListener;
   private today = new Date().toISOString().slice(0, 10);
+  // params { id, season, episode }; another episode replaces the entry (`reuse`)
+  private screen = useScreen<{ id:string, season:string, episode:string }>();
 
   constructor(
-    private route:ActivatedRoute,
-    private router:Router,
+    private navigator:Navigator,
     private moviesService:MoviesService,
     private navigation:NavigationService,
     private menu:MenuServiceService,
@@ -87,8 +89,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     });
 
     this.subscriptions.push(
-      this.route.params.subscribe(params => this.load(params['id'], Number(params['season']), Number(params['episode']))),
-      this.navigation.executeCommand().subscribe(instruction => this.onCommand(instruction)),
+      this.screen.params$.subscribe(params => this.load(params.id, Number(params.season), Number(params.episode))),
     );
 
     this.focusListener = (e) => this.onFocus(e.target as HTMLElement);
@@ -282,6 +283,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   }
 
   play() {
+    if (!this.episode) return;
     this.episodePlayback.play({ show: this.show, imdbId: this.imdbId, season: this.seasonNumber, episode: this.episode });
   }
 
@@ -293,7 +295,6 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     let query = `${title} ${this.code}`;
     this.releases.open(this.isAdult ? 'adult' : 'tv', query, {
       label: `${title} ${this.code}`,
-      url: this.router.url,
       context: this.isAdult ? undefined : {
         mediaType: 'tv',
         tmdbId: Number(this.show['id']),
@@ -305,41 +306,14 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     }, this.isAdult ? null : this.imdbId || null);
   }
 
+  // Another episode of the season, in place of this one (Back: the show)
   openEpisode(ep) {
     if (!ep || ep === this.episode) return;
-    this.router.navigateByUrl(`/shows/show/${this.show['id']}/season/${this.seasonNumber}/episode/${ep.episode_number}`, { replaceUrl: true });
-  }
-
-  onCommand(instruction) {
-    if (!this.router.url.includes('/episode/')) return;
-
-    if (instruction == 'back' || instruction == 'leave') {
-      this.navigation.goBack();
-      return;
-    }
-    if (instruction != 'click' || !this.episode) return;
-
-    let active = document.activeElement as HTMLElement;
-    switch (true) {
-      case active.classList.contains('play'):
-        this.play();
-        break;
-      case active.classList.contains('findReleases'):
-        this.findReleases();
-        break;
-      case active.classList.contains('addWatched'):
-        this.toggleWatched();
-        break;
-      case active.classList.contains('episodeBtn'):
-        this.openEpisode(this.episodes[Number(active.dataset['index'])]);
-        break;
-      default:
-        break;
-    }
+    this.navigator.replace({ screen: 'core.episode', params: { id: this.show['id'], season: this.seasonNumber, episode: ep.episode_number } });
   }
 
   onFocus(node:HTMLElement) {
-    if (!this.router.url.includes('/episode/')) return;
+    if (!this.screen.active) return;
     this.focusedEpisode = node.classList.contains('episodeBtn')
       ? this.episodes[Number(node.dataset['index'])]?.episode_number ?? null
       : null;

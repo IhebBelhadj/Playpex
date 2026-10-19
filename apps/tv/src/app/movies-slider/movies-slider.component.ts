@@ -3,11 +3,13 @@ import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { MoviesService } from '../movies.service';
 import { hasFilters } from '../catalog-filters';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { gsap , Power2 } from 'gsap'
 import { Catalog } from '../catalog';
 import { Subscription } from 'rxjs';
 import { SplashService } from '../splash.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
+import { Navigator, useScreen } from '../nav/public-api';
 
 const PAGE_SIZE = 20;          // TMDB results per page
 const LOAD_AHEAD = 10;         // next page this many posters before a row's end
@@ -17,6 +19,9 @@ const LOAD_AHEAD = 10;         // next page this many posters before a row's end
 // pxStack of pxRows, positions remembered in PositionStore under
 // `catalog:<media>` (survives the player and the detail pages). This
 // component only feeds the rows, pages them and describes the focused poster.
+// The section's screen (core.movies / core.shows, src/app/nav): Enter on a
+// poster opens its title; Back steps out to the menu, then the power menu
+// (the section's back policy).
 @Component({
   selector: 'movies-slider',
   templateUrl: './movies-slider.component.html',
@@ -28,17 +33,18 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   movies = {};
   catalog:Catalog;
   stackId = '';
-  navSub:Subscription;
   moviesSub:Subscription;
   sliderEventSub:Subscription;
   focusListener;
   imgBaseUrl = "https://image.tmdb.org/t/p/w342";
+  private screen = useScreen();
+  private opening = false;
 
   constructor(
     private menuService:MenuServiceService ,
     private moviesService:MoviesService,
     private navigation:NavigationService,
-    private router:Router,
+    private navigator:Navigator,
     private route:ActivatedRoute,
     private splashService:SplashService,
     private engine:FocusEngine,
@@ -56,43 +62,34 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     this.focusListener = (e)=>{
       const node = e.target as HTMLElement;
       // a poster (menu items are `.element`s too)
-      if (this.router.url != this.catalog.listUrl || !node.closest('.sliderContainer')) return;
+      if (!this.screen.active || !node.closest('.sliderContainer')) return;
       this.catalog.select(node.dataset['id'] , node.dataset['section'] , node.dataset['index']);
       this.menuService.sendInstruction("collapse" , this);
     }
     window.addEventListener('sn:focused', this.focusListener);
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      // (the search's keyboard handles its own keys)
-      if (this.router.url != this.catalog.listUrl || this.catalog.typing || this.catalog.filtering) return;
-      if (instruction == "leave") {
-        // the shell's Back button: out to the power menu at once
-        this.navSub.unsubscribe();
-        this.navigation.openPowerMenu();
-      }
-      if (instruction != "back") return;
+    // In-page steps; on the menu, Back leaves (the power menu)
+    this.screen.onBack(() => {
       let active = document.activeElement as HTMLElement;
+      if (!active || active.classList.contains('menuItem')) return false;
       if (this.catalog.search && active.closest('.sliderContainer')) {
         // back on a search result: to the search bar, results kept
         (document.querySelector('.sectionToolbar .searchField') as HTMLElement)?.focus({ preventScroll: true });
-      } else if (active.closest('.sectionToolbar')) {
-        this.openMenu();
-      } else if (this.menuService.menuState == "collapsed") {
+      } else if (active.closest('.sliderContainer')) {
         // back on a poster: its row returns to the start, the menu opens
         let row = this.engine.containerOf(active.closest('[data-px-container="row"]'));
         row?.home();
         this.openMenu();
-      } else if (active.classList.contains("menuItem")) {
-        this.navSub.unsubscribe();
-        this.navigation.openPowerMenu();
+      } else {
+        this.openMenu();
       }
-    })
+      return true;
+    });
   }
 
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'})
     window.removeEventListener('sn:focused', this.focusListener);
-    this.navSub?.unsubscribe();
     this.moviesSub?.unsubscribe();
     this.sliderEventSub?.unsubscribe();
   }
@@ -127,11 +124,26 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
   focusFirstWhenReady(tries:number){
     setTimeout(()=>{
-      if (this.router.url != this.catalog.listUrl) return;
+      if (!this.screen.active) return;
       // the user already got somewhere (e.g. the menu)
       if (document.activeElement && document.activeElement !== document.body) return;
       if (!this.engine.restore(`stack:${this.stackId}`) && tries > 0) this.focusFirstWhenReady(tries - 1);
     } , 100)
+  }
+
+  // Enter on a poster: the rows slide out, then its title opens (the poster
+  // is remembered for the way back: movement system)
+  open(item){
+    if (this.opening) return;
+    this.opening = true;
+    this.navigation.updateNavigation('remove' , {sectionId : "menu"})
+    this.navigation.updateNavigation('remove' , {sectionId : "slider"})
+    // the focused one, enriched by movies-page (genres, torrents, imdb id)
+    let selected = this.moviesService.selectedmovie.value;
+    let payload = selected && selected['id'] == item.id ? selected : item;
+    gsap.timeline().to(".sliderContainer" , {opacity : 0 , y : 100 , duration : .2 , ease : Power2.easeOut , onComplete : () => {
+      this.navigator.open({ screen: this.catalog.detailScreen, params: { id: item.id }, payload });
+    }});
   }
 
   // A row's pxRow asks (focus or scroll near its end); movies-page fetches

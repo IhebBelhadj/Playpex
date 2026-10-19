@@ -1,12 +1,11 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { FocusEngine } from '../movement/movement';
 import { BackgroundService } from '../background.service';
 import { MoviesService } from '../movies.service';
-import { NotificationService } from '../notification.service';
 import { ContinueItem, Library, LibraryService, MediaType, WatchedItem, WatchlistItem } from '../library.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 interface Card {
   key: string;                   // unique on the page: <row>:<mediaType>:<tmdbId>
@@ -68,17 +67,15 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   private detailSub:Subscription;
 
   private cards = new Map<string, Card>();
-  private navSub:Subscription;
   private focusListener;
-  private opening = false;
+  private screen = useScreen();
 
   constructor(
     private library:LibraryService,
     private navigation:NavigationService,
     private background:BackgroundService,
     private moviesService:MoviesService,
-    private notification:NotificationService,
-    private router:Router,
+    private navigator:Navigator,
     private engine:FocusEngine,
   ) { }
 
@@ -108,22 +105,15 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
       leaveFor: { right: this.engine.target([`stack:${STACK}`, '@library']) },
     });
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url != '/watchlist') return;
-      let active = document.activeElement as HTMLElement;
-
-      if (instruction == 'leave') {
-        this.navigation.openPowerMenu();
-        return;
-      }
-      if (instruction == 'back') {
-        if (active.classList.contains('menuItem')) this.navigation.openPowerMenu();
-        else (document.querySelector('[data-destination="watchPage"]') as HTMLElement)?.focus({ preventScroll: true });
-        return;
-      }
-      if (instruction != 'click') return;
+    // Back: the menu, then out (the power menu: the section's back policy)
+    this.screen.onBack(() => {
+      if (document.activeElement?.classList.contains('menuItem')) return false;
+      (document.querySelector('.menuItem.active') as HTMLElement)?.focus({ preventScroll: true });
+      return true;
+    });
+    this.screen.onSelect(active => {
       if (active.classList.contains('card')) this.open(this.cards.get(active.dataset['key']));
-      else if (active.classList.contains('browseBtn')) this.router.navigateByUrl('/movies/list');
+      else if (active.classList.contains('browseBtn')) this.navigator.switchSection('core.movies');
       else if (active.classList.contains('retryBtn')) this.load();
     });
 
@@ -132,7 +122,6 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
     this.detailSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
@@ -259,7 +248,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
 
   // The description follows the focused card (scrolling is the rows' job)
   private onFocus(node:HTMLElement) {
-    if (this.router.url != '/watchlist' || !node.classList.contains('card')) return;
+    if (!this.screen.active || !node.classList.contains('card')) return;
     let card = this.cards.get(node.dataset['key']);
     if (!card) return;
 
@@ -316,24 +305,9 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
 
   // ── opening a title ───────────────────────────────────────────────────────
 
+  // Its page, over this one (the movie page loads the movie's details)
   private open(card:Card | undefined) {
-    if (!card || this.opening) return;
-    if (card.mediaType == 'tv') {
-      this.router.navigateByUrl(`/shows/show/${card.tmdbId}`);
-      return;
-    }
-    // The movie page reads its movie from the history stack (like search does)
-    this.opening = true;
-    this.moviesService.getTmdbMovieDetails(card.tmdbId).subscribe({
-      next: movie => {
-        this.opening = false;
-        this.moviesService.addMovieToHistory(movie);
-        this.router.navigateByUrl(`/movies/movie/${card.tmdbId}`);
-      },
-      error: () => {
-        this.opening = false;
-        this.notification.sendNotification('error', `Couldn't open ${card.title}. Check your connection and try again.`);
-      }
-    });
+    if (!card) return;
+    this.navigator.open({ screen: card.mediaType == 'tv' ? 'core.show' : 'core.movie', params: { id: card.tmdbId } });
   }
 }

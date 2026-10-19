@@ -2,27 +2,27 @@
      seasons row, the episodes row -->
 <div class="showOptionsContainer" pxSection="showOptions" [leaveFor]="{ left: '@menu' }">
   <div class="optionPannel" pxGrid>
-    <button class="option focusable play" pxItem pxItemKey="play">
+    <button class="option focusable play" pxItem pxItemKey="play" (pxSelect)="play()">
       <div class="imgContainer">
         <img src="assets/icons/play.svg" alt="">
       </div>
       <span>Play {{selectedSeason ? 'S' + selectedSeason : ''}}</span>
     </button>
-    <button class="option focusable trailer" pxItem pxItemKey="trailer">
+    <button class="option focusable trailer" pxItem pxItemKey="trailer" (pxSelect)="playTrailer()">
       <div class="imgContainer">
         <img src="assets/icons/trailer.svg" alt="">
       </div>
       <span>Trailer</span>
     </button>
     <!-- every source's releases of this show: episodes and season packs -->
-    <button class="option focusable findReleases" pxItem pxItemKey="releases">
+    <button class="option focusable findReleases" pxItem pxItemKey="releases" (pxSelect)="findReleases()">
       <div class="imgContainer">
         <img src="assets/icons/search.svg" alt="">
       </div>
       <span>Find releases</span>
     </button>
     <!-- 18+ titles never go in the profile's library -->
-    <button *ngIf="!isAdult" class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist">
+    <button *ngIf="!isAdult" class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist" (pxSelect)="toggleWatchlist()">
       <div class="imgContainer">
         <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
       </div>
@@ -38,7 +38,8 @@
           *ngFor="let season of seasons"
           pxItem [pxItemKey]="season.season_number"
           [class.selected]="season.season_number === selectedSeason"
-          [attr.data-season]="season.season_number">
+          [attr.data-season]="season.season_number"
+          (pxSelect)="enterEpisodes()">
           {{season.name}}
           <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
         </button>
@@ -60,7 +61,8 @@
         <div class="episode" *ngFor="let ep of episodes; let i = index" [class.upcoming]="ep.upcoming">
           <button class="displayedElem focusable episodeBtn"
             pxItem [pxItemKey]="ep.episode_number"
-            [attr.data-index]="i">
+            [attr.data-index]="i"
+            (pxSelect)="openEpisode(ep)">
             <div class="imgContainer">
               <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
               <span class="badge" *ngIf="ep.upcoming">Upcoming</span>

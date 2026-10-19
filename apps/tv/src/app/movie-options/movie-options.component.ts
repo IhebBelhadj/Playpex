@@ -1,7 +1,6 @@
 import { NotificationService } from './../notification.service';
-import { filter, first, map, Observable, Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { MoviesService } from './../movies.service';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
@@ -11,8 +10,8 @@ import { TorrentPickerService } from '../torrent-picker.service';
 import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
-import { FocusEngine, PositionStore } from '../movement/movement';
 import { ReleasesService } from '../releases.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 @Component({
   selector: 'app-movie-options',
@@ -28,7 +27,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   casts;
   similar;
   trailer;
-  navigationSub:Subscription;
   playingTrailer = false;
   canPlay = false;
   findingTorrents = false;    // 18+ movie: Play is looking up torrents
@@ -41,11 +39,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   private resume:PlaybackState['resume'] = null;
   private libraryBusy = false;
 
+  // params { id } (TMDB id); payload: the TMDB movie it was opened from
+  private screen = useScreen<{ id:string }, any>();
+  private subscriptions:Subscription[] = [];
+
   constructor(
     private navigation:NavigationService,
-    private activatedRoute:ActivatedRoute,
+    private navigator:Navigator,
     private moviesService:MoviesService,
-    private router:Router,
     private notificationService:NotificationService,
     private menu:MenuServiceService,
     private playback:PlaybackService,
@@ -53,8 +54,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private torrentService:TorrentService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
-    private engine:FocusEngine,
-    private positions:PositionStore,
     private releases:ReleasesService,
   ) {
   }
@@ -74,51 +73,39 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       }
     })
 
-    this.navigation.updateNavigation('focus' , {sectionId : 'options'})
+    // back from the player / another title: what was focused
+    if (!this.screen.ready()) this.navigation.updateNavigation('focus' , {sectionId : 'options'})
 
-    this.navigation.routerCurrentMovieId = this.activatedRoute.snapshot.params['id'];
-    this.menu
-    // get page data
-
-
-    this.movieId = this.activatedRoute.snapshot.params['id'];
+    this.movieId = this.screen.params.id;
     this.getPageData(this.movieId)
-    this.selectedMovie = this.moviesService.getMovieFromStack(this.movieId);
-
-    this.getPlayData();
-    this.loadLibraryState();
-    this.handleNavEvents();
-
-    this.activatedRoute.params.subscribe(params => {
-
-      this.navigation.routerCurrentMovieId = params['id'];
-      this.selectedMovie = this.moviesService.getMovieFromStack(params['id']);
-
-      //console.log(this.moviesService.movieAppHistory);
-
-      //console.log(this.selectedMovie);
-
-      this.getPageData(params['id'])
-      this.resetScroll();
-      this.getPlayData();
-      this.loadLibraryState();
-      this.navigation.descriptionUpdateQuery(this.selectedMovie);
-
-    })
-
-
-
-
+    this.loadMovie(this.screen.payload);
   }
 
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
-    this.navigationSub.unsubscribe();
-
-    this.navigation.routerCurrentMovieId = undefined;
+    this.subscriptions.forEach(s => s.unsubscribe());
 
     let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
     if (pageContainer) pageContainer.scrollTop = 0;
+  }
+
+  // The movie it was opened with, completed from TMDB when it lacks the
+  // details (a similar title, a search result, opened by id)
+  loadMovie(movie){
+    let ready = (data) => {
+      this.selectedMovie = data;
+      this.moviesService.assignSelection(this.selectedMovie);
+      this.getPlayData();
+      this.loadLibraryState();
+    };
+    if (movie?.['imdb_id'] || movie?.['adult']) {
+      ready(movie);
+      return;
+    }
+    this.subscriptions.push(this.moviesService.getTmdbMovieDetails(this.movieId).subscribe({
+      next: details => ready(movie ? Object.assign(movie, details) : details),
+      error: () => this.notificationService.sendNotification('error', "Couldn't load this movie"),
+    }));
   }
 
   getPageData(id){
@@ -126,11 +113,13 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.moviesService.getCredits(id)
     .subscribe(data =>{
       this.casts = data['cast'];
+      this.restoreInRows();
     })
 
     this.moviesService.getSimilarMovies(id)
     .subscribe(data =>{
       this.similar = data['results'];
+      this.restoreInRows();
     })
 
     this.moviesService.getMovieVideos(id)
@@ -158,7 +147,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     let year = (movie['release_date'] || '').slice(0, 4);
     this.releases.open(this.isAdult ? 'adult' : 'movie', [title, year].filter(Boolean).join(' '), {
       label: movie['title'] || title,
-      url: this.router.url,
       context: this.isAdult ? undefined : {
         mediaType: 'movie',
         tmdbId: movie['id'],
@@ -174,6 +162,12 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   // when Play is pressed, and the title never enters the profile's library
   get isAdult():boolean {
     return !!this.selectedMovie?.['adult'];
+  }
+
+  // back to a cast member / similar title: once its row is there
+  private restoreInRows(){
+    if (!this.screen.returning || !this.casts || !this.similar) return;
+    setTimeout(() => this.screen.ready(), 0);
   }
 
   getPlayData(){
@@ -198,16 +192,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
         this.canPlay = true;
 
     })
-  }
-
-  // Another movie on the same page: top of the page, rows at their start
-  resetScroll(){
-    let pageContainer = document.querySelector('.pageContainer') as HTMLElement;
-    if (pageContainer) pageContainer.scrollTop = 0;
-    this.positions.clear('cast');
-    this.positions.clear('similar');
-    document.querySelectorAll('.optionsMasterContainer .castSlider, .optionsMasterContainer .movieSlider')
-      .forEach(row => row.scrollLeft = 0);
   }
 
   private movieRef():MediaRef {
@@ -236,7 +220,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   toggleWatchlist(){
-    if (this.libraryBusy) return;
+    if (this.libraryBusy || !this.selectedMovie) return;
     this.libraryBusy = true;
     let adding = !this.inWatchlist;
     this.inWatchlist = adding;
@@ -254,7 +238,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   toggleWatched(){
-    if (this.libraryBusy) return;
+    if (this.libraryBusy || !this.selectedMovie) return;
     this.libraryBusy = true;
     let marking = !this.watched;
     this.watched = marking;
@@ -331,17 +315,11 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
   startPlayer(torrent , startAt?:number){
     this.playback.playMovie(this.selectedMovie , torrent , startAt);
-    this.router.navigateByUrl("/player");
   }
 
-  openSimilar(element:HTMLElement){
-    let tempSub = this.moviesService.getTmdbMovieDetails(element.dataset['id'])
-      .subscribe(data=>{
-        this.moviesService.addMovieToHistory(data);
-        this.trailer = undefined;
-        this.router.navigateByUrl(`/movies/movie/${data['id']}`);
-        tempSub.unsubscribe();
-      })
+  // Its own page, over this one (Back comes here)
+  openSimilar(movie){
+    this.navigator.open({ screen: 'core.movie', params: { id: movie.id }, payload: movie });
   }
 
   showYtVid(vidId){
@@ -357,57 +335,24 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       onComplete : ()=>{
         let masterDiv = document.querySelector('.masterContainer') as HTMLElement;
         gsap.set(masterDiv, { clearProps: true });
-        this.router.navigateByUrl('/ytplayer/'+vidId);
+        this.navigator.open({ screen: 'core.trailer', params: { id: vidId } });
       }
     })
 
   }
 
+  onPlay(){
+    // resuming the saved release doesn't need the YTS data
+    if (!this.selectedMovie || (!this.canPlay && !this.resume?.infoHash)) return;
+    this.play();
+  }
 
-  handleNavEvents(){
-    this.navigationSub = this.navigation.executeCommand().subscribe(instruction =>{
-      if (instruction == "click" && this.router.url.includes('/movies/movie')) {
-        switch (true) {
-          case document.activeElement.classList.contains('play'):
-            // resuming the saved release doesn't need the YTS data
-            if (!this.canPlay && !this.resume?.infoHash) return;
-            this.play();
-            break;
-          case document.activeElement.classList.contains('trailer'):
-            if (!this.trailer) {
-              this.notificationService.sendNotification("error","No trailer found")
-              return;
-            }
-
-            this.showYtVid(this.trailer);
-
-            break;
-          case document.activeElement.classList.contains('findReleases'):
-            this.findReleases();
-          break;
-          case document.activeElement.classList.contains('addWatchlist'):
-            this.toggleWatchlist();
-          break;
-          case document.activeElement.classList.contains('addWatched'):
-            this.toggleWatched();
-          break;
-          case document.activeElement.parentElement.classList.contains('movie'):
-            this.openSimilar(document.activeElement as HTMLElement);
-          break;
-          default:
-            break;
-        }
-
-
-
-
-      }
-
-      if((instruction == "back" || instruction == "leave") && this.router.url.includes('/movies/movie')){
-        this.moviesService.popFromHistoryStack(this.navigation.routerCurrentMovieId)
-        this.navigation.goBack();
-      }
-    })
+  onTrailer(){
+    if (!this.trailer) {
+      this.notificationService.sendNotification("error","No trailer found")
+      return;
+    }
+    this.showYtVid(this.trailer);
   }
 
 }

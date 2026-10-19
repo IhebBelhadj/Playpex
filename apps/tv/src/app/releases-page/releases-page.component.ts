@@ -1,13 +1,14 @@
 import { AfterViewInit, Component, HostBinding, OnDestroy, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { catchError, map, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { PlaybackRequest, PlaybackService } from '../playback.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { AdultService } from '../adult.service';
 import {
-  Release, ReleaseProvider, ReleaseQuality, ReleasesKind, ReleasesOrigin, ReleasesService, ReleasesState, RELEASES_FROM,
+  Release, ReleaseProvider, ReleaseQuality, ReleasesKind, ReleasesOrigin, ReleasesService, ReleasesState,
 } from '../releases.service';
+import { Navigator, useScreen } from '../nav/public-api';
 
 interface QualityChoice {
   id: ReleaseQuality;
@@ -21,16 +22,11 @@ interface Request {
 
 const LOAD_MORE_AHEAD = 8;        // ask for the next page this many rows before the end
 
-// Per kind: what the search asks for, and the menu item Back ends on
+// Per kind: what the search asks for
 const SEARCH_HINT: Record<ReleasesKind, string> = {
   adult: 'Studio, performer or title',
   movie: 'Movie title, year, quality…',
   tv: 'Show title, SxxEyy, quality…',
-};
-const MENU_ITEM: Record<ReleasesKind, string> = {
-  adult: 'adultPage',
-  movie: 'moviesPage',
-  tv: 'showsPage',
 };
 
 // A release list (route data `kind`): /adult/releases (the 18+ section's
@@ -40,6 +36,8 @@ const MENU_ITEM: Record<ReleasesKind, string> = {
 // releases, most seeded first. Enter on a release plays it: as the title the
 // list was opened for when there is one (ReleasesOrigin.context: subtitles,
 // saved progress), never saved for 18+ (PlaybackRequest.adult).
+// Screens core.adult.releases (a section) and core.releases.movies / .shows
+// (src/app/nav): the payload is the ReleasesOrigin of a "Find releases".
 @Component({
   selector: 'app-releases-page',
   templateUrl: './releases-page.component.html',
@@ -56,7 +54,6 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
 
   kind:ReleasesKind = 'adult';
-  url = '';
   listId = '';                      // the list's pxGrid (its position is kept under this id)
   providers:ReleaseProvider[] = [];
   state:ReleasesState;
@@ -74,14 +71,14 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private requests = new Subject<Request>();
   private requestSub:Subscription;
-  private navSub:Subscription;
+  private screen = useScreen<{}, ReleasesOrigin>();
 
   constructor(
     private releases:ReleasesService,
     private adult:AdultService,
     private navigation:NavigationService,
+    private navigator:Navigator,
     private playback:PlaybackService,
-    private router:Router,
     private route:ActivatedRoute,
     private engine:FocusEngine,
     private positions:PositionStore,
@@ -119,13 +116,11 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.kind = this.route.snapshot.data['kind'] || 'adult';
-    this.url = this.releases.url(this.kind);
     this.listId = `releases:${this.kind}`;
     this.state = this.releases.states[this.kind];
-    // the navigation's state on the way in, the history entry's when coming
-    // back (from the player)
-    let navState = this.router.getCurrentNavigation()?.extras?.state || history.state;
-    this.origin = navState?.[RELEASES_FROM] || null;
+    // the title it was opened from (kept in the history entry: also there
+    // when coming back from the player)
+    this.origin = this.screen.payload || null;
     this.updateMaxSeeds();
     // a new list (another search, from a title's "Find releases"): no old position
     if (!this.state.loaded) this.positions.clear(this.listId);
@@ -178,13 +173,8 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
       leaveFor: { right: '@releasesFilters' },
     });
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url != this.url || this.keyboardOpen) return;
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'leave') this.leave();
-      else if (instruction == 'back') this.back(active);
-      else if (instruction == 'click') this.select(active);
-    });
+    this.screen.onSelect(el => this.select(el));
+    this.screen.onBack(() => this.back(document.activeElement as HTMLElement));
 
     // Back from the player: the same release in focus, the list where it was
     setTimeout(() => {
@@ -193,7 +183,6 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
     this.requestSub?.unsubscribe();
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -202,7 +191,6 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private select(active:HTMLElement) {
     let data = active.dataset;
-    if (active.classList.contains('menuItem')) return;      // the menu navigates itself
     if (active.classList.contains('searchField')) this.keyboardOpen = true;
     else if (active.classList.contains('clearSearch')) this.change({ query: '', imdb: null }, '.releasesPage .searchField');
     else if (data['provider']) this.change({ provider: data['provider'] });
@@ -210,34 +198,27 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     else if (active.classList.contains('playableToggle')) this.change({ playableOnly: !this.state.playableOnly });
     else if (active.classList.contains('retryBtn')) this.load();
     else if (active.classList.contains('layoutSwitch')) this.switchLayout();
-    else if (active.classList.contains('originBack')) this.navigation.goBack();
+    else if (active.classList.contains('originBack')) this.navigator.back();
     else if (data['hash']) this.play(this.state.releases.find(r => r.hash == data['hash']));
   }
 
-  // list → rail → the title it was opened from (or, the 18+ section's own
-  // list, the menu → power menu)
-  private back(active:HTMLElement) {
-    if (active.classList.contains('menuItem')) {
-      this.leave();
-    } else if (active.closest('.releases')) {
+  // In-page steps: list → rail → (the 18+ section's own list) the menu; then
+  // out: the title it was opened from, or the power menu (the nav system)
+  private back(active:HTMLElement):boolean {
+    if (!active || active.classList.contains('menuItem')) return false;
+    if (active.closest('.releases')) {
       this.navigation.updateNavigation('focus', { sectionId: 'releasesFilters' });
-    } else if (this.origin || this.kind != 'adult') {
-      this.navigation.goBack();
-    } else {
-      this.focusSelector(`[data-destination="${MENU_ITEM[this.kind]}"]`);
+      return true;
     }
+    if (this.origin || this.kind != 'adult') return false;
+    this.focusSelector('.menuItem.active');
+    return true;
   }
 
-  // Out of the page: the 18+ section's own list is a section page (→ power
-  // menu); a list opened from a title goes back to it
-  private leave() {
-    if (this.kind == 'adult' && !this.origin) this.navigation.openPowerMenu();
-    else this.navigation.goBack();
-  }
-
-  // 18+ poster layout (saved to the profile; Settings will offer it too)
+  // 18+ poster layout (saved to the profile; Settings will offer it too):
+  // the section's other screen, in place of this one
   private switchLayout() {
-    let go = () => this.router.navigateByUrl(this.adult.layoutUrl('posters'));
+    let go = () => this.navigator.reset({ screen: this.adult.layoutScreen('posters') });
     this.adult.setPreferences({ layout: 'posters' }).subscribe({ next: go, error: go });
   }
 
@@ -292,7 +273,6 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   private play(release:Release | undefined) {
     if (!release) return;
     this.playback.play(this.playbackRequest(release));
-    this.router.navigateByUrl('/player');
   }
 
   // As the title the list was opened for (subtitles, saved progress): a

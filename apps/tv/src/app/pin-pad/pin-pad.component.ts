@@ -1,13 +1,12 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
+import { LayerRef, LayerStack } from '../nav/public-api';
 import { PIN_LENGTH, ProfilesService } from '../profiles.service';
 
 // Full-screen PIN entry with an on-screen keypad (remote) that also accepts
 // the number keys. Emits `completed` once PIN_LENGTH digits are in and waits:
 // the host either closes it or calls fail(message) to try again.
-// While open it owns the `pinPad` navigation section; hosts must ignore
-// click/back commands meanwhile.
+// While open it owns the `pinPad` navigation section and is a layer of the
+// nav system (src/app/nav): the host gets no select / back meanwhile.
 @Component({
   selector: 'pin-pad',
   templateUrl: './pin-pad.component.html',
@@ -28,24 +27,23 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   waiting = false;
   shake = false;
 
-  private navSub:Subscription;
+  private layer:LayerRef;
   private keyListener;
 
-  constructor(private navigation:NavigationService) { }
+  constructor(private layers:LayerStack, private host:ElementRef<HTMLElement>) { }
 
   ngAfterViewInit(): void {
     // section `pinPad`: a trapping pxSection in the template, keys a pxGrid
     setTimeout(() => (document.querySelector('.pinPad .pinKey') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction == 'back' || instruction == 'leave') {
-        this.cancelled.emit();
-        return;
-      }
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'click' && active.classList.contains('pinKey')) {
-        this.press(active.dataset['key']);
-      }
+    // a layer of the nav system: select / back are its own while it's open
+    this.layer = this.layers.open({ id: 'pinPad', element: this.host.nativeElement });
+    this.layer.onSelect(el => {
+      if (el.classList.contains('pinKey')) this.press(el.dataset['key']);
+    });
+    this.layer.onBack(() => {
+      this.cancelled.emit();
+      return true;
     });
 
     // Text entry, not navigation: digits and Backspace straight from the keyboard / remote
@@ -57,7 +55,7 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
+    this.layer?.close();
     document.removeEventListener('keydown', this.keyListener);
   }
 

@@ -1,9 +1,9 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { catchError, debounceTime, forkJoin, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
+import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
 import {
   AdultPage, AdultService, AdultSort, AdultStudio, AdultTitle, AdultTitleDetails, BrowseState, MetaProvider, PosterRow,
 } from '../adult.service';
@@ -48,14 +48,16 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   private rowLoading = new Set<string>();
   private loadSub:Subscription;
   private detailSub:Subscription;
-  private navSub:Subscription;
+  private filterLayer:LayerRef | null = null;
+  private screen = useScreen();
   private focusListener;
 
   constructor(
     private adult:AdultService,
     private navigation:NavigationService,
     private background:BackgroundService,
-    private router:Router,
+    private navigator:Navigator,
+    private layers:LayerStack,
     private engine:FocusEngine,
     private positions:PositionStore,
   ) { }
@@ -135,16 +137,11 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
       leaveFor: { right: this.engine.target([`stack:${STACK}`, '@adultPosters', '@adultToolbar']) },
     });
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (this.router.url != '/adult/browse' || this.panel == 'keyboard') return;
-      let active = document.activeElement as HTMLElement;
-      if (instruction == 'leave') this.panel == 'filters' ? this.closeFilters() : this.navigation.openPowerMenu();
-      else if (instruction == 'back') this.back(active);
-      else if (instruction == 'click') this.select(active);
-    });
+    this.screen.onSelect(el => this.select(el));
+    this.screen.onBack(() => this.back(document.activeElement as HTMLElement));
 
     this.focusListener = (e) => {
-      if (this.router.url == '/adult/browse') this.onFocus(e.target as HTMLElement);
+      if (this.screen.active) this.onFocus(e.target as HTMLElement);
     };
     window.addEventListener('sn:focused', this.focusListener);
   }
@@ -152,7 +149,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.loadSub?.unsubscribe();
     this.detailSub?.unsubscribe();
-    this.navSub?.unsubscribe();
+    this.filterLayer?.close();
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -160,17 +157,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── input ───────────────────────────────────────────────────────────────
 
   private select(active:HTMLElement) {
-    if (active.classList.contains('menuItem')) return;
-    let data = active.dataset;
-
-    if (this.panel == 'filters') {
-      if (data['studio'] !== undefined) this.draftStudio = this.studios.find(s => s.id == data['studio']) || null;
-      else if (data['period'] !== undefined) this.draftPeriod = data['period'];
-      else if (data['panel'] == 'apply') this.applyFilters();
-      else if (data['panel'] == 'reset') { this.draftStudio = null; this.draftPeriod = ''; }
-      return;
-    }
-
     if (active.classList.contains('searchField')) this.panel = 'keyboard';
     else if (active.classList.contains('filterBtn')) this.openFilters();
     else if (active.classList.contains('clearAll')) this.change({ query: '', studio: null, period: '' }, '.adultBrowse .searchField');
@@ -179,16 +165,12 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     else if (active.classList.contains('card')) this.open(active);
   }
 
-  private back(active:HTMLElement) {
-    if (this.panel == 'filters') {
-      this.closeFilters();
-    } else if (active.classList.contains('menuItem')) {
-      this.navigation.openPowerMenu();
-    } else if (active.closest('.toolbar')) {
-      this.focusSelector('[data-destination="adultPage"]');
-    } else {
-      this.focusSelector('.adultBrowse .searchField');
-    }
+  // posters → toolbar → menu; on the menu Back leaves (the power menu)
+  private back(active:HTMLElement):boolean {
+    if (!active || active.classList.contains('menuItem')) return false;
+    if (active.closest('.toolbar')) this.focusSelector('.menuItem.active');
+    else this.focusSelector('.adultBrowse .searchField');
+    return true;
   }
 
   onSearchDone(query:string) {
@@ -206,6 +188,21 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.draftStudio = this.state.studio;
     this.draftPeriod = this.state.period;
     this.panel = 'filters';
+    // a layer of the nav system while open: its own select / back
+    let layer = this.filterLayer = this.layers.open({ id: 'adultFilterPanel', element: () => document.querySelector('.filterPanel') });
+    layer.onSelect(active => {
+      let data = active.dataset;
+      if (data['studio'] !== undefined) this.draftStudio = this.studios.find(s => s.id == data['studio']) || null;
+      else if (data['period'] !== undefined) this.draftPeriod = data['period'];
+      else if (data['panel'] == 'apply') this.applyFilters();
+      else if (data['panel'] == 'reset') { this.draftStudio = null; this.draftPeriod = ''; }
+    });
+    layer.result$.subscribe({ complete: () => {
+      if (this.filterLayer !== layer) return;
+      this.filterLayer = null;
+      this.panel = null;
+      this.focusSelector('.adultBrowse .filterBtn');
+    } });
     let show = () => this.focusSelector('.filterPanel .studioChip.selected');
     if (this.studios.length) show();
     else this.adult.studios(this.state.provider).pipe(catchError(() => of([]))).subscribe(list => {
@@ -215,8 +212,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private closeFilters() {
-    this.panel = null;
-    this.focusSelector('.adultBrowse .filterBtn');
+    this.filterLayer?.close();
   }
 
   private applyFilters() {
@@ -227,7 +223,8 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Compact list of releases (saved to the profile; Settings will offer it too)
   private switchLayout() {
-    let go = () => this.router.navigateByUrl(this.adult.layoutUrl('compact'));
+    // the section's other screen, in place of this one
+    let go = () => this.navigator.reset({ screen: this.adult.layoutScreen('compact') });
     this.adult.setPreferences({ layout: 'compact' }).subscribe({ next: go, error: go });
   }
 
@@ -380,8 +377,11 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     let row = this.state.rows.find(r => r.key == node.dataset['row']);
     let item = row?.items[Number(node.dataset['index'])];
     if (!item) return;
-    this.adult.openedTitle = this.detailCache.get(item.id) || item;
-    this.router.navigateByUrl(`/adult/title/${this.state.provider}/${encodeURIComponent(item.id)}`);
+    this.navigator.open({
+      screen: 'core.adult.title',
+      params: { provider: this.state.provider, id: item.id },
+      payload: this.detailCache.get(item.id) || item,
+    });
   }
 
   // ── view helpers ────────────────────────────────────────────────────────

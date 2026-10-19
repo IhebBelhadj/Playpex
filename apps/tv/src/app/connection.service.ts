@@ -1,10 +1,9 @@
 import { Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { InputAction } from './keymap';
 import { ServerService } from './server.service';
 import { desktop } from './desktop';
+import { Navigator } from './nav/navigator.service';
 
 // The server going away or refusing this device (docs/server-separation-plan.md §10.2):
 //   - 3 network failures in a row → the "Lost connection" modal: Retry (the
@@ -13,8 +12,8 @@ import { desktop } from './desktop';
 //   - 401 PAIRING_REQUIRED (device revoked, or loopback pairing turned on) →
 //     the shell forgets the token and reloads into /connect, which explains
 //   - 426 CLIENT_TOO_OLD / SERVER_TOO_OLD → the same, with an update screen
-// Fed by ServerErrorsInterceptor. While the modal is open AppComponent
-// forwards select/back to it (like the torrent picker).
+// Fed by ServerErrorsInterceptor. The modal is <connection-lost> (a layer of
+// the nav system while open).
 @Injectable({
   providedIn: 'root'
 })
@@ -28,13 +27,12 @@ export class ConnectionService {
 
   private failures = 0;
   private refusing = false;
-  private commands = new Subject<InputAction>();
   private changes = new Subject<void>();
 
   constructor(
     private server:ServerService,
     private http:HttpClient,
-    private router:Router,
+    private navigator:Navigator,
     private zone:NgZone,
   ) { }
 
@@ -47,7 +45,7 @@ export class ConnectionService {
   }
 
   failed() {
-    if (++this.failures >= ConnectionService.FAILURES && !this.isOpen && this.router.url != '/connect') {
+    if (++this.failures >= ConnectionService.FAILURES && !this.isOpen && this.navigator.current?.screen.id != 'core.connect') {
       this.isOpen = true;
       this.stillLost = false;
       this.changes.next();
@@ -61,7 +59,7 @@ export class ConnectionService {
     if (bridge) {
       bridge.connection.drop(reason, code);   // reloads the app into /connect
     } else {
-      this.zone.run(() => this.router.navigateByUrl('/connect', { state: { reason, code } }));
+      this.zone.run(() => this.navigator.reset({ screen: 'core.connect', payload: { reason, code } }));
       this.refusing = false;
     }
   }
@@ -92,7 +90,7 @@ export class ConnectionService {
 
   chooseServer() {
     this.close();
-    this.router.navigateByUrl('/connect');
+    this.navigator.reset({ screen: 'core.connect' });
   }
 
   close() {
@@ -102,13 +100,5 @@ export class ConnectionService {
 
   onChange() {
     return this.changes.asObservable();
-  }
-
-  sendCommand(action:InputAction) {
-    this.commands.next(action);
-  }
-
-  onCommand() {
-    return this.commands.asObservable();
   }
 }

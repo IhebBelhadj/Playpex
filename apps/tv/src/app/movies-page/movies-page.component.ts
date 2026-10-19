@@ -2,13 +2,14 @@ import { SplashService } from './../splash.service';
 import { NavigationService } from './../navigation.service';
 import { MoviesService } from './../movies.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
-import { switchMap, Subscription, map, Observable, filter } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { switchMap, Subscription, map, Observable } from 'rxjs';
 import { Catalog } from '../catalog';
 import { Category } from '../categories';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { CatalogFilters, Genre, filterCategories, filtersLabel, hasFilters, matchesFilters, sameFilters } from '../catalog-filters';
 import { ImdbService } from '../imdb.service';
+import { useFrame } from '../nav/public-api';
 
 // Home page of a section (movies or TV shows, from route data `media`):
 // loads the category rows into the section's Catalog and enriches the
@@ -16,7 +17,8 @@ import { ImdbService } from '../imdb.service';
 // searches (TMDB search: one row of results) and filters (genre, period,
 // score, language: popular / top rated / newest TMDB discover rows, or a
 // narrowed search) the section; their rows stand in for the section's
-// (Catalog.startSearch / endSearch) until Clear.
+// (Catalog.startSearch / endSearch) until Clear. A frame of the nav system
+// (src/app/nav): it hosts the section's list and title screens.
 @Component({
   selector: 'movies-page',
   templateUrl: './movies-page.component.html',
@@ -29,20 +31,19 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   selectedMovieSub:Subscription;
   pageRequestSub:Subscription;
   routeSub:Subscription;
-  navSub:Subscription;
   onList = false;
   onEpisode = false;
   toolbarExits = {};
   genres:Genre[] = [];
   private inFlight = new Set<string>();     // rows with a page on the way
   private lastPage:{ [category:string]:number } = {};
+  private frame = useFrame();
 
   constructor(
     private moviesService:MoviesService,
     private navigation:NavigationService,
     private splashService:SplashService,
     private route:ActivatedRoute,
-    private router:Router,
     private engine:FocusEngine,
     private imdb:ImdbService,
     private positions:PositionStore,
@@ -75,24 +76,14 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
       left: '@menu',
       down: this.engine.target([`stack:catalog:${this.catalog.media}`, '@slider']),
     };
-    this.onList = this.router.url == this.catalog.listUrl;
-    this.onEpisode = this.router.url.includes('/episode/');
-    this.routeSub = this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(() => {
-        this.onList = this.router.url == this.catalog.listUrl;
-        this.onEpisode = this.router.url.includes('/episode/');
-      });
+    // which of its screens is shown
+    this.routeSub = this.frame.entry$.subscribe(entry => {
+      if (!entry) return;
+      this.onList = entry.screen.id == this.catalog.listScreen;
+      this.onEpisode = entry.screen.id == 'core.episode';
+    });
 
     this.moviesService.getGenres(this.catalog.media).subscribe(genres => this.genres = genres);
-
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction != 'click' || this.router.url != this.catalog.listUrl || this.catalog.typing || this.catalog.filtering) return;
-      let active = document.activeElement as HTMLElement;
-      if (active.classList.contains('searchField')) this.catalog.typing = true;
-      else if (active.classList.contains('filterBtn')) this.catalog.filtering = true;
-      else if (active.classList.contains('clearSearch')) this.clearSearch();
-    });
 
     // Coming from the other section: don't describe its last item here
     let selected = this.moviesService.selectedmovie.value;
@@ -145,7 +136,6 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     this.selectedMovieSub.unsubscribe();
     this.pageRequestSub.unsubscribe();
     this.routeSub?.unsubscribe();
-    this.navSub?.unsubscribe();
     this.catalog.typing = false;
     this.catalog.filtering = false;
   }
@@ -196,7 +186,7 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     categories.forEach(c => this.getMovies(c.name, c.query));
   }
 
-  private clearSearch() {
+  clearSearch() {
     this.catalog.endSearch();
     this.focusToolbar('.searchField');
   }

@@ -1,6 +1,5 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { NavigationService } from '../navigation.service';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { LayerRef, LayerStack } from '../nav/public-api';
 import { MediaType } from '../catalog';
 import { CatalogFilters, Genre, LANGUAGES, NO_FILTERS, PERIODS, RATINGS } from '../catalog-filters';
 
@@ -8,8 +7,8 @@ import { CatalogFilters, Genre, LANGUAGES, NO_FILTERS, PERIODS, RATINGS } from '
 // period, minimum TMDB score and original language, one choice per group,
 // applied together ("Show movies") or reset. Like <text-keyboard> it owns its
 // keys while open (a trapping pxSection `catalogFilters`; groups are pxGrids
-// of a pxStack, src/app/movement): Enter picks a chip, back cancels. Hosts
-// ignore click / back meanwhile (`Catalog.filtering`).
+// of a pxStack, src/app/movement): Enter picks a chip, back cancels. A layer
+// of the nav system (src/app/nav): the host gets no select / back meanwhile.
 @Component({
   selector: 'catalog-filter-panel',
   templateUrl: './catalog-filter-panel.component.html',
@@ -28,9 +27,9 @@ export class CatalogFilterPanelComponent implements OnInit, AfterViewInit, OnDes
   ratings = RATINGS;
   languages = LANGUAGES;
 
-  private navSub:Subscription;
+  private layer:LayerRef;
 
-  constructor(private navigation:NavigationService) { }
+  constructor(private layers:LayerStack, private host:ElementRef<HTMLElement>) { }
 
   get noun():string {
     return this.media == 'tv' ? 'TV shows' : 'movies';
@@ -44,13 +43,14 @@ export class CatalogFilterPanelComponent implements OnInit, AfterViewInit, OnDes
     // the chosen genre (or "All genres"), where a change usually starts
     setTimeout(() => (document.querySelector('.catalogFilters .genreGrid .chip.selected') as HTMLElement)?.focus({ preventScroll: true }), 0);
 
-    this.navSub = this.navigation.executeCommand().subscribe(instruction => {
-      if (instruction == 'back' || instruction == 'leave') {
-        this.cancelled.emit();
-        return;
-      }
-      if (instruction != 'click') return;
-      let data = (document.activeElement as HTMLElement).dataset;
+    // a layer of the nav system: select / back are its own while it's open
+    this.layer = this.layers.open({ id: 'catalogFilters', element: this.host.nativeElement });
+    this.layer.onBack(() => {
+      this.cancelled.emit();
+      return true;
+    });
+    this.layer.onSelect(el => {
+      let data = el.dataset;
       if (data['genre'] !== undefined) this.draft.genre = data['genre'] ? Number(data['genre']) : null;
       else if (data['period'] !== undefined) this.draft.period = data['period'];
       else if (data['rating'] !== undefined) this.draft.rating = Number(data['rating']);
@@ -61,6 +61,6 @@ export class CatalogFilterPanelComponent implements OnInit, AfterViewInit, OnDes
   }
 
   ngOnDestroy(): void {
-    this.navSub?.unsubscribe();
+    this.layer?.close();
   }
 }

@@ -18,7 +18,8 @@
             *ngFor="let movie of category.value ; let i=index; trackBy:trackById"
             [attr.data-id]="movie?.id"
             [attr.data-section]="category.key"
-            [attr.data-index]="i">
+            [attr.data-index]="i"
+            (pxSelect)="open(movie)">
 
             <img src="{{imgBaseUrl + movie?.poster_path}}" alt="">
 
