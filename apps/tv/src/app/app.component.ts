@@ -7,6 +7,7 @@ import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { PointerService } from './pointer.service';
 import { FocusEngine } from './movement/movement';
 import { InputDispatcher, Navigator } from './nav/public-api';
+import { DevHook } from './dev-hook.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -26,6 +27,8 @@ export class AppComponent implements AfterViewInit , OnInit{
   imgStaticTl;
 
   bgSubscription;
+  // the shown screen's theme (chrome.accent → data-px-accent, src/styles/_tokens.scss)
+  accent:string | null = null;
   constructor(
     private backgroundService:BackgroundService ,
     private navigation:NavigationService,
@@ -34,8 +37,11 @@ export class AppComponent implements AfterViewInit , OnInit{
     private dispatcher:InputDispatcher,
     // created before the first navigation, so it sees it
     private navigator:Navigator,
+    devHook:DevHook,
     ){
-
+    // development builds: window.playpexDev (scripts/screens.js)
+    devHook.install();
+    navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);
   }
 
 

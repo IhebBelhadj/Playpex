@@ -1,7 +1,7 @@
 import {
   AfterContentInit, ContentChildren, Directive, ElementRef, EventEmitter, Input, NgZone, OnDestroy, OnInit, Output, QueryList,
 } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { BehaviorSubject, Subscription } from 'rxjs';
 import * as spatialNavigation from '../../plugins/spacialNavigation.js';
 import { FocusCause, FocusEngine } from './focus-engine.service';
 import { Direction, nearestOnAxis, Slot, visibleFraction } from './moves';
@@ -38,6 +38,9 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
   // 'scroll' (default) or 'transform'; nested containers take their parent's
   @Input() motion:MotionKind | null = null;
   @Output() nearEnd = new EventEmitter<void>();
+  // Where the content is cut off along the main axis (both true: it all fits);
+  // read by the rowArrows chevrons
+  readonly edges = new BehaviorSubject<{ start:boolean, end:boolean }>({ start: true, end: true });
 
   @ContentChildren(PxItemDirective, { descendants: true }) items:QueryList<PxItemDirective>;
 
@@ -45,6 +48,7 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
   private lastNearEnd = 0;
   private saveTimer:any;
   private itemsSub:Subscription;
+  private resizeObserver:ResizeObserver;
   protected mover:Motion;
 
   constructor(
@@ -82,7 +86,12 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     // offsets are measured against the container (offsetParent)
     if (getComputedStyle(host).position == 'static') host.style.position = 'relative';
     this.engine.register(this);
-    this.zone.runOutsideAngular(() => host.addEventListener('scroll', this.onScroll, { passive: true }));
+    this.zone.runOutsideAngular(() => {
+      host.addEventListener('scroll', this.onScroll, { passive: true });
+      // a resized container changes what is cut off (translated ones fire no scroll events)
+      this.resizeObserver = new ResizeObserver(() => this.updateEdges());
+      this.resizeObserver.observe(host);
+    });
   }
 
   ngAfterContentInit(): void {
@@ -95,6 +104,7 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     // offsets are saved as they change: a leaving page's are already gone (0)
     clearTimeout(this.saveTimer);
     this.host.removeEventListener('scroll', this.onScroll);
+    this.resizeObserver?.disconnect();
     this.engine.unregister(this);
   }
 
@@ -338,11 +348,15 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
 
   protected afterContent() { }
 
-  // `atStart` / `atEnd` from the real position (row paddles hide on them)
+  // `atStart` / `atEnd` from the real position (the rowArrows chevrons follow `edges`)
   protected updateEdges() {
     let view = this.mover.viewport(this.host, this.scrollAxes()[0]);
-    this.host.classList.toggle('atStart', view.scroll <= 1);
-    this.host.classList.toggle('atEnd', view.scroll >= maxScroll(view) - 1);
+    let start = view.scroll <= 1;
+    let end = view.scroll >= maxScroll(view) - 1;
+    this.host.classList.toggle('atStart', start);
+    this.host.classList.toggle('atEnd', end);
+    let now = this.edges.value;
+    if (now.start != start || now.end != end) this.edges.next({ start, end });
   }
 
   private checkScrollEnd() {

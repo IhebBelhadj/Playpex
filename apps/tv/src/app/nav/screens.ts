@@ -15,6 +15,8 @@ import { SearchPageComponent } from '../search-page/search-page.component';
 import { ShowOptionsComponent } from '../show-options/show-options.component';
 import { WatchlistPageComponent } from '../watchlist-page/watchlist-page.component';
 import { YoutubeComponent } from '../youtube/youtube.component';
+import { environment } from '../../environments/environment';
+import { GalleryComponent } from '../ui/public-api';
 import { defineScreen } from './screen-registry';
 
 // Every core screen (docs/navigation-system-plan.md §7), declared the way a
@@ -25,6 +27,7 @@ import { defineScreen } from './screen-registry';
 const MOVIES_FRAME = { path: 'movies', component: MoviesPageComponent, data: { media: 'movie' } };
 const SHOWS_FRAME = { path: 'shows', component: MoviesPageComponent, data: { media: 'tv' } };
 const FULL_SCREEN = { menu: 'hidden' as const };
+const ADULT = { accent: 'adult' as const };
 
 // ── roots ────────────────────────────────────────────────────────────────────
 
@@ -155,6 +158,7 @@ defineScreen({
   component: AdultBrowseComponent,
   kind: 'section',
   requires: ['adult'],
+  chrome: ADULT,
   menu: {
     label: '18+',
     icon: 'adult',
@@ -172,6 +176,7 @@ defineScreen({
   kind: 'section',
   section: 'core.adult.browse',
   requires: ['adult'],
+  chrome: ADULT,
 });
 
 // Params { provider, id }; payload: the title (renders before the details arrive)
@@ -181,6 +186,7 @@ defineScreen({
   component: AdultTitleComponent,
   kind: 'detail',
   requires: ['adult'],
+  chrome: ADULT,
 });
 
 // "Find releases" of a movie / show; payload: the ReleasesOrigin
@@ -234,3 +240,17 @@ defineScreen({
   kind: 'system',
   chrome: FULL_SCREEN,
 });
+
+// ── development ──────────────────────────────────────────────────────────────
+
+// Every token and primitive of the UI system (docs/ui-system-plan.md §5.7); not
+// in the menu, opened with window.playpexDev.open({ screen: 'core.dev.gallery' })
+if (!environment.production) {
+  defineScreen({
+    id: 'core.dev.gallery',
+    path: 'dev/gallery',
+    component: GalleryComponent,
+    kind: 'fullscreen',
+    chrome: FULL_SCREEN,
+  });
+}

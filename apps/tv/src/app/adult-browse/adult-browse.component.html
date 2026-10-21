@@ -56,8 +56,8 @@
     <div class="content" pxTrack>
       <div class="section" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem [attr.data-row]="row.key">
         <h3 class="sectionTitle">{{ row.title }}</h3>
-        <div class="slider pagedRow">
-          <div class="sliderSection" [pxRow]="row.key" align="start" [loadAhead]="loadAhead" (nearEnd)="loadMore(row)" #r="pxRow">
+        <div class="slider" rowArrows>
+          <div class="sliderSection" [pxRow]="row.key" align="start" [loadAhead]="loadAhead" (nearEnd)="loadMore(row)">
             <button *ngFor="let item of row.items; let i = index; trackBy: trackItem" class="card focusable"
               pxItem [pxItemKey]="item.id"
               [attr.data-row]="row.key"
@@ -65,12 +65,6 @@
               <img *ngIf="item.poster" [src]="item.poster" alt="" loading="lazy">
               <span class="fallbackTitle" *ngIf="!item.poster">{{ item.title }}</span>
             </button>
-          </div>
-          <div class="rowPaddle prev" (click)="r.page(-1)">
-            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-          </div>
-          <div class="rowPaddle next" (click)="r.page(1)">
-            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>
@@ -80,29 +74,28 @@
 </div>
 
 <!-- Filters: studio and release period, applied together -->
-<div class="filterPanel" *ngIf="panel == 'filters'" pxSection="adultFilterPanel" [trap]="true">
+<px-panel *ngIf="panel == 'filters'" class="filterPanel" id="adultFilterPanel" title="Filter titles" align="start" [width]="1040"
+  focus=".studioGrid .selected" (closed)="panel = null">
   <div class="panelBody" pxStack>
-    <h2 class="panelTitle">Filter titles</h2>
-
     <h3 class="groupTitle">Studio</h3>
     <div class="studioGrid" pxGrid enter="nearest">
-      <button class="studioChip focusable" pxItem [class.selected]="!draftStudio" data-studio="">All studios</button>
-      <button *ngFor="let s of studios" class="studioChip focusable" pxItem
-        [class.selected]="draftStudio?.id == s.id" [attr.data-studio]="s.id">{{ s.name }}</button>
+      <px-chip key="all" label="All studios" [selected]="!draftStudio" (pxSelect)="draftStudio = null"></px-chip>
+      <px-chip *ngFor="let s of studios" [key]="s.id" [label]="s.name" [selected]="draftStudio?.id == s.id"
+        (pxSelect)="draftStudio = s"></px-chip>
     </div>
 
     <h3 class="groupTitle">Released</h3>
-    <div class="periodRow" pxGrid enter="nearest">
-      <button *ngFor="let p of periods" class="studioChip focusable" pxItem
-        [class.selected]="draftPeriod == p.id" [attr.data-period]="p.id">{{ p.label }}</button>
+    <div class="chipLine" pxGrid enter="nearest">
+      <px-chip *ngFor="let p of periods" [key]="p.id" [label]="p.label" [selected]="draftPeriod == p.id"
+        (pxSelect)="draftPeriod = p.id"></px-chip>
     </div>
 
     <div class="panelActions" pxGrid enter="nearest">
-      <button class="actionBtn primary focusable" pxItem data-panel="apply">Show titles</button>
-      <button class="actionBtn focusable" pxItem data-panel="reset">Reset filters</button>
+      <button class="actionBtn primary focusable" pxItem (pxSelect)="applyFilters()">Show titles</button>
+      <button class="actionBtn focusable" pxItem (pxSelect)="draftStudio = null; draftPeriod = ''">Reset filters</button>
     </div>
   </div>
-</div>
+</px-panel>
 
 <text-keyboard *ngIf="panel == 'keyboard'"
   title="Search 18+ titles"

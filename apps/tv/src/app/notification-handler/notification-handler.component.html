@@ -1,7 +1,3 @@
-<div class="errorHandler" *ngIf="displayError" pxSection="okBtn" [trap]="true" pxSelector=".okBtn">
-
-  <div class="errorWrapper">
-    <span class="errorContent">{{errorContent}}</span>
-    <button class="okBtn" (pxSelect)="close()">ok</button>
-  </div>
-</div>
+<px-dialog *ngIf="displayError" id="okBtn" level="alert" [global]="true" [subtitle]="errorContent" (closed)="displayError = false">
+  <px-option key="ok" label="OK" (pxSelect)="close()"></px-option>
+</px-dialog>

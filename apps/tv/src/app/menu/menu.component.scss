@@ -1,6 +1,8 @@
 // Collapsed menu: labels hidden. collapseMenu() also sets display:none inline,
 // but only on labels that exist at that moment; items rendered later (the
 // profile entry appears once a profile is picked) need this rule.
+@use 'px' as *;
+
 .menuContainer:not(.expended) .description {
   display: none;
 }
@@ -12,7 +14,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 118px 0 14px;
+  padding: dp(118) 0 dp(14);
   box-sizing: border-box;
 }
 
@@ -28,76 +30,76 @@
 // rendered after the menu's first collapse (once a profile is picked) and
 // would keep the menu 220px wide: follow the menu's state instead
 .menuContainer:not(.expended) .account {
-  width: 50px !important;
+  width: dp(50) !important;
 }
 
 .logo {
-  width: 50px;
+  width: dp(50);
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: dp(20);
+  left: dp(20);
 }
 
 .tabs {
-  width: 220px;
+  width: dp(220);
 }
 
 .tabGroup {
   display: flex;
   align-items: center;
-  padding: 11px;
-  margin: 14px 8px;
-  border-radius: 8px;
+  padding: dp(11);
+  margin: dp(14) dp(8);
+  border-radius: dp(8);
   background: none;
   border: none;
-  width: 170px;
+  width: dp(170);
   opacity: .6;
 
   span {
-    padding-left: 25px;
-    font-family: 'NetflixLt';
-    font-size : 15px
+    padding-left: dp(25);
+    font-family: var(--px-font-light);
+    font-size : dp(15)
   }
 
   .inner {
     border : none;
     //width: 30px;
-    height: 35px;
+    height: dp(35);
     background: none;
     position: relative;
     display: flex;
     align-items: center;
-    color: #fff;
+    color: var(--px-color-text);
     img {
-      width: 20px !important;
-      filter: invert(99%) sepia(42%) saturate(0%) hue-rotate(253deg) brightness(105%) contrast(100%);
+      width: dp(20) !important;
+      filter: var(--px-icon-light);
       //transform: translate(-50% ,-50%);
     }
   }
 }
 
 .profileItem .inner img.profileAvatar {
-  width: 26px !important;
-  height: 26px;
-  margin-left: -3px;
-  border-radius: 4px;
+  width: dp(26) !important;
+  height: dp(26);
+  margin-left: dp(-3);
+  border-radius: dp(4);
   filter: none !important;
 }
 
 .serverItem span,
 .profileItem span {
-  padding-left: 22px;
-  max-width: 120px;
+  padding-left: dp(22);
+  max-width: dp(120);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .focused {
-  background: #fff;
+  background: var(--px-color-focus);
 
   .inner {
-    color: #000 !important;
+    color: var(--px-color-on-focus) !important;
 
     img {
       filter: none !important;
@@ -110,10 +112,10 @@
   opacity: .9;
   .inner {
 
-    color: #FFC107ff;
+    color: var(--px-color-on);
 
     img {
-      filter: invert(80%) sepia(19%) saturate(2493%) hue-rotate(351deg) brightness(100%) contrast(104%);
+      filter: var(--px-icon-on);
     }
   }
 }

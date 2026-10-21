@@ -1,110 +1,61 @@
-// The list page's filter panel: the 18+ filter panel's frame and chips
-// (white ring = chosen, white fill = focused), without its wine accent
-$ink: #fff;
-$muted: rgba(255, 255, 255, .62);
+// The list page's filter panel: groups of <px-chip>s on the <px-panel> frame
+// (ui/overlay), laid out like the 18+ filter panel
+@use 'px' as *;
 
-.catalogFilters {
-  position: fixed;
-  inset: 0;
-  z-index: 11;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 10, .92);
-  backdrop-filter: blur(6px);
-  color: $ink;
-}
-
+// a pxStack: scrolls when the groups don't fit; room for the chips' zoom
 .panelBody {
-  width: 1060px;
-  max-height: 100vh;
-  // a pxStack: scrolls when the groups don't fit; room for the chips' zoom
-  padding: 36px 10px;
-  box-sizing: border-box;
-}
-
-.panelTitle {
-  margin: 0;
-  font-family: 'NetflixBd';
-  font-weight: normal;
-  font-size: 32px;
+  min-height: 0;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
 }
 
 .groupTitle {
-  margin: 26px 0 12px;
-  font-family: 'NetflixBk';
+  margin: dp(26) 0 dp(12);
+  font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: 15px;
-  color: $muted;
+  font-size: dp(15);
+  color: var(--px-color-text-muted);
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
 .genreGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
+  gap: dp(10);
 }
 
 .chipLine {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.chip {
-  height: 42px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 21px;
-  background: rgba(255, 255, 255, .07);
-  color: rgba(255, 255, 255, .72);
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: all .15s;
-
-  &.selected {
-    color: $ink;
-    background: rgba(255, 255, 255, .14);
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
-  }
-
-  &.focused {
-    background: $ink;
-    color: #000;
-    box-shadow: none;
-    transform: scale(1.06);
-  }
+  gap: dp(10);
 }
 
 .panelActions {
   display: flex;
-  gap: 14px;
-  margin-top: 30px;
+  gap: dp(14);
+  margin-top: dp(30);
 }
 
 .actionBtn {
-  padding: 12px 30px;
-  border: 1px solid #808080;
+  padding: dp(12) dp(30);
+  border: dp(1) solid var(--px-color-outline);
   background: transparent;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  transition: all .15s;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(17);
+  transition: all var(--px-dur-fast);
 
   &.primary {
-    border-color: $ink;
-    color: $ink;
+    border-color: var(--px-color-focus);
+    color: var(--px-color-text);
   }
 
   &.focused {
-    background: $ink;
-    border-color: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chip, .actionBtn { transition: none; }
 }

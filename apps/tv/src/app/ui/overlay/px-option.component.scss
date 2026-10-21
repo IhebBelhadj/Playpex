@@ -1,0 +1,66 @@
+@use 'px' as *;
+
+// the button is the list's item (a flex child of the dialog's body)
+:host {
+  display: contents;
+}
+
+.px-option {
+  --px-option-fill: var(--px-surface-2);
+  --px-option-caution: var(--px-color-caution);
+
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: dp(6);
+  padding: dp(16) dp(18) dp(18);
+  border: none;
+  border-radius: dp(5);
+  overflow: hidden;
+  background: var(--px-surface-option);
+  color: var(--px-color-text);
+  text-align: left;
+  opacity: .7;
+
+  &.focused {
+    --px-option-fill: var(--px-color-on-focus-surface);
+    --px-option-caution: var(--px-color-caution-on-focus);
+
+    opacity: 1;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .px-option-progress {
+      background: var(--px-color-on-focus-track);
+    }
+  }
+}
+
+.px-option-label {
+  font-family: var(--px-font-bold);
+  font-size: dp(20);
+}
+
+.px-option-detail {
+  font-family: var(--px-font-book);
+  font-size: dp(14);
+  opacity: .75;
+}
+
+// how far in, in the app's progress amber
+.px-option-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: dp(4);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--px-color-progress);
+  }
+}

@@ -1,5 +1,5 @@
 .splashContainer {
-  z-index: 12;
+  z-index: var(--px-z-splash);
   position: relative;
 }
 
@@ -9,13 +9,13 @@
   top: 0;
   width: 100%;
   height: 100vh;
-  background: #000;
-  z-index: 12;
+  background: var(--px-black);
+  z-index: var(--px-z-splash);
 }
 
 .splashAnimation {
   position: fixed;
-  z-index: 13;
+  z-index: var(--px-z-splash-video);
   object-fit: fill;
   top: 50%;
   left: 50%;

@@ -35,33 +35,37 @@
     <!-- Enter on a performer: their releases in the compact list -->
     <section class="casts" *ngIf="details?.performers?.length" pxStackItem>
       <h3 class="sectionTitle">Cast</h3>
-      <div class="castSlider" pxRow="cast" align="third">
-        <div class="content">
-          <button *ngFor="let p of details.performers; let i = index" class="performer focusable"
-            pxItem [pxItemKey]="p.name" [attr.data-performer]="i">
-            <div class="imgContainer">
-              <img *ngIf="p.photo" [src]="p.photo" alt="" loading="lazy">
-              <span class="initials" *ngIf="!p.photo">{{ initials(p.name) }}</span>
-            </div>
-            <div class="name">{{ p.name }}</div>
-          </button>
+      <div rowArrows>
+        <div class="castSlider" pxRow="cast" align="third">
+          <div class="content">
+            <button *ngFor="let p of details.performers; let i = index" class="performer focusable"
+              pxItem [pxItemKey]="p.name" [attr.data-performer]="i">
+              <div class="imgContainer">
+                <img *ngIf="p.photo" [src]="p.photo" alt="" loading="lazy">
+                <span class="initials" *ngIf="!p.photo">{{ initials(p.name) }}</span>
+              </div>
+              <div class="name">{{ p.name }}</div>
+            </button>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="similar" *ngIf="more.length" pxStackItem>
       <h3 class="sectionTitle">More from {{ studio?.name }}</h3>
-      <div class="movieSlider" pxRow="more" align="third">
-        <div class="content">
-          <div class="movie" *ngFor="let m of more; let i = index">
-            <button class="displayedElem card focusable" pxItem [pxItemKey]="m.id" [attr.data-index]="i">
-              <div class="imgContainer">
-                <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
-                <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
-              </div>
-            </button>
-            <span class="name">{{ m.title }}</span>
-            <span class="year" *ngIf="m.year">{{ m.year }}</span>
+      <div rowArrows>
+        <div class="movieSlider" pxRow="more" align="third">
+          <div class="content">
+            <div class="movie" *ngFor="let m of more; let i = index">
+              <button class="displayedElem card focusable" pxItem [pxItemKey]="m.id" [attr.data-index]="i">
+                <div class="imgContainer">
+                  <img *ngIf="m.poster" [src]="m.poster" alt="" loading="lazy">
+                  <span class="fallbackTitle" *ngIf="!m.poster">{{ m.title }}</span>
+                </div>
+              </button>
+              <span class="name">{{ m.title }}</span>
+              <span class="year" *ngIf="m.year">{{ m.year }}</span>
+            </div>
           </div>
         </div>
       </div>

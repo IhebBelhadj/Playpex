@@ -28,7 +28,8 @@
     "dist": "ng build --base-href ./ && electron-builder",
     "dist:linux": "ng build --base-href ./ && electron-builder --linux",
     "dist:win": "ng build --base-href ./ && electron-builder --win",
-    "dist:mac": "ng build --base-href ./ && electron-builder --mac"
+    "dist:mac": "ng build --base-href ./ && electron-builder --mac",
+    "screens": "ng build --configuration development --base-href ./ --output-path dist/screens && electron scripts/screens.js"
   },
   "dependencies": {
     "@playpex/protocol": "*",

@@ -1,35 +1,34 @@
-<div class="catalogFilters" pxSection="catalogFilters" [trap]="true">
+<px-panel id="catalogFilters" [title]="'Filter ' + noun" align="start" [width]="1040" focus=".genreGrid .selected"
+  (back)="cancelled.emit()">
   <div class="panelBody" pxStack>
-    <h2 class="panelTitle">Filter {{ noun }}</h2>
-
     <h3 class="groupTitle">Genre</h3>
     <div class="genreGrid" pxGrid enter="nearest">
-      <button class="chip focusable" pxItem data-genre="" [class.selected]="draft.genre === null">All genres</button>
-      <button *ngFor="let g of genres" class="chip focusable" pxItem
-        [attr.data-genre]="g.id" [class.selected]="draft.genre === g.id">{{ g.name }}</button>
+      <px-chip key="all" label="All genres" [selected]="draft.genre === null" (pxSelect)="draft.genre = null"></px-chip>
+      <px-chip *ngFor="let g of genres" [key]="g.id" [label]="g.name" [selected]="draft.genre === g.id"
+        (pxSelect)="draft.genre = g.id"></px-chip>
     </div>
 
     <h3 class="groupTitle">{{ media == 'tv' ? 'First aired' : 'Released' }}</h3>
     <div class="chipLine" pxGrid enter="nearest">
-      <button *ngFor="let p of periods" class="chip focusable" pxItem
-        [attr.data-period]="p.id" [class.selected]="draft.period === p.id">{{ p.label }}</button>
+      <px-chip *ngFor="let p of periods" [key]="p.id" [label]="p.label" [selected]="draft.period === p.id"
+        (pxSelect)="draft.period = p.id"></px-chip>
     </div>
 
     <h3 class="groupTitle">TMDB score</h3>
     <div class="chipLine" pxGrid enter="nearest">
-      <button *ngFor="let r of ratings" class="chip focusable" pxItem
-        [attr.data-rating]="r.value" [class.selected]="draft.rating === r.value">{{ r.label }}</button>
+      <px-chip *ngFor="let r of ratings" [key]="r.value" [label]="r.label" [selected]="draft.rating === r.value"
+        (pxSelect)="draft.rating = r.value"></px-chip>
     </div>
 
     <h3 class="groupTitle">Original language</h3>
     <div class="chipLine" pxGrid enter="nearest">
-      <button *ngFor="let l of languages" class="chip focusable" pxItem
-        [attr.data-language]="l.id" [class.selected]="draft.language === l.id">{{ l.label }}</button>
+      <px-chip *ngFor="let l of languages" [key]="l.id" [label]="l.label" [selected]="draft.language === l.id"
+        (pxSelect)="draft.language = l.id"></px-chip>
     </div>
 
     <div class="panelActions" pxGrid enter="nearest">
-      <button class="actionBtn primary focusable" pxItem data-action="apply">Show {{ noun }}</button>
-      <button class="actionBtn focusable" pxItem data-action="reset">Reset filters</button>
+      <button class="actionBtn primary focusable" pxItem (pxSelect)="apply()">Show {{ noun }}</button>
+      <button class="actionBtn focusable" pxItem (pxSelect)="reset()">Reset filters</button>
     </div>
   </div>
-</div>
+</px-panel>

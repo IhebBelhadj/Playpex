@@ -3,12 +3,9 @@
 // the headline of every release: the list is ranked by it. The 18+ list adds a
 // darker, wine tinted backdrop (no TMDB artwork there); movies and shows keep
 // the shell's backdrop (the title's).
-$ink: #fff;
-$muted: rgba(255, 255, 255, .62);
-$faint: rgba(255, 255, 255, .38);
-$wine: #C2405F;
-$chipBg: rgba(0, 0, 0, .56);
-$rowH: 92px;
+@use 'px' as *;
+
+$rowH: dp(92);
 
 // Flex item of .masterContainer next to the menu
 :host {
@@ -24,21 +21,19 @@ $rowH: 92px;
     content: '';
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: var(--px-z-behind);
     pointer-events: none;
-    background:
-      radial-gradient(ellipse 70% 60% at 85% 0%, rgba(120, 32, 58, .28) 0%, rgba(120, 32, 58, 0) 70%),
-      linear-gradient(38deg, #000 0%, #0e0b0c 45%, #23161b 100%);
+    background: var(--px-gradient-adult-backdrop);
   }
 }
 
 .releasesPage {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: dp(360) minmax(0, 1fr);
+  gap: dp(48);
   height: 100vh;
-  padding: 0 60px 0 35px;
-  color: $ink;
+  padding: 0 dp(60) 0 dp(35);
+  color: var(--px-color-text);
 }
 
 // ── left rail ───────────────────────────────────────────────────────────────
@@ -47,34 +42,34 @@ $rowH: 92px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding-top: 48px;
+  padding-top: dp(48);
 }
 
 // The seal, or (opened from a title's "Find releases") the way back to it
 .railHead {
   width: 100%;
-  margin-bottom: 40px;
+  margin-bottom: dp(40);
 }
 
 .originBack {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: dp(12);
   width: 100%;
-  height: 58px;
-  padding: 0 18px 0 14px;
+  height: dp(58);
+  padding: 0 dp(18) 0 dp(14);
   border: none;
-  border-radius: 8px;
-  background: $chipBg;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 16px;
+  border-radius: dp(8);
+  background: var(--px-surface-control);
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(16);
   text-align: left;
 
   svg {
     flex: none;
-    width: 22px;
-    height: 22px;
+    width: dp(22);
+    height: dp(22);
     fill: none;
     stroke: currentColor;
     stroke-width: 2.4;
@@ -83,10 +78,10 @@ $rowH: 92px;
   }
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
 
-    .originLabel { color: #141414; }
+    .originLabel { color: var(--px-color-on-focus); }
   }
 }
 
@@ -98,41 +93,41 @@ $rowH: 92px;
 }
 
 .originLabel {
-  color: $ink;
+  color: var(--px-color-text);
 }
 
 .seal {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 2px solid $wine;
-  border-radius: 12px;
-  color: $wine;
-  font-family: 'NetflixBd';
-  font-size: 21px;
-  letter-spacing: -.5px;
+  width: dp(58);
+  height: dp(58);
+  border: dp(2) solid var(--px-color-accent);
+  border-radius: dp(12);
+  color: var(--px-color-accent);
+  font-family: var(--px-font-bold);
+  font-size: dp(21);
+  letter-spacing: dp(-.5);
 }
 
 .searchField {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: dp(14);
   width: 100%;
-  height: 54px;
-  padding: 0 18px;
+  height: dp(54);
+  padding: 0 dp(18);
   border: none;
-  border-radius: 8px;
-  background: $chipBg;
-  color: $ink;
-  font-family: 'NetflixBk';
-  font-size: 18px;
+  border-radius: dp(8);
+  background: var(--px-surface-control);
+  color: var(--px-color-text);
+  font-family: var(--px-font-book);
+  font-size: dp(18);
   text-align: left;
-  transition: transform .2s, background .2s;
+  transition: transform var(--px-dur), background var(--px-dur);
 
   img {
-    width: 20px;
-    filter: invert(1);
+    width: dp(20);
+    filter: var(--px-icon-light);
     opacity: .8;
   }
 
@@ -145,71 +140,71 @@ $rowH: 92px;
   }
 
   &.empty .searchText {
-    color: $faint;
+    color: var(--px-color-text-faint);
   }
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     transform: scale(1.04);
 
     img { filter: none; }
-    &.empty .searchText { color: rgba(20, 20, 20, .55); }
+    &.empty .searchText { color: var(--px-color-on-focus-muted); }
   }
 }
 
 .clearSearch {
-  margin-top: 10px;
-  padding: 6px 12px;
+  margin-top: dp(10);
+  padding: dp(6) dp(12);
   border: none;
-  border-radius: 6px;
+  border-radius: dp(6);
   background: none;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  transition: all .2s;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+  transition: all var(--px-dur);
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
 }
 
 .groupTitle {
-  margin: 38px 0 14px;
-  font-family: 'NetflixBk';
+  margin: dp(38) 0 dp(14);
+  font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: 15px;
-  color: $muted;
+  font-size: dp(15);
+  color: var(--px-color-text-muted);
 }
 
 // Same chips as the search page's filters
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: dp(8);
 }
 
 .chip {
-  height: 40px;
-  padding: 0 16px;
+  height: dp(40);
+  padding: 0 dp(16);
   border: none;
-  border-radius: 20px;
-  background: $chipBg;
-  color: rgba(255, 255, 255, .7);
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  transition: all .2s;
+  border-radius: dp(20);
+  background: var(--px-surface-control);
+  color: var(--px-color-text-secondary);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+  transition: all var(--px-dur);
 
   &.selected {
-    color: $ink;
-    background: rgba(255, 255, 255, .14);
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+    color: var(--px-color-text);
+    background: var(--px-surface-2);
+    box-shadow: inset 0 0 0 dp(1.5) var(--px-color-line-strong);
   }
 
   &.focused {
-    background: $ink;
-    color: #000;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     box-shadow: none;
     scale: 1.08;
   }
@@ -220,62 +215,62 @@ $rowH: 92px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: dp(18);
   width: 100%;
-  margin-top: 38px;
-  padding: 14px 16px;
+  margin-top: dp(38);
+  padding: dp(14) dp(16);
   border: none;
-  border-radius: 8px;
-  background: $chipBg;
-  color: $ink;
+  border-radius: dp(8);
+  background: var(--px-surface-control);
+  color: var(--px-color-text);
   text-align: left;
-  transition: all .2s;
+  transition: all var(--px-dur);
 
   .toggleText {
-    font-family: 'NetflixBk';
-    font-size: 16px;
+    font-family: var(--px-font-book);
+    font-size: dp(16);
   }
 
   .toggleHint {
     display: block;
-    margin-top: 4px;
-    font-family: 'NetflixLt';
-    font-size: 13px;
-    color: $faint;
+    margin-top: dp(4);
+    font-family: var(--px-font-light);
+    font-size: dp(13);
+    color: var(--px-color-text-faint);
   }
 
   .switch {
     position: relative;
     flex: none;
-    width: 46px;
-    height: 26px;
-    border-radius: 13px;
-    background: rgba(255, 255, 255, .22);
-    transition: background .2s;
+    width: dp(46);
+    height: dp(26);
+    border-radius: dp(13);
+    background: var(--px-surface-3);
+    transition: background var(--px-dur);
 
     .knob {
       position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 20px;
-      height: 20px;
+      top: dp(3);
+      left: dp(3);
+      width: dp(20);
+      height: dp(20);
       border-radius: 50%;
-      background: $ink;
-      transition: transform .2s;
+      background: var(--px-white);
+      transition: transform var(--px-dur);
     }
 
     &.on {
-      background: $wine;
-      .knob { transform: translateX(20px); }
+      background: var(--px-wine);
+      .knob { transform: translateX(dp(20)); }
     }
   }
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
 
-    .toggleHint { color: rgba(20, 20, 20, .6); }
-    .switch:not(.on) { background: rgba(0, 0, 0, .25); }
+    .toggleHint { color: var(--px-color-on-focus-muted); }
+    .switch:not(.on) { background: var(--px-color-on-focus-line); }
   }
 }
 
@@ -283,27 +278,27 @@ $rowH: 92px;
 .layoutSwitch {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: dp(12);
   margin-top: auto;
-  margin-bottom: 44px;
-  padding: 10px 14px;
+  margin-bottom: dp(44);
+  padding: dp(10) dp(14);
   border: none;
-  border-radius: 8px;
+  border-radius: dp(8);
   background: none;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  transition: all .2s;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+  transition: all var(--px-dur);
 
   img {
-    width: 18px;
-    filter: invert(1);
+    width: dp(18);
+    filter: var(--px-icon-light);
     opacity: .7;
   }
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
 
     img { filter: none; opacity: 1; }
   }
@@ -316,16 +311,16 @@ $rowH: 92px;
   flex-direction: column;
   min-width: 0;
   height: 100vh;
-  padding-top: 48px;
+  padding-top: dp(48);
 }
 
 .listHeader {
-  padding-right: 150px;     // the shell's clock
+  padding-right: dp(150);     // the shell's clock
 }
 
 .heading {
   margin: 0;
-  font-family: 'NetflixBd';
+  font-family: var(--px-font-bold);
   font-weight: normal;
   font-size: 2.2rem;
   white-space: nowrap;
@@ -334,49 +329,49 @@ $rowH: 92px;
 }
 
 .count {
-  margin: 10px 0 0;
-  font-family: 'NetflixLt';
-  font-size: 17px;
-  color: $muted;
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  font-size: dp(17);
+  color: var(--px-color-text-muted);
 }
 
 .listNote {
-  margin-top: 40px;
+  margin-top: dp(40);
 
   p {
-    max-width: 620px;
+    max-width: dp(620);
     margin: 0;
-    font-family: 'NetflixBk';
+    font-family: var(--px-font-book);
     font-size: 1.15rem;
     line-height: 1.7;
-    color: $muted;
+    color: var(--px-color-text-muted);
   }
 }
 
 .retryBtn {
-  margin-top: 24px;
-  padding: 12px 30px;
-  border: 1px solid #808080;
+  margin-top: dp(24);
+  padding: dp(12) dp(30);
+  border: dp(1) solid var(--px-color-outline);
   background: transparent;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  transition: all .15s;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(17);
+  transition: all var(--px-dur-fast);
 
   &.focused {
-    background: $ink;
-    border-color: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
 }
 
 .releasesViewport {
   flex: 1;
   min-height: 0;
-  margin-top: 30px;
+  margin-top: dp(30);
   // the focused row grows a little: keep it whole at the edges
-  padding: 6px 12px 0 6px;
-  margin-left: -6px;
+  padding: dp(6) dp(12) 0 dp(6);
+  margin-left: dp(-6);
   // a pxGrid: scrolls natively (wheel, keys), no scrollbar
   overflow-x: hidden;
   overflow-y: auto;
@@ -384,51 +379,51 @@ $rowH: 92px;
   scrollbar-width: none;
 
   &::-webkit-scrollbar { display: none; }
-  mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 90px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, var(--px-black) dp(18), var(--px-black) calc(100% - dp(90)), transparent 100%);
 }
 
 .releaseList {
   margin: 0;
-  padding: 0 0 120px;
+  padding: 0 0 dp(120);
   list-style: none;
 
   li {
     height: $rowH;
-    margin-bottom: 12px;
+    margin-bottom: dp(12);
   }
 }
 
 .release {
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr) auto;
+  grid-template-columns: dp(132) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 26px;
+  gap: dp(26);
   width: 100%;
   height: 100%;
-  padding: 0 22px 0 20px;
+  padding: 0 dp(22) 0 dp(20);
   border: none;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, .38);
-  color: $ink;
+  border-radius: dp(8);
+  background: var(--px-surface-row);
+  color: var(--px-color-text);
   text-align: left;
-  transition: transform .2s, background .2s;
+  transition: transform var(--px-dur), background var(--px-dur);
 
   &.quiet {
     opacity: .55;
   }
 
   &.focused {
-    background: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     opacity: 1;
     transform: scale(1.015);
 
-    .seedLabel, .releaseMeta, .releaseName { color: rgba(20, 20, 20, .6); }
-    .releaseMeta .episode { color: #141414; }
-    .seedMeter { background: rgba(0, 0, 0, .12); }
-    .seedMeter span { background: #141414; }
-    .tag { background: rgba(0, 0, 0, .08); color: #141414; }
-    .tag.warn { color: #8a1c38; }
+    .seedLabel, .releaseMeta, .releaseName { color: var(--px-color-on-focus-muted); }
+    .releaseMeta .episode { color: var(--px-color-on-focus); }
+    .seedMeter { background: var(--px-color-on-focus-track); }
+    .seedMeter span { background: var(--px-color-on-focus); }
+    .tag { background: var(--px-color-on-focus-surface); color: var(--px-color-on-focus); }
+    .tag.warn { color: var(--px-color-warn-on-focus); }
   }
 }
 
@@ -439,31 +434,31 @@ $rowH: 92px;
 }
 
 .seedCount {
-  font-family: 'NetflixBd';
-  font-size: 34px;
+  font-family: var(--px-font-bold);
+  font-size: dp(34);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.5px;
+  letter-spacing: dp(-.5);
 }
 
 .seedLabel {
-  margin-top: 4px;
-  font-family: 'NetflixLt';
-  font-size: 13px;
-  color: $faint;
+  margin-top: dp(4);
+  font-family: var(--px-font-light);
+  font-size: dp(13);
+  color: var(--px-color-text-faint);
 }
 
 .seedMeter {
-  height: 3px;
-  margin-top: 9px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, .12);
+  height: dp(3);
+  margin-top: dp(9);
+  border-radius: dp(2);
+  background: var(--px-surface-2);
 
   span {
     display: block;
     height: 100%;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, .85);
+    border-radius: dp(2);
+    background: var(--px-color-text-soft);
   }
 }
 
@@ -474,8 +469,8 @@ $rowH: 92px;
 }
 
 .releaseTitle {
-  font-family: 'NetflixBk';
-  font-size: 20px;
+  font-family: var(--px-font-book);
+  font-size: dp(20);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -483,31 +478,31 @@ $rowH: 92px;
 
 .releaseMeta {
   display: flex;
-  gap: 16px;
-  margin-top: 6px;
-  font-family: 'NetflixLt';
-  font-size: 14px;
-  color: $muted;
+  gap: dp(16);
+  margin-top: dp(6);
+  font-family: var(--px-font-light);
+  font-size: dp(14);
+  color: var(--px-color-text-muted);
   white-space: nowrap;
   overflow: hidden;
 
   .studio {
-    font-family: 'NetflixBk';
+    font-family: var(--px-font-book);
   }
 
   // TV: the episode / season a release holds
   .episode {
-    font-family: 'NetflixBk';
-    color: $ink;
+    font-family: var(--px-font-book);
+    color: var(--px-color-text);
   }
 }
 
 // the raw release name, for people who read those
 .releaseName {
-  margin-top: 5px;
-  font-family: 'NetflixLt';
-  font-size: 12px;
-  color: $faint;
+  margin-top: dp(5);
+  font-family: var(--px-font-light);
+  font-size: dp(12);
+  color: var(--px-color-text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -515,31 +510,31 @@ $rowH: 92px;
 
 .releaseTags {
   display: flex;
-  gap: 8px;
+  gap: dp(8);
 }
 
 .tag {
-  padding: 6px 9px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, .08);
-  font-family: 'NetflixBk';
-  font-size: 13px;
+  padding: dp(6) dp(9);
+  border-radius: dp(5);
+  background: var(--px-surface-1);
+  font-family: var(--px-font-book);
+  font-size: dp(13);
   white-space: nowrap;
 
   &.quality {
-    font-family: 'NetflixBd';
+    font-family: var(--px-font-bold);
   }
 
   &.warn {
     background: none;
-    color: #e88aa1;
-    padding-left: 2px;
-    padding-right: 2px;
+    color: var(--px-color-warn);
+    padding-left: dp(2);
+    padding-right: dp(2);
   }
 }
 
 .moreNote {
-  font-family: 'NetflixLt';
-  color: $faint;
-  margin: 0 0 0 20px;
+  font-family: var(--px-font-light);
+  color: var(--px-color-text-faint);
+  margin: 0 0 0 dp(20);
 }

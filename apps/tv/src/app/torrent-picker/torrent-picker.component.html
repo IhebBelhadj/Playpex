@@ -1,25 +1,18 @@
-<div class="torrentPicker" *ngIf="request" pxSection="torrentPicker" [trap]="true">
-  <div class="panel">
-    <h2 class="title">Choose a torrent</h2>
-    <span class="subtitle">{{request.title}} · {{request.options.length}} {{request.options.length == 1 ? 'source' : 'sources'}}</span>
-
-    <!-- a one-column pxGrid: scrolls natively (src/app/movement) -->
-    <div class="options" pxGrid>
-      <button class="torrentOption" pxItem *ngFor="let option of request.options; let i = index" [attr.data-index]="i"
-        (pxSelect)="pick(option)">
-        <div class="main">
-          <span class="quality">{{option.quality}}</span>
-          <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>
-          <span class="tag recommended" *ngIf="option.recommended">Best match</span>
-        </div>
-        <div class="meta">
-          <span *ngIf="option.size">{{option.size}}</span>
-          <span *ngIf="option.seeds !== undefined">{{option.seeds}} seeds</span>
-          <span *ngIf="option.peers !== undefined">{{option.peers}} peers</span>
-        </div>
-        <div class="name" *ngIf="option.name">{{option.name}}</div>
-        <div class="warning" *ngFor="let warning of option.warnings">{{warning}}</div>
-      </button>
-    </div>
-  </div>
-</div>
+<px-dialog *ngIf="request" id="torrentPicker" title="Choose a torrent" [width]="560"
+  [subtitle]="request.title + ' · ' + request.options.length + (request.options.length == 1 ? ' source' : ' sources')"
+  (closed)="cancel()">
+  <px-option *ngFor="let option of request.options" (pxSelect)="pick(option)">
+    <span class="main">
+      <span class="quality">{{option.quality}}</span>
+      <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>
+      <span class="tag recommended" *ngIf="option.recommended">Best match</span>
+    </span>
+    <span class="meta">
+      <span *ngIf="option.size">{{option.size}}</span>
+      <span *ngIf="option.seeds !== undefined">{{option.seeds}} seeds</span>
+      <span *ngIf="option.peers !== undefined">{{option.peers}} peers</span>
+    </span>
+    <span class="name" *ngIf="option.name">{{option.name}}</span>
+    <span class="warning" *ngFor="let warning of option.warnings">{{warning}}</span>
+  </px-option>
+</px-dialog>

@@ -15,7 +15,10 @@ const path = require('path');
 const protocol = require('@playpex/protocol');
 const local = require('@playpex/protocol/local');
 
-const INDEX = path.join(__dirname, '..', 'dist', 'playpex', 'index.html');
+// scripts/screens.js (UI screenshots) runs this app on a development build
+// (PLAYPEX_TV_INDEX) in a hidden window of a fixed size (PLAYPEX_TV_SHOTS=WxH)
+const INDEX = process.env.PLAYPEX_TV_INDEX || path.join(__dirname, '..', 'dist', 'playpex', 'index.html');
+const SHOT_SIZE = /^(\d+)x(\d+)$/.exec(process.env.PLAYPEX_TV_SHOTS || '');
 const CLIENT_HEADER = protocol.clientHeader('playpex-tv', app.getVersion());
 
 let win = null;
@@ -45,7 +48,7 @@ function load() {
 }
 
 function createWindow() {
-  win = new BrowserWindow({
+  const options = {
     fullscreen: true,
     frame: false,
     height: 780,
@@ -58,7 +61,12 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true
     }
-  });
+  };
+  if (SHOT_SIZE) {
+    Object.assign(options, { fullscreen: false, show: false, useContentSize: true, enableLargerThanScreen: true, width: +SHOT_SIZE[1], height: +SHOT_SIZE[2] });
+    options.webPreferences.offscreen = true;
+  }
+  win = new BrowserWindow(options);
   // our own pages only: no pop-ups, no navigating away from the app
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, url) => {

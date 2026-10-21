@@ -1,14 +1,16 @@
+@use 'px' as *;
+
 .playerPageContainer {
   width: 100vw;
   height: 100vh;
-  background: black;
+  background: var(--px-black);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
 
   .moviePlayer {
-    background: black;
+    background: var(--px-black);
     width: 100%;
   }
 
@@ -18,36 +20,36 @@
     left: 50%;
     position: absolute;
     display: block;
-    width: 130px;
+    width: dp(130);
   }
 
   // Under the spinner while loading / buffering
   .loadingStats {
     position: absolute;
-    top: calc(50% + 85px);
+    top: calc(50% + dp(85));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    font-family: 'Netflixlt';
+    gap: dp(10);
+    font-family: var(--px-font-light);
     white-space: nowrap;
 
     .stage {
-      font-size: 18px;
-      letter-spacing: 1px;
+      font-size: dp(18);
+      letter-spacing: dp(1);
       opacity: .8;
     }
 
     .numbers {
       display: flex;
-      gap: 26px;
-      font-size: 15px;
+      gap: dp(26);
+      font-size: dp(15);
       opacity: .55;
 
       b {
-        font-family: 'NetflixBk';
+        font-family: var(--px-font-book);
         font-weight: normal;
         opacity: 1;
       }
@@ -60,12 +62,12 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    background: linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6 ) 49%, rgba(0,0,0,0) 65%);
+    background: var(--px-gradient-player-controls);
 
     //By default its hidden
     display: none;
     opacity: 0;
-    transform: translateY(200px);
+    transform: translateY(dp(200));
 
     .controlsContainer {
       position: relative;
@@ -74,7 +76,7 @@
 
       .wrapper {
         position: absolute;
-        bottom: 55px;
+        bottom: dp(55);
         height: max-content;
         width: 100%;
         display: flex;
@@ -89,17 +91,17 @@
           flex-direction: column;
 
           .title {
-            font-family: 'NetflixBk';
+            font-family: var(--px-font-book);
             opacity: .9;
-            font-size: 38px;
-            margin-bottom: 15px;
+            font-size: dp(38);
+            margin-bottom: dp(15);
           }
 
           .infos {
-            font-family: 'Netflixlt';
-            font-size: 16px;
+            font-family: var(--px-font-light);
+            font-size: dp(16);
             opacity: .6;
-            letter-spacing: 1px;
+            letter-spacing: dp(1);
           }
         }
 
@@ -108,9 +110,9 @@
 
           .slider {
             width: 100%;
-            height: 3px;
-            background: #2f2f2fbf;
-            margin-top: 50px;
+            height: dp(3);
+            background: var(--px-color-track-dark);
+            margin-top: dp(50);
             position: relative;
 
             // Mouse hit area: the bar itself is only 3px tall
@@ -119,25 +121,25 @@
               position: absolute;
               left: 0;
               right: 0;
-              top: -14px;
-              bottom: -14px;
+              top: dp(-14);
+              bottom: dp(-14);
             }
 
             // Time under the cursor, while it hovers the timeline
             .hoverTime {
               position: absolute;
-              bottom: 16px;
+              bottom: dp(16);
               left: 0;
               transform: translateX(-50%);
-              padding: 4px 8px;
-              border-radius: 4px;
-              background: rgba(0, 0, 0, .7);
-              font-family: 'Netflixlt';
-              font-size: 13px;
+              padding: dp(4) dp(8);
+              border-radius: dp(4);
+              background: var(--px-surface-badge);
+              font-family: var(--px-font-light);
+              font-size: dp(13);
               white-space: nowrap;
               pointer-events: none;
               opacity: 0;
-              transition: opacity .15s;
+              transition: opacity var(--px-dur-fast);
             }
 
             // Buffered range: behind the yellow progress bar
@@ -147,26 +149,26 @@
               left: 0;
               height: 100%;
               width: 0;
-              background: rgba(255, 255, 255, .3);
-              transition: width .3s, left .3s;
+              background: var(--px-color-text-faint);
+              transition: width var(--px-dur-slow), left var(--px-dur-slow);
             }
 
             .progress {
               height: 100%;
               width: 20%;
-              background: #FFC107;
+              background: var(--px-color-progress);
               position: relative;
-              z-index: 1;
+              z-index: var(--px-z-raise);
               border: none;
               float: left;
               .reachedDot{
                 position: absolute;
-                right: -7px;
-                top: -5px;
-                width: 14px;
-                height: 14px;
+                right: dp(-7);
+                top: dp(-5);
+                width: dp(14);
+                height: dp(14);
                 border-radius: 50%;
-                background: #fff;
+                background: var(--px-white);
                 display: none;
               }
 
@@ -184,10 +186,10 @@
             padding-left: 1%;
             display: flex;
             justify-content: space-between;
-            margin-top: 18px;
-            font-family: 'Netflixlt';
+            margin-top: dp(18);
+            font-family: var(--px-font-light);
             opacity: .7;
-            font-size: 14px;
+            font-size: dp(14);
           }
         }
 
@@ -196,7 +198,7 @@
           justify-content: space-between;
           align-items: center;
           width: 95%;
-          margin-top: 50px;
+          margin-top: dp(50);
           opacity: .8;
 
           .playbackOpt {
@@ -208,47 +210,47 @@
             }
 
             .seekBtn {
-              padding: 12px;
+              padding: dp(12);
             }
 
             .playBtn {
-              width: 60px;
-              height: 60px;
-              padding: 15px;
-              margin: 0 20px;
+              width: dp(60);
+              height: dp(60);
+              padding: dp(15);
+              margin: 0 dp(20);
 
               img {
-                transform: translateX(3px);
+                transform: translateX(dp(3));
               }
             }
           }
 
           .ccBtn {
-            padding: 4px !important;
+            padding: dp(4) !important;
           }
 
 
           .optBtn {
             border: none;
-            background: #00000000;
-            transition: all .15s;
-            width: 40px;
-            height: 40px;
+            background: transparent;
+            transition: all var(--px-dur-fast);
+            width: dp(40);
+            height: dp(40);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: dp(10);
 
             img {
               max-width: 100%;
               opacity: .8;
-              filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%);
+              filter: var(--px-icon-light);
             }
           }
 
           .focused {
-            background :#FFC107ff;
+            background: var(--px-color-focus);
 
             img {
               filter: none;
@@ -263,35 +265,35 @@
 
   .statsPanel {
     position: absolute;
-    top: 80px;
-    right: 32px;
-    width: 300px;
-    padding: 18px 22px;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, .62);
-    backdrop-filter: blur(6px);
-    font-family: 'Netflixlt';
-    font-size: 14px;
-    z-index: 2;
+    top: dp(80);
+    right: dp(32);
+    width: dp(300);
+    padding: dp(18) dp(22);
+    border-radius: dp(6);
+    background: var(--px-surface-pane);
+    backdrop-filter: blur(dp(6));
+    font-family: var(--px-font-light);
+    font-size: dp(14);
+    z-index: var(--px-z-raise-2);
 
     .statsTitle {
-      font-family: 'NetflixBd';
-      font-size: 16px;
-      margin-bottom: 12px;
+      font-family: var(--px-font-bold);
+      font-size: dp(16);
+      margin-bottom: dp(12);
     }
 
     .row {
       display: flex;
       justify-content: space-between;
-      gap: 16px;
-      padding: 5px 0;
+      gap: dp(16);
+      padding: dp(5) 0;
 
       span {
         opacity: .6;
       }
 
       b {
-        font-family: 'NetflixBk';
+        font-family: var(--px-font-book);
         font-weight: normal;
         text-align: right;
       }
@@ -302,60 +304,59 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 400px;
-    background: #000000f7;
+    width: dp(400);
     display: flex;
     flex-direction: column;
     height: 100%;
-    transform: translateX(-200px);
+    transform: translateX(dp(-200));
     opacity: 0;
-    backdrop-filter: blur(6px);
-    background: rgba(0 , 0 ,  0 ,  .62);
+    backdrop-filter: blur(dp(6));
+    background: var(--px-surface-pane);
 
     .loadingSubs {
       display: flex;
       align-items: center;
-      font-family: "netflixlt";
-      padding: 15px;
+      font-family: var(--px-font-light);
+      padding: dp(15);
       img {
-        width: 50px;
+        width: dp(50);
       }
     }
 
     .providerTabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      padding: 0 10px;
+      gap: dp(8);
+      padding: 0 dp(10);
 
       .providerTab {
-        background: rgba(255, 255, 255, .08);
-        border: 2px solid transparent;
-        border-radius: 16px;
-        color: rgba(255, 255, 255, .7);
-        font-family: "NetflixBk";
-        font-size: 14px;
-        padding: 6px 14px;
+        background: var(--px-surface-1);
+        border: dp(2) solid transparent;
+        border-radius: dp(16);
+        color: var(--px-color-text-secondary);
+        font-family: var(--px-font-book);
+        font-size: dp(14);
+        padding: dp(6) dp(14);
       }
 
       .selected {
-        border-color: rgba(255, 255, 255, .7);
-        color: #fff;
+        border-color: var(--px-color-line-strong);
+        color: var(--px-color-text);
       }
 
       .focused {
-        background: #FFC107;
-        border-color: #FFC107;
-        color: #000000e7;
+        background: var(--px-color-focus);
+        border-color: var(--px-color-focus);
+        color: var(--px-color-on-focus);
       }
     }
 
     .optionsTitle {
-      font-family: "netflixBd";
-      font-size: 20px;
-      padding: 10px;
-      margin-bottom: 25px;
-      margin-top: 25px;
+      font-family: var(--px-font-bold);
+      font-size: dp(20);
+      padding: dp(10);
+      margin-bottom: dp(25);
+      margin-top: dp(25);
     }
     // The list takes the space left under the title and tabs and scrolls
     // natively (scrollbar hidden); scrollSubtitleIntoView() follows the focus
@@ -365,8 +366,8 @@
       overflow-y: auto;
       scrollbar-width: none;
       width: 100%;
-      margin-top: 30px;
-      padding-bottom: 30px;
+      margin-top: dp(30);
+      padding-bottom: dp(30);
       box-sizing: border-box;
 
       &::-webkit-scrollbar {
@@ -376,28 +377,28 @@
 
       .controlsElem {
         width: 100%;
-        min-height: 120px;
+        min-height: dp(120);
         background: none;
         border: none;
-        color: rgba(255, 255, 255, 0.6);
-        font-family: "NetflixBk";
+        color: var(--px-color-text-muted);
+        font-family: var(--px-font-book);
         text-align: start;
-        line-height: 25px;
-        padding: 15px;
+        line-height: dp(25);
+        padding: dp(15);
         white-space: normal !important;
         word-wrap: break-word;
 
         .params {
 
           span {
-            font-family: 'netflixBd';
+            font-family: var(--px-font-bold);
           }
 
           .tick {
             float: right;
             display: none;
-            width: 20px;
-            filter: invert(98%) sepia(15%) saturate(30%) hue-rotate(203deg) brightness(120%) contrast(100%);
+            width: dp(20);
+            filter: var(--px-icon-light);
 
           }
         }
@@ -411,13 +412,13 @@
       }
 
       .focused {
-        background: #FFC107;
-        color: #000000e7;
+        background: var(--px-color-focus);
+        color: var(--px-color-on-focus);
 
 
         .params {
           span {
-            color: #000;
+            color: var(--px-color-on-focus);
           }
 
           .tick {
@@ -433,18 +434,18 @@
 .audioWarning,
 .resumeNotice {
   position: fixed;
-  top: 40px;
+  top: dp(40);
   left: 50%;
   transform: translateX(-50%);
-  max-width: 720px;
-  padding: 14px 22px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, .75);
-  color: #fff;
-  font-family: "NetflixBk";
-  font-size: 18px;
+  max-width: dp(720);
+  padding: dp(14) dp(22);
+  border-radius: dp(8);
+  background: var(--px-surface-badge);
+  color: var(--px-color-text);
+  font-family: var(--px-font-book);
+  font-size: dp(18);
   text-align: center;
-  z-index: 10;
+  z-index: var(--px-z-notice);
 }
 
 .hidden {
@@ -453,10 +454,9 @@
 
 
 video::-webkit-media-text-track-display {
-  letter-spacing:  .4px;
-  font-family: 'NetflixLt';
+  letter-spacing:  dp(.4);
+  font-family: var(--px-font-light);
   font-size: 120%;
-  background-image: #ffffffff;
 }
 
 :host-context(body:not(.pointer-hidden)) .playerPageContainer .timeSlider .slider:hover .hoverTime {

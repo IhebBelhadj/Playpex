@@ -1,4 +1,4 @@
-<div class="pinPad" pxSection="pinPad" [trap]="true">
+<px-panel id="pinPad" (back)="cancelled.emit()">
   <div class="pinPanel">
     <img class="pinAvatar" *ngIf="avatar" [src]="avatarUrl(avatar)" alt="">
     <p class="pinTitle">{{ title }}</p>
@@ -13,7 +13,7 @@
     </div>
     <p class="pinError">{{ error }}</p>
 
-    <div class="pinKeys" pxGrid enter="nearest">
+    <div class="pinKeys" pxGrid enter="nearest" (pxSelect)="press($event.dataset['key'])">
       <button *ngFor="let key of keys" class="pinKey" pxItem [pxItemKey]="key" [attr.data-key]="key"
         [class.textKey]="key == 'cancel'">
         <ng-container [ngSwitch]="key">
@@ -24,4 +24,4 @@
       </button>
     </div>
   </div>
-</div>
+</px-panel>

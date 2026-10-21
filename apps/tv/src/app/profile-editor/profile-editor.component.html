@@ -52,25 +52,25 @@
   </text-keyboard>
 
   <!-- Avatar chooser -->
-  <div class="overlayPanel avatarPanel" *ngIf="panel == 'avatars'" pxSection="avatarChooser" [trap]="true">
-    <p class="panelTitle">Choose a profile icon</p>
-    <div class="avatarGrid" pxGrid enter="nearest">
+  <px-panel *ngIf="panel == 'avatars'" id="avatarChooser" title="Choose a profile icon" focus=".current"
+    [restoreFocus]="false" (back)="saving || closePanel()">
+    <div class="avatarGrid" pxGrid enter="nearest" (pxSelect)="saving || chooseAvatar($event.dataset['avatar'])">
       <button *ngFor="let a of avatars" class="avatarChoice focusable" pxItem [pxItemKey]="a" [attr.data-avatar]="a" [class.current]="a == avatar">
         <img [src]="avatarUrl(a)" alt="">
       </button>
     </div>
-  </div>
+  </px-panel>
 
   <!-- Delete confirmation -->
-  <div class="overlayPanel confirmPanel" *ngIf="panel == 'confirmDelete'" pxSection="confirmDelete" [trap]="true">
+  <px-panel *ngIf="panel == 'confirmDelete'" id="confirmDelete" [restoreFocus]="false" (back)="saving || closePanel()">
     <img class="confirmAvatar" [src]="avatarUrl(avatar)" alt="">
     <p class="panelTitle">Delete {{ name }}?</p>
     <p class="confirmText">This profile's watch list, viewing history, resume points and ratings will be deleted for good.</p>
     <div class="actions">
-      <button class="actionBtn focusable" data-confirm="no">Keep Profile</button>
-      <button class="actionBtn danger focusable" data-confirm="yes">Delete Profile</button>
+      <button class="actionBtn focusable" (pxSelect)="saving || closePanel()">Keep Profile</button>
+      <button class="actionBtn danger focusable" (pxSelect)="saving || remove()">Delete Profile</button>
     </div>
-  </div>
+  </px-panel>
 
   <pin-pad *ngIf="panel == 'pin'"
     [avatar]="avatar"

@@ -1,36 +1,32 @@
-// Full-screen over the shell like "Who's watching?" (z 10), under the splash
-// video (z 12) and the lost-connection modal (z 11)
+// Full-screen over the shell like "Who's watching?" (--px-z-root-page), under
+// the splash video and the lost-connection modal
 // Laid out like a TV's source menu: the servers as a list of big names on the
 // left, a panel on the right saying what the focused row is and what OK does.
-$ink: #141414;
-$plate: #1d1d1d;
-$bone: #e5e5e5;
-$ash: #8c8c8c;
-$live: #46d369;
-$caution: #F5A524;
+@use 'px' as *;
+
 
 .connectPage {
   position: fixed;
   inset: 0;
-  z-index: 10;
-  background: $ink;
+  z-index: var(--px-z-root-page);
+  background: var(--px-surface-bg);
 }
 
 .brand {
   position: absolute;
-  top: 34px;
-  left: 48px;
-  height: 34px;
+  top: dp(34);
+  left: dp(48);
+  height: dp(34);
 }
 
 .connectLayout {
   display: grid;
-  grid-template-columns: minmax(0, 660px) 460px;
+  grid-template-columns: minmax(0, dp(660)) dp(460);
   justify-content: center;
   align-items: center;
-  column-gap: 96px;
+  column-gap: dp(96);
   height: 100vh;
-  padding: 110px 64px 80px;
+  padding: dp(110) dp(64) dp(80);
   box-sizing: border-box;
 }
 
@@ -42,20 +38,20 @@ $caution: #F5A524;
 }
 
 .heading {
-  font-family: 'NetflixBk';
+  font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: 48px;
+  font-size: dp(48);
   line-height: 1.1;
-  margin: 0 0 14px;
+  margin: 0 0 dp(14);
 }
 
 .hint {
-  font-family: 'Netflixlt';
-  font-size: 20px;
+  font-family: var(--px-font-light);
+  font-size: dp(20);
   line-height: 1.45;
-  color: $ash;
+  color: var(--px-color-text-dim);
   max-width: 34em;
-  margin: 0 0 40px;
+  margin: 0 0 dp(40);
 }
 
 // ── the servers ────────────────────────────────────────────────────────────
@@ -67,28 +63,28 @@ $caution: #F5A524;
   overflow-y: auto;
   scrollbar-width: none;
   // room for the focused row's plate to overhang the column
-  margin: 0 -24px;
-  padding: 4px 0;
+  margin: 0 dp(-24);
+  padding: dp(4) 0;
 }
 
 .sourceRow {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: dp(24);
   flex: none;
-  padding: 16px 24px;
+  padding: dp(16) dp(24);
   border: 0;
-  border-radius: 6px;
+  border-radius: dp(6);
   background: transparent;
-  color: $bone;
+  color: var(--px-color-text-soft);
   text-align: left;
 
   .sourceName {
     flex: 1;
     min-width: 0;
-    font-family: 'NetflixBd';
-    font-size: 38px;
+    font-family: var(--px-font-bold);
+    font-size: dp(38);
     line-height: 1.15;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -98,25 +94,25 @@ $caution: #F5A524;
   .sourceMark {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: dp(10);
     flex: none;
-    font-family: 'NetflixBk';
-    font-size: 18px;
-    color: $ash;
+    font-family: var(--px-font-book);
+    font-size: dp(18);
+    color: var(--px-color-text-dim);
 
     // a dot before "Watching now", "Paired", "This computer"
     &.live::before,
     &.ready::before {
       content: '';
-      width: 10px;
-      height: 10px;
+      width: dp(10);
+      height: dp(10);
       border-radius: 50%;
       box-sizing: border-box;
-      border: 2px solid currentColor;
+      border: dp(2) solid currentColor;
     }
 
     &.live {
-      color: $live;
+      color: var(--px-color-live);
 
       &::before {
         background: currentColor;
@@ -124,12 +120,12 @@ $caution: #F5A524;
     }
 
     &.warn {
-      color: $caution;
+      color: var(--px-color-caution);
     }
 
     img {
-      width: 18px;
-      height: 18px;
+      width: dp(18);
+      height: dp(18);
       opacity: .6;
     }
   }
@@ -139,43 +135,43 @@ $caution: #F5A524;
     content: '';
     position: absolute;
     left: 0;
-    top: 22px;
-    bottom: 22px;
-    width: 4px;
-    border-radius: 2px;
-    background: $live;
+    top: dp(22);
+    bottom: dp(22);
+    width: dp(4);
+    border-radius: dp(2);
+    background: var(--px-color-live);
   }
 
   &.incompatible .sourceName {
-    color: $ash;
+    color: var(--px-color-text-dim);
   }
 
   &.startLocal .sourceName {
-    font-family: 'NetflixBk';
-    color: $ash;
+    font-family: var(--px-font-book);
+    color: var(--px-color-text-dim);
   }
 
   &.focused {
-    background: #fff;
-    color: $ink;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
 
     .sourceName {
-      color: $ink;
+      color: var(--px-color-on-focus);
     }
 
     .sourceMark {
-      color: #5c5c5c;
+      color: var(--px-color-on-focus-muted);
 
       &.live {
-        color: #1a8a3b;
+        color: var(--px-color-live-on-focus);
       }
 
       &.warn {
-        color: #a86700;
+        color: var(--px-color-caution-on-focus);
       }
 
       img {
-        filter: invert(1);
+        filter: var(--px-icon-light);
       }
     }
 
@@ -189,9 +185,9 @@ $caution: #F5A524;
 .scanLine {
   position: relative;
   flex: none;
-  height: 2px;
-  margin: 18px 0 0;
-  background: rgba(255, 255, 255, .1);
+  height: dp(2);
+  margin: dp(18) 0 0;
+  background: var(--px-surface-1);
   overflow: visible;
 
   &::before {
@@ -199,9 +195,9 @@ $caution: #F5A524;
     position: absolute;
     top: 0;
     left: 0;
-    width: 160px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, $bone, transparent);
+    width: dp(160);
+    height: dp(2);
+    background: linear-gradient(90deg, transparent, var(--px-surface-fill-soft), transparent);
     opacity: 0;
   }
 
@@ -212,18 +208,18 @@ $caution: #F5A524;
 
   .scanLabel {
     position: absolute;
-    top: 14px;
+    top: dp(14);
     left: 0;
-    font-family: 'NetflixBk';
-    font-size: 16px;
-    color: $ash;
+    font-family: var(--px-font-book);
+    font-size: dp(16);
+    color: var(--px-color-text-dim);
     white-space: nowrap;
   }
 }
 
 @keyframes sweep {
-  from { transform: translateX(-160px); }
-  to { transform: translateX(660px); }
+  from { transform: translateX(dp(-160)); }
+  to { transform: translateX(dp(660)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -237,83 +233,83 @@ $caution: #F5A524;
 
 .nothingFound {
   flex: none;
-  font-family: 'Netflixlt';
-  font-size: 18px;
+  font-family: var(--px-font-light);
+  font-size: dp(18);
   line-height: 1.45;
-  color: $ash;
-  margin: 48px 0 -24px;
+  color: var(--px-color-text-dim);
+  margin: dp(48) 0 dp(-24);
 
   b {
-    font-family: 'NetflixBd';
-    color: $bone;
+    font-family: var(--px-font-bold);
+    color: var(--px-color-text-soft);
   }
 }
 
 .browserNote {
-  font-family: 'Netflixlt';
-  font-size: 18px;
+  font-family: var(--px-font-light);
+  font-size: dp(18);
   line-height: 1.45;
-  color: $ash;
-  margin: 0 0 28px;
+  color: var(--px-color-text-dim);
+  margin: 0 0 dp(28);
 
   b {
-    font-family: 'NetflixBd';
-    color: $bone;
+    font-family: var(--px-font-bold);
+    color: var(--px-color-text-soft);
   }
 }
 
 .actions,
 .pairButtons {
   display: flex;
-  gap: 16px;
+  gap: dp(16);
 }
 
 .actions {
   flex: none;
-  margin-top: 64px;
+  margin-top: dp(64);
 }
 
 .actionBtn {
-  padding: 13px 28px;
-  border: 2px solid rgba(255, 255, 255, .22);
-  border-radius: 6px;
+  padding: dp(13) dp(28);
+  border: dp(2) solid var(--px-surface-3);
+  border-radius: dp(6);
   background: transparent;
-  color: $bone;
-  font-family: 'NetflixBk';
-  font-size: 19px;
+  color: var(--px-color-text-soft);
+  font-family: var(--px-font-book);
+  font-size: dp(19);
 
   &.primary {
-    background: $bone;
-    border-color: $bone;
-    color: $ink;
-    font-family: 'NetflixBd';
+    background: var(--px-surface-fill-soft);
+    border-color: var(--px-surface-fill-soft);
+    color: var(--px-color-on-focus);
+    font-family: var(--px-font-bold);
   }
 
   &.focused {
-    background: #fff;
-    border-color: #fff;
-    color: $ink;
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
 }
 
 .message {
   flex: none;
-  font-family: 'NetflixBk';
-  font-size: 18px;
+  font-family: var(--px-font-book);
+  font-size: dp(18);
   line-height: 1.4;
-  color: $caution;
-  margin: 24px 0 0;
+  color: var(--px-color-caution);
+  margin: dp(24) 0 0;
 }
 
 // ── what the focused row is ────────────────────────────────────────────────
 
 .detail {
   align-self: center;
-  min-height: 380px;
-  padding: 40px 40px 36px;
+  min-height: dp(380);
+  padding: dp(40) dp(40) dp(36);
   box-sizing: border-box;
-  border-radius: 6px;
-  background: $plate;
+  border-radius: dp(6);
+  background: var(--px-surface-solid);
   display: flex;
   flex-direction: column;
 
@@ -322,29 +318,29 @@ $caution: #F5A524;
   }
 
   .detailName {
-    font-family: 'NetflixBd';
-    font-size: 30px;
+    font-family: var(--px-font-bold);
+    font-size: dp(30);
     line-height: 1.2;
-    margin-bottom: 14px;
+    margin-bottom: dp(14);
     overflow-wrap: anywhere;
   }
 
   .detailWhere {
-    font-family: 'NetflixBk';
-    font-size: 17px;
+    font-family: var(--px-font-book);
+    font-size: dp(17);
     line-height: 1.5;
-    color: $ash;
+    color: var(--px-color-text-dim);
   }
 
   .detailText {
-    font-family: 'Netflixlt';
-    font-size: 19px;
+    font-family: var(--px-font-light);
+    font-size: dp(19);
     line-height: 1.5;
-    color: #c9c9c9;
-    margin-top: 22px;
+    color: var(--px-color-text-secondary);
+    margin-top: dp(22);
 
     & + .detailText {
-      margin-top: 10px;
+      margin-top: dp(10);
     }
   }
 
@@ -352,26 +348,26 @@ $caution: #F5A524;
   .detailAction {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: dp(14);
     margin-top: auto;
-    padding-top: 32px;
-    font-family: 'NetflixBd';
-    font-size: 21px;
-    color: $bone;
+    padding-top: dp(32);
+    font-family: var(--px-font-bold);
+    font-size: dp(21);
+    color: var(--px-color-text-soft);
 
     .key {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 46px;
-      height: 34px;
-      padding: 0 8px;
+      min-width: dp(46);
+      height: dp(34);
+      padding: 0 dp(8);
       box-sizing: border-box;
-      border: 2px solid $ash;
-      border-radius: 17px;
-      font-family: 'NetflixBk';
-      font-size: 14px;
-      color: $ash;
+      border: dp(2) solid var(--px-color-outline);
+      border-radius: dp(17);
+      font-family: var(--px-font-book);
+      font-size: dp(14);
+      color: var(--px-color-text-dim);
     }
   }
 }
@@ -380,48 +376,38 @@ $caution: #F5A524;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 28px;
+  bottom: dp(28);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: dp(6);
   margin: 0;
-  font-family: 'Netflixlt';
-  font-size: 14px;
-  color: #6b6b6b;
+  font-family: var(--px-font-light);
+  font-size: dp(14);
+  color: var(--px-color-text-faint);
 
   .plainWarning {
-    color: #b0884a;
+    color: var(--px-color-caution-soft);
   }
 }
 
 // ── pairing ────────────────────────────────────────────────────────────────
 
-.pairingOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 10, .92);
-  backdrop-filter: blur(6px);
-}
-
+// the card, on the <px-panel> frame (ui/overlay)
 .pairingPanel {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 960px;
-  padding: 48px 56px 44px;
+  width: dp(960);
+  padding: dp(48) dp(56) dp(44);
   box-sizing: border-box;
-  border-radius: 8px;
-  background: $plate;
+  border-radius: dp(8);
+  background: var(--px-surface-solid);
 
   .panelTitle {
-    font-family: 'NetflixBk';
-    font-size: 34px;
-    margin: 0 0 32px;
+    font-family: var(--px-font-book);
+    font-size: dp(34);
+    margin: 0 0 dp(32);
   }
 }
 
@@ -429,29 +415,29 @@ $caution: #F5A524;
 .codeCells {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: dp(10);
 
   .cell {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 76px;
-    height: 100px;
-    border-radius: 6px;
-    border: 2px solid transparent;
-    background: #2a2a2a;
-    font-family: 'NetflixBd';
-    font-size: 58px;
-    color: #fff;
-    transition: border-color .3s ease, color .3s ease, opacity .3s ease;
+    width: dp(76);
+    height: dp(100);
+    border-radius: dp(6);
+    border: dp(2) solid transparent;
+    background: var(--px-surface-solid-2);
+    font-family: var(--px-font-bold);
+    font-size: dp(58);
+    color: var(--px-color-text);
+    transition: border-color var(--px-dur-slow) ease, color var(--px-dur-slow) ease, opacity var(--px-dur-slow) ease;
   }
 
   .gap {
-    width: 22px;
-    height: 4px;
-    margin: 0 8px;
-    border-radius: 2px;
-    background: #555;
+    width: dp(22);
+    height: dp(4);
+    margin: 0 dp(8);
+    border-radius: dp(2);
+    background: var(--px-grey-4);
   }
 
   &.dim .cell {
@@ -459,24 +445,24 @@ $caution: #F5A524;
   }
 
   &.approved .cell {
-    border-color: $live;
-    color: $live;
+    border-color: var(--px-color-live);
+    color: var(--px-color-live);
   }
 }
 
 // Time left, draining under the code
 .timeBar {
   width: 100%;
-  height: 4px;
-  margin-top: 16px;
-  border-radius: 2px;
-  background: #2a2a2a;
+  height: dp(4);
+  margin-top: dp(16);
+  border-radius: dp(2);
+  background: var(--px-surface-solid-2);
   overflow: hidden;
 
   .timeFill {
     display: block;
     height: 100%;
-    background: $ash;
+    background: var(--px-color-outline);
     transition: width 1s linear;
   }
 }
@@ -484,62 +470,62 @@ $caution: #F5A524;
 .pairingBody {
   display: flex;
   align-items: center;
-  gap: 48px;
+  gap: dp(48);
   width: 100%;
-  margin-top: 36px;
+  margin-top: dp(36);
 }
 
 .steps {
   flex: 1;
   margin: 0;
-  padding: 0 0 0 26px;
-  font-family: 'Netflixlt';
-  font-size: 19px;
+  padding: 0 0 0 dp(26);
+  font-family: var(--px-font-light);
+  font-size: dp(19);
   line-height: 1.45;
-  color: #c9c9c9;
+  color: var(--px-color-text-secondary);
 
   li {
-    padding-left: 6px;
+    padding-left: dp(6);
 
     & + li {
-      margin-top: 14px;
+      margin-top: dp(14);
     }
 
     &::marker {
-      font-family: 'NetflixBd';
-      color: $ash;
+      font-family: var(--px-font-bold);
+      color: var(--px-color-text-dim);
     }
   }
 
   b {
-    font-family: 'NetflixBd';
-    color: #fff;
+    font-family: var(--px-font-bold);
+    color: var(--px-color-text);
     overflow-wrap: anywhere;
   }
 }
 
 .qr {
   flex: none;
-  width: 200px;
-  height: 200px;
-  border-radius: 6px;
-  background: #fff;
+  width: dp(200);
+  height: dp(200);
+  border-radius: dp(6);
+  background: var(--px-color-focus);
   image-rendering: pixelated;
 }
 
 .pairStatus {
-  font-family: 'NetflixBk';
-  font-size: 18px;
-  color: $ash;
-  margin: 30px 0 26px;
+  font-family: var(--px-font-book);
+  font-size: dp(18);
+  color: var(--px-color-text-dim);
+  margin: dp(30) 0 dp(26);
 
   .good {
-    color: $live;
+    color: var(--px-color-live);
   }
 
   .bad,
   &.bad {
-    color: $caution;
+    color: var(--px-color-caution);
   }
 }
 

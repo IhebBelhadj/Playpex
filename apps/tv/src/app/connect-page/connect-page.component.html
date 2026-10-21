@@ -70,7 +70,7 @@
   </p>
 
   <!-- Pairing: the code, where to approve it, a QR code for a phone -->
-  <div class="pairingOverlay" *ngIf="pairing" pxSection="pairing" [trap]="true">
+  <px-panel *ngIf="pairing" id="pairing" [restoreFocus]="false" focus="[data-pair=&quot;cancel&quot;]" (back)="leaving || cancelPairing()">
     <div class="pairingPanel">
       <p class="panelTitle">Pair this TV with {{ pairing.server.name }}</p>
 
@@ -110,11 +110,13 @@
 
       <div class="pairButtons" pxGrid>
         <button *ngIf="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
-          class="actionBtn primary focusable" pxItem pxItemKey="again" data-pair="again">Get a new code</button>
-        <button class="actionBtn focusable" pxItem pxItemKey="cancel" data-pair="cancel">Cancel</button>
+          class="actionBtn primary focusable" pxItem pxItemKey="again" data-pair="again"
+          (pxSelect)="leaving || startPairing(pairing.server)">Get a new code</button>
+        <button class="actionBtn focusable" pxItem pxItemKey="cancel" data-pair="cancel"
+          (pxSelect)="leaving || cancelPairing()">Cancel</button>
       </div>
     </div>
-  </div>
+  </px-panel>
 
   <text-keyboard *ngIf="typing"
     title="Server address"

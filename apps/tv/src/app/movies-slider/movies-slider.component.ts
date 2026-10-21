@@ -10,6 +10,7 @@ import { Subscription } from 'rxjs';
 import { SplashService } from '../splash.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { Navigator, useScreen } from '../nav/public-api';
+import { dp } from '../ui/public-api';
 
 const PAGE_SIZE = 20;          // TMDB results per page
 const LOAD_AHEAD = 10;         // next page this many posters before a row's end
@@ -141,7 +142,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     // the focused one, enriched by movies-page (genres, torrents, imdb id)
     let selected = this.moviesService.selectedmovie.value;
     let payload = selected && selected['id'] == item.id ? selected : item;
-    gsap.timeline().to(".sliderContainer" , {opacity : 0 , y : 100 , duration : .2 , ease : Power2.easeOut , onComplete : () => {
+    gsap.timeline().to(".sliderContainer" , {opacity : 0 , y : dp(100) , duration : .2 , ease : Power2.easeOut , onComplete : () => {
       this.navigator.open({ screen: this.catalog.detailScreen, params: { id: item.id }, payload });
     }});
   }

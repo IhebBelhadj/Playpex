@@ -3,6 +3,7 @@ import { gsap } from 'gsap'
 import { ServerService } from '../server.service';
 import { actionForKey } from '../keymap';
 import { useScreen } from '../nav/public-api';
+import { dp } from '../ui/public-api';
 
 // Trailer player (core.trailer, params { id }: the YouTube video id). Enter
 // pauses / plays, ←/→ seek 5 s; Back leaves (the nav system's pop)
@@ -147,8 +148,8 @@ export class YoutubeComponent implements OnInit , OnDestroy,AfterViewInit {
       let indicatorTl = gsap.timeline();
       let indicator = document.querySelector(indicatorCssClass);
       indicatorTl.to(indicatorCssClass , {opacity : 1 , duration: .1})
-      indicatorTl.to(indicatorCssClass , {width : 150 , duration: .14 , delay : -.05})
-      indicatorTl.to(indicatorCssClass , {width : 140 , opacity : 0 , duration: .2 , onComplete : ()=>{
+      indicatorTl.to(indicatorCssClass , {width : dp(150) , duration: .14 , delay : -.05})
+      indicatorTl.to(indicatorCssClass , {width : dp(140) , opacity : 0 , duration: .2 , onComplete : ()=>{
         gsap.set(indicator, { clearProps: true });
       }})
 

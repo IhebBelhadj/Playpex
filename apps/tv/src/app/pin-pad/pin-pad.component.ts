@@ -1,12 +1,12 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
-import { LayerRef, LayerStack } from '../nav/public-api';
+import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
 import { PIN_LENGTH, ProfilesService } from '../profiles.service';
 
 // Full-screen PIN entry with an on-screen keypad (remote) that also accepts
 // the number keys. Emits `completed` once PIN_LENGTH digits are in and waits:
 // the host either closes it or calls fail(message) to try again.
-// While open it owns the `pinPad` navigation section and is a layer of the
-// nav system (src/app/nav): the host gets no select / back meanwhile.
+// On the <px-panel> frame (ui/overlay): while open it owns the `pinPad`
+// section and is a layer of the nav system (src/app/nav): the host gets no
+// select / back meanwhile.
 @Component({
   selector: 'pin-pad',
   templateUrl: './pin-pad.component.html',
@@ -27,25 +27,10 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   waiting = false;
   shake = false;
 
-  private layer:LayerRef;
   private keyListener;
 
-  constructor(private layers:LayerStack, private host:ElementRef<HTMLElement>) { }
-
+  // the panel focuses the first key (1) when it opens; keys are a pxGrid
   ngAfterViewInit(): void {
-    // section `pinPad`: a trapping pxSection in the template, keys a pxGrid
-    setTimeout(() => (document.querySelector('.pinPad .pinKey') as HTMLElement)?.focus({ preventScroll: true }), 0);
-
-    // a layer of the nav system: select / back are its own while it's open
-    this.layer = this.layers.open({ id: 'pinPad', element: this.host.nativeElement });
-    this.layer.onSelect(el => {
-      if (el.classList.contains('pinKey')) this.press(el.dataset['key']);
-    });
-    this.layer.onBack(() => {
-      this.cancelled.emit();
-      return true;
-    });
-
     // Text entry, not navigation: digits and Backspace straight from the keyboard / remote
     this.keyListener = (e:KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) this.press(e.key);
@@ -55,7 +40,6 @@ export class PinPadComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.layer?.close();
     document.removeEventListener('keydown', this.keyListener);
   }
 

@@ -1,0 +1,129 @@
+// [rowArrows] (row-arrows.component.ts): a chevron capsule at each side a
+// pxRow is cut off. Unencapsulated: the host is a page's own wrapper. White
+// only, the amber of the app means progress.
+//
+// Keyboard (body.pointer-hidden): quiet signals, no clicks. Cursor shown:
+// controls; hovering the row darkens its edges, hovering a capsule fills it.
+@use 'px' as *;
+
+.rowArrows {
+  position: relative;
+}
+
+// The hit area: a strip along the row's edge (scrim drawn by ::before)
+.rowArrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: var(--px-z-row-arrows);
+  width: dp(76);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--px-color-text);
+  cursor: pointer;
+  pointer-events: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--px-dur-slow);
+  }
+
+  &.back {
+    left: 0;
+    &::before { background: var(--px-gradient-edge-back); }
+  }
+
+  &.forward {
+    right: 0;
+    &::before { background: var(--px-gradient-edge-forward); }
+  }
+}
+
+// Tall frosted capsule on the artwork's centre line (measured: --rowArrowsY,
+// --rowArrowsH), as tall as 42% of the artwork within 40–84px. Hidden, it
+// sits 8px further out, so showing slides it in from its edge.
+.rowArrowCap {
+  position: absolute;
+  top: var(--rowArrowsY, 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: dp(34);
+  height: clamp(dp(40), calc(var(--rowArrowsH, #{dp(200)}) * .42), dp(84));
+  border-radius: dp(17);
+  background: var(--px-surface-capsule);
+  backdrop-filter: blur(dp(14)) saturate(140%);
+  box-shadow: var(--px-shadow-capsule);
+  opacity: 0;
+  transition: opacity var(--px-dur-slow), translate var(--px-dur-slow) var(--px-ease-out), scale var(--px-dur-quick), background-color var(--px-dur-fast), color var(--px-dur-fast);
+
+  .back > & { left: dp(12); translate: dp(-8) -50%; }
+  .forward > & { right: dp(12); translate: dp(8) -50%; }
+
+  svg {
+    width: dp(20);
+    height: dp(20);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: translate var(--px-dur-fast);
+  }
+}
+
+// Cut off on that side
+.rowArrows.canBack > .rowArrow.back > .rowArrowCap,
+.rowArrows.canForward > .rowArrow.forward > .rowArrowCap {
+  opacity: .78;
+  translate: 0 -50%;
+}
+
+// Keyboard: steps aside while the focused item is under it (`covers`)
+body.pointer-hidden .rowArrows > .rowArrow.covers > .rowArrowCap {
+  opacity: 0;
+}
+
+// Cursor shown: clickable, edges darken under the hovered row
+body:not(.pointer-hidden) {
+  .rowArrows.canBack > .rowArrow.back,
+  .rowArrows.canForward > .rowArrow.forward {
+    pointer-events: auto;
+  }
+
+  // only the sides that are cut off
+  .rowArrows:hover {
+    > .rowArrow > .rowArrowCap { background-color: var(--px-surface-capsule-hover); }
+    &.canBack > .rowArrow.back,
+    &.canForward > .rowArrow.forward {
+      &::before { opacity: 1; }
+      > .rowArrowCap { opacity: 1; }
+    }
+  }
+
+  // (repeats the row's :hover to outrank the rule above)
+  .rowArrows:hover > .rowArrow:hover > .rowArrowCap {
+    background-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+  }
+
+  .rowArrow.back:hover svg { translate: dp(-2); }
+  .rowArrow.forward:hover svg { translate: dp(2); }
+}
+
+body.pointer-pressed .rowArrows > .rowArrow:hover > .rowArrowCap {
+  scale: .94;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowArrow::before,
+  .rowArrowCap,
+  .rowArrowCap svg {
+    transition: none;
+  }
+}

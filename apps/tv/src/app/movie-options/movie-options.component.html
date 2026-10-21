@@ -40,19 +40,21 @@
 
   <div class="casts" pxStackItem>
     <h3 class="sectionTitle">cast</h3>
-    <div class="castSlider" pxRow="cast" align="third">
-      <div class="content">
-        <div class="cast" *ngFor="let cast of casts ; let i=index" >
-          <button class="displayedElem focusable" pxItem [pxItemKey]="cast.credit_id"
-          *ngIf="cast.profile_path"
-          [attr.data-index]="i">
-            <div class="imgContainer">
-              <img src="{{profileImgBase + cast?.profile_path}}" alt="">
-            </div>
-            <div class="name">
-              {{cast?.name}}
-            </div>
-          </button>
+    <div rowArrows>
+      <div class="castSlider" pxRow="cast" align="third">
+        <div class="content">
+          <div class="cast" *ngFor="let cast of casts ; let i=index" >
+            <button class="displayedElem focusable" pxItem [pxItemKey]="cast.credit_id"
+            *ngIf="cast.profile_path"
+            [attr.data-index]="i">
+              <div class="imgContainer">
+                <img src="{{profileImgBase + cast?.profile_path}}" alt="">
+              </div>
+              <div class="name">
+                {{cast?.name}}
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -60,20 +62,22 @@
 
   <div class="similar" pxStackItem>
     <h3 class="sectionTitle">Similar titles to watch</h3>
-    <div class="movieSlider" pxRow="similar" align="third">
-      <div class="content">
-        <div class="movie" *ngFor="let movie of similar; let i=index">
-          <button class="displayedElem focusable" pxItem [pxItemKey]="movie.id"
-            *ngIf="movie.poster_path && movie.original_language == 'en'"
-            [attr.data-index]="i"
-            [attr.data-id]="movie.id"
-            (pxSelect)="openSimilar(movie)">
-              <div class="imgContainer">
-                <img src="{{profileImgBase + movie?.poster_path}}" alt="">
-              </div>
-          </button>
-          <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
-          <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="year">{{movie?.release_date| slice:0:4}}</span>
+    <div rowArrows>
+      <div class="movieSlider" pxRow="similar" align="third">
+        <div class="content">
+          <div class="movie" *ngFor="let movie of similar; let i=index">
+            <button class="displayedElem focusable" pxItem [pxItemKey]="movie.id"
+              *ngIf="movie.poster_path && movie.original_language == 'en'"
+              [attr.data-index]="i"
+              [attr.data-id]="movie.id"
+              (pxSelect)="openSimilar(movie)">
+                <div class="imgContainer">
+                  <img src="{{profileImgBase + movie?.poster_path}}" alt="">
+                </div>
+            </button>
+            <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
+            <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="year">{{movie?.release_date| slice:0:4}}</span>
+          </div>
         </div>
       </div>
     </div>

@@ -10,9 +10,9 @@
     <!-- rows are created in category order; empty ones are still loading -->
     <div class="section" *ngIf="category.value.length" pxStackItem>
       <h3 class="sectionTitle">{{category.key}}</h3>
-      <div class="slider pagedRow">
+      <div class="slider" rowArrows>
         <div class="elements_wrapper sliderSection" [pxRow]="category.key" align="start"
-          [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)" #r="pxRow">
+          [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)">
 
           <button class="element" pxItem [pxItemKey]="movie?.id"
             *ngFor="let movie of category.value ; let i=index; trackBy:trackById"
@@ -25,13 +25,6 @@
 
           </button>
 
-        </div>
-        <!-- mouse only (hidden with the cursor): page through the row -->
-        <div class="rowPaddle prev" (click)="r.page(-1)">
-          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-        </div>
-        <div class="rowPaddle next" (click)="r.page(1)">
-          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
         </div>
       </div>
     </div>

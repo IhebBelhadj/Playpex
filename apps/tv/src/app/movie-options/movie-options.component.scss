@@ -1,5 +1,7 @@
 // Flex item of .pageContainer: without min-width 0 it grows to the width of
 // its widest row and the rows can't scroll
+@use 'px' as *;
+
 :host {
   display: block;
   min-width: 0;
@@ -21,29 +23,29 @@
     .option {
       background: none;
       border: none;
-      color: #fff;
+      color: var(--px-color-text);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      margin: 25px 6px;
+      margin: dp(25) dp(6);
       opacity: .67;
       .imgContainer {
 
-        background: rgba(28 ,28 ,28 ,.72);
-        border-radius: 5px;
-        height: 60px;
+        background: var(--px-surface-tile);
+        border-radius: dp(5);
+        height: dp(60);
 
         img {
-          width: 26px;
-          padding: 15px 38px;
-          filter: invert(100%) sepia(100%) saturate(0%) hue-rotate(288deg) brightness(102%) contrast(102%);
+          width: dp(26);
+          padding: dp(15) dp(38);
+          filter: var(--px-icon-light);
         }
       }
 
       span {
-        margin-top: 12px;
-        max-width: 110px;
+        margin-top: dp(12);
+        max-width: dp(110);
         text-align: center;
         line-height: 1.25;
       }
@@ -51,14 +53,14 @@
 
     // In the watch list / watched: the icon takes the app's amber
     .option.on:not(.focused) .imgContainer img {
-      filter: invert(80%) sepia(19%) saturate(2493%) hue-rotate(351deg) brightness(100%) contrast(104%);
+      filter: var(--px-icon-on);
     }
 
     .focused {
       opacity: 1;
       .imgContainer{
 
-        background: #fff;
+        background: var(--px-color-focus);
 
         img {
           filter: none !important;
@@ -69,7 +71,7 @@
   }
 
   .sectionTitle {
-    font-family: 'netflixBk';
+    font-family: var(--px-font-book);
     opacity: .9;
   }
 
@@ -77,43 +79,43 @@
 
     .content {
       display: flex;
-      margin-top: 50px;
+      margin-top: dp(50);
       //margin-bottom: 80px;
-      height: 230px;
+      height: dp(230);
     }
     .cast {
       .displayedElem {
         display: flex;
         flex-direction: column;
         justify-content: center;
-        margin-right: 15px;
+        margin-right: dp(15);
         align-items: center;
         background: none;
         outline: none;
         border: none;
-        color: #fff;
-        width: 140px;
+        color: var(--px-color-text);
+        width: dp(140);
 
         .imgContainer {
           overflow: hidden;
           border-radius: 50%;
-          width: 130px;
-          height: 130px;
+          width: dp(130);
+          height: dp(130);
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          transition: .2s all;
-          background: rgba(103 , 103 , 103 , .35);
+          transition: var(--px-dur) all;
+          background: var(--px-surface-card);
 
         }
 
         .name {
-          font-family: 'netflixLt';
-          font-size: 16px;
+          font-family: var(--px-font-light);
+          font-size: dp(16);
           text-align: center;
           opacity: .7;
-          margin-top: 20px;
-          max-width: 95px;
+          margin-top: dp(20);
+          max-width: dp(95);
         }
 
       }
@@ -129,27 +131,27 @@
     flex-direction: column;
 
     .name {
-      font-family: 'netflixBk';
+      font-family: var(--px-font-book);
       opacity: .75;
-      font-size: 16px;
+      font-size: dp(16);
     }
 
     .year {
-      font-family: 'netflixLt';
+      font-family: var(--px-font-light);
       opacity: .4;
-      font-size: 14px;
+      font-size: dp(14);
     }
 
     .displayedElem {
-      background: rgba(103, 103 ,103 ,.35);
-      width: 150px;
-      height: 230px;
-      padding: 0px;
-      margin-right: 21px;
-      margin-bottom: 25px;
+      background: var(--px-surface-card);
+      width: dp(150);
+      height: dp(230);
+      padding: dp(0);
+      margin-right: dp(21);
+      margin-bottom: dp(25);
       border: none;
       .imgContainer {
-        transition: all .2s;
+        transition: all var(--px-dur);
         img {
           opacity: .7;
           filter: saturate(.6);
@@ -170,15 +172,15 @@
 // negative margin pair leaves room for the focused item's scale-up, which a
 // scrolling container would otherwise clip.
 .castSlider, .movieSlider {
-  padding: 16px;
-  margin: -16px;
+  padding: dp(16);
+  margin: dp(-16);
 }
 
 .optionsMasterContainer {
   .casts {
     .focused {
       .imgContainer {
-        border: 3px solid #fff;
+        border: dp(3) solid var(--px-color-focus);
         transform: scale(1.13);
       }
 

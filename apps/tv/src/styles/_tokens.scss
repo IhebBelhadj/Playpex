@@ -1,0 +1,214 @@
+// Design tokens (docs/ui-system-plan.md §5.1): every colour, font, stacking
+// order, duration, shadow and gradient of Playpex TV, defined once as CSS
+// custom properties. Component stylesheets use var(--px-…) and dp() (_px.scss),
+// never a literal. Included once, by styles.scss. The step 1 notes in the plan
+// map each literal of the old stylesheets to its token.
+//
+// Two kinds: the palette (raw values, --px-white-62, --px-amber) and roles
+// (what a value is for, --px-color-text-muted, --px-surface-tile). Components
+// use roles; a role that doesn't exist yet is added here, not inlined.
+@use 'px' as *;
+
+:root {
+
+  // ── palette ────────────────────────────────────────────────────────────────
+  --px-white: #fff;
+  --px-black: #000;
+  --px-ink: #141414;                  // the app's near-black: page ground, text on white
+  --px-amber: #ffc107;
+  --px-wine: #c2405f;                 // 18+
+  --px-wine-light: #e88aa1;
+  --px-wine-dark: #8a1c38;
+  --px-green: #46d369;
+  --px-green-dark: #1a8a3b;
+  --px-mint: #2bb673;
+  --px-orange: #f5a524;
+  --px-orange-dark: #a86700;
+  --px-red: #e5383b;
+  --px-red-light: #ff6f6f;
+  --px-sand: #b0884a;
+  --px-grey-1: #1d1d1d;               // solid greys of the full-screen pages, darkest first
+  --px-grey-2: #2a2a2a;
+  --px-grey-3: #333;
+  --px-grey-4: #5a5a5a;
+  --px-grey-5: #808080;
+  --px-grey-6: #e5e5e5;
+
+  // ── colour roles: text ─────────────────────────────────────────────────────
+  --px-color-text: var(--px-white);
+  --px-color-text-soft: rgba(255, 255, 255, .9);
+  --px-color-text-secondary: rgba(255, 255, 255, .7);
+  --px-color-text-muted: rgba(255, 255, 255, .62);
+  --px-color-text-dim: rgba(255, 255, 255, .5);
+  --px-color-text-faint: rgba(255, 255, 255, .38);
+
+  // ── colour roles: focus ────────────────────────────────────────────────────
+  // focus is a white fill (buttons, chips, keys), a white ring (portraits,
+  // episode stills, avatars) or a zoom (posters); never a colour of its own
+  --px-color-focus: var(--px-white);
+  --px-color-on-focus: var(--px-ink);
+  --px-color-on-focus-muted: rgba(20, 20, 20, .6);
+  --px-color-on-focus-track: rgba(0, 0, 0, .12);
+  --px-color-on-focus-line: rgba(0, 0, 0, .25);
+  --px-color-on-focus-surface: rgba(0, 0, 0, .08);
+  // themes override it (data-px-accent, below): the 18+ wine
+  --px-color-accent: var(--px-color-focus);
+
+  // ── colour roles: meaning ──────────────────────────────────────────────────
+  // amber means progress (resume bars, episode progress, the player's bar)…
+  --px-color-progress: var(--px-amber);
+  --px-color-progress-track: rgba(255, 255, 255, .22);
+  // …and "on": the menu's section, tiles in the watch list / watched, best match
+  --px-color-on: var(--px-amber);
+  --px-color-live: var(--px-green);           // in use, approved, reachable
+  --px-color-live-on-focus: var(--px-green-dark);
+  --px-color-positive: var(--px-mint);        // a switch turned on (profile editor)
+  --px-color-caution: var(--px-orange);       // needs attention: update, may not play
+  --px-color-caution-on-focus: var(--px-orange-dark);
+  --px-color-caution-soft: var(--px-sand);
+  --px-color-warn: var(--px-wine-light);      // release tags: "May not play"
+  --px-color-warn-on-focus: var(--px-wine-dark);
+  --px-color-danger: var(--px-red);           // destructive buttons
+  --px-color-error: var(--px-red-light);      // error text (wrong PIN, name taken)
+
+  // ── colour roles: lines ────────────────────────────────────────────────────
+  --px-color-line: rgba(255, 255, 255, .22);
+  --px-color-line-strong: rgba(255, 255, 255, .6);
+  --px-color-outline: var(--px-grey-5);       // outline buttons
+  --px-color-divider: var(--px-grey-3);
+  --px-color-track-dark: rgba(47, 47, 47, .75);
+
+  // ── surfaces ───────────────────────────────────────────────────────────────
+  --px-surface-bg: var(--px-ink);                       // full-screen pages
+  --px-surface-1: rgba(255, 255, 255, .08);             // keys, quiet chips, tags
+  --px-surface-2: rgba(255, 255, 255, .14);             // a chosen chip, small tags
+  --px-surface-3: rgba(255, 255, 255, .22);             // a primary key, a switch off
+  --px-surface-control: rgba(0, 0, 0, .56);             // toolbar fields and buttons, chips over artwork
+  --px-surface-tile: rgba(28, 28, 28, .72);             // action tiles, season chips
+  --px-surface-option: rgba(40, 40, 40, .72);           // a dialog's options
+  --px-surface-card: rgba(103, 103, 103, .35);          // artwork not loaded (yet)
+  --px-surface-chip: rgba(29, 29, 29, .62);             // the title block's chips
+  --px-surface-score: rgba(21, 21, 21, .18);            // the title block's scores
+  --px-surface-row: rgba(0, 0, 0, .38);                 // a list's rows (releases)
+  --px-surface-pane: rgba(0, 0, 0, .62);                // the player's panels
+  --px-surface-badge: rgba(0, 0, 0, .7);                // badges and notices over artwork
+  --px-surface-shade: rgba(0, 0, 0, .55);               // a darkened image (edit overlay, progress track)
+  --px-surface-raised: rgba(20, 20, 20, .85);           // a dialog's panel
+  --px-surface-solid: var(--px-grey-1);                 // opaque plates (connect page)
+  --px-surface-solid-2: var(--px-grey-2);
+  --px-surface-field: var(--px-grey-3);                 // the profile editor's fields
+  --px-surface-fill-soft: var(--px-grey-6);             // a primary button, not focused
+  --px-surface-capsule: rgba(22, 22, 22, .55);          // the row chevrons
+  --px-surface-capsule-hover: rgba(22, 22, 22, .8);
+  --px-scrim: rgba(17, 17, 17, .4);                     // behind a dialog
+  --px-scrim-strong: rgba(17, 17, 17, .55);             // behind "connection lost"
+  --px-scrim-panel: rgba(10, 10, 10, .92);              // behind a full-screen panel
+  --px-scrim-notice: rgba(0, 0, 0, .75);                // a notice over the video
+  --px-scrim-edge: rgba(19, 19, 19, .9);                // a row's cut-off edge, hovered
+
+  // ── gradients ──────────────────────────────────────────────────────────────
+  --px-gradient-backdrop: linear-gradient(38deg, var(--px-black) 0%, rgb(52, 47, 43) 85%);
+  --px-gradient-backdrop-overlay: linear-gradient(44deg, rgb(23, 23, 23) 0%, rgba(13, 13, 12, .97) 35%, rgba(75, 70, 51, 0) 100%);
+  --px-gradient-rows-fade: linear-gradient(0deg, rgb(19, 19, 19) 0%, rgba(143, 143, 143, 0) 50%);
+  --px-gradient-edge-back: linear-gradient(90deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
+  --px-gradient-edge-forward: linear-gradient(270deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
+  --px-gradient-player-controls: linear-gradient(0deg, var(--px-black) 0%, rgba(0, 0, 0, .6) 49%, rgba(0, 0, 0, 0) 65%);
+  --px-gradient-trailer: linear-gradient(39deg, var(--px-black) 0%, rgba(0, 0, 0, .94) 55%, rgba(0, 0, 0, .76) 78%, rgba(0, 0, 0, .48) 89%);
+  --px-gradient-adult-backdrop:
+    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(120, 32, 58, .28) 0%, rgba(120, 32, 58, 0) 70%),
+    linear-gradient(38deg, var(--px-black) 0%, #0e0b0c 45%, #23161b 100%);
+
+  // ── shadows, rings, icon filters ───────────────────────────────────────────
+  --px-shadow-text: #{dp(1)} #{dp(1)} #{dp(2)} rgba(0, 0, 0, .34);
+  --px-shadow-button: rgba(0, 0, 0, .15) #{dp(1.95)} #{dp(1.95)} #{dp(2.6)};
+  --px-shadow-capsule: inset 0 0 0 #{dp(1)} rgba(255, 255, 255, .18), 0 #{dp(8)} #{dp(26)} rgba(0, 0, 0, .45);
+  --px-shadow-icon: drop-shadow(#{dp(3)} #{dp(5)} #{dp(2)} rgba(0, 0, 0, .21));
+  --px-ring-selected: inset 0 0 0 #{dp(1.5)} var(--px-color-line-strong);
+  // the SVG icons are black: these make them white / amber ("on")
+  --px-icon-light: invert(1);
+  --px-icon-on: invert(80%) sepia(19%) saturate(2493%) hue-rotate(351deg) brightness(100%) contrast(104%);
+
+  // ── type ───────────────────────────────────────────────────────────────────
+  // one spelling per face (the @font-face names in styles.scss)
+  --px-font-bold: 'NetflixBd';
+  --px-font-book: 'NetflixBk';
+  --px-font-light: 'Netflixlt';
+  --px-font-display: 'FuturaLt';        // row titles of the sections
+  --px-text-hero: 2.8rem;               // a title's name
+  --px-text-title: #{dp(32)};           // a panel's title
+  --px-text-body: 1.2rem;               // an overview
+  --px-text-row: #{dp(16)};             // a row's title
+  --px-text-small: #{dp(14)};
+
+  // ── shape and space (primitives, from step 3) ──────────────────────────────
+  --px-radius-xs: #{dp(2)};
+  --px-radius-s: #{dp(4)};
+  --px-radius-m: #{dp(6)};
+  --px-radius-l: #{dp(8)};
+  --px-radius-xl: #{dp(12)};
+  --px-radius-pill: 999px;              // more than any height: a pill, at any scale
+  --px-space-1: #{dp(4)};
+  --px-space-2: #{dp(8)};
+  --px-space-3: #{dp(12)};
+  --px-space-4: #{dp(16)};
+  --px-space-5: #{dp(20)};
+  --px-space-6: #{dp(24)};
+  --px-space-7: #{dp(32)};
+  --px-space-8: #{dp(40)};
+  --px-page-gutter: #{dp(35)};          // left edge of a page next to the menu
+
+  // ── focus zoom (primitives, from step 3) ───────────────────────────────────
+  --px-zoom-card: 1.1;
+  --px-zoom-tile: 1.06;
+  --px-zoom-key: 1.08;
+
+  // ── motion ─────────────────────────────────────────────────────────────────
+  --px-dur-quick: 100ms;
+  --px-dur-fast: 150ms;
+  --px-dur: 200ms;
+  --px-dur-slow: 300ms;
+  --px-ease-out: cubic-bezier(.2, .8, .2, 1);
+
+  // ── stacking ───────────────────────────────────────────────────────────────
+  // Document level (app.component.html): the backdrop under the shell, the
+  // splash over it. Inside .masterContainer (the shell, a stacking context):
+  // the rest, in the order of nav/layer-stack.service.ts's LAYER_PRIORITY.
+  --px-z-behind: -1;                    // a page's own backdrop (18+ list)
+  --px-z-raise: 1;                      // within a component: over its neighbours
+  --px-z-raise-2: 2;
+  --px-z-backdrop: 2;
+  --px-z-backdrop-image: 3;
+  --px-z-row-arrows: 3;
+  --px-z-backdrop-overlay: 4;
+  --px-z-page-layer: 5;                 // a page's layer over its own backdrop (search, trailer)
+  --px-z-shell: 6;                      // .masterContainer
+  --px-z-page-cover: 6;                 // a page over the shell's page (power menu)
+  --px-z-back-button: 7;
+  --px-z-clock: 8;
+  --px-z-modal: 8;                      // torrent picker, play choice
+  --px-z-alert: 9;                      // the error notification
+  --px-z-root-page: 10;                 // "Who's watching?", the profile editor, /connect
+  --px-z-notice: 10;                    // the player's notices
+  --px-z-panel: 11;                     // keyboards, PIN pad, filter panels
+  --px-z-system: 12;                    // connection lost
+  --px-z-splash: 12;                    // document level
+  --px-z-splash-video: 13;
+  --px-z-dev: 1000;                     // development overlays (nav-debug)
+}
+
+// ── themes ───────────────────────────────────────────────────────────────────
+// Set on .masterContainer from the shown screen's chrome (nav/screen.ts
+// Chrome.accent): the 18+ screens
+[data-px-accent="adult"] {
+  --px-color-accent: var(--px-wine);
+}
+
+// ── reduced motion: every transition of the app, in one place ────────────────
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --px-dur-quick: 0ms;
+    --px-dur-fast: 0ms;
+    --px-dur: 0ms;
+    --px-dur-slow: 0ms;
+  }
+}

@@ -1,40 +1,44 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { Observable } from 'rxjs';
+import { Dialogs } from './ui/public-api';
 
 export type PlayChoice = 'resume' | 'restart';
 
-export interface PlayChoiceRequest {
-  title: string;                 // movie title, or "Show S01E03"
-  positionS: number;             // where it stopped
-  durationS: number;
-  pick: (choice:PlayChoice) => void;
-  cancel: () => void;
-}
-
-// "Resume or play from the beginning?" modal, shown before playing something
-// that has a saved position. choose() emits the choice once, or completes
-// without a value when the user backs out. Same pattern as TorrentPickerService.
+// "Resume or play from the beginning?", shown before playing something that
+// has a saved position: a Dialogs choice (ui/overlay, rendered by the shell's
+// <px-dialog-host>). choose() emits the choice once, or completes without a
+// value when the user backs out.
 @Injectable({
   providedIn: 'root'
 })
 export class PlayChoiceService {
 
-  private requests = new Subject<PlayChoiceRequest>();
+  constructor(private dialogs:Dialogs) { }
 
   choose(title:string, resume:{ positionS:number, durationS:number }):Observable<PlayChoice> {
-    return new Observable(subscriber => {
-      this.requests.next({
-        title,
-        positionS: resume.positionS,
-        durationS: resume.durationS,
-        pick: choice => { subscriber.next(choice); subscriber.complete(); },
-        cancel: () => subscriber.complete(),
-      });
+    let { positionS, durationS } = resume;
+    let minutesLeft = Math.max(1, Math.round((durationS - positionS) / 60));
+    return this.dialogs.choose<PlayChoice>({
+      id: 'playChoice',
+      title,
+      subtitle: `You stopped at ${time(positionS)}.`,
+      width: 480,
+      choices: [
+        {
+          key: 'resume', label: 'Resume', value: 'resume',
+          detail: `From ${time(positionS)}, ${minutesLeft} min left`,
+          progress: durationS ? Math.min(1, positionS / durationS) : 0,
+        },
+        { key: 'restart', label: 'Play from the beginning', value: 'restart', detail: 'Choose a source and start at 0:00' },
+      ],
     });
   }
 
-  onRequest():Observable<PlayChoiceRequest> {
-    return this.requests.asObservable();
-  }
+}
 
+// 0:42:13 → "42:13", 1:02:05 → "1:02:05"
+function time(seconds:number):string {
+  let s = Math.floor(seconds), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  let pad = (n:number) => (n < 10 ? '0' : '') + n;
+  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }

@@ -1,14 +1,6 @@
-.pinPad {
-  position: fixed;
-  inset: 0;
-  z-index: 11;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 10, .92);
-  backdrop-filter: blur(6px);
-}
+@use 'px' as *;
 
+// the frame is <px-panel>'s (ui/overlay)
 .pinPanel {
   display: flex;
   flex-direction: column;
@@ -16,29 +8,29 @@
 }
 
 .pinAvatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 8px;
-  margin-bottom: 28px;
+  width: dp(96);
+  height: dp(96);
+  border-radius: dp(8);
+  margin-bottom: dp(28);
 }
 
 .pinTitle {
-  font-family: 'NetflixBd';
-  font-size: 34px;
+  font-family: var(--px-font-bold);
+  font-size: dp(34);
   margin: 0;
 }
 
 .pinSubtitle {
-  font-family: 'Netflixlt';
-  font-size: 18px;
-  color: #b3b3b3;
-  margin: 12px 0 0;
+  font-family: var(--px-font-light);
+  font-size: dp(18);
+  color: var(--px-color-text-secondary);
+  margin: dp(12) 0 0;
 }
 
 .pinBoxes {
   display: flex;
-  gap: 16px;
-  margin-top: 40px;
+  gap: dp(16);
+  margin-top: dp(40);
 
   &.shake {
     animation: shake .35s;
@@ -46,69 +38,69 @@
 }
 
 .pinBox {
-  width: 72px;
-  height: 72px;
-  border: 2px solid #5a5a5a;
-  border-radius: 6px;
+  width: dp(72);
+  height: dp(72);
+  border: dp(2) solid var(--px-grey-4);
+  border-radius: dp(6);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color .15s, transform .15s;
+  transition: border-color var(--px-dur-fast), transform var(--px-dur-fast);
 
   &.current {
-    border-color: #fff;
+    border-color: var(--px-white);
     transform: scale(1.06);
   }
 
   &.filled {
-    border-color: #8c8c8c;
+    border-color: var(--px-color-outline);
   }
 
   .dot {
-    width: 16px;
-    height: 16px;
+    width: dp(16);
+    height: dp(16);
     border-radius: 50%;
-    background: #fff;
+    background: var(--px-white);
   }
 }
 
 .pinError {
-  min-height: 24px;
-  margin: 18px 0 10px;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  color: #ff6f6f;
+  min-height: dp(24);
+  margin: dp(18) 0 dp(10);
+  font-family: var(--px-font-book);
+  font-size: dp(17);
+  color: var(--px-color-error);
 }
 
 .pinKeys {
   display: grid;
-  grid-template-columns: repeat(3, 96px);
-  gap: 12px;
+  grid-template-columns: repeat(3, dp(96));
+  gap: dp(12);
 }
 
 .pinKey {
-  height: 64px;
+  height: dp(64);
   border: none;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, .08);
-  color: #e5e5e5;
-  font-family: 'NetflixBk';
-  font-size: 26px;
-  transition: transform .1s, background .1s;
+  border-radius: dp(6);
+  background: var(--px-surface-1);
+  color: var(--px-color-text-soft);
+  font-family: var(--px-font-book);
+  font-size: dp(26);
+  transition: transform var(--px-dur-quick), background var(--px-dur-quick);
 
   &.textKey {
-    font-size: 16px;
+    font-size: dp(16);
   }
 
   img {
-    width: 30px;
-    filter: invert(1);
+    width: dp(30);
+    filter: var(--px-icon-light);
     opacity: .85;
   }
 
   &.focused {
-    background: #fff;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     transform: scale(1.08);
 
     img {
@@ -119,6 +111,6 @@
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-10px); }
-  40%, 80% { transform: translateX(10px); }
+  20%, 60% { transform: translateX(dp(-10)); }
+  40%, 80% { transform: translateX(dp(10)); }
 }

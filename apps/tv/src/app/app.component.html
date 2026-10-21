@@ -1,9 +1,9 @@
 <splash></splash>
-<div class="masterContainer">
+<div class="masterContainer" [attr.data-px-accent]="accent">
   <menu class="menu"></menu>
   <notification-handler></notification-handler>
   <torrent-picker></torrent-picker>
-  <play-choice></play-choice>
+  <px-dialog-host></px-dialog-host>
   <connection-lost></connection-lost>
   <router-outlet></router-outlet>
   <back-button></back-button>

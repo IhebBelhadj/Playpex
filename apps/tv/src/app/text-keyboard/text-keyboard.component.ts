@@ -1,12 +1,11 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
-import { LayerRef, LayerStack } from '../nav/public-api';
+import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
 
 // Full-screen on-screen keyboard (A–Z, 0–9, space / delete / clear / done) for
 // the remote; typing on a physical keyboard works too (taken as is). Emits
-// `done` with the text or `cancelled` on back. While open it owns the
-// `textKeyboard` navigation section (a trapping pxSection: keys and mouse stay
-// in it; arrows move by key grid lines, src/app/movement) and is a layer of
-// the nav system (src/app/nav): the host gets no select / back meanwhile.
+// `done` with the text or `cancelled` on back. On the <px-panel> frame
+// (ui/overlay): while open it owns the `textKeyboard` section (keys and mouse
+// stay in it; arrows move by key grid lines, src/app/movement) and is a layer
+// of the nav system (src/app/nav): the host gets no select / back meanwhile.
 @Component({
   selector: 'text-keyboard',
   templateUrl: './text-keyboard.component.html',
@@ -29,24 +28,10 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   digits = '1234567890'.split('');
 
-  private layer:LayerRef;
   private keyListener;
 
-  constructor(private layers:LayerStack, private host:ElementRef<HTMLElement>) { }
-
+  // the panel focuses the first key (A) when it opens
   ngAfterViewInit(): void {
-    setTimeout(() => (document.querySelector('.textKeyboard [data-key="A"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
-
-    // a layer of the nav system: select / back are its own while it's open
-    this.layer = this.layers.open({ id: 'textKeyboard', element: this.host.nativeElement });
-    this.layer.onSelect(el => {
-      if (el.classList.contains('key')) this.press(el.dataset['key']);
-    });
-    this.layer.onBack(() => {
-      this.cancelled.emit();
-      return true;
-    });
-
     this.keyListener = (e:KeyboardEvent) => {
       if (e.key == 'Backspace') this.press('del');
       else if (e.key.length == 1 && (/[\p{L}\p{N} '\-&.]/u.test(e.key) || this.symbols.includes(e.key))) {
@@ -60,8 +45,11 @@ export class TextKeyboardComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.layer?.close();
     document.removeEventListener('keydown', this.keyListener);
+  }
+
+  select(el:HTMLElement) {
+    if (el.classList.contains('key')) this.press(el.dataset['key']);
   }
 
   press(key:string) {

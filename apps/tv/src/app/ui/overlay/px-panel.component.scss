@@ -1,0 +1,38 @@
+// The frame of every full-screen panel
+@use 'px' as *;
+
+.px-panel {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--px-scrim-panel);
+  backdrop-filter: blur(dp(6));
+  color: var(--px-color-text);
+
+  &[data-level="modal"] { z-index: var(--px-z-modal); }
+  &[data-level="alert"] { z-index: var(--px-z-alert); }
+  &[data-level="system"] { z-index: var(--px-z-system); }
+}
+
+.px-panel-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: 100vh;
+  padding: dp(36) 0;
+  box-sizing: border-box;
+
+  &.start {
+    align-items: stretch;
+  }
+}
+
+.px-panel-title {
+  margin: 0 0 dp(26);
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-title);
+}

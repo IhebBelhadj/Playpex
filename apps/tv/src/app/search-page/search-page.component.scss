@@ -1,19 +1,21 @@
+@use 'px' as *;
+
 .overlay {
   position: fixed;
-  z-index: 4;
+  z-index: var(--px-z-backdrop-overlay);
   height: 100vh;
   width: 100%;
   top: 0;
-  background: linear-gradient(44deg, rgb(23, 23, 23) 0%, rgba(13 ,13 ,12 , .97) 35%, rgba(75, 70, 51, 0) 100%);
+  background: var(--px-gradient-backdrop-overlay);
 }
 
 .background {
   position: fixed;
-  z-index: 2;
+  z-index: var(--px-z-backdrop);
   min-width: 100%;
   min-height: 100vh;
   top: 0;
-  background: linear-gradient(38deg, rgba(0,0,0,1) 0%, rgba(52,47,43,1) 85%);
+  background: var(--px-gradient-backdrop);
 
 }
 
@@ -21,17 +23,17 @@
 .searchContainer {
   // left: the menu's column is empty here (search hides the menu) but holds
   // the shell's Back button; content lines up with the other pages' (85px)
-  padding: 40px 15px 40px 85px;
+  padding: dp(40) dp(15) dp(40) dp(85);
   width: 100vw;
   height: 100vh;
   box-sizing: border-box;
   position: relative;
-  z-index: 5;
-  scroll-padding-block: 40px;
+  z-index: var(--px-z-page-layer);
+  scroll-padding-block: dp(40);
 
   .keyboardContainer {
     display: flex;
-    margin-top: 40px;
+    margin-top: dp(40);
 
     .numKeyboard {
       display: none;
@@ -43,28 +45,28 @@
     .utilKeys {
       display: flex;
       flex-direction: column;
-      margin-left: 10px;
+      margin-left: dp(10);
 
       .keyboardBtn {
-        width: 70px;
-        height: 42px;
-        font-family: 'NetflixBk';
+        width: dp(70);
+        height: dp(42);
+        font-family: var(--px-font-book);
         border: none;
-        background: rgba(0, 0, 0, 0.56);
-        color: #fff;
-        border-radius: 8px;
-        transition: all .2s;
-        margin-bottom: 10px;
+        background: var(--px-surface-control);
+        color: var(--px-color-text);
+        border-radius: dp(8);
+        transition: all var(--px-dur);
+        margin-bottom: dp(10);
 
         img {
-          filter: invert(97%) sepia(100%) saturate(4%) hue-rotate(177deg) brightness(109%) contrast(99%);
-          width: 25px;
+          filter: var(--px-icon-light);
+          width: dp(25);
         }
       }
 
       .focused {
-        background: #fff;
-        color: #000;
+        background: var(--px-color-focus);
+        color: var(--px-color-on-focus);
         scale: 1.1;
 
         img {
@@ -83,45 +85,45 @@
 
 .keyboardGrid {
 
-  max-width: 300px;
-  gap: 10px;
+  max-width: dp(300);
+  gap: dp(10);
   display: grid;
   grid-template-columns: repeat(6,1fr);
 
 
   .keyboardBtn {
-    width: 42px;
-    height: 42px;
-    font-family: 'NetflixBk';
+    width: dp(42);
+    height: dp(42);
+    font-family: var(--px-font-book);
     border: none;
-    background: rgba(0, 0, 0, 0.56);
-    color: #fff;
-    border-radius: 8px;
-    transition: all .2s;
-    font-size: 16px;
+    background: var(--px-surface-control);
+    color: var(--px-color-text);
+    border-radius: dp(8);
+    transition: all var(--px-dur);
+    font-size: dp(16);
   }
 
   .focused {
-    background: #fff;
-    color: #000;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     scale: 1.1;
 
   }
 }
 .inputValue {
   width: 100%;
-  font-size: 26px;
+  font-size: dp(26);
   background: none;
   border: none;
-  width: 700px;
-  color: #fff;
-  font-family: "NetflixBd";
+  width: dp(700);
+  color: var(--px-color-text);
+  font-family: var(--px-font-bold);
 }
 .inputValue::placeholder{
-  font-family: 'netflixBk';
+  font-family: var(--px-font-book);
   opacity: .6;
-  letter-spacing: 1px;
-  font-size: 22px;
+  letter-spacing: dp(1);
+  font-size: dp(22);
 }
 
 // ── filters ────────────────────────────────────────────────────────────────
@@ -130,29 +132,29 @@
 
 .filters {
   display: flex;
-  gap: 12px;
-  margin-top: 36px;
+  gap: dp(12);
+  margin-top: dp(36);
 
   .filterChip {
-    height: 40px;
-    padding: 0 20px;
+    height: dp(40);
+    padding: 0 dp(20);
     border: none;
-    border-radius: 20px;
-    background: rgba(0, 0, 0, .56);
-    color: rgba(255, 255, 255, .7);
-    font-family: 'NetflixBk';
-    font-size: 15px;
-    transition: all .2s;
+    border-radius: dp(20);
+    background: var(--px-surface-control);
+    color: var(--px-color-text-secondary);
+    font-family: var(--px-font-book);
+    font-size: dp(15);
+    transition: all var(--px-dur);
 
     &.selected {
-      color: #fff;
-      background: rgba(255, 255, 255, .14);
-      box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+      color: var(--px-color-text);
+      background: var(--px-surface-2);
+      box-shadow: inset 0 0 0 dp(1.5) var(--px-color-line-strong);
     }
 
     &.focused {
-      background: #fff;
-      color: #000;
+      background: var(--px-color-focus);
+      color: var(--px-color-on-focus);
       box-shadow: none;
       scale: 1.08;
     }
@@ -162,28 +164,28 @@
 // ── results ────────────────────────────────────────────────────────────────
 
 .results {
-  margin-top: 44px;
+  margin-top: dp(44);
 
   .searchNote {
-    font-family: 'NetflixBk';
-    font-size: 17px;
+    font-family: var(--px-font-book);
+    font-size: dp(17);
     opacity: .7;
     margin: 0;
   }
 
   .resultRow {
-    margin-bottom: 18px;
+    margin-bottom: dp(18);
 
     .sectionTitle {
-      font-family: "netflixBk";
-      font-size: 16px;
-      letter-spacing: .25px;
+      font-family: var(--px-font-book);
+      font-size: dp(16);
+      letter-spacing: dp(.25);
       opacity: .9;
     }
   }
 
   .rowViewport {
-    margin-top: 22px;
+    margin-top: dp(22);
   }
 
   // a pxRow: scrolls natively; room for the focused item's zoom (1.1 on 150px:
@@ -191,31 +193,31 @@
   // around the focused item ('nearest')
   .rowContent {
     display: flex;
-    padding: 16px 10px;
-    margin: -16px -10px;
-    scroll-padding-inline: 60px;
+    padding: dp(16) dp(10);
+    margin: dp(-16) dp(-10);
+    scroll-padding-inline: dp(60);
   }
 }
 
 .result {
   flex: none;
-  width: 150px;
+  width: dp(150);
   padding: 0;
-  margin-right: 21px;
-  margin-bottom: 12px;
+  margin-right: dp(21);
+  margin-bottom: dp(12);
   border: none;
   background: none;
-  color: #fff;
+  color: var(--px-color-text);
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform .2s;
+  transition: transform var(--px-dur);
 
   .imgContainer {
     position: relative;
-    width: 150px;
-    height: 225px;
-    background: rgba(103, 103, 103, .35);
+    width: dp(150);
+    height: dp(225);
+    background: var(--px-surface-card);
     overflow: hidden;
 
     img {
@@ -225,28 +227,28 @@
       object-fit: cover;
       opacity: .7;
       filter: saturate(.6);
-      transition: all .2s;
+      transition: all var(--px-dur);
     }
 
     // a series in a person's mixed row of movies and shows
     .badge {
       position: absolute;
-      top: 8px;
-      left: 8px;
-      padding: 2px 6px;
-      border-radius: 3px;
-      background: rgba(0, 0, 0, .75);
-      font-family: 'NetflixBd';
-      font-size: 11px;
-      letter-spacing: .5px;
+      top: dp(8);
+      left: dp(8);
+      padding: dp(2) dp(6);
+      border-radius: dp(3);
+      background: var(--px-surface-badge);
+      font-family: var(--px-font-bold);
+      font-size: dp(11);
+      letter-spacing: dp(.5);
     }
   }
 
   .name {
     max-width: 100%;
-    margin-top: 14px;
-    font-family: 'netflixBk';
-    font-size: 15px;
+    margin-top: dp(14);
+    font-family: var(--px-font-book);
+    font-size: dp(15);
     opacity: .75;
     white-space: nowrap;
     overflow: hidden;
@@ -254,18 +256,18 @@
   }
 
   .year {
-    min-height: 17px;
-    margin-top: 3px;
-    font-family: 'netflixLt';
-    font-size: 14px;
+    min-height: dp(17);
+    margin-top: dp(3);
+    font-family: var(--px-font-light);
+    font-size: dp(14);
     opacity: .4;
   }
 
   // People are faces, not posters
   &.person .imgContainer {
-    width: 140px;
-    height: 140px;
-    margin-top: 5px;
+    width: dp(140);
+    height: dp(140);
+    margin-top: dp(5);
     border-radius: 50%;
   }
 

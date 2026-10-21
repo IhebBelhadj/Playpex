@@ -1,131 +1,54 @@
-.torrentPicker {
-  position: fixed;
-  width: 100vw;
-  height: 100%;
-  top: 0;
-  left: 0;
-  background: rgba(17, 17, 17, 0.4);
-  z-index: 8;
-  backdrop-filter: blur(5px);
+// What a torrent's <px-option> shows (the frame and the option are the UI
+// system's: ui/overlay)
+@use 'px' as *;
 
-  .panel {
-    width: 560px;
-    max-height: 80vh;
-    backdrop-filter: blur(10px);
-    background-color: rgba(20, 20, 20, .85);
-    position: fixed;
-    transform: translate(-50%, -50%);
-    top: 50%;
-    left: 50%;
-    display: flex;
-    flex-direction: column;
-    padding: 40px 40px 30px;
-    border-radius: 6px;
-  }
+.main {
+  display: flex;
+  align-items: center;
+  gap: dp(8);
+}
 
-  .title {
-    font-family: 'NetflixBd';
-    margin: 0;
-  }
+// as the option's label
+.quality {
+  font-family: var(--px-font-bold);
+  font-size: dp(20);
+  margin-right: dp(4);
+}
 
-  .subtitle {
-    font-family: 'Netflixlt';
-    opacity: .6;
-    margin: 8px 0 24px;
-  }
+.tag {
+  font-family: var(--px-font-light);
+  font-size: dp(13);
+  padding: dp(3) dp(7);
+  border-radius: var(--px-radius-s);
+  background: var(--px-option-fill);
+}
 
-  // Native vertical scroll; the focus handler keeps the focused option visible
-  .options {
-    overflow-y: auto;
-    scrollbar-width: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+// "on" amber in both states
+.recommended {
+  background: var(--px-color-on);
+  color: var(--px-color-on-focus);
+}
 
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
+.meta {
+  display: flex;
+  gap: dp(14);
+  font-family: var(--px-font-book);
+  font-size: dp(14);
+  opacity: .75;
+}
 
-  .torrentOption {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 14px 18px;
-    border: none;
-    border-radius: 5px;
-    background: rgba(40, 40, 40, .72);
-    color: #fff;
-    text-align: left;
-    opacity: .7;
+.name {
+  font-family: var(--px-font-light);
+  font-size: dp(13);
+  opacity: .5;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-    .main {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .quality {
-      font-family: 'NetflixBd';
-      font-size: 20px;
-      margin-right: 4px;
-    }
-
-    .tag {
-      font-family: 'Netflixlt';
-      font-size: 13px;
-      padding: 3px 7px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, .12);
-    }
-
-    .recommended {
-      background: #FFC107;
-      color: rgb(17, 17, 17);
-    }
-
-    .meta {
-      display: flex;
-      gap: 14px;
-      font-family: 'NetflixBk';
-      font-size: 14px;
-      opacity: .75;
-    }
-
-    .name {
-      font-family: 'Netflixlt';
-      font-size: 13px;
-      opacity: .5;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .warning {
-      font-family: 'Netflixlt';
-      font-size: 13px;
-      color: #FFC107;
-    }
-  }
-
-  .torrentOption.focused {
-    opacity: 1;
-    background: #fff;
-    color: rgb(17, 17, 17);
-
-    .tag {
-      background: rgba(0, 0, 0, .1);
-    }
-
-    .recommended {
-      background: #FFC107;
-    }
-
-    .warning {
-      color: #b26a00;
-    }
-  }
+.warning {
+  font-family: var(--px-font-light);
+  font-size: dp(13);
+  color: var(--px-option-caution);
 }

@@ -1,0 +1,97 @@
+<div class="px-gallery" pxSection="gallery" pxStack="gallery">
+
+  <header class="px-gallery-head" pxStackItem>
+    <h1 class="px-gallery-title" pxItem tabindex="-1">UI gallery</h1>
+    <p class="px-gallery-lead">Tokens of src/styles/_tokens.scss. Every length is in dp: 1440 design pixels across the screen.</p>
+  </header>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Text</h2>
+    <div class="px-gallery-texts">
+      <span *ngFor="let t of text" [style.color]="'var(--px-color-' + t + ')'">{{ t }}</span>
+    </div>
+    <div class="px-gallery-swatches">
+      <div class="px-gallery-swatch" *ngFor="let m of meaning">
+        <span class="px-gallery-chip" [style.background]="'var(--px-color-' + m + ')'"></span>
+        <span class="px-gallery-label">{{ m }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Surfaces</h2>
+    <div class="px-gallery-swatches">
+      <div class="px-gallery-swatch" *ngFor="let s of surfaces">
+        <span class="px-gallery-chip px-gallery-chip--wide" [style.background]="'var(--px-' + s + ')'"></span>
+        <span class="px-gallery-label">{{ s }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Focus</h2>
+    <div class="px-gallery-focus">
+      <span class="px-gallery-fill">Fill</span>
+      <span class="px-gallery-ring"></span>
+      <span class="px-gallery-zoom"></span>
+      <span class="px-gallery-progress"><span></span></span>
+      <span class="px-gallery-seal">18+</span>
+      <span class="px-gallery-seal" data-px-accent="adult">18+</span>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Type</h2>
+    <p class="px-gallery-font" *ngFor="let f of fonts" [style.font-family]="'var(--px-' + f.token + ')'">
+      <span class="px-gallery-label">{{ f.token }}</span>{{ f.sample }}
+    </p>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Shape and space</h2>
+    <div class="px-gallery-swatches">
+      <div class="px-gallery-swatch" *ngFor="let r of radii">
+        <span class="px-gallery-chip px-gallery-chip--wide px-gallery-chip--line" [style.border-radius]="'var(--px-' + r + ')'"></span>
+        <span class="px-gallery-label">{{ r }}</span>
+      </div>
+    </div>
+    <div class="px-gallery-spaces">
+      <div class="px-gallery-space" *ngFor="let s of spaces">
+        <span [style.width]="'var(--px-' + s + ')'"></span>
+        <span class="px-gallery-label">{{ s }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Overlays</h2>
+    <div class="px-gallery-overlays">
+      <div class="px-gallery-sheet" pxGrid>
+        <px-option key="g-option" label="Play from the beginning" detail="Choose a source and start at 0:00"></px-option>
+        <px-option key="g-progress" label="Resume" detail="From 42:13, 58 min left" [progress]="0.42"></px-option>
+      </div>
+      <div class="px-gallery-column">
+        <div class="px-gallery-chips" pxGrid>
+          <px-chip key="g-selected" label="All genres" [selected]="true"></px-chip>
+          <px-chip key="g-chip" label="Comedy"></px-chip>
+          <px-chip key="g-long" label="Science Fiction and Fantasy"></px-chip>
+        </div>
+        <div class="px-gallery-chips" pxGrid>
+          <button class="px-gallery-button" pxItem (pxSelect)="choose()">Dialogs.choose</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="confirm()">Dialogs.confirm</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="alert()">Dialogs.alert</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="panel = true">px-panel</button>
+        </div>
+        <p class="px-gallery-label">{{ result }}</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<px-panel *ngIf="panel" id="galleryPanel" title="A panel" (closed)="panel = false">
+  <div class="px-gallery-chips" pxGrid enter="nearest">
+    <px-chip *ngFor="let c of panelChips" [key]="c" [label]="c" [selected]="c == panelChoice" (pxSelect)="panelChoice = c"></px-chip>
+    <button class="px-gallery-button" pxItem (pxSelect)="panel = false; result = 'panel: ' + panelChoice">Done</button>
+  </div>
+</px-panel>

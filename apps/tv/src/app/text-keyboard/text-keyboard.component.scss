@@ -1,88 +1,79 @@
-// Moved here from the profile editor's name panel: same look everywhere
+// The keys; the frame and the title are <px-panel>'s (ui/overlay)
+@use 'px' as *;
 
-.textKeyboard {
-  position: fixed;
-  inset: 0;
-  z-index: 11;
+.keyboard {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 10, .9);
-  backdrop-filter: blur(6px);
-  color: #fff;
-}
-
-.panelTitle {
-  font-family: 'NetflixBd';
-  font-size: 32px;
-  margin: 0 0 26px;
+  // a pxStack clips: room for the focused key's zoom
+  padding: dp(6);
+  margin: dp(-6);
 }
 
 .textDisplay {
-  min-width: 520px;
-  max-width: 640px;
-  padding: 14px 20px;
-  margin-bottom: 26px;
-  border-bottom: 2px solid #fff;
-  font-family: 'NetflixBk';
-  font-size: 30px;
+  min-width: dp(520);
+  max-width: dp(640);
+  padding: dp(14) dp(20);
+  margin-bottom: dp(26);
+  border-bottom: dp(2) solid var(--px-white);
+  font-family: var(--px-font-book);
+  font-size: dp(30);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 
   &.empty {
-    color: #6d6d6d;
+    color: var(--px-color-text-faint);
   }
 
   .caret {
     display: inline-block;
-    width: 2px;
-    height: 30px;
-    margin-left: 3px;
+    width: dp(2);
+    height: dp(30);
+    margin-left: dp(3);
     vertical-align: middle;
-    background: #fff;
+    background: var(--px-white);
     animation: blink 1s steps(1) infinite;
   }
 }
 
 .keyGrid {
   display: grid;
-  grid-template-columns: repeat(9, 62px);
-  gap: 8px;
+  grid-template-columns: repeat(9, dp(62));
+  gap: dp(8);
 }
 
 .keyRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  width: calc(9 * 62px + 8 * 8px);
-  margin-top: 8px;
+  gap: dp(8);
+  width: calc(9 * dp(62) + 8 * dp(8));
+  margin-top: dp(8);
 }
 
 .key {
-  height: 54px;
+  height: dp(54);
   border: none;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, .08);
-  color: #e5e5e5;
-  font-family: 'NetflixBk';
-  font-size: 20px;
-  transition: transform .1s, background .1s;
+  border-radius: dp(4);
+  background: var(--px-surface-1);
+  color: var(--px-color-text-soft);
+  font-family: var(--px-font-book);
+  font-size: dp(20);
+  transition: transform var(--px-dur-quick), background var(--px-dur-quick);
 
   img {
-    height: 22px;
-    filter: invert(1);
+    height: dp(22);
+    filter: var(--px-icon-light);
     opacity: .85;
   }
 
   &.primary {
-    background: rgba(255, 255, 255, .22);
+    background: var(--px-surface-3);
   }
 
   &.focused {
-    background: #fff;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     transform: scale(1.08);
 
     img {

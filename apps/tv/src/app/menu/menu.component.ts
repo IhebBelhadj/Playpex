@@ -5,6 +5,7 @@ import { combineLatest, Subscription } from 'rxjs';
 import { Profile, ProfilesService } from '../profiles.service';
 import { ServerService } from '../server.service';
 import { Navigator, ScreenDef } from '../nav/public-api';
+import { dp } from '../ui/public-api';
 
 // The left menu: the sections declared with a menu entry (src/app/nav/screens.ts),
 // the server in use and who's watching. Enter on a section → that section
@@ -104,8 +105,8 @@ export class MenuComponent implements OnInit , OnDestroy {
       let menuTl = gsap.timeline();
       menuTl.to('.menuContainer .menuItem' , {opacity : .6 , duration : .1 })
       menuTl.to(".menuContainer .description" , {opacity : 0 , duration : .2 , delay : -.1})
-      menuTl.to('.menuContainer .logo' , {width : 30 , duration : .2 , delay : -.2})
-      menuTl.to('.menuContainer .tabs' , {width : 50 , duration : .15 , delay : -.1 ,ease : Power1.easeOut , onComplete(){
+      menuTl.to('.menuContainer .logo' , {width : dp(30) , duration : .2 , delay : -.2})
+      menuTl.to('.menuContainer .tabs' , {width : dp(50) , duration : .15 , delay : -.1 ,ease : Power1.easeOut , onComplete(){
         document.querySelectorAll('.description').forEach(element => {
           element['style']['display'] = "none";
         });
@@ -127,9 +128,9 @@ export class MenuComponent implements OnInit , OnDestroy {
 
       menu.classList.add("expended")
       menuTl.to('.menuContainer .menuItem' , {opacity : 1 , duration : .1 })
-      menuTl.to('.menuContainer .tabs' , {width : 220 , duration : .2 , delay:-.1})
+      menuTl.to('.menuContainer .tabs' , {width : dp(220) , duration : .2 , delay:-.1})
       menuTl.to(".menuContainer .description" , {opacity : 1 , duration : .2 , delay : -.1})
-      menuTl.to('.menuContainer .logo' , {width : 40 , duration : .2 ,  delay : -.2})
+      menuTl.to('.menuContainer .logo' , {width : dp(40) , duration : .2 ,  delay : -.2})
 
 
     }

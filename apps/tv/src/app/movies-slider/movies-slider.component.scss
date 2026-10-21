@@ -2,23 +2,25 @@
 // keeps posters moved off to the left from showing over the menu); its 10px
 // of sideways padding is room for the focused poster's zoom (1.1 → 9px) that
 // still hides the previous poster (10px gap)
+@use 'px' as *;
+
 .sliderContainer {
-  height: 370px;
+  height: dp(370);
   position: relative;
-  margin: 0 -10px;
-  padding: 0 10px;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
 
   // a search / filters found nothing (or are loading): where the rows would be
   .searchNote {
     position: relative;
-    z-index: 1;
-    max-width: 640px;
+    z-index: var(--px-z-raise);
+    max-width: dp(640);
     margin: 0;
-    padding-top: 12px;
-    font-family: 'NetflixBk';
-    font-size: 20px;
+    padding-top: dp(12);
+    font-family: var(--px-font-book);
+    font-size: dp(20);
     line-height: 1.5;
-    color: rgba(255, 255, 255, .62);
+    color: var(--px-color-text-muted);
   }
 
   .overlay {
@@ -26,9 +28,8 @@
     right: 0;
     bottom: 0;
     width: 100vw;
-    height: 250px;
-    background: rgb(19,19,19);
-    background: linear-gradient(0deg, rgba(19,19,19,1) 0%, rgba(143,143,143,0) 50%);
+    height: dp(250);
+    background: var(--px-gradient-rows-fade);
   }
 
   .content {
@@ -39,23 +40,23 @@
 .elements_wrapper{
   display: flex;
   // room for the focused poster's zoom inside the row, given back by the margins
-  padding: 16px 10px;
-  margin: -16px -10px 4px;
-  scroll-padding-inline: 10px;
+  padding: dp(16) dp(10);
+  margin: dp(-16) dp(-10) dp(4);
+  scroll-padding-inline: dp(10);
   .element {
-    width: 180px;
-    height: 270px;
-    margin-right: 10px;
-    transition: all .2s;
+    width: dp(180);
+    height: dp(270);
+    margin-right: dp(10);
+    transition: all var(--px-dur);
     padding: 0;
     border: none;
     opacity: .75;
-    background: rgba(103 , 103 ,  103 , 0.35);
+    background: var(--px-surface-card);
 
     img {
       object-fit: cover;
       display: block;
-      width: 180px;
+      width: dp(180);
       filter: saturate(.6);
       height: 100%;
     }
@@ -74,8 +75,8 @@
 }
 
 .sectionTitle {
-  font-family: 'FuturaLt';
-  font-size: 16px;
+  font-family: var(--px-font-display);
+  font-size: dp(16);
   opacity: .8;
 }
 
@@ -83,7 +84,7 @@
 .section_wrapper {
   /*overflow : hidden;*/
   position: relative;
-  height: 300px;
+  height: dp(300);
   scroll-behavior: smooth;
 }
 

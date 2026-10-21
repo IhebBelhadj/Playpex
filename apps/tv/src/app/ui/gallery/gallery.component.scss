@@ -1,0 +1,223 @@
+@use 'px' as *;
+
+// Plain on purpose: a reference sheet, not a page of the app
+.px-gallery {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-root-page);      // over the clock: its shots compare by pixels
+  padding: dp(48) dp(85) dp(80);
+  box-sizing: border-box;
+  background: var(--px-surface-bg);
+  color: var(--px-color-text);
+  font-family: var(--px-font-book);
+}
+
+.px-gallery-head {
+  margin-bottom: dp(16);
+}
+
+.px-gallery-title {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-hero);
+}
+
+.px-gallery-lead {
+  margin: dp(8) 0 0;
+  max-width: dp(720);
+  font-family: var(--px-font-light);
+  color: var(--px-color-text-muted);
+}
+
+.px-gallery-group {
+  padding: dp(24) 0;
+  border-top: dp(1) solid var(--px-color-divider);
+}
+
+.px-gallery-name {
+  margin: 0 0 dp(16);
+  font-family: var(--px-font-display);
+  font-weight: normal;
+  font-size: var(--px-text-row);
+  opacity: .8;
+
+  &.focused { opacity: 1; }
+}
+
+.px-gallery-label {
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}
+
+.px-gallery-texts {
+  display: flex;
+  gap: dp(28);
+  margin-bottom: dp(20);
+  font-size: dp(20);
+}
+
+.px-gallery-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(16) dp(20);
+}
+
+.px-gallery-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: dp(6);
+}
+
+// over a photo-like ground: most surfaces are translucent
+.px-gallery-chip {
+  width: dp(44);
+  height: dp(44);
+  border-radius: var(--px-radius-m);
+
+  &--wide {
+    width: dp(132);
+    height: dp(56);
+    box-shadow: inset 0 0 0 dp(1) var(--px-surface-1);
+  }
+
+  &--line {
+    border: dp(2) solid var(--px-color-line-strong);
+    box-sizing: border-box;
+  }
+}
+
+.px-gallery-swatches:has(.px-gallery-chip--wide:not(.px-gallery-chip--line)) {
+  padding: dp(16);
+  border-radius: var(--px-radius-l);
+  background: var(--px-gradient-backdrop);
+}
+
+.px-gallery-focus {
+  display: flex;
+  align-items: center;
+  gap: dp(28);
+}
+
+.px-gallery-fill {
+  padding: dp(12) dp(30);
+  background: var(--px-color-focus);
+  color: var(--px-color-on-focus);
+}
+
+.px-gallery-ring,
+.px-gallery-zoom {
+  width: dp(90);
+  height: dp(90);
+  background: var(--px-surface-card);
+}
+
+.px-gallery-ring {
+  border-radius: 50%;
+  outline: dp(3) solid var(--px-color-focus);
+}
+
+.px-gallery-zoom {
+  height: dp(135);
+  transform: scale(var(--px-zoom-card));
+}
+
+.px-gallery-progress {
+  width: dp(180);
+  height: dp(4);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--px-color-progress);
+  }
+}
+
+.px-gallery-seal {
+  padding: dp(5) dp(7);
+  border: dp(1.5) solid var(--px-color-accent);
+  border-radius: var(--px-radius-m);
+  color: var(--px-color-accent);
+  font-family: var(--px-font-bold);
+  font-size: dp(12);
+}
+
+.px-gallery-font {
+  display: flex;
+  align-items: baseline;
+  gap: dp(20);
+  margin: 0 0 dp(10);
+  font-size: dp(22);
+
+  .px-gallery-label {
+    width: dp(120);
+    font-family: var(--px-font-light);
+  }
+}
+
+.px-gallery-spaces {
+  display: flex;
+  gap: dp(24);
+  margin-top: dp(20);
+}
+
+.px-gallery-space {
+  display: flex;
+  flex-direction: column;
+  gap: dp(6);
+
+  span:first-child {
+    height: dp(12);
+    background: var(--px-color-text-secondary);
+  }
+}
+
+.px-gallery-overlays {
+  display: flex;
+  gap: dp(40);
+  align-items: flex-start;
+}
+
+// a dialog's panel, without the frame
+.px-gallery-sheet {
+  width: dp(400);
+  display: flex;
+  flex-direction: column;
+  gap: dp(10);
+  padding: dp(24);
+  border-radius: var(--px-radius-m);
+  background: var(--px-surface-raised);
+}
+
+.px-gallery-column {
+  display: flex;
+  flex-direction: column;
+  gap: dp(18);
+}
+
+.px-gallery-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(10);
+  max-width: dp(600);
+}
+
+.px-gallery-button {
+  height: dp(42);
+  padding: 0 dp(18);
+  border: dp(1) solid var(--px-color-outline);
+  border-radius: var(--px-radius-s);
+  background: transparent;
+  color: var(--px-color-text-secondary);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+
+  &.focused {
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+  }
+}

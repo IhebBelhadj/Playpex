@@ -1,10 +1,8 @@
 // Mirrors the movies page (movies-page + movie-description + movies-slider) so
 // the watch list reads as one more section of the app. Amber is reserved for
 // "how far you are".
-$ink: #fff;
-$muted: rgba(255, 255, 255, .62);
-$amber: #FFC107;
-$track: rgba(255, 255, 255, .22);
+@use 'px' as *;
+
 
 // Flex item of .masterContainer next to the menu: without min-width 0 it grows
 // to its widest row and rows can't scroll
@@ -19,21 +17,21 @@ $track: rgba(255, 255, 255, .22);
   flex-direction: column;
   justify-content: space-between;
   height: 100vh;
-  padding-left: 35px;
+  padding-left: dp(35);
 }
 
 // ── title info (as <movie-description>; not called .description: the menu hides every .description in the document) ────────────────────────────────────
 
 .titleInfo {
-  padding-top: 40px;
+  padding-top: dp(40);
 }
 
 .name {
-  font-family: 'NetflixBd';
+  font-family: var(--px-font-bold);
   font-weight: normal;
   font-size: 2.8rem;
   margin: .67em 0 0;
-  max-width: 800px;
+  max-width: dp(800);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -42,94 +40,94 @@ $track: rgba(255, 255, 255, .22);
 .infos {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin: 10px 0 15px;
+  gap: dp(15);
+  margin: dp(10) 0 dp(15);
 }
 
 // The rest mirrors movie-description: year, chips, score, genres, overview
 .year {
-  font-family: 'Netflixlt';
-  font-size: 22px;
+  font-family: var(--px-font-light);
+  font-size: dp(22);
   margin: 0;
 }
 
 .chip {
-  font-family: 'Netflixlt';
-  font-size: 12px;
-  padding: 8px;
-  border-radius: 5px;
-  background: #1d1d1d9e;
+  font-family: var(--px-font-light);
+  font-size: dp(12);
+  padding: dp(8);
+  border-radius: dp(5);
+  background: var(--px-surface-chip);
   opacity: .8;
 }
 
 .score {
-  font-family: 'NetflixBk';
-  padding: 7px;
-  border-radius: 5px;
-  background: #1515152e;
+  font-family: var(--px-font-book);
+  padding: dp(7);
+  border-radius: dp(5);
+  background: var(--px-surface-score);
   opacity: .9;
 }
 
 .categories {
-  font-family: 'Netflixlt';
+  font-family: var(--px-font-light);
   opacity: .6;
 }
 
 // Where this profile is with the title
 .status {
-  font-family: 'NetflixBk';
-  font-size: 19px;
-  margin: 20px 0 0;
+  font-family: var(--px-font-book);
+  font-size: dp(19);
+  margin: dp(20) 0 0;
 }
 
 .overview {
-  max-width: 700px;
-  font-family: 'NetflixBk';
+  max-width: dp(700);
+  font-family: var(--px-font-book);
   font-size: 1.2rem;
-  line-height: 36px;
-  letter-spacing: 1px;
+  line-height: dp(36);
+  letter-spacing: dp(1);
   opacity: .62;
-  margin: 22px 0 0;
+  margin: dp(22) 0 0;
 }
 
 .note {
-  max-width: 640px;
-  font-family: 'NetflixBk';
+  max-width: dp(640);
+  font-family: var(--px-font-book);
   font-size: 1.2rem;
   line-height: 1.7;
-  color: $muted;
-  margin: 18px 0 0;
+  color: var(--px-color-text-muted);
+  margin: dp(18) 0 0;
 }
 
 // The one accent: how far into it you are
 .progressLine {
-  width: 440px;
-  height: 4px;
-  margin-top: 10px;
-  background: $track;
+  width: dp(440);
+  height: dp(4);
+  margin-top: dp(10);
+  background: var(--px-color-progress-track);
 
   span {
     display: block;
     height: 100%;
-    background: $amber;
-    transition: width .3s ease;
+    background: var(--px-color-progress);
+    transition: width var(--px-dur-slow) ease;
   }
 }
 
 .actionBtn {
-  margin-top: 28px;
-  padding: 12px 30px;
-  border: 1px solid #808080;
+  margin-top: dp(28);
+  padding: dp(12) dp(30);
+  border: dp(1) solid var(--px-color-outline);
   background: transparent;
-  color: $muted;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  transition: all .15s;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(17);
+  transition: all var(--px-dur-fast);
 
   &.focused {
-    background: $ink;
-    border-color: $ink;
-    color: #141414;
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
 }
 
@@ -137,21 +135,21 @@ $track: rgba(255, 255, 255, .22);
 // track and the rows are translated, src/app/movement) ─────────────────────
 
 .sliderContainer {
-  height: 370px;
+  height: dp(370);
   position: relative;
   // the rows' zoom room (below) stays inside the clipping stack, which also
   // keeps posters scrolled off to the left from showing over the menu
-  margin: 0 -10px;
-  padding: 0 10px;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
 
   .overlay {
     position: fixed;
     right: 0;
     bottom: 0;
     width: 100vw;
-    height: 250px;
+    height: dp(250);
     pointer-events: none;
-    background: linear-gradient(0deg, rgba(19, 19, 19, 1) 0%, rgba(143, 143, 143, 0) 50%);
+    background: var(--px-gradient-rows-fade);
   }
 
   .content {
@@ -160,9 +158,9 @@ $track: rgba(255, 255, 255, .22);
 }
 
 .sectionTitle {
-  font-family: 'FuturaLt';
+  font-family: var(--px-font-display);
   font-weight: normal;
-  font-size: 16px;
+  font-size: dp(16);
   opacity: .8;
 }
 
@@ -171,26 +169,26 @@ $track: rgba(255, 255, 255, .22);
   // room for the focused poster's zoom (1.1 → 9px sideways, 13.5px up and
   // down; a sideways scrolling row clips vertically too), not enough to show
   // the previous poster (10px gap); the margins give it back to the layout
-  padding: 16px 10px;
-  margin: -16px -10px 4px;
-  scroll-padding-inline: 10px;
+  padding: dp(16) dp(10);
+  margin: dp(-16) dp(-10) dp(4);
+  scroll-padding-inline: dp(10);
 }
 
 .card {
   position: relative;
   flex: none;
-  width: 180px;
-  height: 270px;
-  margin-right: 10px;
+  width: dp(180);
+  height: dp(270);
+  margin-right: dp(10);
   padding: 0;
   border: none;
   opacity: .75;
-  background: rgba(103, 103, 103, .35);
-  transition: all .2s;
+  background: var(--px-surface-card);
+  transition: all var(--px-dur);
 
   img {
     display: block;
-    width: 180px;
+    width: dp(180);
     height: 100%;
     object-fit: cover;
     filter: saturate(.6);
@@ -199,7 +197,7 @@ $track: rgba(255, 255, 255, .22);
   &.focused {
     transform: scale(1.1);
     opacity: 1;
-    z-index: 1;
+    z-index: var(--px-z-raise);
 
     img {
       filter: saturate(1);
@@ -213,13 +211,13 @@ $track: rgba(255, 255, 255, .22);
   left: 0;
   right: 0;
   bottom: 0;
-  height: 4px;
-  background: rgba(0, 0, 0, .55);
+  height: dp(4);
+  background: var(--px-surface-shade);
 
   span {
     display: block;
     height: 100%;
-    background: $amber;
+    background: var(--px-color-progress);
   }
 }
 
@@ -229,10 +227,10 @@ $track: rgba(255, 255, 255, .22);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
-  font-family: 'NetflixBk';
-  font-size: 16px;
-  color: $muted;
+  padding: dp(14);
+  font-family: var(--px-font-book);
+  font-size: dp(16);
+  color: var(--px-color-text-muted);
   text-align: center;
 }
 

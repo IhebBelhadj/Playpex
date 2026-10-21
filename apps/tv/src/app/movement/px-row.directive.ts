@@ -6,12 +6,14 @@ import { Align, Axis } from './scroller';
 // A horizontal row that scrolls natively (overflow-x, hidden scrollbar):
 // left / right move by index and the row glides to keep the focused item at
 // `align` ('start': posters; 'third': cast, episodes; 'nearest': chips).
-// Up / down are left to the parent pxStack. The paddles call `page(±1)`.
+// Up / down are left to the parent pxStack. The chevrons of a `rowArrows`
+// wrapper (row-arrows/) show where it's cut off (`edges`) and call `page(±1)`.
 //
-//   <div class="sliderSection" pxRow="popular" align="start" [loadAhead]="6" (nearEnd)="loadMore(row)" #r="pxRow">
-//     <button *ngFor="…" pxItem [pxItemKey]="item.id">…</button>
+//   <div class="slider" rowArrows>
+//     <div class="sliderSection" pxRow="popular" align="start" [loadAhead]="6" (nearEnd)="loadMore(row)">
+//       <button *ngFor="…" pxItem [pxItemKey]="item.id">…</button>
+//     </div>
 //   </div>
-//   <div class="rowPaddle prev" (click)="r.page(-1)">…</div>
 @Directive({
   selector: '[pxRow]',
   exportAs: 'pxRow',

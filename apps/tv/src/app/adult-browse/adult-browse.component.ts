@@ -3,7 +3,7 @@ import { catchError, debounceTime, forkJoin, map, Observable, of, Subject, Subsc
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
-import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
+import { Navigator, useScreen } from '../nav/public-api';
 import {
   AdultPage, AdultService, AdultSort, AdultStudio, AdultTitle, AdultTitleDetails, BrowseState, MetaProvider, PosterRow,
 } from '../adult.service';
@@ -48,7 +48,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   private rowLoading = new Set<string>();
   private loadSub:Subscription;
   private detailSub:Subscription;
-  private filterLayer:LayerRef | null = null;
   private screen = useScreen();
   private focusListener;
 
@@ -57,7 +56,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     private navigation:NavigationService,
     private background:BackgroundService,
     private navigator:Navigator,
-    private layers:LayerStack,
     private engine:FocusEngine,
     private positions:PositionStore,
   ) { }
@@ -125,7 +123,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // Sections `adultToolbar`, `adultPosters` and `adultFilterPanel` are pxSection
+  // Sections `adultToolbar`, `adultPosters` (and the panel's `adultFilterPanel`) are pxSection
   // directives in the template; rows scroll natively (src/app/movement)
   ngAfterViewInit(): void {
     this.navigation.updateNavigation('add', {
@@ -149,7 +147,6 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.loadSub?.unsubscribe();
     this.detailSub?.unsubscribe();
-    this.filterLayer?.close();
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -184,40 +181,21 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
     this.focusSelector('.adultBrowse .searchField');
   }
 
+  // A <px-panel> (a layer of the nav system while open: its own select /
+  // back; Back closes it, the focus goes back to the filter button)
   private openFilters() {
     this.draftStudio = this.state.studio;
     this.draftPeriod = this.state.period;
     this.panel = 'filters';
-    // a layer of the nav system while open: its own select / back
-    let layer = this.filterLayer = this.layers.open({ id: 'adultFilterPanel', element: () => document.querySelector('.filterPanel') });
-    layer.onSelect(active => {
-      let data = active.dataset;
-      if (data['studio'] !== undefined) this.draftStudio = this.studios.find(s => s.id == data['studio']) || null;
-      else if (data['period'] !== undefined) this.draftPeriod = data['period'];
-      else if (data['panel'] == 'apply') this.applyFilters();
-      else if (data['panel'] == 'reset') { this.draftStudio = null; this.draftPeriod = ''; }
-    });
-    layer.result$.subscribe({ complete: () => {
-      if (this.filterLayer !== layer) return;
-      this.filterLayer = null;
-      this.panel = null;
-      this.focusSelector('.adultBrowse .filterBtn');
-    } });
-    let show = () => this.focusSelector('.filterPanel .studioChip.selected');
-    if (this.studios.length) show();
-    else this.adult.studios(this.state.provider).pipe(catchError(() => of([]))).subscribe(list => {
+    if (!this.studios.length) this.adult.studios(this.state.provider).pipe(catchError(() => of([]))).subscribe(list => {
       this.studios = list;
-      show();
+      this.focusSelector('.filterPanel .studioGrid .selected');
     });
   }
 
-  private closeFilters() {
-    this.filterLayer?.close();
-  }
-
-  private applyFilters() {
+  applyFilters() {
     let studio = this.draftStudio, period = this.draftPeriod;
-    this.closeFilters();
+    this.panel = null;
     this.change({ studio, period });
   }
 

@@ -86,8 +86,8 @@
     <div class="section resultRow" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem
       [attr.data-row]="row.key">
       <span class="sectionTitle">{{ row.title }}</span>
-      <div class="rowViewport pagedRow">
-        <div class="rowContent" [pxRow]="row.key" align="nearest" #r="pxRow">
+      <div class="rowViewport" rowArrows>
+        <div class="rowContent" [pxRow]="row.key" align="nearest">
           <button *ngFor="let item of row.items; trackBy: trackItem" class="result focusable"
             pxItem [pxItemKey]="item.key"
             [class.person]="item.kind == 'person'"
@@ -99,13 +99,6 @@
             <span class="name">{{ item.title }}</span>
             <span class="year">{{ item.sub }}</span>
           </button>
-        </div>
-        <!-- mouse only (hidden with the cursor): page through the row -->
-        <div class="rowPaddle prev" (click)="r.page(-1)">
-          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-        </div>
-        <div class="rowPaddle next" (click)="r.page(1)">
-          <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
         </div>
       </div>
     </div>

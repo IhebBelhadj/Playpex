@@ -1,0 +1,10 @@
+<div class="px-dialog" [pxSection]="id" [trap]="true" [attr.data-level]="level">
+  <div class="px-dialog-panel" [style.width]="dp(width)">
+    <h2 class="px-dialog-title" *ngIf="title">{{ title }}</h2>
+    <p class="px-dialog-subtitle" *ngIf="subtitle" [class.caution]="subtitleTone == 'caution'">{{ subtitle }}</p>
+    <!-- a one-column pxGrid: scrolls natively when the options don't fit -->
+    <div class="px-dialog-body" pxGrid>
+      <ng-content></ng-content>
+    </div>
+  </div>
+</div>

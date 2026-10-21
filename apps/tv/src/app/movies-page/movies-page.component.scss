@@ -1,5 +1,7 @@
 // Flex item of .masterContainer: without min-width 0 it grows to the width of
 // its widest row (thousands of px) and rows inside can't clip/scroll
+@use 'px' as *;
+
 :host {
   min-width: 0;
   flex: 1;
@@ -10,10 +12,10 @@
   flex-direction: column;
   justify-content: space-between;
   height: 100vh;
-  padding-left: 35px;
+  padding-left: dp(35);
   box-sizing: border-box;
   // a detail page's row is scrolled fully into view, 40px from the edges
-  scroll-padding-block: 40px;
+  scroll-padding-block: dp(40);
 }
 
 // ── list page: the section's search bar (styled like the 18+ toolbar's) ────
@@ -21,8 +23,8 @@
 .sectionToolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 26px 170px 0 0;     // the shell's clock on the right
+  gap: dp(12);
+  padding: dp(26) dp(170) 0 0;     // the shell's clock on the right
 
   // the description follows right under it, the rows stay at the bottom
   & + movie-description {
@@ -35,27 +37,27 @@
 .clearSearch {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 16px;
+  gap: dp(12);
+  height: dp(44);
+  padding: 0 dp(16);
   border: none;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, .56);
-  color: #fff;
-  font-family: 'NetflixBk';
-  font-size: 16px;
+  border-radius: dp(8);
+  background: var(--px-surface-control);
+  color: var(--px-color-text);
+  font-family: var(--px-font-book);
+  font-size: dp(16);
   white-space: nowrap;
-  transition: transform .2s, background .2s, color .2s;
+  transition: transform var(--px-dur), background var(--px-dur), color var(--px-dur);
 
   img {
-    width: 18px;
-    filter: invert(1);
+    width: dp(18);
+    filter: var(--px-icon-light);
     opacity: .8;
   }
 
   &.focused {
-    background: #fff;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     transform: scale(1.05);
 
     img { filter: none; opacity: 1; }
@@ -63,7 +65,7 @@
 }
 
 .searchField {
-  width: 320px;
+  width: dp(320);
 
   .fieldText {
     min-width: 0;
@@ -71,13 +73,13 @@
     text-overflow: ellipsis;
   }
 
-  &.empty .fieldText { color: rgba(255, 255, 255, .38); }
-  &.empty.focused .fieldText { color: rgba(20, 20, 20, .55); }
+  &.empty .fieldText { color: var(--px-color-text-faint); }
+  &.empty.focused .fieldText { color: var(--px-color-on-focus-muted); }
 }
 
 // shows the filters in use: "Comedy, 1990s, 7 and up"
 .filterBtn {
-  max-width: 420px;
+  max-width: dp(420);
 
   .fieldText {
     min-width: 0;
@@ -87,12 +89,12 @@
 
   // filters are on: the ring of a chosen chip
   &.active:not(.focused) {
-    background: rgba(255, 255, 255, .14);
-    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6);
+    background: var(--px-surface-2);
+    box-shadow: inset 0 0 0 dp(1.5) var(--px-color-line-strong);
   }
 }
 
 .clearSearch:not(.focused) {
   background: none;
-  color: rgba(255, 255, 255, .62);
+  color: var(--px-color-text-muted);
 }

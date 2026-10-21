@@ -27,6 +27,9 @@ export type BackPolicy =
 export interface Chrome {
   menu?: 'shown' | 'hidden';        // default shown
   backButton?: boolean;             // default: not on sections and roots
+  // a theme of the UI system (src/styles/_tokens.scss, data-px-accent on the
+  // shell): 'adult' = the 18+ wine instead of white for --px-color-accent
+  accent?: 'adult';
 }
 
 export interface MenuEntry {

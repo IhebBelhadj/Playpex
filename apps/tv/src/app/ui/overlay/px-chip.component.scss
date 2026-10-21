@@ -1,0 +1,34 @@
+@use 'px' as *;
+
+// the button is the grid's / line's item
+:host {
+  display: contents;
+}
+
+.px-chip {
+  height: dp(42);
+  padding: 0 dp(16);
+  border: none;
+  border-radius: dp(21);
+  background: var(--px-surface-1);
+  color: var(--px-color-text-secondary);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all var(--px-dur-fast);
+
+  &.selected {
+    color: var(--px-color-text);
+    background: var(--px-surface-2);
+    box-shadow: var(--px-ring-selected);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+    box-shadow: none;
+    transform: scale(var(--px-zoom-tile));
+  }
+}

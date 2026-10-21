@@ -1,36 +1,38 @@
+@use 'px' as *;
+
 .pageContainer {
-  background: rgb(17, 17, 17);
+  background: var(--px-surface-bg);
   width: 100vw;
   height: 100vh;
   position: fixed;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  // over the page, under the shell's Back button (z 7)
-  z-index: 6;
-  padding-top: 50px;
+  // over the page, under the shell's Back button
+  z-index: var(--px-z-page-cover);
+  padding-top: dp(50);
 
   .powerSection {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: dp(20);
     .powerBtn {
-      width: 380px;
-      height: 60px;
-      background: #181818;
-      color: #d0d0d0;
-      font-size: 17px;
-      font-family: "netflixlt";
+      width: dp(380);
+      height: dp(60);
+      background: var(--px-surface-solid);
+      color: var(--px-color-text-secondary);
+      font-size: dp(17);
+      font-family: var(--px-font-light);
       opacity: .8;
-      border-radius: 5px;
+      border-radius: dp(5);
       border: none;
     }
   }
 
   .focused {
-    background: #fff !important;
+    background: var(--px-color-focus) !important;
     opacity: 1 !important;
-    color: rgb(17, 17, 17) !important;
-    box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
+    color: var(--px-color-on-focus) !important;
+    box-shadow: var(--px-shadow-button);
   }
 }

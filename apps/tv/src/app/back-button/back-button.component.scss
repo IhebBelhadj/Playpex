@@ -1,31 +1,33 @@
 // Top left, under the menu's logo: where "back" is looked for, in the rail's
 // column (the menu keeps room for it above its items), so it never covers a
-// page's title. Under the modals (z 8) and the error popup (z 9).
+// page's title. Under the modals and the error popup (--px-z-back-button).
+@use 'px' as *;
+
 .backButton {
   position: fixed;
-  top: 68px;
-  left: 18px;
-  z-index: 7;
+  top: dp(68);
+  left: dp(18);
+  z-index: var(--px-z-back-button);
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: dp(42);
+  height: dp(42);
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .1);
-  color: #fff;
-  transition: background .15s, color .15s;
+  background: var(--px-surface-1);
+  color: var(--px-color-text);
+  transition: background var(--px-dur-fast), color var(--px-dur-fast);
 
   svg {
-    width: 22px;
-    height: 22px;
-    margin-left: -2px;    // the chevron's optical center
+    width: dp(22);
+    height: dp(22);
+    margin-left: dp(-2);    // the chevron's optical center
   }
 
   &:hover {
-    background: #fff;
-    color: #000;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
   }
 }
 

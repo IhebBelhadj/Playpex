@@ -1,24 +1,26 @@
 // Full-screen over the shell, like the picker
+@use 'px' as *;
+
 .profileEditor {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: var(--px-z-root-page);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #141414;
+  background: var(--px-surface-bg);
 }
 
 .brand {
   position: absolute;
-  top: 34px;
-  left: 48px;
-  height: 34px;
+  top: dp(34);
+  left: dp(48);
+  height: dp(34);
 }
 
 .editorContent {
-  width: 760px;
-  transition: opacity .2s ease;
+  width: dp(760);
+  transition: opacity var(--px-dur) ease;
 
   &.dimmed {
     opacity: .15;
@@ -26,65 +28,65 @@
 }
 
 .heading {
-  font-family: 'NetflixBk';
+  font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: 54px;
+  font-size: dp(54);
   margin: 0;
 }
 
 .intro {
-  font-family: 'Netflixlt';
-  font-size: 18px;
-  color: #a3a3a3;
-  margin: 8px 0 0;
+  font-family: var(--px-font-light);
+  font-size: dp(18);
+  color: var(--px-color-text-muted);
+  margin: dp(8) 0 0;
 }
 
 .editorBody {
   display: flex;
-  gap: 36px;
-  margin-top: 28px;
-  padding: 30px 0;
-  border-top: 1px solid #333;
-  border-bottom: 1px solid #333;
+  gap: dp(36);
+  margin-top: dp(28);
+  padding: dp(30) 0;
+  border-top: dp(1) solid var(--px-surface-field);
+  border-bottom: dp(1) solid var(--px-surface-field);
 }
 
 .avatarBtn {
   position: relative;
   flex-shrink: 0;
-  width: 150px;
-  height: 150px;
+  width: dp(150);
+  height: dp(150);
   padding: 0;
-  border: 4px solid transparent;
-  border-radius: 8px;
+  border: dp(4) solid transparent;
+  border-radius: dp(8);
   background: none;
-  transition: transform .15s, border-color .15s;
+  transition: transform var(--px-dur-fast), border-color var(--px-dur-fast);
 
   .avatarImg {
     width: 100%;
     height: 100%;
-    border-radius: 4px;
+    border-radius: dp(4);
     display: block;
   }
 
   .editBadge {
     position: absolute;
-    left: 8px;
-    bottom: 8px;
-    width: 34px;
-    height: 34px;
+    left: dp(8);
+    bottom: dp(8);
+    width: dp(34);
+    height: dp(34);
     border-radius: 50%;
-    background: rgba(0, 0, 0, .75);
+    background: var(--px-surface-badge);
     display: flex;
     align-items: center;
     justify-content: center;
 
     img {
-      width: 18px;
+      width: dp(18);
     }
   }
 
   &.focused {
-    border-color: #fff;
+    border-color: var(--px-color-focus);
     transform: scale(1.05);
   }
 }
@@ -99,65 +101,65 @@
 .field {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 18px;
-  margin-bottom: 10px;
-  border: 2px solid transparent;
-  border-radius: 4px;
-  background: #333;
-  color: #e5e5e5;
-  font-family: 'NetflixBk';
-  font-size: 18px;
+  gap: dp(12);
+  min-height: dp(48);
+  padding: 0 dp(18);
+  margin-bottom: dp(10);
+  border: dp(2) solid transparent;
+  border-radius: dp(4);
+  background: var(--px-surface-field);
+  color: var(--px-color-text-soft);
+  font-family: var(--px-font-book);
+  font-size: dp(18);
   text-align: left;
-  transition: background .15s, color .15s;
+  transition: background var(--px-dur-fast), color var(--px-dur-fast);
 
   .fieldIcon {
-    width: 18px;
+    width: dp(18);
   }
 
   &.focused {
-    background: #fff;
-    color: #141414;
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
 
     .fieldIcon {
-      filter: invert(1);
+      filter: var(--px-icon-light);
     }
   }
 }
 
 .nameField {
   width: 100%;
-  height: 54px;
-  font-size: 22px;
+  height: dp(54);
+  font-size: dp(22);
   margin-bottom: 0;
 
   &.placeholder {
-    color: #8c8c8c;
+    color: var(--px-color-text-dim);
   }
 }
 
 .fieldError {
-  min-height: 22px;
-  margin: 8px 0 6px;
-  font-family: 'NetflixBk';
-  font-size: 16px;
-  color: #ff6f6f;
+  min-height: dp(22);
+  margin: dp(8) 0 dp(6);
+  font-family: var(--px-font-book);
+  font-size: dp(16);
+  color: var(--px-color-error);
 }
 
 .settingTitle {
-  font-family: 'NetflixBd';
+  font-family: var(--px-font-bold);
   font-weight: normal;
-  font-size: 19px;
-  color: #b3b3b3;
-  margin: 14px 0 8px;
+  font-size: dp(19);
+  color: var(--px-color-text-secondary);
+  margin: dp(14) 0 dp(8);
 }
 
 .settingHint {
-  font-family: 'Netflixlt';
-  font-size: 15px;
-  color: #8c8c8c;
-  margin: -2px 0 10px;
+  font-family: var(--px-font-light);
+  font-size: dp(15);
+  color: var(--px-color-text-dim);
+  margin: dp(-2) 0 dp(10);
 }
 
 .toggleField {
@@ -166,28 +168,28 @@
 
   .switch {
     position: relative;
-    width: 46px;
-    height: 26px;
-    border-radius: 13px;
-    background: #5a5a5a;
-    transition: background .15s;
+    width: dp(46);
+    height: dp(26);
+    border-radius: dp(13);
+    background: var(--px-grey-4);
+    transition: background var(--px-dur-fast);
 
     .knob {
       position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 20px;
-      height: 20px;
+      top: dp(3);
+      left: dp(3);
+      width: dp(20);
+      height: dp(20);
       border-radius: 50%;
-      background: #fff;
-      transition: transform .15s;
+      background: var(--px-white);
+      transition: transform var(--px-dur-fast);
     }
 
     &.on {
-      background: #2BB673;
+      background: var(--px-color-positive);
 
       .knob {
-        transform: translateX(20px);
+        transform: translateX(dp(20));
       }
     }
   }
@@ -195,105 +197,95 @@
 
 .actions {
   display: flex;
-  gap: 18px;
-  margin-top: 34px;
+  gap: dp(18);
+  margin-top: dp(34);
 }
 
 .actionBtn {
-  padding: 12px 30px;
-  border: 1px solid #808080;
+  padding: dp(12) dp(30);
+  border: dp(1) solid var(--px-color-outline);
   background: transparent;
-  color: #a3a3a3;
-  font-family: 'NetflixBk';
-  font-size: 17px;
-  letter-spacing: 2px;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: dp(17);
+  letter-spacing: dp(2);
   text-transform: uppercase;
-  transition: all .15s;
+  transition: all var(--px-dur-fast);
 
   &.primary {
-    background: #e5e5e5;
-    border-color: #e5e5e5;
-    color: #141414;
+    background: var(--px-surface-fill-soft);
+    border-color: var(--px-surface-fill-soft);
+    color: var(--px-color-on-focus);
   }
 
   &.danger.focused {
-    background: #e5383b !important;
-    border-color: #e5383b !important;
-    color: #fff !important;
+    background: var(--px-color-danger) !important;
+    border-color: var(--px-color-danger) !important;
+    color: var(--px-color-text) !important;
   }
 
   &.focused {
-    background: #fff;
-    border-color: #fff;
-    color: #141414;
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
     transform: scale(1.04);
   }
 }
 
 // ── overlay panels ─────────────────────────────────────────────────────────
 
-.overlayPanel {
-  position: fixed;
-  inset: 0;
-  z-index: 11;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 10, .9);
-  backdrop-filter: blur(6px);
-}
-
+// the frames are <px-panel>'s (ui/overlay); the confirmation's title sits
+// under its avatar, so it's its own
 .panelTitle {
-  font-family: 'NetflixBd';
-  font-size: 32px;
-  margin: 0 0 26px;
+  font-family: var(--px-font-bold);
+  font-size: dp(32);
+  margin: 0 0 dp(26);
 }
 
 .avatarGrid {
   display: grid;
-  grid-template-columns: repeat(6, 120px);
-  gap: 22px;
+  grid-template-columns: repeat(6, dp(120));
+  gap: dp(22);
 }
 
 .avatarChoice {
-  width: 120px;
-  height: 120px;
+  width: dp(120);
+  height: dp(120);
   padding: 0;
-  border: 4px solid transparent;
-  border-radius: 8px;
+  border: dp(4) solid transparent;
+  border-radius: dp(8);
   background: none;
-  transition: transform .15s, border-color .15s;
+  transition: transform var(--px-dur-fast), border-color var(--px-dur-fast);
 
   img {
     width: 100%;
     height: 100%;
-    border-radius: 4px;
+    border-radius: dp(4);
     display: block;
   }
 
   &.current {
-    border-color: #808080;
+    border-color: var(--px-color-outline);
   }
 
   &.focused {
-    border-color: #fff;
+    border-color: var(--px-color-focus);
     transform: scale(1.1);
   }
 }
 
 .confirmAvatar {
-  width: 110px;
-  height: 110px;
-  border-radius: 8px;
-  margin-bottom: 26px;
+  width: dp(110);
+  height: dp(110);
+  border-radius: dp(8);
+  margin-bottom: dp(26);
 }
 
 .confirmText {
-  max-width: 520px;
-  margin: -10px 0 0;
+  max-width: dp(520);
+  margin: dp(-10) 0 0;
   text-align: center;
-  font-family: 'Netflixlt';
-  font-size: 18px;
-  color: #b3b3b3;
+  font-family: var(--px-font-light);
+  font-size: dp(18);
+  color: var(--px-color-text-secondary);
 }

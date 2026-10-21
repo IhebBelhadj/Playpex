@@ -56,3 +56,6 @@ Thumbs.db
 
 # Playpex TV installers (electron-builder)
 apps/tv/release/
+
+# Playpex TV UI screenshots (apps/tv/scripts/screens.js)
+apps/tv/.screens/

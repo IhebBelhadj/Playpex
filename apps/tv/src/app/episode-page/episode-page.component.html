@@ -76,7 +76,7 @@
       <season-curve [episodes]="episodes" [imdb]="seasonImdb"
         [current]="episode?.episode_number" [highlight]="focusedEpisode"></season-curve>
     </div>
-    <div class="rowViewport">
+    <div class="rowViewport" rowArrows>
       <div class="content" pxRow="seasonEpisodes" align="third">
         <div class="episodeCard" *ngFor="let ep of episodes; let i = index"
           [class.upcoming]="ep.upcoming" [class.current]="ep === episode">
@@ -113,7 +113,7 @@
 
   <div class="guests" *ngIf="guests.length" pxStackItem>
     <h3 class="sectionTitle">Guest stars</h3>
-    <div class="rowViewport">
+    <div class="rowViewport" rowArrows>
       <div class="content guestsRow" pxRow="guests" align="third">
         <button class="guest focusable" *ngFor="let guest of guests"
           pxItem [pxItemKey]="guest.credit_id">

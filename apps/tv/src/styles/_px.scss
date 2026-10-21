@@ -1,0 +1,27 @@
+// The UI system's Sass layer (docs/ui-system-plan.md §5.1): what CSS custom
+// properties can't express. Emits no CSS: every component stylesheet can
+// `@use 'px' as *;` (src/styles is on the include path, angular.json).
+@use 'sass:math';
+
+// ── units ────────────────────────────────────────────────────────────────────
+// The app is designed on a 1440 × 810 screen. dp(n) is n pixels of that design
+// in rem; the root font size (styles.scss) is 16px there and follows the
+// window, so the whole UI scales with the screen instead of staying 1440 wide.
+// Every length is written dp(n), never n px.
+$design-px-per-rem: 16;
+
+@function dp($n) {
+  @return math.div($n, $design-px-per-rem) * 1rem;
+}
+
+// ── mixins ───────────────────────────────────────────────────────────────────
+
+// Room inside a pxRow for the focused item's zoom (a sideways scrolling box
+// clips vertically too), given back to the layout by negative margins
+// (movement guide, "Building a page" step 3). Posters 180 × 270 at 1.1:
+// px-row-gutter(16, 10) keeps the previous poster (10 gap) hidden.
+@mixin px-row-gutter($block, $inline, $scroll-padding: $inline) {
+  padding: dp($block) dp($inline);
+  margin: dp(-$block) dp(-$inline);
+  scroll-padding-inline: dp($scroll-padding);
+}

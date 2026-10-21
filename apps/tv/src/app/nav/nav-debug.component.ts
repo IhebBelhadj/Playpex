@@ -22,12 +22,12 @@ const TOGGLE_KEY = 'F9';
   `,
   styles: [`
     .navDebug {
-      position: fixed; right: 12px; bottom: 12px; z-index: 1000; max-width: 420px;
-      padding: 10px 14px; border-radius: 8px; background: rgba(0, 0, 0, .85); color: #ddd;
-      font: 12px/1.5 monospace; pointer-events: none; white-space: pre-wrap;
+      position: fixed; right: .75rem; bottom: .75rem; z-index: var(--px-z-dev); max-width: 26.25rem;
+      padding: .625rem .875rem; border-radius: var(--px-radius-l); background: var(--px-surface-pane);
+      color: var(--px-color-text-soft); font: .75rem/1.5 monospace; pointer-events: none; white-space: pre-wrap;
     }
-    b { display: block; margin-top: 4px; color: #888; font-weight: normal; }
-    .top { color: #ffc107; }
+    b { display: block; margin-top: .25rem; color: var(--px-color-text-dim); font-weight: normal; }
+    .top { color: var(--px-color-on); }
   `],
 })
 export class NavDebugComponent implements OnInit, OnDestroy {

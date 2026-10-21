@@ -1,55 +1,39 @@
 import { NotificationService } from './../notification.service';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { LayerRef, LayerStack, LAYER_PRIORITY } from '../nav/public-api';
+import { PxDialogComponent } from '../ui/public-api';
 
-// Error popup with an "ok" button: a global layer of the nav system while
-// shown (src/app/nav), so it survives the navigation that often follows an
-// error (the player leaving) and takes select / back (both close it)
+// Error popup with an OK option, on the <px-dialog> frame at the alert level:
+// a global layer of the nav system while shown (src/app/nav), so it survives
+// the navigation that often follows an error (the player leaving); select on
+// OK and back both close it. A new error while it's open replaces the text.
 @Component({
   selector: 'notification-handler',
   templateUrl: './notification-handler.component.html',
-  styleUrls: ['./notification-handler.component.scss']
 })
 export class NotificationHandlerComponent implements OnInit, OnDestroy {
   displayError = false;
   errorContent = "";
-  private layer:LayerRef | null = null;
+  @ViewChild(PxDialogComponent) dialog:PxDialogComponent;
   private subscription:Subscription;
 
-  constructor(
-    private notificationService:NotificationService,
-    private layers:LayerStack,
-    ) { }
+  constructor(private notificationService:NotificationService) { }
 
   ngOnInit(): void {
     this.subscription = this.notificationService.getNotification().subscribe((notification)=>{
       if (notification.type != "error") return;
       this.errorContent = notification.data;
       this.displayError = true;
-      if (!this.layer) {
-        let layer = this.layer = this.layers.open({
-          id: 'notification',
-          priority: LAYER_PRIORITY.alert,
-          global: true,
-          element: () => document.querySelector('.errorHandler'),
-        });
-        layer.result$.subscribe({ complete: () => {
-          this.layer = null;
-          this.displayError = false;
-        } });
-      }
-      setTimeout(() => (document.querySelector('.errorWrapper .okBtn') as HTMLElement)?.focus({ preventScroll: true }), 100);
     })
   }
 
   ngOnDestroy(): void {
     this.subscription?.unsubscribe();
-    this.layer?.close();
   }
 
   close() {
-    this.layer?.close();
+    this.dialog?.finish();
+    this.displayError = false;
   }
 
 }

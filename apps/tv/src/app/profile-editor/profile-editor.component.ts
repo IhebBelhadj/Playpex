@@ -1,15 +1,14 @@
-import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { concatMap, Observable, of } from 'rxjs';
 import { NotificationService } from '../notification.service';
 import { AVATARS, Profile, ProfilesService } from '../profiles.service';
-import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
+import { Navigator, useScreen } from '../nav/public-api';
 
 type Panel = null | 'keyboard' | 'avatars' | 'pin' | 'confirmDelete';
 
-// Overlay panels and their navigation sections (restrict self-only while
-// open), each a layer of the nav system: the avatars and the delete
-// confirmation here, the name keyboard (<text-keyboard>) and the PIN pad
-// their own.
+// Overlay panels, each a trapping section and a layer of the nav system
+// while open: the avatars and the delete confirmation (<px-panel>s, here),
+// the name keyboard (<text-keyboard>) and the PIN pad (<pin-pad>).
 const NAME_MAX = 30;
 
 // /profiles/new and /profiles/:id/edit. Changes are kept locally and sent on
@@ -20,7 +19,7 @@ const NAME_MAX = 30;
   templateUrl: './profile-editor.component.html',
   styleUrls: ['./profile-editor.component.scss']
 })
-export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy {
+export class ProfileEditorComponent implements OnInit, AfterViewInit {
 
   id:string | null = null;
   ready = false;
@@ -38,13 +37,11 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   nameMax = NAME_MAX;
 
   private returnFocus:string | null = null;
-  private panelLayer:LayerRef | null = null;
   private screen = useScreen<{ id?:string }>();
 
   constructor(
     private profilesService:ProfilesService,
     private navigator:Navigator,
-    private layers:LayerStack,
     private notification:NotificationService,
   ) { }
 
@@ -91,10 +88,6 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     this.screen.onLeave(() => this.saving);
   }
 
-  ngOnDestroy(): void {
-    this.panelLayer?.close();
-  }
-
   avatarUrl(avatar:string | null) {
     return ProfilesService.avatarUrl(avatar);
   }
@@ -104,7 +97,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private activateField(field:string) {
     switch (field) {
       case 'avatar':
-        this.openPanel('avatars', 'avatar', `.avatarPanel [data-avatar="${this.avatar}"]`);
+        this.openPanel('avatars', 'avatar');
         break;
       case 'name':
         this.returnFocus = 'name';
@@ -127,44 +120,26 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
   private activateAction(action:string) {
     if (action == 'save') this.save();
     else if (action == 'cancel') this.cancel();
-    else if (action == 'delete') this.openPanel('confirmDelete', null, '.confirmPanel [data-confirm="no"]');
+    else if (action == 'delete') this.openPanel('confirmDelete', null);
   }
 
   // ── panels ────────────────────────────────────────────────────────────────
 
-  private openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null, focusSelector:string) {
+  // <px-panel>s: they focus their current avatar / "Keep Profile"; the focus
+  // comes back through closePanel()
+  private openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null) {
     this.panel = panel;
     this.returnFocus = returnFocus;
-    let layer = this.panelLayer = this.layers.open({
-      id: panel,
-      element: () => document.querySelector(panel == 'avatars' ? '.avatarPanel' : '.confirmPanel'),
-      restoreFocus: false,
-    });
-    layer.onSelect(active => {
-      let data = active.dataset;
-      if (this.saving) return;
-      if (data['avatar']) this.chooseAvatar(data['avatar']);
-      else if (data['confirm']) data['confirm'] == 'yes' ? this.remove() : this.closePanel();
-    });
-    layer.onBack(() => {
-      if (!this.saving) this.closePanel();
-      return true;
-    });
-    setTimeout(() => {
-      (document.querySelector(focusSelector) as HTMLElement)?.focus({ preventScroll: true });
-    }, 0);
   }
 
   closePanel() {
     let returnTo = this.panel == 'confirmDelete' ? '[data-action="delete"]' : null;
     this.panel = null;
-    this.panelLayer?.close();
-    this.panelLayer = null;
     if (returnTo) this.focus(returnTo);
     else this.show(this.returnFocus || 'name');
   }
 
-  private chooseAvatar(avatar:string) {
+  chooseAvatar(avatar:string) {
     this.avatar = avatar;
     this.closePanel();
   }
@@ -222,7 +197,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy 
     });
   }
 
-  private remove() {
+  remove() {
     this.saving = true;
     this.profilesService.remove(this.id).subscribe({
       next: () => {

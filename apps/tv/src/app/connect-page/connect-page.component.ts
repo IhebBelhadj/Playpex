@@ -6,7 +6,7 @@ import { connection, useBrowserServer } from '../server-config';
 import {
   ConnectedServer, ConnectionState, desktop, DiscoveredServer, LocalServerStatus, PairingCode, PairingUpdate, UpdaterState
 } from '../desktop';
-import { LayerRef, LayerStack, Navigator, useScreen } from '../nav/public-api';
+import { Navigator, useScreen } from '../nav/public-api';
 
 const DOWNLOAD_URL = 'github.com/IhebBelhadj/Playpex/releases';
 const API_VERSION = 1;   // @playpex/protocol API_VERSION
@@ -63,7 +63,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   focusedKey:string | null = null;   // what the detail panel describes
 
   private splashSub:Subscription;
-  private pairingLayer:LayerRef | null = null;
   private screen = useScreen<{}, { reason:string, code?:string }>();
   private unsubscribes:Array<() => void> = [];
   private timers:any[] = [];
@@ -75,7 +74,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private navigator:Navigator,
-    private layers:LayerStack,
     private splashService:SplashService,
     private server:ServerService,
     private zone:NgZone,
@@ -307,7 +305,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.pairingLayer?.close(undefined, false);
     this.splashSub?.unsubscribe();
     this.unsubscribes.forEach(off => off());
     this.timers.forEach(t => clearTimeout(t));
@@ -435,7 +432,6 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.bridge) return;
     clearInterval(this.countdown);
     this.pairing = { server, code: null, state: 'requesting', message: null, secondsLeft: 0 };
-    this.openPairingLayer();
     this.focusPairing('cancel');
     this.bridge.pairing.start({ id: server.id, name: server.name, url: server.url }).then(code => this.zone.run(() => {
       if (!this.pairing || this.pairing.server.id != server.id) return;
@@ -468,24 +464,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pairing = null;
     clearInterval(this.countdown);
     this.bridge?.pairing.cancel();
-    this.pairingLayer?.close(undefined, false);
-    this.pairingLayer = null;
     this.focusServer(id);
-  }
-
-  // The panel is a layer of the nav system: its own select / back (Back cancels)
-  private openPairingLayer() {
-    if (this.pairingLayer) return;
-    const layer = this.pairingLayer = this.layers.open({ id: 'pairing', element: () => document.querySelector('.pairingPanel') });
-    layer.onSelect(active => {
-      if (!this.pairing || this.leaving) return;
-      if (active?.dataset['pair'] == 'cancel') this.cancelPairing();
-      if (active?.dataset['pair'] == 'again') this.startPairing(this.pairing.server);
-    });
-    layer.onBack(() => {
-      if (!this.leaving) this.cancelPairing();
-      return true;
-    });
   }
 
   // ── focus ───────────────────────────────────────────────────────────────

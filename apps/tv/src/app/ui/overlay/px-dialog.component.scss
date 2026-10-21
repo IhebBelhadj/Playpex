@@ -1,0 +1,68 @@
+// The frame of every modal (torrent picker, play choice, connection lost, the
+// error notification, Dialogs)
+@use 'px' as *;
+
+.px-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-modal);
+  background: var(--px-scrim);
+  backdrop-filter: blur(dp(5));
+  color: var(--px-color-text);
+
+  &[data-level="alert"] { z-index: var(--px-z-alert); }
+  &[data-level="panel"] { z-index: var(--px-z-panel); }
+  &[data-level="system"] {
+    z-index: var(--px-z-system);
+    background: var(--px-scrim-strong);
+  }
+}
+
+.px-dialog-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: dp(40) dp(40) dp(34);
+  border-radius: var(--px-radius-m);
+  background-color: var(--px-surface-raised);
+  backdrop-filter: blur(dp(10));
+}
+
+.px-dialog-title {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.px-dialog-subtitle {
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  line-height: 1.4;
+  color: var(--px-color-text-muted);
+
+  &.caution {
+    color: var(--px-color-caution);
+  }
+}
+
+.px-dialog-body {
+  min-height: 0;
+  margin-top: dp(26);
+  display: flex;
+  flex-direction: column;
+  gap: dp(10);
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

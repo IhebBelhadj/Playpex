@@ -21,6 +21,7 @@ import { PowerPageComponent } from './power-page/power-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
+import { RowArrowsComponent } from './row-arrows/row-arrows.component';
 import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filter-panel.component';
 import { RouteReuseStrategy, RouterModule } from "@angular/router";
 
@@ -29,7 +30,6 @@ import { ProfilePickerComponent } from './profile-picker/profile-picker.componen
 import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
 import { PinPadComponent } from './pin-pad/pin-pad.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
-import { PlayChoiceComponent } from './play-choice/play-choice.component';
 import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
 import { ReleasesPageComponent } from './releases-page/releases-page.component';
 import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
@@ -37,6 +37,7 @@ import { AdultTitleComponent } from './adult-title/adult-title.component';
 import { BackButtonComponent } from './back-button/back-button.component';
 import { MOVEMENT_DIRECTIVES } from './movement/movement';
 import { NAV_DIRECTIVES } from './nav/public-api';
+import { UI_COMPONENTS } from './ui/public-api';
 import { NavReuseStrategy } from './nav/reuse-strategy';
 import { ConnectPageComponent } from './connect-page/connect-page.component';
 import { ConnectionLostComponent } from './connection-lost/connection-lost.component';
@@ -47,6 +48,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     AppComponent,
     EpisodePageComponent,
     SeasonCurveComponent,
+    RowArrowsComponent,
     CatalogFilterPanelComponent,
     MenuComponent,
     MovieDescriptionComponent,
@@ -67,7 +69,6 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     ProfileEditorComponent,
     PinPadComponent,
     WatchlistPageComponent,
-    PlayChoiceComponent,
     TextKeyboardComponent,
     ReleasesPageComponent,
     AdultBrowseComponent,
@@ -77,6 +78,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     ConnectionLostComponent,
     ...MOVEMENT_DIRECTIVES,
     ...NAV_DIRECTIVES,
+    ...UI_COMPONENTS,
   ],
   imports: [
     BrowserModule,

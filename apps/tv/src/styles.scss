@@ -1,32 +1,16 @@
-/* You can add global styles to this file, and also import other style files */
+// Global styles: the design tokens, the fonts, the root size every dp() is
+// relative to, and the movement system's classes.
+@use 'px' as *;
+@use 'tokens';
+
 @font-face {
   font-family: 'FuturaLt';
   src: url('../src/assets/fonts/FutuLt.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: 'FuturaBk';
-  src: url('../src/assets/fonts/FuturaBk.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'FuturaBd';
-  src: url('../src/assets/fonts/FutuBd.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'Monda';
-  src: url('../src/assets/fonts/Monda-Regular.ttf') format('truetype');
-}
-
-@font-face {
   font-family: 'NetflixBk';
   src: url('../src/assets/fonts/NetflixSansRegular.ttf') format('truetype');
-}
-
-@font-face {
-  font-family: 'NetflixTh';
-  src: url('../src/assets/fonts/NetflixSansThin.ttf') format('truetype');
 }
 
 @font-face {
@@ -39,17 +23,27 @@
   src: url('../src/assets/fonts/NetflixSansLight.ttf') format('truetype');
 }
 
-@font-face {
-  font-family: 'Netflixlc';
-  src: url('../src/assets/fonts/NetflixSansIcon.ttf') format('truetype');
+// 1rem = 16px on the 1440 × 810 design (src/styles/_px.scss, dp()) and grows or
+// shrinks with the window: the screen always shows the same layout. Bounded by
+// height too, so a wider than 16:9 screen doesn't push the rows off the bottom.
+html {
+  font-size: min(calc(100vw / 90), calc(100vh / 50.625));
 }
-
-
 
 body {
   margin: 0;
-  color: #fff;
+  color: var(--px-color-text);
   overflow: hidden;
+}
+
+// Form controls don't inherit the font size: the browser gives them a fixed
+// 13.33px. The same size in dp, so labels without a size of their own (the
+// action tiles') scale with the rest
+button,
+input,
+select,
+textarea {
+  font-size: dp(13.333);
 }
 
 :focus {
@@ -84,60 +78,10 @@ img {
 
 
 
-// Row paddles (movies slider, watch list): mouse only, shown on the hovered
-// row while the cursor is visible
-.pagedRow {
-  position: relative;
-}
-
-.rowPaddle {
-  position: absolute;
-  top: 0;
-  bottom: 20px;
-  width: 72px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s;
-
-  svg {
-    width: 34px;
-    height: 34px;
-    fill: none;
-    stroke: #fff;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .7));
-    transition: transform .2s;
-  }
-
-  &.prev {
-    left: 0;
-    background: linear-gradient(90deg, rgba(19, 19, 19, .85) 0%, rgba(19, 19, 19, 0) 100%);
-    &:hover svg { transform: translateX(-4px); }
-  }
-
-  &.next {
-    right: 0;
-    background: linear-gradient(270deg, rgba(19, 19, 19, .85) 0%, rgba(19, 19, 19, 0) 100%);
-    &:hover svg { transform: translateX(4px); }
-  }
-}
-
-body:not(.pointer-hidden) .pagedRow:hover > .rowPaddle {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-
 // Movement system (src/app/movement): containers scroll natively with hidden
 // scrollbars. pxRow / pxStack add these classes themselves; give the
 // container a definite size (and room for the focused item's zoom: rows clip
-// vertically once they scroll sideways, see .px-row-pad).
+// vertically once they scroll sideways: the px-row-gutter mixin, _px.scss).
 .px-scroll-x {
   overflow-x: auto;
   overflow-y: hidden;
@@ -177,18 +121,4 @@ body:not(.pointer-hidden) .pagedRow:hover > .rowPaddle {
   scroll-snap-align: start;
 }
 
-// Room for a 1.1× zoom around 180×270 posters (9px sideways, 13.5px up and
-// down) that still hides the poster before an item aligned at the start (10px
-// gap); the negative margins give the padding back to the layout
-.px-row-pad {
-  padding: 16px 10px;
-  margin: -16px -10px;
-  scroll-padding-inline: 10px;
-}
-
-// Paddles of a pxRow: siblings of the scrolling row (inside a .pagedRow),
-// hidden at the ends of the real scroll position
-[data-px-container].atStart ~ .rowPaddle.prev,
-[data-px-container].atEnd ~ .rowPaddle.next {
-  display: none;
-}
+// Row chevrons: the [rowArrows] component (src/app/row-arrows)

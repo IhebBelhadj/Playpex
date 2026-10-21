@@ -1,31 +1,33 @@
+@use 'px' as *;
+
 .name {
-  font-family: "netflixBd";
+  font-family: var(--px-font-bold);
   font-size: 2.8rem;
-  margin-bottom: 0px;
-  max-width: 800px;
+  margin-bottom: dp(0);
+  max-width: dp(800);
 }
 
 .movieDesciption {
-  max-width: 700px;
+  max-width: dp(700);
   font-size: 1.2rem;
-  font-family: "NetflixBk";
-  line-height: 39px;
-  letter-spacing: 1px;
+  font-family: var(--px-font-book);
+  line-height: dp(39);
+  letter-spacing: dp(1);
   opacity: 0.62;
-  margin-top: 50px;
+  margin-top: dp(50);
 }
 
 .infos {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: dp(15);
 }
 
 .year {
-  font-family: 'Netflixlt';
-  font-size: 22px;
+  font-family: var(--px-font-light);
+  font-size: dp(22);
   margin: 0;
-  margin-right: 15px;
+  margin-right: dp(15);
 }
 
 .avalableQualities {
@@ -33,54 +35,54 @@
   display: flex;
 
   .quality {
-    font-family: 'netflixlt';
-    padding: 8px;
-    margin: 6px;
-    background: #1d1d1d9e;
-    border-radius: 5px;
-    font-size: 12px;
+    font-family: var(--px-font-light);
+    padding: dp(8);
+    margin: dp(6);
+    background: var(--px-surface-chip);
+    border-radius: dp(5);
+    font-size: dp(12);
     opacity: .7;
-    margin: 4px;
+    margin: dp(4);
   }
 }
 .imdb_score {
   display: flex;
   align-items: center;
-  font-family: 'NetflixBk';
-  margin-left: 12px;
+  font-family: var(--px-font-book);
+  margin-left: dp(12);
   opacity: .9;
-  background: #1515152e;
-  padding: 7px;
-  border-radius: 5px;
+  background: var(--px-surface-score);
+  padding: dp(7);
+  border-radius: dp(5);
 
 
   img {
     display: block;
-    width: 40px;
-    margin-right: 10px;
+    width: dp(40);
+    margin-right: dp(10);
   }
 }
 
 .quality {
-  font-family: 'netflixlt';
-  padding: 8px;
-  background: #1d1d1d9e;
-  border-radius: 5px;
-  font-size: 12px;
+  font-family: var(--px-font-light);
+  padding: dp(8);
+  background: var(--px-surface-chip);
+  border-radius: dp(5);
+  font-size: dp(12);
   opacity: .7;
-  margin: 4px;
+  margin: dp(4);
 }
 
 .tmdb_score {
-  font-family: 'NetflixBk';
-  margin-left: 12px;
+  font-family: var(--px-font-book);
+  margin-left: dp(12);
   opacity: .9;
-  background: #1515152e;
-  padding: 7px;
-  border-radius: 5px;
+  background: var(--px-surface-score);
+  padding: dp(7);
+  border-radius: dp(5);
 }
 
 .categories {
-  font-family: 'Netflixlt';
+  font-family: var(--px-font-light);
   opacity: .6;
 }

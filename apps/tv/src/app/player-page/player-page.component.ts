@@ -13,6 +13,7 @@ import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
 import { ProfilesService } from '../profiles.service';
 import { Navigator, useScreen } from '../nav/public-api';
+import { dp } from '../ui/public-api';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -543,14 +544,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   pausePlayer(){
     this.moviePlayer.pause();
     document.querySelector('.playBtn img')['src'] = "assets/icons/pause.svg";
-    document.querySelector('.playBtn img')['style']['transform'] = "translateX(1px)"
+    document.querySelector('.playBtn img')['style']['transform'] = `translateX(${dp(1)})`
   }
 
   resumePlayer(){
     this.moviePlayer.play();
 
     document.querySelector('.playBtn img')['src'] = "assets/icons/playSharp.svg";
-    document.querySelector('.playBtn img')['style']['transform'] = "translateX(3px)"
+    document.querySelector('.playBtn img')['style']['transform'] = `translateX(${dp(3)})`
   }
 
   hideControls(){
@@ -561,7 +562,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.updateClock();
 
       let contolsTl = gsap.timeline();
-      contolsTl.to('.playerPageContainer .controls' , {y: 200 , duration : .2 })
+      contolsTl.to('.playerPageContainer .controls' , {y: dp(200) , duration : .2 })
       contolsTl.to('.playerPageContainer .controls' , {opacity : 0, duration : .2 , delay : -.15 , onComplete(){
 
         controlPannel['style']['display'] = "none";
@@ -574,7 +575,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let sidePannel = document.querySelector('.playerPageContainer .sidePannel') as HTMLElement;
 
     let sideTl = gsap.timeline();
-    sideTl.to('.playerPageContainer .sidePannel' , {x: -200 , duration : .2 })
+    sideTl.to('.playerPageContainer .sidePannel' , {x: dp(-200) , duration : .2 })
     sideTl.to('.playerPageContainer .sidePannel' , {opacity : 0, duration : .2 , delay : -.15 , onComplete(){
 
       sidePannel['style']['display'] = "none";

@@ -2,7 +2,8 @@
 // block, then movie-options' icon tiles, round cast portraits and captioned
 // poster row (same sizes and focus treatment). The only 18+ mark is the wine
 // seal next to the year.
-$wine: #C2405F;
+@use 'px' as *;
+
 
 :host {
   display: block;
@@ -17,76 +18,76 @@ $wine: #C2405F;
   flex-direction: column;
   justify-content: space-between;
   height: 100vh;
-  padding-left: 35px;
+  padding-left: dp(35);
   box-sizing: border-box;
   overflow-x: hidden;
-  scroll-padding-block: 40px;
+  scroll-padding-block: dp(40);
 }
 
 // ── title info (as <movie-description>) ────────────────────────────────────
 
 .name {
-  font-family: "netflixBd";
+  font-family: var(--px-font-bold);
   font-weight: normal;
   font-size: 2.8rem;
   margin-bottom: 0;
-  max-width: 900px;
+  max-width: dp(900);
 }
 
 .infos {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0 15px;
+  gap: dp(8);
+  margin: dp(8) 0 dp(15);
 }
 
 .year {
-  font-family: 'Netflixlt';
-  font-size: 22px;
-  margin: 0 7px 0 0;
+  font-family: var(--px-font-light);
+  font-size: dp(22);
+  margin: 0 dp(7) 0 0;
 }
 
 .seal {
-  padding: 5px 7px;
-  border: 1.5px solid $wine;
-  border-radius: 5px;
-  color: $wine;
-  font-family: 'NetflixBd';
-  font-size: 12px;
+  padding: dp(5) dp(7);
+  border: dp(1.5) solid var(--px-color-accent);
+  border-radius: dp(5);
+  color: var(--px-color-accent);
+  font-family: var(--px-font-bold);
+  font-size: dp(12);
 }
 
 .chip {
-  font-family: 'netflixlt';
-  padding: 8px;
-  background: #1d1d1d9e;
-  border-radius: 5px;
-  font-size: 12px;
+  font-family: var(--px-font-light);
+  padding: dp(8);
+  background: var(--px-surface-chip);
+  border-radius: dp(5);
+  font-size: dp(12);
   opacity: .7;
 }
 
 .score {
-  font-family: 'NetflixBk';
-  margin-left: 4px;
+  font-family: var(--px-font-book);
+  margin-left: dp(4);
   opacity: .9;
-  background: #1515152e;
-  padding: 7px;
-  border-radius: 5px;
+  background: var(--px-surface-score);
+  padding: dp(7);
+  border-radius: dp(5);
 }
 
 .credits {
-  font-family: 'Netflixlt';
+  font-family: var(--px-font-light);
   opacity: .6;
   margin: 0;
 }
 
 .overview {
-  max-width: 700px;
+  max-width: dp(700);
   font-size: 1.2rem;
-  font-family: "NetflixBk";
-  line-height: 39px;
-  letter-spacing: 1px;
+  font-family: var(--px-font-book);
+  line-height: dp(39);
+  letter-spacing: dp(1);
   opacity: 0.62;
-  margin-top: 50px;
+  margin-top: dp(50);
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -106,12 +107,12 @@ $wine: #C2405F;
   .option {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--px-color-text);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    margin: 25px 6px;
+    margin: dp(25) dp(6);
     opacity: .67;
 
     &:first-child { margin-left: 0; }
@@ -119,20 +120,20 @@ $wine: #C2405F;
     .imgContainer {
       display: grid;
       place-items: center;
-      width: 102px;
-      height: 60px;
-      background: rgba(28, 28, 28, .72);
-      border-radius: 5px;
+      width: dp(102);
+      height: dp(60);
+      background: var(--px-surface-tile);
+      border-radius: dp(5);
 
       img,
       svg {
-        width: 26px;
-        filter: invert(100%);
+        width: dp(26);
+        filter: var(--px-icon-light);
       }
 
       svg {
         fill: none;
-        stroke: #000;
+        stroke: var(--px-black);
         stroke-width: 2.4;
         stroke-linecap: round;
         stroke-linejoin: round;
@@ -140,8 +141,8 @@ $wine: #C2405F;
     }
 
     span {
-      margin-top: 12px;
-      max-width: 110px;
+      margin-top: dp(12);
+      max-width: dp(110);
       text-align: center;
       line-height: 1.25;
     }
@@ -150,7 +151,7 @@ $wine: #C2405F;
       opacity: 1;
 
       .imgContainer {
-        background: #fff;
+        background: var(--px-color-focus);
 
         img, svg { filter: none; }
       }
@@ -159,7 +160,7 @@ $wine: #C2405F;
 }
 
 .sectionTitle {
-  font-family: 'netflixBk';
+  font-family: var(--px-font-book);
   font-weight: bold;
   opacity: .9;
 }
@@ -168,8 +169,8 @@ $wine: #C2405F;
 // negative margin pair leaves room for the focused item's scale-up.
 .castSlider,
 .movieSlider {
-  padding: 16px;
-  margin: -16px;
+  padding: dp(16);
+  margin: dp(-16);
 
   .content { display: flex; }
 }
@@ -177,8 +178,8 @@ $wine: #C2405F;
 // ── cast (as movie-options) ─────────────────────────────────────────────────
 
 .castSlider .content {
-  margin-top: 50px;
-  height: 230px;
+  margin-top: dp(50);
+  height: dp(230);
 }
 
 .performer {
@@ -186,22 +187,22 @@ $wine: #C2405F;
   flex-direction: column;
   align-items: center;
   flex: none;
-  width: 140px;
-  margin-right: 15px;
+  width: dp(140);
+  margin-right: dp(15);
   padding: 0;
   background: none;
   border: none;
-  color: #fff;
+  color: var(--px-color-text);
 
   .imgContainer {
     display: grid;
     place-items: center;
-    width: 130px;
-    height: 130px;
+    width: dp(130);
+    height: dp(130);
     overflow: hidden;
     border-radius: 50%;
-    background: rgba(103, 103, 103, .35);
-    transition: .2s all;
+    background: var(--px-surface-card);
+    transition: var(--px-dur) all;
 
     img {
       width: 100%;
@@ -211,23 +212,23 @@ $wine: #C2405F;
   }
 
   .initials {
-    font-family: 'NetflixBk';
-    font-size: 34px;
+    font-family: var(--px-font-book);
+    font-size: dp(34);
     opacity: .6;
   }
 
   .name {
-    font-family: 'netflixLt';
-    font-size: 16px;
+    font-family: var(--px-font-light);
+    font-size: dp(16);
     text-align: center;
     opacity: .7;
-    margin-top: 20px;
-    max-width: 120px;
+    margin-top: dp(20);
+    max-width: dp(120);
   }
 
   &.focused {
     .imgContainer {
-      border: 3px solid #fff;
+      border: dp(3) solid var(--px-color-focus);
       transform: scale(1.13);
     }
 
@@ -242,38 +243,38 @@ $wine: #C2405F;
     display: flex;
     flex-direction: column;
     flex: none;
-    width: 150px;
-    margin-right: 21px;
+    width: dp(150);
+    margin-right: dp(21);
 
     .name {
-      font-family: 'netflixBk';
+      font-family: var(--px-font-book);
       opacity: .75;
-      font-size: 16px;
+      font-size: dp(16);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .year {
-      font-family: 'netflixLt';
+      font-family: var(--px-font-light);
       opacity: .4;
-      font-size: 14px;
+      font-size: dp(14);
     }
   }
 
   .displayedElem {
     position: relative;
-    width: 150px;
-    height: 230px;
+    width: dp(150);
+    height: dp(230);
     padding: 0;
-    margin-bottom: 25px;
+    margin-bottom: dp(25);
     border: none;
-    background: rgba(103, 103, 103, .35);
+    background: var(--px-surface-card);
 
     .imgContainer {
       width: 100%;
       height: 100%;
-      transition: all .2s;
+      transition: all var(--px-dur);
 
       img {
         display: block;
@@ -302,9 +303,9 @@ $wine: #C2405F;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
-  font-family: 'NetflixBk';
-  font-size: 15px;
-  color: rgba(255, 255, 255, .62);
+  padding: dp(14);
+  font-family: var(--px-font-book);
+  font-size: dp(15);
+  color: var(--px-color-text-muted);
   text-align: center;
 }

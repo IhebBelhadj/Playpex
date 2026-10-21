@@ -40,8 +40,8 @@
     <div class="content" pxTrack>
       <div class="section" *ngFor="let row of rows" pxStackItem [attr.data-row]="row.key">
         <h3 class="sectionTitle">{{ row.title }}</h3>
-        <div class="slider pagedRow">
-          <div class="sliderSection" [pxRow]="row.key" align="start" #r="pxRow">
+        <div class="slider" rowArrows>
+          <div class="sliderSection" [pxRow]="row.key" align="start">
             <button *ngFor="let card of row.cards" class="card focusable"
               pxItem [pxItemKey]="card.key"
               [attr.data-key]="card.key">
@@ -49,13 +49,6 @@
               <span class="fallbackTitle" *ngIf="!card.posterPath">{{ card.title }}</span>
               <span class="cardProgress" *ngIf="card.progress"><span [style.width.%]="card.progress * 100"></span></span>
             </button>
-          </div>
-          <!-- mouse only (hidden with the cursor): page through the row -->
-          <div class="rowPaddle prev" (click)="r.page(-1)">
-            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-          </div>
-          <div class="rowPaddle next" (click)="r.page(1)">
-            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
           </div>
         </div>
       </div>
