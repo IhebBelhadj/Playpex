@@ -69,7 +69,7 @@ describe('nav Navigator', () => {
     pages = [];
     let registry = makeRegistry();
     TestBed.configureTestingModule({
-      imports: [RouterTestingModule.withRoutes(registry.buildRoutes({ server: TestGuard, profile: TestGuard, adult: TestGuard }))],
+      imports: [RouterTestingModule.withRoutes(registry.buildRoutes({ display: TestGuard, server: TestGuard, profile: TestGuard, adult: TestGuard }))],
       declarations: [RootComponent, FrameComponent, PageComponent],
       providers: [
         { provide: SCREEN_REGISTRY, useValue: registry },

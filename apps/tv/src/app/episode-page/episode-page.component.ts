@@ -11,6 +11,7 @@ import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbEpisode, ImdbSeries, ImdbService } from '../imdb.service';
 import { Navigator, useScreen } from '../nav/public-api';
+import { tmdbImageBase } from '../ui/public-api';
 
 // One episode of a show (/shows/show/:id/season/:season/episode/:episode),
 // laid out like the movie page: the episode's title block (IMDb rating and
@@ -28,8 +29,8 @@ import { Navigator, useScreen } from '../nav/public-api';
 })
 export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
-  stillBase = "https://image.tmdb.org/t/p/w300";
-  profileBase = "https://image.tmdb.org/t/p/w154";
+  stillBase = tmdbImageBase('still', 270);
+  profileBase = tmdbImageBase('profile', 130);
 
   show;
   imdbId:string;

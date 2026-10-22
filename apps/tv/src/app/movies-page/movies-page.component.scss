@@ -45,7 +45,7 @@
   background: var(--px-surface-control);
   color: var(--px-color-text);
   font-family: var(--px-font-book);
-  font-size: dp(16);
+  font-size: var(--px-text-label);
   white-space: nowrap;
   transition: transform var(--px-dur), background var(--px-dur), color var(--px-dur);
 

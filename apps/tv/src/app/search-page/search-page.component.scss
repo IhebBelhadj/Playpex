@@ -100,7 +100,7 @@
     color: var(--px-color-text);
     border-radius: dp(8);
     transition: all var(--px-dur);
-    font-size: dp(16);
+    font-size: var(--px-text-label);
   }
 
   .focused {
@@ -112,7 +112,7 @@
 }
 .inputValue {
   width: 100%;
-  font-size: dp(26);
+  font-size: var(--px-text-headline);
   background: none;
   border: none;
   width: dp(700);
@@ -123,7 +123,7 @@
   font-family: var(--px-font-book);
   opacity: .6;
   letter-spacing: dp(1);
-  font-size: dp(22);
+  font-size: var(--px-text-heading);
 }
 
 // ── filters ────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@
     background: var(--px-surface-control);
     color: var(--px-color-text-secondary);
     font-family: var(--px-font-book);
-    font-size: dp(15);
+    font-size: var(--px-text-label);
     transition: all var(--px-dur);
 
     &.selected {
@@ -168,7 +168,7 @@
 
   .searchNote {
     font-family: var(--px-font-book);
-    font-size: dp(17);
+    font-size: var(--px-text-label);
     opacity: .7;
     margin: 0;
   }
@@ -178,7 +178,7 @@
 
     .sectionTitle {
       font-family: var(--px-font-book);
-      font-size: dp(16);
+      font-size: var(--px-text-label);
       letter-spacing: dp(.25);
       opacity: .9;
     }
@@ -239,7 +239,7 @@
       border-radius: dp(3);
       background: var(--px-surface-badge);
       font-family: var(--px-font-bold);
-      font-size: dp(11);
+      font-size: var(--px-text-tiny);
       letter-spacing: dp(.5);
     }
   }
@@ -248,7 +248,7 @@
     max-width: 100%;
     margin-top: dp(14);
     font-family: var(--px-font-book);
-    font-size: dp(15);
+    font-size: var(--px-text-label);
     opacity: .75;
     white-space: nowrap;
     overflow: hidden;
@@ -259,7 +259,7 @@
     min-height: dp(17);
     margin-top: dp(3);
     font-family: var(--px-font-light);
-    font-size: dp(14);
+    font-size: var(--px-text-small);
     opacity: .4;
   }
 

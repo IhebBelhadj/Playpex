@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { defaultIfEmpty } from 'rxjs';
+import { catchError, defaultIfEmpty, map, Observable, of, switchMap } from 'rxjs';
+import { MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
 import { PlaybackService } from './playback.service';
 import { TorrentService } from './torrent.service';
@@ -19,6 +20,12 @@ export interface EpisodeTarget {
   episode: any;              // TMDB episode (episode_number, name, air_date, runtime, upcoming)
 }
 
+// The player's "Up next": the episode and the release that would play
+export interface NextEpisode extends EpisodeTarget {
+  code: string;              // S01E02
+  torrent: any | null;       // best match (null: none found, or not looked up yet)
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -34,6 +41,7 @@ export class EpisodePlaybackService {
     private library:LibraryService,
     private playChoice:PlayChoiceService,
     private playback:PlaybackService,
+    private movies:MoviesService,
   ) { }
 
   static code(season:number, episode:number):string {
@@ -85,6 +93,63 @@ export class EpisodePlaybackService {
     });
   }
 
+  // ── the next episode (the player's "Up next") ────────────────────────────
+
+  // The episode after `season` / `episode`: the next one of its season, else
+  // the first of the following season; null when there is none that has aired
+  next(tmdbId:number, season:number, episode:number, imdbId?:string):Observable<NextEpisode | null> {
+    let aired = ep => !!ep?.['air_date'] && new Date(ep['air_date']) <= new Date();
+    return this.movies.getTvDetails(tmdbId).pipe(
+      switchMap((show:any) => this.movies.getTvSeason(tmdbId, season).pipe(
+        switchMap((current:any) => {
+          let ep = (current['episodes'] || []).find(e => e['episode_number'] == episode + 1);
+          if (ep) return of({ season, ep });
+          let following = (show['seasons'] || [])
+            .map(x => x['season_number'])
+            .filter(n => n > season)
+            .sort((a, b) => a - b)[0];
+          if (following === undefined) return of(null);
+          return this.movies.getTvSeason(tmdbId, following).pipe(
+            map((next:any) => ({ season: following, ep: (next['episodes'] || [])[0] })),
+          );
+        }),
+        map(found => {
+          if (!found?.ep || !aired(found.ep)) return null;
+          return {
+            show,
+            imdbId: imdbId || show['external_ids']?.['imdb_id'],
+            season: found.season,
+            episode: found.ep,
+            code: EpisodePlaybackService.code(found.season, found.ep['episode_number']),
+            torrent: null,
+          } as NextEpisode;
+        }),
+      )),
+      catchError(() => of(null)),
+    );
+  }
+
+  // Its best release (the server's ranking; the first that plays here when
+  // the ranking has one), looked up ahead so "Play next" starts at once
+  bestTorrent(next:NextEpisode):Observable<any | null> {
+    if (!next.imdbId) return of(null);
+    return this.torrentService.findEpisodeTorrents(next.imdbId, next.show['name'], next.season, next.episode['episode_number']).pipe(
+      map(result => result.torrents.find(t => t['playable'] !== false && t['audio'] != 'unsupported') || result.torrents[0] || null),
+      catchError(() => of(null)),
+    );
+  }
+
+  // From the player: straight to that release, no picker, from the next
+  // episode's saved position if it has one, in place of the current player
+  playNext(next:NextEpisode) {
+    if (!next.torrent) return;
+    let key = { mediaType: 'tv' as const, tmdbId: Number(next.show['id']), season: next.season, episode: next.episode['episode_number'] };
+    this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
+      let resume = state.resume;
+      this.start(next, next.code, next.torrent, resume ? resume.positionS : 0, true);
+    });
+  }
+
   private findAndPlay(target:EpisodeTarget, code:string, startAt?:number) {
     if (!target.imdbId) {
       this.notificationService.sendNotification("error", "This show has no IMDb id, so torrents can't be looked up");
@@ -111,7 +176,7 @@ export class EpisodePlaybackService {
       });
   }
 
-  private start(target:EpisodeTarget, code:string, torrent, startAt?:number) {
+  private start(target:EpisodeTarget, code:string, torrent, startAt?:number, replace = false) {
     let ep = target.episode;
     this.playback.play({
       title: target.show['name'],
@@ -127,6 +192,6 @@ export class EpisodePlaybackService {
       artwork: LibraryService.artworkOf(target.show),
       startAt,
       adult: !!target.show['adult'],
-    });
+    }, { replace });
   }
 }

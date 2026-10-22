@@ -2,6 +2,7 @@ import { AdultBrowseComponent } from '../adult-browse/adult-browse.component';
 import { AdultTitleComponent } from '../adult-title/adult-title.component';
 import { AdultService } from '../adult.service';
 import { ConnectPageComponent } from '../connect-page/connect-page.component';
+import { DisplaySetupComponent } from '../display-setup/display-setup.component';
 import { EpisodePageComponent } from '../episode-page/episode-page.component';
 import { MovieOptionsComponent } from '../movie-options/movie-options.component';
 import { MoviesPageComponent } from '../movies-page/movies-page.component';
@@ -12,6 +13,7 @@ import { ProfileEditorComponent } from '../profile-editor/profile-editor.compone
 import { ProfilePickerComponent } from '../profile-picker/profile-picker.component';
 import { ReleasesPageComponent } from '../releases-page/releases-page.component';
 import { SearchPageComponent } from '../search-page/search-page.component';
+import { SettingsPageComponent } from '../settings-page/settings-page.component';
 import { ShowOptionsComponent } from '../show-options/show-options.component';
 import { WatchlistPageComponent } from '../watchlist-page/watchlist-page.component';
 import { YoutubeComponent } from '../youtube/youtube.component';
@@ -31,6 +33,16 @@ const ADULT = { accent: 'adult' as const };
 
 // ── roots ────────────────────────────────────────────────────────────────────
 
+// How big the UI is on this screen: the first start on a device
+// (DisplayGuard), before the server and the profiles; Settings changes it later
+defineScreen({
+  id: 'core.display',
+  path: 'display',
+  component: DisplaySetupComponent,
+  kind: 'root',
+  chrome: { ...FULL_SCREEN, backButton: false },
+});
+
 // Which server: shown when there is none (ServerGuard), and from the menu.
 // Payload: { reason, code } when the server refused this device
 defineScreen({
@@ -38,17 +50,18 @@ defineScreen({
   path: 'connect',
   component: ConnectPageComponent,
   kind: 'root',
+  requires: ['display'],
   chrome: { ...FULL_SCREEN, backButton: false },
 });
 
 // "Who's watching?": the start page; everything else needs a profile, so
-// `server` here covers the app
+// `display` and `server` here cover the app
 defineScreen({
   id: 'core.profiles',
   path: 'profiles',
   component: ProfilePickerComponent,
   kind: 'root',
-  requires: ['server'],
+  requires: ['display', 'server'],
   chrome: { ...FULL_SCREEN, backButton: false },
 });
 
@@ -189,6 +202,16 @@ defineScreen({
   chrome: ADULT,
 });
 
+// This device's settings (for now: the display size)
+defineScreen({
+  id: 'core.settings',
+  path: 'settings',
+  component: SettingsPageComponent,
+  kind: 'section',
+  requires: ['profile'],
+  menu: { label: 'Settings', icon: 'settings', order: 60 },
+});
+
 // "Find releases" of a movie / show; payload: the ReleasesOrigin
 defineScreen({
   id: 'core.releases.movies',
@@ -212,10 +235,11 @@ defineScreen({
 
 // ── full screen ──────────────────────────────────────────────────────────────
 
-// Payload: the PlaybackRequest
+// Params { session } (one per playback: the next episode replaces the entry
+// with a new component); payload: the PlaybackRequest
 defineScreen({
   id: 'core.player',
-  path: 'player',
+  path: 'player/:session',
   component: PlayerPageComponent,
   kind: 'fullscreen',
   requires: ['profile'],

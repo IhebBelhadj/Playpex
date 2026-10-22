@@ -3,7 +3,7 @@
 // This install's own state (docs/server-separation-plan.md §10.1): client.json
 // in Electron's userData (~/.config/Playpex TV), never in the server's dirs.
 //
-//   { deviceId, deviceName, lastServerId,
+//   { deviceId, deviceName, lastServerId, uiScale,
 //     servers: { <server id>: { name, url, token: { storage: 'safe' | 'plain', value } | null } } }
 //
 // Device tokens are encrypted with Electron's safeStorage (Keychain, DPAPI,
@@ -15,6 +15,7 @@
 //   config.server(id) → { id, name, url, token } (token decrypted) | null
 //   config.saveServer(id, { name, url }) / config.setToken(id, token) / config.forgetToken(id) / config.forget(id)
 //   config.lastServerId() / config.setLastServerId(id)
+//   config.uiScale() / config.setUiScale(scale)   how big the UI is on this screen (null: never chosen)
 
 const { app, safeStorage } = require('electron');
 const crypto = require('crypto');
@@ -168,6 +169,26 @@ function setLastServerId(id) {
   save();
 }
 
+// How big the UI is on this device's screen (--px-ui-scale, docs/ui-system-plan.md
+// §5.1): chosen on the first start, changed in Settings. null until chosen
+const UI_SCALE_MIN = 0.5;
+const UI_SCALE_MAX = 1.5;
+
+function uiScale() {
+  const scale = load().uiScale;
+  return typeof scale === 'number' && scale >= UI_SCALE_MIN && scale <= UI_SCALE_MAX ? scale : null;
+}
+
+function setUiScale(scale) {
+  if (typeof scale !== 'number' || !(scale >= UI_SCALE_MIN && scale <= UI_SCALE_MAX)) {
+    throw new Error('UI scale out of range');
+  }
+  load();
+  data.uiScale = Math.round(scale * 100) / 100;
+  save();
+  return data.uiScale;
+}
+
 // ids of the servers this device holds a token for
 function pairedIds() {
   load();
@@ -187,5 +208,7 @@ module.exports = {
   forget,
   lastServerId,
   setLastServerId,
+  uiScale,
+  setUiScale,
   pairedIds
 };

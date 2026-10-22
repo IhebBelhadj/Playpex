@@ -1,5 +1,5 @@
-<div class="px-panel" [pxSection]="id" [trap]="true" [attr.data-level]="level">
-  <div class="px-panel-frame" [class.start]="align == 'start'" [style.width]="width ? dp(width) : null">
+<div class="px-panel" [pxSection]="id" [trap]="true" [attr.data-level]="level" [class.end]="edge == 'end'">
+  <div class="px-panel-frame" [class.start]="align == 'start' || edge == 'end'" [style.width]="width ? dp(width) : null">
     <h2 class="px-panel-title" *ngIf="title">{{ title }}</h2>
     <ng-content></ng-content>
   </div>

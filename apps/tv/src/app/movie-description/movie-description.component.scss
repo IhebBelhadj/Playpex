@@ -2,14 +2,14 @@
 
 .name {
   font-family: var(--px-font-bold);
-  font-size: 2.8rem;
+  font-size: var(--px-text-hero);
   margin-bottom: dp(0);
   max-width: dp(800);
 }
 
 .movieDesciption {
   max-width: dp(700);
-  font-size: 1.2rem;
+  font-size: var(--px-text-body);
   font-family: var(--px-font-book);
   line-height: dp(39);
   letter-spacing: dp(1);
@@ -25,7 +25,7 @@
 
 .year {
   font-family: var(--px-font-light);
-  font-size: dp(22);
+  font-size: var(--px-text-heading);
   margin: 0;
   margin-right: dp(15);
 }
@@ -40,7 +40,7 @@
     margin: dp(6);
     background: var(--px-surface-chip);
     border-radius: dp(5);
-    font-size: dp(12);
+    font-size: var(--px-text-tiny);
     opacity: .7;
     margin: dp(4);
   }
@@ -68,7 +68,7 @@
   padding: dp(8);
   background: var(--px-surface-chip);
   border-radius: dp(5);
-  font-size: dp(12);
+  font-size: var(--px-text-tiny);
   opacity: .7;
   margin: dp(4);
 }

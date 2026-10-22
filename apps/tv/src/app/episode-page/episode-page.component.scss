@@ -23,7 +23,7 @@
   align-items: baseline;
   gap: dp(18);
   margin: 0;
-  font-size: dp(22);
+  font-size: var(--px-text-heading);
 
   .showName {
     font-family: var(--px-font-book);
@@ -37,7 +37,7 @@
 
 .name {
   font-family: var(--px-font-bold);
-  font-size: 2.8rem;
+  font-size: var(--px-text-hero);
   font-weight: normal;
   line-height: 1.1;
   margin: dp(10) 0 dp(18);
@@ -68,12 +68,12 @@
   strong {
     font-family: var(--px-font-bold);
     font-weight: normal;
-    font-size: dp(20);
+    font-size: var(--px-text-body);
   }
 
   .votes {
     font-family: var(--px-font-light);
-    font-size: dp(14);
+    font-size: var(--px-text-small);
     opacity: .6;
   }
 }
@@ -88,7 +88,7 @@
 
 .aired {
   font-family: var(--px-font-light);
-  font-size: dp(20);
+  font-size: var(--px-text-body);
   margin: 0 dp(4);
 }
 
@@ -97,7 +97,7 @@
   align-items: center;
   gap: dp(6);
   font-family: var(--px-font-light);
-  font-size: dp(13);
+  font-size: var(--px-text-small);
   padding: dp(8) dp(10);
   background: var(--px-surface-chip);
   border-radius: dp(5);
@@ -110,7 +110,7 @@
 
 .overview {
   max-width: dp(700);
-  font-size: 1.2rem;
+  font-size: var(--px-text-body);
   font-family: var(--px-font-book);
   line-height: dp(39);
   letter-spacing: dp(1);
@@ -136,7 +136,7 @@
 
   dt {
     font-family: var(--px-font-light);
-    font-size: dp(14);
+    font-size: var(--px-text-small);
     opacity: .5;
     margin-bottom: dp(4);
   }
@@ -144,7 +144,7 @@
   dd {
     margin: 0;
     font-family: var(--px-font-book);
-    font-size: dp(16);
+    font-size: var(--px-text-label);
     opacity: .85;
   }
 }
@@ -301,7 +301,7 @@
     background: var(--px-surface-badge);
     color: var(--px-color-text);
     font-family: var(--px-font-book);
-    font-size: dp(12);
+    font-size: var(--px-text-tiny);
     padding: dp(4) dp(8);
     border-radius: dp(4);
   }
@@ -344,7 +344,7 @@
     gap: dp(10);
     font-family: var(--px-font-book);
     opacity: .8;
-    font-size: dp(16);
+    font-size: var(--px-text-label);
 
     .number {
       flex: none;
@@ -366,7 +366,7 @@
     gap: dp(14);
     margin-top: dp(6);
     font-family: var(--px-font-light);
-    font-size: dp(14);
+    font-size: var(--px-text-small);
     color: var(--px-color-text-dim);
   }
 
@@ -433,7 +433,7 @@
 
   .guestName {
     font-family: var(--px-font-book);
-    font-size: dp(16);
+    font-size: var(--px-text-label);
     opacity: .8;
     margin-top: dp(18);
     max-width: dp(140);
@@ -442,7 +442,7 @@
 
   .character {
     font-family: var(--px-font-light);
-    font-size: dp(14);
+    font-size: var(--px-text-small);
     opacity: .45;
     margin-top: dp(4);
     max-width: dp(140);

@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AdultGuard, ProfileGuard } from './profile.guard';
+import { DisplayGuard } from './display.guard';
 import { ServerGuard } from './server.guard';
 import { SCREENS } from './nav/screen-registry';
 import './nav/screens';
@@ -9,7 +10,7 @@ import './nav/screens';
 // become parent routes, `requires` become guards. Nothing navigates with the
 // router directly: the Navigator does (src/app/nav).
 const routes = SCREENS.buildRoutes(
-  { server: ServerGuard, profile: ProfileGuard, adult: AdultGuard },
+  { display: DisplayGuard, server: ServerGuard, profile: ProfileGuard, adult: AdultGuard },
   [{ path: '', redirectTo: '/profiles', pathMatch: 'full' }],
 );
 

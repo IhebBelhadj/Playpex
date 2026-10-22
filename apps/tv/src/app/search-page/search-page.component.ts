@@ -5,6 +5,7 @@ import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { ProfilesService } from '../profiles.service';
 import { Navigator, useScreen } from '../nav/public-api';
+import { tmdbImageBase } from '../ui/public-api';
 
 interface Filter {
   id: string;
@@ -32,7 +33,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     { id : 'adult' ,  label : '18+' },        // never offered to kids profiles
   ];
 
-  imgBase = "https://image.tmdb.org/t/p/w185";
+  imgBase = tmdbImageBase('poster', 150);
   state:SearchState = EMPTY_SEARCH;
   loading = false;
 

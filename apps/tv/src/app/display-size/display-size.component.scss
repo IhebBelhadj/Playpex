@@ -1,0 +1,12 @@
+@use 'px' as *;
+
+.sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(14);
+}
+
+.percent {
+  margin-left: dp(10);
+  opacity: .6;
+}

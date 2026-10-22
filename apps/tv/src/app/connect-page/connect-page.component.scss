@@ -40,14 +40,14 @@
 .heading {
   font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: dp(48);
+  font-size: var(--px-text-hero);
   line-height: 1.1;
   margin: 0 0 dp(14);
 }
 
 .hint {
   font-family: var(--px-font-light);
-  font-size: dp(20);
+  font-size: var(--px-text-body);
   line-height: 1.45;
   color: var(--px-color-text-dim);
   max-width: 34em;
@@ -84,7 +84,7 @@
     flex: 1;
     min-width: 0;
     font-family: var(--px-font-bold);
-    font-size: dp(38);
+    font-size: var(--px-text-large);
     line-height: 1.15;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -97,7 +97,7 @@
     gap: dp(10);
     flex: none;
     font-family: var(--px-font-book);
-    font-size: dp(18);
+    font-size: var(--px-text-lead);
     color: var(--px-color-text-dim);
 
     // a dot before "Watching now", "Paired", "This computer"
@@ -211,7 +211,7 @@
     top: dp(14);
     left: 0;
     font-family: var(--px-font-book);
-    font-size: dp(16);
+    font-size: var(--px-text-label);
     color: var(--px-color-text-dim);
     white-space: nowrap;
   }
@@ -234,7 +234,7 @@
 .nothingFound {
   flex: none;
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   line-height: 1.45;
   color: var(--px-color-text-dim);
   margin: dp(48) 0 dp(-24);
@@ -247,7 +247,7 @@
 
 .browserNote {
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   line-height: 1.45;
   color: var(--px-color-text-dim);
   margin: 0 0 dp(28);
@@ -276,7 +276,7 @@
   background: transparent;
   color: var(--px-color-text-soft);
   font-family: var(--px-font-book);
-  font-size: dp(19);
+  font-size: var(--px-text-body);
 
   &.primary {
     background: var(--px-surface-fill-soft);
@@ -295,7 +295,7 @@
 .message {
   flex: none;
   font-family: var(--px-font-book);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   line-height: 1.4;
   color: var(--px-color-caution);
   margin: dp(24) 0 0;
@@ -319,7 +319,7 @@
 
   .detailName {
     font-family: var(--px-font-bold);
-    font-size: dp(30);
+    font-size: var(--px-text-title);
     line-height: 1.2;
     margin-bottom: dp(14);
     overflow-wrap: anywhere;
@@ -327,14 +327,14 @@
 
   .detailWhere {
     font-family: var(--px-font-book);
-    font-size: dp(17);
+    font-size: var(--px-text-label);
     line-height: 1.5;
     color: var(--px-color-text-dim);
   }
 
   .detailText {
     font-family: var(--px-font-light);
-    font-size: dp(19);
+    font-size: var(--px-text-body);
     line-height: 1.5;
     color: var(--px-color-text-secondary);
     margin-top: dp(22);
@@ -352,7 +352,7 @@
     margin-top: auto;
     padding-top: dp(32);
     font-family: var(--px-font-bold);
-    font-size: dp(21);
+    font-size: var(--px-text-body);
     color: var(--px-color-text-soft);
 
     .key {
@@ -366,7 +366,7 @@
       border: dp(2) solid var(--px-color-outline);
       border-radius: dp(17);
       font-family: var(--px-font-book);
-      font-size: dp(14);
+      font-size: var(--px-text-small);
       color: var(--px-color-text-dim);
     }
   }
@@ -383,7 +383,7 @@
   gap: dp(6);
   margin: 0;
   font-family: var(--px-font-light);
-  font-size: dp(14);
+  font-size: var(--px-text-small);
   color: var(--px-color-text-faint);
 
   .plainWarning {
@@ -406,7 +406,7 @@
 
   .panelTitle {
     font-family: var(--px-font-book);
-    font-size: dp(34);
+    font-size: var(--px-text-large);
     margin: 0 0 dp(32);
   }
 }
@@ -427,7 +427,7 @@
     border: dp(2) solid transparent;
     background: var(--px-surface-solid-2);
     font-family: var(--px-font-bold);
-    font-size: dp(58);
+    font-size: var(--px-text-display);
     color: var(--px-color-text);
     transition: border-color var(--px-dur-slow) ease, color var(--px-dur-slow) ease, opacity var(--px-dur-slow) ease;
   }
@@ -480,7 +480,7 @@
   margin: 0;
   padding: 0 0 0 dp(26);
   font-family: var(--px-font-light);
-  font-size: dp(19);
+  font-size: var(--px-text-body);
   line-height: 1.45;
   color: var(--px-color-text-secondary);
 
@@ -515,7 +515,7 @@
 
 .pairStatus {
   font-family: var(--px-font-book);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   color: var(--px-color-text-dim);
   margin: dp(30) 0 dp(26);
 

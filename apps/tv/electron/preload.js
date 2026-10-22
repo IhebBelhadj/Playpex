@@ -46,5 +46,9 @@ contextBridge.exposeInMainWorld('playpex', {
     install: () => ipcRenderer.invoke('updater:install'),
     onChange: on('updater:state')
   },
+  display: {
+    get: () => ipcRenderer.invoke('display:get'),
+    set: scale => ipcRenderer.invoke('display:set', scale)
+  },
   power: action => ipcRenderer.invoke('power', action)
 });

@@ -72,7 +72,7 @@
   z-index: var(--px-z-clock);
   font-family: var(--px-font-book);
   letter-spacing: dp(1);
-  font-size: dp(25);
+  font-size: var(--px-text-headline);
   text-shadow: var(--px-shadow-text);
 }
 

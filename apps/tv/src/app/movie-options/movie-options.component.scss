@@ -111,7 +111,7 @@
 
         .name {
           font-family: var(--px-font-light);
-          font-size: dp(16);
+          font-size: var(--px-text-label);
           text-align: center;
           opacity: .7;
           margin-top: dp(20);
@@ -133,13 +133,13 @@
     .name {
       font-family: var(--px-font-book);
       opacity: .75;
-      font-size: dp(16);
+      font-size: var(--px-text-label);
     }
 
     .year {
       font-family: var(--px-font-light);
       opacity: .4;
-      font-size: dp(14);
+      font-size: var(--px-text-small);
     }
 
     .displayedElem {

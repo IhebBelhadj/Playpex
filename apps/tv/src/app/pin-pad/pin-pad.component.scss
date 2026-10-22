@@ -16,13 +16,13 @@
 
 .pinTitle {
   font-family: var(--px-font-bold);
-  font-size: dp(34);
+  font-size: var(--px-text-large);
   margin: 0;
 }
 
 .pinSubtitle {
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   color: var(--px-color-text-secondary);
   margin: dp(12) 0 0;
 }
@@ -68,7 +68,7 @@
   min-height: dp(24);
   margin: dp(18) 0 dp(10);
   font-family: var(--px-font-book);
-  font-size: dp(17);
+  font-size: var(--px-text-label);
   color: var(--px-color-error);
 }
 
@@ -85,11 +85,11 @@
   background: var(--px-surface-1);
   color: var(--px-color-text-soft);
   font-family: var(--px-font-book);
-  font-size: dp(26);
+  font-size: var(--px-text-headline);
   transition: transform var(--px-dur-quick), background var(--px-dur-quick);
 
   &.textKey {
-    font-size: dp(16);
+    font-size: var(--px-text-label);
   }
 
   img {

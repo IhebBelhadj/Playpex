@@ -110,6 +110,12 @@ export interface PlaypexBridge {
     install():Promise<boolean>;
     onChange(listener:(state:UpdaterState) => void):Unsubscribe;
   };
+  display:{
+    /** scale: how big the UI is on this screen (--px-ui-scale); null until chosen */
+    get():Promise<{ scale:number | null }>;
+    /** stores it in client.json; resolves with the stored value */
+    set(scale:number):Promise<number>;
+  };
   power(action:string):Promise<void>;
 }
 

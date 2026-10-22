@@ -12,6 +12,14 @@
   backdrop-filter: blur(dp(6));
   color: var(--px-color-text);
 
+  // docked: the frame against the right edge, the rest of the screen visible
+  &.end {
+    justify-content: flex-end;
+    align-items: stretch;
+    background: var(--px-gradient-panel-end);
+    backdrop-filter: none;
+  }
+
   &[data-level="modal"] { z-index: var(--px-z-modal); }
   &[data-level="alert"] { z-index: var(--px-z-alert); }
   &[data-level="system"] { z-index: var(--px-z-system); }
@@ -27,6 +35,12 @@
 
   &.start {
     align-items: stretch;
+  }
+
+  .end > & {
+    height: 100vh;
+    padding: dp(48) dp(40) dp(32);
+    background: var(--px-surface-pane-solid);
   }
 }
 

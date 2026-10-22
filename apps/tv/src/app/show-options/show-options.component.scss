@@ -116,7 +116,7 @@
       padding: dp(10) dp(22);
       margin-right: dp(12);
       font-family: var(--px-font-book);
-      font-size: dp(16);
+      font-size: var(--px-text-label);
       opacity: .7;
       transition: all var(--px-dur-fast);
     }
@@ -129,7 +129,7 @@
     // the season's IMDb mean
     .seasonRating {
       font-family: var(--px-font-bold);
-      font-size: dp(13);
+      font-size: var(--px-text-small);
       opacity: .6;
     }
 
@@ -180,7 +180,7 @@
         background: var(--px-surface-badge);
         color: var(--px-color-text);
         font-family: var(--px-font-book);
-        font-size: dp(12);
+        font-size: var(--px-text-tiny);
         padding: dp(4) dp(8);
         border-radius: dp(4);
       }
@@ -225,7 +225,7 @@
         background: var(--px-surface-badge);
         color: var(--px-color-text);
         font-family: var(--px-font-book);
-        font-size: dp(14);
+        font-size: var(--px-text-small);
 
         img {
           width: dp(28);
@@ -240,7 +240,7 @@
         gap: dp(10);
         font-family: var(--px-font-book);
         opacity: .8;
-        font-size: dp(16);
+        font-size: var(--px-text-label);
 
         .title {
           min-width: 0;
@@ -262,7 +262,7 @@
         gap: dp(14);
         margin-top: dp(6);
         font-family: var(--px-font-light);
-        font-size: dp(14);
+        font-size: var(--px-text-small);
         color: var(--px-color-text-dim);
       }
 

@@ -28,13 +28,13 @@
 .heading {
   font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: dp(54);
+  font-size: var(--px-text-display);
   margin: 0 0 dp(12);
 }
 
 .hint {
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   color: var(--px-color-text-muted);
   max-width: dp(560);
   text-align: center;
@@ -101,14 +101,14 @@
     background: var(--px-surface-badge);
     color: var(--px-color-text);
     font-family: var(--px-font-bold);
-    font-size: dp(13);
+    font-size: var(--px-text-small);
     letter-spacing: dp(1);
   }
 
   .name {
     margin-top: dp(16);
     font-family: var(--px-font-book);
-    font-size: dp(21);
+    font-size: var(--px-text-body);
     max-width: dp(160);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -155,7 +155,7 @@
   background: transparent;
   color: var(--px-color-text-dim);
   font-family: var(--px-font-book);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   letter-spacing: dp(3);
   text-transform: uppercase;
   transition: all var(--px-dur-fast) ease;

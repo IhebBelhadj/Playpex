@@ -13,7 +13,7 @@
   background: var(--px-surface-1);
   color: var(--px-color-text-secondary);
   font-family: var(--px-font-book);
-  font-size: dp(15);
+  font-size: var(--px-text-label);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

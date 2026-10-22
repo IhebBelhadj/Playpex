@@ -7,7 +7,10 @@
 //
 //   npm run screens -w apps/tv                          builds, then shoots into .screens/latest
 //   npx electron scripts/screens.js [--out .screens/baseline] [--size 1920x1080]   (default 1440x810, the design)
-//                                   [--only movies,movie] [--settle 4000]
+//                                   [--only movies,movie] [--settle 4000] [--scale 0.8]
+//
+// --scale: the UI scale of the shots (client.json uiScale, ui/display.ts;
+// default 0.8, the app's default), whatever Playpex TV itself uses.
 //
 // Overlay shots (torrent picker, play choice, error, connection lost) open
 // over the screen before them: `--only movie,torrent-picker`.
@@ -41,7 +44,9 @@ const SHOTS = [
   { name: 'releases', run: "releases('movie', 'Heat 1995', 'Heat', 'tt0113277')", settle: 6000 },
   { name: 'adult-browse', run: "reset({ screen: 'core.adult.browse' })", settle: 6000 },
   { name: 'adult-releases', run: "reset({ screen: 'core.adult.releases' })", settle: 6000 },
+  { name: 'settings', run: "reset({ screen: 'core.settings' })", settle: 1500 },
   { name: 'power', run: "open({ screen: 'core.power' })", settle: 1500 },
+  { name: 'display', run: "reset({ screen: 'core.display' })", settle: 1500 },
   { name: 'gallery', run: "reset({ screen: 'core.dev.gallery' })", settle: 1500, optional: true },
   { name: 'connect', run: "reset({ screen: 'core.connect' })" },
 ];
@@ -55,6 +60,7 @@ const size = option('size', '1440x810');
 const out = path.resolve(ROOT, option('out', '.screens/latest'));
 const only = option('only', '').split(',').filter(Boolean);
 const settle = +option('settle', 3500);
+const scale = +option('scale', 0.8);
 
 process.env.PLAYPEX_TV_INDEX = path.join(ROOT, 'dist', 'screens', 'index.html');
 process.env.PLAYPEX_TV_SHOTS = size;
@@ -68,9 +74,13 @@ if (!fs.existsSync(process.env.PLAYPEX_TV_INDEX)) {
 const userData = path.join(os.tmpdir(), 'playpex-tv-screens');
 const clientJson = path.join(app.getPath('appData'), 'Playpex TV', 'client.json');
 fs.mkdirSync(userData, { recursive: true });
-if (fs.existsSync(clientJson)) {
-  fs.copyFileSync(clientJson, path.join(userData, 'client.json'));
-}
+let record = {};
+try {
+  record = JSON.parse(fs.readFileSync(clientJson, 'utf8'));
+} catch (e) { }
+// a fixed size, and no first-start size screen in front of every shot
+record.uiScale = scale;
+fs.writeFileSync(path.join(userData, 'client.json'), JSON.stringify(record, null, 2), { mode: 0o600 });
 app.setPath('userData', userData);
 // sizes in real pixels: on a scaled display (125 %) the window would be
 // measured in larger units and clamped to the screen

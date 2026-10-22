@@ -17,7 +17,7 @@
   margin-bottom: dp(26);
   border-bottom: dp(2) solid var(--px-white);
   font-family: var(--px-font-book);
-  font-size: dp(30);
+  font-size: var(--px-text-title);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -58,7 +58,7 @@
   background: var(--px-surface-1);
   color: var(--px-color-text-soft);
   font-family: var(--px-font-book);
-  font-size: dp(20);
+  font-size: var(--px-text-body);
   transition: transform var(--px-dur-quick), background var(--px-dur-quick);
 
   img {

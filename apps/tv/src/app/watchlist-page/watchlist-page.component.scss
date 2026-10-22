@@ -29,7 +29,7 @@
 .name {
   font-family: var(--px-font-bold);
   font-weight: normal;
-  font-size: 2.8rem;
+  font-size: var(--px-text-hero);
   margin: .67em 0 0;
   max-width: dp(800);
   white-space: nowrap;
@@ -47,13 +47,13 @@
 // The rest mirrors movie-description: year, chips, score, genres, overview
 .year {
   font-family: var(--px-font-light);
-  font-size: dp(22);
+  font-size: var(--px-text-heading);
   margin: 0;
 }
 
 .chip {
   font-family: var(--px-font-light);
-  font-size: dp(12);
+  font-size: var(--px-text-tiny);
   padding: dp(8);
   border-radius: dp(5);
   background: var(--px-surface-chip);
@@ -76,14 +76,14 @@
 // Where this profile is with the title
 .status {
   font-family: var(--px-font-book);
-  font-size: dp(19);
+  font-size: var(--px-text-body);
   margin: dp(20) 0 0;
 }
 
 .overview {
   max-width: dp(700);
   font-family: var(--px-font-book);
-  font-size: 1.2rem;
+  font-size: var(--px-text-body);
   line-height: dp(36);
   letter-spacing: dp(1);
   opacity: .62;
@@ -93,7 +93,7 @@
 .note {
   max-width: dp(640);
   font-family: var(--px-font-book);
-  font-size: 1.2rem;
+  font-size: var(--px-text-body);
   line-height: 1.7;
   color: var(--px-color-text-muted);
   margin: dp(18) 0 0;
@@ -121,7 +121,7 @@
   background: transparent;
   color: var(--px-color-text-muted);
   font-family: var(--px-font-book);
-  font-size: dp(17);
+  font-size: var(--px-text-label);
   transition: all var(--px-dur-fast);
 
   &.focused {
@@ -160,7 +160,7 @@
 .sectionTitle {
   font-family: var(--px-font-display);
   font-weight: normal;
-  font-size: dp(16);
+  font-size: var(--px-text-label);
   opacity: .8;
 }
 
@@ -229,7 +229,7 @@
   justify-content: center;
   padding: dp(14);
   font-family: var(--px-font-book);
-  font-size: dp(16);
+  font-size: var(--px-text-label);
   color: var(--px-color-text-muted);
   text-align: center;
 }

@@ -11,13 +11,13 @@
 // as the option's label
 .quality {
   font-family: var(--px-font-bold);
-  font-size: dp(20);
+  font-size: var(--px-text-body);
   margin-right: dp(4);
 }
 
 .tag {
   font-family: var(--px-font-light);
-  font-size: dp(13);
+  font-size: var(--px-text-small);
   padding: dp(3) dp(7);
   border-radius: var(--px-radius-s);
   background: var(--px-option-fill);
@@ -33,13 +33,13 @@
   display: flex;
   gap: dp(14);
   font-family: var(--px-font-book);
-  font-size: dp(14);
+  font-size: var(--px-text-small);
   opacity: .75;
 }
 
 .name {
   font-family: var(--px-font-light);
-  font-size: dp(13);
+  font-size: var(--px-text-small);
   opacity: .5;
   max-width: 100%;
   overflow: hidden;
@@ -49,6 +49,6 @@
 
 .warning {
   font-family: var(--px-font-light);
-  font-size: dp(13);
+  font-size: var(--px-text-small);
   color: var(--px-option-caution);
 }

@@ -1,6 +1,6 @@
 # UI system (tokens, components, layouts, slots): plan
 
-Status (2026-10-21): **steps 0 and 1 done** (harness, tokens); **step 2 (overlays) built, verification unfinished** (see "Step 2 notes": what's left before it counts as done). Decisions A–J (§11) taken: the recommended defaults, except **G: rem, not px** (every length is `dp(n)`, the UI scales with the screen); the amber change of §6 approved. Read the root `CLAUDE.md`, `apps/tv/src/app/CLAUDE.md`, `docs/movement-system-plan.md` and `docs/navigation-system-plan.md` first; this plan assumes them. It builds on the navigation system as it is in the code (`apps/tv/src/app/nav/`, `public-api.ts`, `NAV_API_VERSION = 1`: screens, navigator, layers, `pxSelect`; its plan's status line still reads "proposed", and its step 7, the example plugin and `docs/tv-plugins.md`, isn't done). The movement system decides how focus moves, the navigation system which screen is shown and who gets an input; this plan covers **what a screen is built from.**
+Status (2026-10-22): **steps 0 and 1 done** (harness, tokens); **step 2 (overlays) built, verification unfinished** (see "Step 2 notes": what's left before it counts as done); **review items of 2026-10-22 done** (§0: per-device UI scale with a first-start screen and Settings, root size floor, the type scale, image sizes, reduced motion for GSAP, `check:ui`). Decisions A–J (§11) taken: the recommended defaults, except **G: rem, not px** (every length is `dp(n)`, the UI scales with the screen); the amber change of §6 approved. Read the root `CLAUDE.md`, `apps/tv/src/app/CLAUDE.md`, `docs/movement-system-plan.md` and `docs/navigation-system-plan.md` first; this plan assumes them. It builds on the navigation system as it is in the code (`apps/tv/src/app/nav/`, `public-api.ts`, `NAV_API_VERSION = 1`: screens, navigator, layers, `pxSelect`; its plan's status line still reads "proposed", and its step 7, the example plugin and `docs/tv-plugins.md`, isn't done). The movement system decides how focus moves, the navigation system which screen is shown and who gets an input; this plan covers **what a screen is built from.**
 
 ## 0. Findings and open items (2026-10-20, from writing this plan)
 
@@ -21,6 +21,25 @@ Decided by the user (2026-10-21), before step 0:
 
 Still open: correcting the navigation plan's status line (doc-only, not done).
 
+### Review of 2026-10-22 (what the plan was missing)
+
+Decided by the user: the UI scale per device, set on the first start and in Settings; a floor on the root size; the font sizes merged into a type scale now, with screenshots. Done:
+- **UI scale** (`--px-ui-scale`, §5.1 "Units"): `client.json` `uiScale` (shell: `display:get` / `display:set`, `window.playpex.display`; browser: `localStorage['playpex.uiScale']`), applied before Angular boots (`ui/display.ts` `resolveDisplay()`, awaited by `main.ts` with `resolveServer()`). Five sizes, `UI_SCALES` (Small 0.7, Medium 0.8 = default, Large 0.9, Larger 1, Largest 1.15). Chosen on the **first start** (`core.display`, `display-setup/`, behind a new requirement `display` → `DisplayGuard` on `core.connect` and `core.profiles`) and in **Settings** (`core.settings`, `settings-page/`, menu entry order 60; the placeholder menu item is gone). Both use `<display-size>` (`display-size/`): a `pxGrid` of `px-chip`s, the focused size is applied at once (the screen is the preview), Enter stores it, leaving without Enter puts the stored one back. Settings has a plain ground over the shell's backdrop.
+- **Floor**: the root size is `max(12px, …)`: dp(12) text stays ≥ 9 px on small windows (the one deliberate px, marked for `check:ui`).
+- **Type scale** (§6): 30 font sizes → 11 steps `--px-text-*` (table in §6). Measured against shots taken just before (scale 0.8, 1440 × 810): titles, overviews and the dialogs' option rows unchanged; small tags / meta lines / labels moved by 1 dp where 13 / 15 / 17 / 19 / 21 / 25 / 30 / 34 / 38 / 48 / 58 were merged.
+- **Image sizes**: `ui/images.ts` `tmdbImageBase(kind, widthDp, zoom = 1.1)` picks the smallest TMDB size covering the rendered size (root size × device pixel ratio × zoom): posters, similar titles, search results, stills, portraits (1440 × 810: w185 / w154; 4K: h632 / w500, was a fixed w154 / w342). The movie page's similar posters used the portrait base (w154) by mistake: fixed. The shell's backdrop stays w780 (it's blurred by dp(5)).
+- **Reduced motion for GSAP**: `AppComponent` sets `gsap.globalTimeline.timeScale(1000)` while `prefers-reduced-motion` is on (timelines land at once, callbacks still fire). The literal GSAP durations in 9 files stay until their components move to `ui/` (steps 3–5: `dur()` from the tokens, see §5.1).
+- **Enforcement**: `npm run check:ui` (`apps/tv/scripts/check-ui.js`) fails on colour / font / z-index / px literals and font sizes outside the scale; exceptions carry `// ui-check: allow (reason)`.
+- **Screenshot references** re-shot (scale 0.8, the type scale): `.screens/baseline` (1440 × 810), `baseline-1080`; the scale-1 sets kept as `baseline-scale1` / `baseline-1080-scale1`. `scripts/screens.js` writes `uiScale` (`--scale`, default 0.8) into its copy of `client.json` and shoots `settings` and `display` too.
+
+**Player** (2026-10-22, asked by the user with the frontend-design brief; features chosen: seek preview with hold-to-speed, next episode, subtitle size and sync): on the movement system (`pxSection="playerControls"`, `pxStack` of the timeline and a `pxGrid` of buttons; a window capture listener takes only the arrows that mean time), Angular state instead of GSAP display toggles, the subtitles panel a `px-panel` layer (new `edge="end"` variant: docked, side gradient, new tokens `--px-surface-pane-solid`, `--px-gradient-panel-end`). Signature: the timeline shows played (amber), downloaded around the playhead (`--px-timeline-loaded`) and the rest hatched (`--px-gradient-timeline-unloaded`); a scrub preview outlines its tab when it lands on the hatched part. Buttons are icons that grow into a labelled white pill when focused (new `assets/icons/next.svg`). Route `player/:session` so the next episode can replace the entry with a new component. Verified with a scratch scenario (keys on a 15 min ffmpeg test clip through `window.playpexDev.player()`): 25 checks (controls, button movement, held scrub previews without seeking then seeks once, controls-hidden scrub, OK pauses, subtitles layer + size + timing + focus back, stats, Up next card / button / dismiss) and the replace (new component, same depth, Back to the screen before). Not run: a real torrent and the next episode's real release (they'd download one); the streaming code itself is unchanged.
+
+Planned where they belong (not built):
+- Layouts and the scale (step 5): regions sized by the screen (`vh`, the menu's spread icons, rows pushed to the bottom) and content sized by the scale; at 0.8 the movies list has a taller gap above the rows. Each layout says which regions follow which.
+- Pieces in no step until now: menu, back button and clock (step 5, shell layout), profile tiles and power buttons (step 3: `px-card variant="portrait"` / `px-button`), release rows and the `/connect` server list (step 4: a `list` row variant of `px-option`), season curve and trailer (tokens only, like the player), the shell layout (step 5, `px-shell`).
+- Slots that change (step 6, §5.6): contributions return an `Observable` of models (or a value), action keys are prefixed like row keys.
+- Smaller (step 3 unless noted): `OnPush` on every primitive; `px-card` placeholder and failed-image states; ARIA roles on dialogs, options and switches; labels stay English (no i18n in this plan, §12).
+
 ## 1. Goal
 
 One shared set of UI primitives for Playpex TV that:
@@ -33,7 +52,7 @@ One shared set of UI primitives for Playpex TV that:
 
 Like the other two systems, it can be adopted **page by page**: a page not yet migrated keeps its own markup and SCSS until it's moved, and each step leaves the app looking the same.
 
-Non-goals: a visual redesign (parity first; changes are listed and decided, §6), the plugin loader (packaging, sandboxing, distribution: §12), the player's controls (a video surface with its own key handling; it gets tokens only), the dashboard (`apps/dashboard` has shadcn/ui), an Angular upgrade (works on 14.1 as installed).
+Non-goals: a visual redesign (parity first; changes are listed and decided, §6), the plugin loader (packaging, sandboxing, distribution: §12), the player's controls (planned as tokens only; redesigned on its own on 2026-10-22, see §0 "Player"), the dashboard (`apps/dashboard` has shadcn/ui), an Angular upgrade (works on 14.1 as installed).
 
 ## 2. What the UI looks like in code today
 
@@ -71,7 +90,7 @@ Tokens, or rather their absence:
 | Focus zoom | 7 different scales (1.015 … 1.13) |
 | 18+ wine accent | copied per file (`adult-browse`, `adult-title`, `releases-page`) |
 
-Other constraints the primitives must respect (from the guides): `MenuComponent` queries `.description`, `.menuItem`, `.element`, `.tabs` document-wide, so primitives must use their own prefixed class names. Flex hosts with wide rows need `min-width: 0`. Rows need padding + negative margin for the focus zoom (`16px 10px` for posters). Angular 14 has no `hostDirectives` (15+), so a component can't apply `pxItem` to its own host. Layout is designed for a fixed 1440 px viewport.
+Other constraints the primitives must respect (from the guides): `MenuComponent` queries `.description`, `.menuItem`, `.element`, `.tabs` document-wide, so primitives must use their own prefixed class names. Flex hosts with wide rows need `min-width: 0`. Rows need padding + negative margin for the focus zoom (`16px 10px` for posters). Angular 14 has no `hostDirectives` (15+), so a component can't apply `pxItem` to its own host. Layout was designed for a fixed 1440 px viewport (written in 2026-10-20; since step 1 it scales, §5.1 "Units").
 
 What it costs: changing a focus treatment, a tile or the dialog frame is an edit in 3–8 files that drift apart. A new page copies the nearest one's SCSS. A plugin would have to copy core SCSS to look native, and would break whenever that SCSS changes.
 
@@ -117,6 +136,8 @@ Names are proposals; the shapes are what matters.
 
 ### 5.1 Tokens (`styles/_tokens.scss` → `:root`)
 
+The sketch below is the proposal as written before step 1; the built names differ (roles such as `--px-surface-bg`, `--px-color-text-secondary`, `--px-color-text-muted`, the type scale `--px-text-tiny … -display`): `_tokens.scss` and the "UI system" section of `apps/tv/src/app/CLAUDE.md` are the reference.
+
 ```scss
 :root {
   // colour
@@ -151,7 +172,7 @@ Names are proposals; the shapes are what matters.
 - **Theme by screen**: `Chrome` gets `accent?: 'adult'` (`nav/screen.ts`); on `navigated` the shell sets `data-px-accent` on `.masterContainer`. The 18+ screens declare it once and lose their copied wine CSS.
 - `prefers-reduced-motion` sets the durations to 0 in one place.
 
-**Units (decision G, as built).** No `px` in stylesheets or code. `dp(n)` (`styles/_px.scss`; `dp()` in TS from `ui/public-api.ts` for GSAP tweens and inline styles) is n pixels of the 1440 × 810 design, in rem. The root font size is `min(100vw / 90, 100vh / 50.625)`: 16px on a 1440 × 810 window (identical to the old px layout), 21.33px on 1920 × 1080, 32px on 4K, and bounded by height on screens wider than 16:9 so the rows don't fall off the bottom. Form controls get `font-size: dp(13.333)` globally (the browser's fixed default didn't scale). Measured values (`getBoundingClientRect`, the movement system's offsets, `--rowArrowsY/H`) stay in px: they are already the real size.
+**Units (decision G, as built).** No `px` in stylesheets or code. `dp(n)` (`styles/_px.scss`; `dp()` in TS from `ui/public-api.ts` for GSAP tweens and inline styles) is n pixels of the 1440 × 810 design, in rem. The root font size is `min(100vw / 90, 100vh / 50.625)`: 16px on a 1440 × 810 window (identical to the old px layout), 21.33px on 1920 × 1080, 32px on 4K, and bounded by height on screens wider than 16:9 so the rows don't fall off the bottom; all of that times `--px-ui-scale` (`_tokens.scss`, 0.8 since 2026-10-21: at 1 the UI read too big, so the sizes above are now 12.8 / 17.07 / 25.6px). Full-screen frames are in `vw` / `vh`, so a smaller scale shows more content, not a smaller frame. The scale is **per device** (`client.json` `uiScale`, `ui/display.ts`): chosen on the first start (`core.display`) and in Settings; the token's 0.8 is the default before one is stored. The root size never goes under **12 real pixels** (`max(12px, …)`). Images follow the same arithmetic: `tmdbImageBase()` (`ui/images.ts`). TS durations: `dur(token)` reading `--px-dur-*` is planned with the primitives (step 3); until then GSAP is slowed to instant globally for reduced motion (`AppComponent`). Form controls get `font-size: dp(13.333)` globally (the browser's fixed default didn't scale). Measured values (`getBoundingClientRect`, the movement system's offsets, `--rowArrowsY/H`) stay in px: they are already the real size.
 
 ### 5.2 Atoms
 
@@ -197,8 +218,8 @@ Regions: eyebrow (show name on an episode), title, meta line (`MetaItem[]`: text
 **`px-dialog`** and **`px-panel`**: the overlay frames, wired to `LayerStack`:
 
 ```html
-<px-dialog id="playChoice" [open]="request" [priority]="LAYER_PRIORITY.modal"
-           title="Resume ‘Heat’?" subtitle="…" (closed)="…">
+<px-dialog *ngIf="request" id="playChoice" level="modal"
+           title="Resume ‘Heat’?" subtitle="…" (closed)="…">   <!-- built: open while it exists, `level` instead of a priority (step 2 notes) -->
   <px-option key="resume" (pxSelect)="pick('resume')" [progress]="0.4">Resume from 1:02:10</px-option>
   <px-option key="restart" (pxSelect)="pick('restart')">Play from the beginning</px-option>
 </px-dialog>
@@ -298,7 +319,8 @@ defineContribution<SectionContext>({
 - **The core fills its own slots** (dogfooding): the movie page's Play / Trailer / Find releases / Watch list / Watched are core contributions to `core.movie.actions` (orders 10–50), its cast / similar rows to `core.movie.rows`. Which core items stay as plain template code (where they need a custom card or behaviour) is decided per slot in step 6.
 - Contexts are **typed, read-only snapshots** (`MovieContext { movie: { tmdbId, imdbId, title, year }, profile: { id, kids } }`), not the page's component or services. A slot's context type is part of the contract.
 - Visibility and safety: a slot context carries `profile.kids`, and contributions to adult slots are refused for kids profiles by the registry, not left to each plugin.
-- Rules (enforced by `defineContribution`, like the screen rules in `navigation-system-plan.md` §8): ids `plugin.<pluginId>.<name>`, row keys prefixed `<pluginId>:` (position memory can't collide), at most N contributions per slot per plugin, ordering ties broken by id.
+- Rules (enforced by `defineContribution`, like the screen rules in `navigation-system-plan.md` §8): ids `plugin.<pluginId>.<name>`, row keys **and action keys** prefixed `<pluginId>:` (position memory and the action bar's `pxGrid` keys can't collide with the core's), at most N contributions per slot per plugin, ordering ties broken by id.
+- **Contributions change** (added 2026-10-22): `actions` / `rows` / `meta` return the models **or an `Observable` of them**, so a contribution can wait for data ("only when the server has X") and update its state after a `run()` (a toggle's `on`, `busy` while working). `<px-slot>` subscribes per context and unsubscribes on change. When an item disappears or moves, focus goes to its neighbour in the same container (the `FocusEngine`'s rule for removed items), and a row that appears late never takes the focus. Specs in step 6 cover both.
 
 First slot catalog (more only when a real need appears; every slot is a promise to keep):
 
@@ -323,6 +345,7 @@ Each migration step reproduces today's look; the step's notes list every pixel t
 - Focus zoom: 7 scales → 3 tokens (card 1.1, tile 1.06, row item 1.06); 1.13 / 1.08 / 1.05 / 1.04 / 1.015 copies mapped to the nearest.
 - Translucent whites: 22 values → ~7 tokens (text 2/3, surface 1/2, line, scrim, raised).
 - z-index: 15 values → the scale of §5.1 (stacking order unchanged; values renumbered).
+- **Type scale (done 2026-10-22)**: 30 font sizes → 11 steps. `tiny` 12 (was 11, 12), `small` 14 (13, 14), `label` 16 (15, 16, 17), `lead` 18 (18), `body` 19.2 (18.4, 19, 19.2, 20, 21; 19.2 = the overviews' 1.2rem, kept so they wrap as before), `heading` 22, `headline` 26 (25, 26), `title` 32 (30, 32), `large` 36 (34, 35.2, 38), `hero` 44.8 (44.8, 48), `display` 54 (54, 58). `--px-text-row` = `label`. Exceptions: the form controls' base `dp(13.333)` (styles.scss) and the player's relative `120%`.
 - Font names: 10 spellings → 4 tokens (no visual change: CSS matches family names case-insensitively, but one spelling avoids surprises in fallback chains); the unused faces (Monda, NetflixTh, Netflixlc) dropped from `styles.scss`.
 - Amber back to one meaning (progress, plus "on"): the player's and trailer's focus colour becomes the focus token (white), the notification's OK button a normal button. Needs a yes: it changes the player's look.
 - Focus treatments: today fill (buttons, chips, keys), zoom + un-dim (posters), ring by `border` or by `outline` (portraits, episode cards). Primitives keep these three, as tokens and mixins, with one way of drawing the ring.
@@ -445,7 +468,7 @@ Visual changes (§6, decision H), measured against before shots (a scratch build
 - Panels' titles are `<h2>` (were `<p>` in the keyboard / editor): same font and size.
 
 Left to do before step 2 is done:
-1. **Rebuild and re-shoot** (`npm run screens -w apps/tv`): the first run predates two fixes (dialog `width` is the content width, not border-box: dialogs were 80 dp narrow; first option not shown focused in an unfocused window: focus now goes through the FocusEngine). Compare the 4 overlay shots with the before set and the rest with `.screens/baseline`. The before set lives only in the session scratchpad: rebuild it if needed (old overlay files are in git history once committed, or in this step's diff).
+1. **Rebuild and re-shoot** (`npm run screens -w apps/tv`; the references were re-shot on 2026-10-22 at scale 0.8 with the type scale, compare with those): the first run predates two fixes (dialog `width` is the content width, not border-box: dialogs were 80 dp narrow; first option not shown focused in an unfocused window: focus now goes through the FocusEngine). Compare the 4 overlay shots with the before set and the rest with `.screens/baseline`. The before set lives only in the session scratchpad: rebuild it if needed (old overlay files are in git history once committed, or in this step's diff).
 2. **Scenario run** (keys + mouse): a scratch script (`scenarios.js`, Electron, `sendInputEvent`) covers picker navigation / trap, connection lost over the picker (Back closes only the top one, focus back in the picker), play choice Enter, error OK, click / hover / right click on options, the movies and 18+ filter panels (open on the selected chip, Enter selects, Back → filter button), keyboard on `/connect` (typing, Back → "Enter address"), avatar panel and PIN pad in the profile editor, the gallery's Dialogs. Its first run finished but **wasn't read**; re-run on the fixed build and read it. Not covered yet: a panel above a dialog never taking input below it, the pairing panel (needs a server to pair with).
 3. Look at the panels by eye (keyboard, PIN pad, both filter panels, avatars, delete confirmation, pairing).
 4. Docs: `apps/tv/src/app/CLAUDE.md` (shell layout, component index rows of the migrated overlays, services rows for `PlayChoiceService` / `Dialogs`, "UI system" section), then mark step 2 done here.
@@ -453,18 +476,22 @@ Left to do before step 2 is done:
 ### Step 3: atoms and the action bar
 - `px-action`, `px-action-bar`, `px-button`, `px-chip`, `px-search-field`, `px-switch`, `px-score`, `px-meta`, `px-progress`, `px-empty`, `px-spinner`.
 - Migrate the 4 detail pages' tiles, the toolbars (`movies-page`, `adult-browse`, the releases rail), chips everywhere, empty states.
+- Also (review of 2026-10-22): the profile picker's tiles (`px-card variant="portrait"`) and the power page's buttons (`px-button`); `OnPush` on every primitive; ARIA roles (`role="dialog"` on `px-dialog`, `option` / `listbox` on `px-option` lists, `switch` on `px-switch`); `dur(token)` in `ui/units.ts` (reads `--px-dur-*`, 0 with reduced motion) and the GSAP durations of migrated components moved onto it.
 - Verify: tile states (Resume bar, on / off, busy, disabled), toolbar Left / Down handoffs unchanged (`leaveFor` targets), search field → keyboard → results.
 
 ### Step 4: cards and rows
 - `px-card` (4 variants), `px-card-row` (+ `pxCardTemplate`).
 - Known defect to fix on the way: `adult-browse`'s `.sliderContainer` sets `margin-top: auto` and then `margin: 0 -10px` overrides it (the rows sit at the bottom only because `.titleInfo` has `flex: 1`).
 - Migrate all 12 rows: movies / TV rows, watch list, 18+ posters, search results, cast, similar, seasons (chips via template), episodes, guests, 18+ cast / more.
+- `px-card` takes its image size from `tmdbImageBase()` (`ui/images.ts`, built) and has a placeholder (loading) and a failed-image state besides "no artwork". The release rows (`releases-page`) and the `/connect` server list become a list variant (`px-option` rows in a scrolling `pxGrid`).
 - Verify: positions restored per row (`PositionStore` keys unchanged: same `rowKey`s), paging (`nearEnd`), chevrons, wheel stepping on transform stacks, focus zoom not clipped, `min-width: 0` behaviour in the flex shell.
 
 ### Step 5: title info and layouts
 - `px-title-info`; `px-section-layout`, `px-detail-layout`, `px-rail-layout`, `px-fullscreen-layout`.
 - `movie-description`, the episode title block, `adult-title`, `watchlist-page`, `adult-browse` render `px-title-info`. `movies-page` uses `px-detail-layout` for its `.pageContainer`; `adult-title` drops its copy. `releases-page` on the rail layout; picker / connect / power / editor on the fullscreen layout.
-- Verify: every screen's screenshot vs the baseline; detail pages: buttons focused → page back at the top; the description hidden while the view is empty.
+- The shell as a layout (`px-shell`: menu rail, back button, clock, backdrop, content), so the menu, back button and clock get tokens and a place in the plan.
+- **Layouts and the UI scale**: each layout says which regions follow the screen (`vw` / `vh`: full-screen frames, the backdrop) and which follow the scale (rem: content, gaps, the menu's item spacing). At 0.8 today the section pages keep a screen-tall gap above the rows and the menu spreads its icons over the full height; decide per layout (e.g. rows pushed to the bottom keep a scale-sized gap, the menu centres a scale-sized block).
+- Verify: every screen's screenshot vs the baseline; detail pages: buttons focused → page back at the top; the description hidden while the view is empty; each layout at scales 0.7 and 1.15.
 
 ### Step 6: models and slots
 - `ui/models.ts`, `ContributionRegistry`, `defineContribution`, `<px-slot>`, the slot catalog of §5.6 with typed contexts.
@@ -482,7 +509,7 @@ For every step (and the final pass), from `apps/tv`:
 - Unit: `CHROME_BIN=/opt/google/chrome/chrome npx ng test --watch=false --browsers=ChromeHeadless --include src/app/ui` (+ `src/app/movement` and `src/app/nav` stay green).
 - Build: `NG_CLI_ANALYTICS=false npx ng build --base-href ./ < /dev/null`.
 - Screenshots: the step 0 script, compared with the baseline (gallery: pixel diff; live screens: side by side). Differences are listed in the step's notes, each either a §6 item that was approved or a bug.
-- Literals check on migrated files: `grep -nE "#[0-9a-fA-F]{3,8}\b|rgba?\(|font-family: *['\"]|z-index: *-?[0-9]|[0-9]px\b" <files>` finds nothing outside `styles/_tokens.scss` (exceptions: the `@font-face` names in `styles.scss`, `px` in comments).
+- Literals check: `npm run check:ui` (`apps/tv/scripts/check-ui.js`, every stylesheet): no colour / font family / z-index / px literal outside `styles/_tokens.scss` and `_px.scss`, every font size from the type scale; `@font-face` blocks may name their families, deliberate exceptions carry `// ui-check: allow (reason)`.
 - Scenarios (Electron, keys via `webContents.sendInputEvent` with Electron key names `Escape` / `Return` / arrows, plus the mouse), for every migrated screen:
   1. Every focusable thing reachable with arrows, Enter does what it did, Back follows the screen's ladder (`navigation-system-plan.md` §6).
   2. Movies list → poster → similar → similar → Back × 3: each page's rows where they were (positions survive the new components).
@@ -493,8 +520,8 @@ For every step (and the final pass), from `apps/tv`:
 
 ## 10. Files you will touch (summary)
 
-New: `apps/tv/src/styles/` (`_tokens.scss`, `_mixins.scss`), `apps/tv/src/app/ui/` (atoms, composites, layouts, `dialogs.service.ts`, `px-dialog-host`, `models.ts`, `contribution-registry.ts`, `px-slot`, `slots.ts` (catalog + context types), `gallery/`, `public-api.ts`, specs), `apps/tv/scripts/screens.js`.
-Changed: `styles.scss`, `app.module.ts`, `app.component.html` (dialog host, accent attribute), `nav/screen.ts` (`Chrome.accent`), `nav/screens.ts` (accents, gallery), `nav/nav-debug.component.ts` (dev hook), every component's `.html` / `.scss` in steps 1–5, `play-choice.service.ts`, `torrent-picker/`, `.gitignore` (`apps/tv/.screens/`), the `CLAUDE.md` files, `docs/tv-plugins.md`.
+New: `apps/tv/src/styles/` (`_tokens.scss`, `_px.scss`: `dp()` and the mixins), `apps/tv/src/app/ui/` (atoms, composites, layouts, `dialogs.service.ts`, `px-dialog-host`, `models.ts`, `contribution-registry.ts`, `px-slot`, `slots.ts` (catalog + context types), `gallery/`, `public-api.ts`, specs), `apps/tv/scripts/screens.js`.
+Changed: `styles.scss`, `app.module.ts`, `app.component.html` (dialog host, accent attribute), `nav/screen.ts` (`Chrome.accent`), `nav/screens.ts` (accents, gallery), `dev-hook.service.ts` (`window.playpexDev`; not `nav-debug`, which mustn't import app services), every component's `.html` / `.scss` in steps 1–5, `play-choice.service.ts`, `torrent-picker/`, `.gitignore` (`apps/tv/.screens/`), the `CLAUDE.md` files, `docs/tv-plugins.md`.
 
 ## 11. Decisions (taken 2026-10-21; bold = chosen: the recommended defaults, except G)
 
@@ -514,7 +541,8 @@ Changed: `styles.scss`, `app.module.ts`, `app.component.html` (dialog host, acce
 - Plugin loading and isolation (Angular lazy modules + `router.resetConfig`, Web Components, iframes or workers for contribution code), a manifest (`NAV_API_VERSION` + `UI_API_VERSION` ranges, screens, slots used, permissions), where plugins come from (served by the server for every client).
 - Plugin data access: a plugin needs catalog, library and playback APIs (`PlaybackService.play`, `LibraryService`, the server's API); today they're core services, not a contract. A `sdk/` facade over them is the next plan.
 - Player extension points (overlays, extra panels), menu badges, settings pages contributed by plugins (with `core.settings` on `px-rail-layout`).
-- More themes (light, high contrast) and other resolutions (decision G).
+- More themes (light, high contrast). Other resolutions are handled (decision G + the per-device scale).
+- Translation: labels are English and written in templates; no i18n in this plan. Primitives keep text out of their own markup (labels are inputs), so a later translation layer only touches pages.
 - Sharing tokens with the dashboard (`apps/dashboard`, shadcn/ui) through `packages/protocol` or a `packages/design-tokens`.
 
 ## Legal note

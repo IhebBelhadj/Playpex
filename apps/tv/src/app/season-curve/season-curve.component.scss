@@ -73,7 +73,7 @@
   align-items: center;
   gap: dp(8);
   font-family: var(--px-font-book);
-  font-size: dp(16);
+  font-size: var(--px-text-label);
 
   img {
     width: dp(34);

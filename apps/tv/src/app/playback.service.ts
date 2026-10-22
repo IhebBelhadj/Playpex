@@ -24,7 +24,12 @@ export interface PlaybackRequest {
   // 18+ title: played without touching the profile's library (no saved
   // position, no Continue watching / Watched entry)
   adult?: boolean;
+  // Development builds only: a video URL played directly, no torrent (the
+  // player's screenshots and scenarios: window.playpexDev.player())
+  devSrc?: string;
 }
+
+let session = 0;
 
 // The server also adds its maintained list (apps/server/lib/trackers.js)
 // to every torrent, so this only needs a couple of reliable ones
@@ -40,9 +45,14 @@ export class PlaybackService {
 
   constructor(private navigator:Navigator) { }
 
-  // The player, over the current screen (Back returns to it)
-  play(request: PlaybackRequest) {
-    this.navigator.open({ screen: 'core.player', payload: request });
+  // The player, over the current screen (Back returns to it). `replace`: in
+  // place of the current entry (the next episode, from the player itself).
+  // Each playback is its own session (`player/:session`): a new component,
+  // never the previous one reused by the router
+  play(request: PlaybackRequest, options:{ replace?:boolean } = {}) {
+    let intent = { screen: 'core.player', params: { session: (Date.now() + ++session).toString(36) }, payload: request };
+    if (options.replace) this.navigator.replace(intent);
+    else this.navigator.open(intent);
   }
 
   // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;

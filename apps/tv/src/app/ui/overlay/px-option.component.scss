@@ -40,12 +40,12 @@
 
 .px-option-label {
   font-family: var(--px-font-bold);
-  font-size: dp(20);
+  font-size: var(--px-text-body);
 }
 
 .px-option-detail {
   font-family: var(--px-font-book);
-  font-size: dp(14);
+  font-size: var(--px-text-small);
   opacity: .75;
 }
 

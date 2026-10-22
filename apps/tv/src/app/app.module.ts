@@ -18,6 +18,9 @@ import { NotificationHandlerComponent } from './notification-handler/notificatio
 import { SplashComponent } from './splash/splash.component';
 import { DescritionViewerComponent } from './descrition-viewer/descrition-viewer.component';
 import { PowerPageComponent } from './power-page/power-page.component';
+import { DisplaySizeComponent } from './display-size/display-size.component';
+import { DisplaySetupComponent } from './display-setup/display-setup.component';
+import { SettingsPageComponent } from './settings-page/settings-page.component';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
@@ -63,6 +66,9 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     SplashComponent,
     DescritionViewerComponent,
     PowerPageComponent,
+    DisplaySizeComponent,
+    DisplaySetupComponent,
+    SettingsPageComponent,
     ShowOptionsComponent,
     TorrentPickerComponent,
     ProfilePickerComponent,

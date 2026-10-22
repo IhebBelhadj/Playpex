@@ -1,129 +1,166 @@
-<div class="playerPageContainer">
-  <video crossorigin="anonymous" class="moviePlayer" type="video/mp4" muted (click)="onVideoClick()"></video>
-  <img src="assets/icons/loading.svg" class="loading" >
-  <div class="loadingStats" *ngIf="!playerReady || buffering">
-    <span class="stage">{{
-      buffering ? 'Buffering' :
-      !stats ? 'Starting torrent' :
-      !stats.peers.total ? 'Connecting to peers' :
-      !stats.metadata ? 'Fetching torrent info' : 'Downloading'
-    }}</span>
-    <div class="numbers" *ngIf="stats">
-      <span><b>{{stats.peers.total}}</b> {{stats.peers.total == 1 ? 'peer' : 'peers'}}</span>
-      <span><b>{{formatBytes(stats.speed.down)}}</b>/s</span>
-      <span><b>{{formatBytes(stats.traffic.down)}}</b> downloaded</span>
+<div class="player" [class.ready]="playerReady" [class.controlsShown]="controlsVisible" [class.scrubbing]="!!scrub">
+  <video crossorigin="anonymous" class="moviePlayer" (click)="onVideoClick()"></video>
+
+  <!-- Before the first frame: what the torrent is doing, as the steps it goes
+       through; later stalls: the same spinner with the swarm's numbers -->
+  <div class="loadingView" *ngIf="!playerReady || buffering">
+    <img class="spinner" src="assets/icons/loading.svg" alt="">
+    <ng-container *ngIf="!playerReady; else stalled">
+      <p class="loadingTitle">{{ playback?.title }}</p>
+      <p class="loadingMeta" *ngIf="metaLine">{{ metaLine }}</p>
+      <ol class="stages">
+        <li *ngFor="let s of stages; let i = index" [class.done]="i < stage" [class.current]="i == stage">{{ s }}</li>
+      </ol>
+    </ng-container>
+    <ng-template #stalled><p class="loadingTitle small">{{ pendingSeek !== null ? 'Jumping to ' + clock(pendingSeek) : 'Loading more of the video' }}</p></ng-template>
+    <p class="swarm" *ngIf="stats">
+      <span><b>{{ stats.peers.total }}</b> {{ stats.peers.total == 1 ? 'peer' : 'peers' }}</span>
+      <span><b>{{ formatBytes(stats.speed.down) }}</b>/s</span>
+      <span><b>{{ formatBytes(stats.traffic.down) }}</b> downloaded</span>
+    </p>
+  </div>
+
+  <div class="notice" *ngIf="resumeNotice || audioWarning">
+    {{ audioWarning ? "No sound: this release's audio (Dolby or DTS) can't be played here. Try another release." : resumeNotice }}
+  </div>
+
+  <!-- Up next (episodes, the last 40 s): Enter plays it, Back dismisses it -->
+  <div class="upNext" *ngIf="upNextShown">
+    <div class="upNextStill">
+      <img *ngIf="upNext.episode.still_path" [src]="stillBase + upNext.episode.still_path" alt="">
+    </div>
+    <div class="upNextText">
+      <p class="upNextLabel">Up next</p>
+      <p class="upNextName">{{ upNext.code }} {{ upNext.episode.name }}</p>
+      <ng-container *ngIf="upNext.torrent; else noRelease">
+        <div class="countdown"><span [style.width.%]="countdownPct"></span></div>
+        <p class="upNextHint">Plays in {{ clock(remaining) }}. Press OK to play now.</p>
+      </ng-container>
+      <ng-template #noRelease>
+        <p class="upNextHint">{{ upNextLooking ? 'Finding a release…' : 'No release found for it' }}</p>
+      </ng-template>
     </div>
   </div>
-  <div class="resumeNotice" *ngIf="resumeNotice">{{ resumeNotice }}</div>
-  <div class="audioWarning" *ngIf="audioWarning">
-    No sound: this release's audio (Dolby or DTS) can't be played here. Try another title or release.
-  </div>
-  <div class="controls">
-    <div class="controlsContainer">
-      <div class="wrapper">
-        <div class="infoSection">
-          <span class="title">{{playback?.title}}</span>
-          <span class="infos" *ngIf="playback?.subtitle">{{playback.subtitle}}</span>
-          <span class="infos" *ngIf="!playback?.subtitle">{{year}} . {{runtime?.hh}} hr {{runtime?.min}} min</span>
-        </div>
-        <div class="timeSlider">
-          <div class="slider" data-pointer="own"
-            (click)="onTimelineClick($event)" (mousemove)="onTimelineHover($event)">
-            <div class="buffered"></div>
-            <span class="hoverTime"></span>
-            <button class="progress controlsElem"
-              data-sn-down =".playerPageContainer .playBtn">
 
-              <div class="reachedDot"></div>
-            </button>
-          </div>
-          <div class="timeInfo">
-            <span class="currentTime">00:00</span>
-            <span class="duration">00:00:00</span>
+  <div class="controls" pxSection="playerControls" (focusin)="poke()">
+    <div class="titleBlock">
+      <h1 class="title">{{ playback?.title }}</h1>
+      <p class="meta" *ngIf="metaLine">{{ metaLine }}</p>
+    </div>
+
+    <div class="controlStack" pxStack="player">
+      <div class="timeline">
+        <button class="scrubber" pxItem pxItemKey="timeline" data-pointer="own"
+          (click)="onTimelineClick($event)" (mousemove)="onTimelineHover($event)" (mouseleave)="hoverAt = null">
+          <span class="track"></span>
+          <span class="unloaded" [style.left.%]="loadedEnd * 100"></span>
+          <span class="loaded" [style.left.%]="loadedStart * 100" [style.width.%]="(loadedEnd - loadedStart) * 100"></span>
+          <span class="played" [style.width.%]="playedPct"></span>
+          <span class="playhead" [style.left.%]="playedPct"></span>
+          <span class="mark preview" *ngIf="scrub" [style.left.%]="scrubPct" [class.away]="scrubOutsideLoaded">
+            <span class="tab">
+              <b>{{ clock(scrub.target) }}</b>
+              <small>{{ scrubDelta }}</small>
+            </span>
+          </span>
+          <span class="mark hover" *ngIf="hoverAt !== null && !scrub" [style.left.%]="hoverAt * 100">
+            <span class="tab"><b>{{ clock(hoverAt * duration) }}</b></span>
+          </span>
+        </button>
+        <div class="times">
+          <span class="now">{{ clock(position()) }}</span>
+          <span class="hint" *ngIf="scrub">{{ scrubHint }}</span>
+          <span class="hint" *ngIf="!scrub && endsAt">Ends at {{ endsAt }}</span>
+          <span class="left">−{{ clock(remaining) }}</span>
         </div>
+      </div>
+
+      <div class="buttons" pxGrid>
+        <div class="group">
+          <button class="ctl" pxItem pxItemKey="subtitles" (pxSelect)="openSubtitles()">
+            <img src="assets/icons/caption.svg" alt=""><span class="label">Subtitles</span>
+          </button>
         </div>
-        <div class="options">
-          <div class="subOpt">
-            <button class="optBtn controlsElem ccBtn"
-              data-sn-up =".playerPageContainer .timeSlider .progress">
-                <img src="assets/icons/caption.svg" alt="">
-            </button>
-          </div>
-          <div class="playbackOpt">
-            <button class="optBtn controlsElem seekLeft seekBtn"
-              disabled
-              data-sn-up =".playerPageContainer .timeSlider .progress">
-                <img src="assets/icons/rightSeek.svg" alt="">
-            </button>
-            <button class="optBtn controlsElem playBtn"
-              data-sn-up =".playerPageContainer .timeSlider .progress">
-                <img src="assets/icons/playSharp.svg" alt="">
-            </button>
-            <button class="optBtn controlsElem seekBtn"
-            disabled
-              data-sn-up =".playerPageContainer .timeSlider .progress">
-                <img src="assets/icons/rightSeek.svg" alt="">
-            </button>
-          </div>
-          <div class="settingsOpt">
-            <button class="optBtn controlsElem statsBtn"
-              data-sn-up =".playerPageContainer .timeSlider .progress">
-                <img src="assets/icons/opts.svg" alt="">
-            </button>
-          </div>
+        <div class="group center">
+          <button class="ctl" pxItem pxItemKey="back10" (pxSelect)="jump(-10)">
+            <img src="assets/icons/leftSeek.svg" alt=""><span class="label">10 s back</span>
+          </button>
+          <button class="ctl play" pxItem pxItemKey="play" (pxSelect)="togglePlay()">
+            <img [src]="paused ? 'assets/icons/playSharp.svg' : 'assets/icons/pause.svg'" alt=""><span class="label">{{ paused ? 'Play' : 'Pause' }}</span>
+          </button>
+          <button class="ctl" pxItem pxItemKey="fwd10" (pxSelect)="jump(10)">
+            <img src="assets/icons/rightSeek.svg" alt=""><span class="label">10 s ahead</span>
+          </button>
+        </div>
+        <div class="group end">
+          <button class="ctl" *ngIf="upNext" pxItem pxItemKey="next" (pxSelect)="playNext()">
+            <img src="assets/icons/next.svg" alt=""><span class="label">{{ upNextLooking ? 'Finding a release…' : 'Next episode' }}</span>
+          </button>
+          <button class="ctl" pxItem pxItemKey="stats" [class.on]="statsVisible" (pxSelect)="statsVisible = !statsVisible">
+            <img src="assets/icons/opts.svg" alt=""><span class="label">{{ statsVisible ? 'Hide stats' : 'Stats' }}</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
-  <!-- "Stats for nerds": toggled by the stats button, stays up while watching -->
+
+  <!-- Stats for nerds: toggled by the stats button, stays up while watching -->
   <div class="statsPanel" *ngIf="statsVisible">
-    <div class="statsTitle">Stats</div>
-    <div class="row"><span>Peers</span><b>{{stats ? stats.peers.total + ' (' + stats.peers.unchocked + ' sending)' : '…'}}</b></div>
-    <div class="row"><span>Download</span><b>{{stats ? formatBytes(stats.speed.down) + '/s' : '…'}}</b></div>
-    <div class="row"><span>Downloaded</span><b>{{stats ? formatBytes(stats.traffic.down) : '…'}}</b></div>
-    <div class="row"><span>Upload</span><b>{{stats ? formatBytes(stats.speed.up) + '/s · ' + formatBytes(stats.traffic.up) : '…'}}</b></div>
-    <div class="row"><span>Buffered ahead</span><b>{{videoInfo?.bufferedAhead}}</b></div>
-    <div class="row"><span>Resolution</span><b>{{videoInfo?.resolution}}</b></div>
-    <div class="row"><span>Dropped frames</span><b>{{videoInfo?.droppedFrames}}</b></div>
+    <p class="statsTitle">Stats</p>
+    <dl>
+      <dt>Peers</dt><dd>{{ stats ? stats.peers.total + ' (' + stats.peers.unchocked + ' sending)' : '…' }}</dd>
+      <dt>Download</dt><dd>{{ stats ? formatBytes(stats.speed.down) + '/s' : '…' }}</dd>
+      <dt>Downloaded</dt><dd>{{ stats ? formatBytes(stats.traffic.down) : '…' }}</dd>
+      <dt>Upload</dt><dd>{{ stats ? formatBytes(stats.speed.up) + '/s, ' + formatBytes(stats.traffic.up) : '…' }}</dd>
+      <dt>Buffered ahead</dt><dd>{{ videoInfo?.bufferedAhead || '…' }}</dd>
+      <dt>Resolution</dt><dd>{{ videoInfo?.resolution || '…' }}</dd>
+      <dt>Dropped frames</dt><dd>{{ videoInfo?.droppedFrames || '…' }}</dd>
+      <dt>Audio</dt><dd>{{ transcoding ? 'Converted to AAC by the server' : 'Direct' }}</dd>
+    </dl>
   </div>
 
-  <div class="sidePannel">
-    <div class="optionsTitle">Subtitles</div>
-
-    <!-- Subtitle source; the choice is remembered (SubtitlesService.preferredProvider) -->
-    <div class="providerTabs" *ngIf="subtitleProviders.length > 1">
-      <button *ngFor="let provider of subtitleProviders"
-        class="controlsElem providerTab"
-        [class.selected]="provider.id == subtitleProvider"
-        [attr.data-provider]="provider.id">
-        {{provider.name}}
-      </button>
-    </div>
-
-    <div class="content" *ngIf="subtitles?.length">
-      <button *ngFor="let subtitle of subtitles; let i = index" class="controlsElem subtitle"
-        [attr.data-index]="i"
-        [attr.data-language]="subtitle.language">
-        <div class="name">{{subtitle.name}}</div>
-        <div class="params">
-          <div class="language">
-            <span>language : </span>
-            {{subtitle.languageName}}
-          </div>
-
-          <img class="tick" src="assets/icons/tick.svg" alt="">
+  <!-- Subtitles: a layer docked at the right edge (Back closes it, focus goes
+       back to the Subtitles button) -->
+  <px-panel *ngIf="subtitlesOpen" id="subs" edge="end" [width]="460" title="Subtitles"
+    focus=".subRow.selected" (closed)="subtitlesOpen = false">
+    <div class="subsBody" pxStack="subtitles">
+      <div class="subsGroup" *ngIf="subtitleProviders.length > 1">
+        <p class="groupLabel">Source</p>
+        <div class="chips" pxGrid>
+          <px-chip *ngFor="let p of subtitleProviders" [key]="'provider:' + p.id" [label]="p.name"
+            [selected]="p.id == subtitleProvider" (pxSelect)="switchSubtitleProvider(p.id)"></px-chip>
         </div>
-      </button>
-    </div>
+      </div>
 
-    <div class="loadingSubs" *ngIf="!subtitles">
-      Fetching subtitles
-      <img src="assets/icons/loading_small.svg" alt="">
-    </div>
+      <div class="subList" pxGrid="subtitleList">
+        <button class="subRow" pxItem pxItemKey="off" [class.selected]="!selectedSubtitle" (pxSelect)="hideSubtitles()">
+          <span class="subName">Off</span>
+        </button>
+        <button *ngFor="let subtitle of subtitles || []; let i = index" class="subRow" pxItem [pxItemKey]="'sub:' + i"
+          [class.selected]="subtitle === selectedSubtitle" (pxSelect)="showSubtitle(subtitle)">
+          <span class="subName">{{ subtitle.name }}</span>
+          <span class="subLang">{{ subtitle.languageName }}</span>
+        </button>
+        <p class="subNote" *ngIf="!subtitles">Looking for subtitles…</p>
+        <p class="subNote" *ngIf="subtitles && !subtitles.length">{{ subtitlesError || 'This source has no subtitles for this title.' }}</p>
+      </div>
 
-    <div class="loadingSubs" *ngIf="subtitles && !subtitles.length">
-      {{subtitlesError || 'No subtitles from this provider'}}
-    </div>
-  </div>
+      <div class="subsGroup">
+        <p class="groupLabel">Size</p>
+        <div class="chips" pxGrid>
+          <px-chip *ngFor="let size of subtitleSizes" [key]="'size:' + size.key" [label]="size.label"
+            [selected]="size.key == subtitleSize" (pxSelect)="setSubtitleSize(size.key)"></px-chip>
+        </div>
+      </div>
 
+      <div class="subsGroup">
+        <p class="groupLabel">Timing <span class="timingValue">{{ timingLabel }}</span></p>
+        <div class="chips" pxGrid>
+          <px-chip key="timing:earlier" label="Earlier" (pxSelect)="shiftSubtitles(-0.5)"></px-chip>
+          <px-chip key="timing:later" label="Later" (pxSelect)="shiftSubtitles(0.5)"></px-chip>
+          <px-chip *ngIf="subtitleDelay" key="timing:reset" label="Reset" (pxSelect)="shiftSubtitles(-subtitleDelay)"></px-chip>
+        </div>
+      </div>
+    </div>
+  </px-panel>
 </div>

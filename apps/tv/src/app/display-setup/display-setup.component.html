@@ -1,0 +1,17 @@
+<div class="displayPage" pxSection="displaySetup">
+  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+
+  <div class="content">
+    <h1 class="heading">How big should Playpex look?</h1>
+    <p class="hint">Move between the sizes: the screen changes as you go. Pick the one that reads comfortably from where you sit. You can change it later in Settings.</p>
+
+    <display-size [autofocus]="true" (chosen)="done()"></display-size>
+
+    <div class="sample" aria-hidden="true">
+      <p class="sampleTitle">Trending</p>
+      <div class="samplePosters">
+        <div class="samplePoster" *ngFor="let s of samples"></div>
+      </div>
+    </div>
+  </div>
+</div>

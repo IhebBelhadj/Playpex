@@ -66,7 +66,7 @@
       display: flex;
       align-items: center;
       font-family: var(--px-font-light);
-      font-size: dp(14);
+      font-size: var(--px-text-small);
 
       .timeIndicator {
         padding: 0 dp(15);

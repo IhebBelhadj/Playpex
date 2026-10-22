@@ -154,6 +154,9 @@ function connectIpc() {
     return true;
   });
 
+  handle('display:get', () => ({ scale: config.uiScale() }));
+  handle('display:set', scale => config.setUiScale(scale));
+
   handle('discovery:start', () => {
     if (!picker) {
       picker = discovery.createDiscovery({

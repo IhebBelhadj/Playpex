@@ -15,6 +15,9 @@ import { OverlayLevel, PxOverlay } from './px-overlay';
 //
 // `width` (dp) + `align="start"`: a wide panel (filters), title and content
 // left-aligned; the content scrolls when it needs to (min-height: 0 on it).
+// `edge="end"`: docked to the right edge at full height, over a side gradient
+// instead of the blurred scrim, so what's behind stays visible (the player's
+// subtitles panel); `width` sets its width.
 @Component({
   selector: 'px-panel',
   templateUrl: './px-panel.component.html',
@@ -26,6 +29,7 @@ export class PxPanelComponent extends PxOverlay {
   @Input() title = '';
   @Input() align:'center' | 'start' = 'center';
   @Input() width:number | null = null;
+  @Input() edge:'none' | 'end' = 'none';
 
   readonly dp = dp;
 

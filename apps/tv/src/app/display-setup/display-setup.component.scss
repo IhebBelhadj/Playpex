@@ -1,0 +1,65 @@
+// Full-screen over the shell, under the splash video (like the profile picker)
+@use 'px' as *;
+
+.displayPage {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-root-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--px-surface-bg);
+}
+
+.brand {
+  position: absolute;
+  top: dp(34);
+  left: dp(48);
+  height: dp(34);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: dp(1200);
+}
+
+.heading {
+  font-family: var(--px-font-book);
+  font-weight: normal;
+  font-size: var(--px-text-display);
+  margin: 0 0 dp(12);
+}
+
+.hint {
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-lead);
+  color: var(--px-color-text-muted);
+  max-width: dp(620);
+  text-align: center;
+  margin: 0 0 dp(36);
+}
+
+.sample {
+  margin-top: dp(56);
+  align-self: stretch;
+}
+
+.sampleTitle {
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-row);
+  margin: 0 0 dp(12);
+}
+
+.samplePosters {
+  display: flex;
+  gap: dp(10);
+}
+
+.samplePoster {
+  width: dp(180);
+  height: dp(270);
+  border-radius: var(--px-radius-s);
+  background: var(--px-surface-2);
+}

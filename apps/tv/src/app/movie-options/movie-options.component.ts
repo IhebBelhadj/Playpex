@@ -12,6 +12,7 @@ import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
 import { ReleasesService } from '../releases.service';
 import { Navigator, useScreen } from '../nav/public-api';
+import { tmdbImageBase } from '../ui/public-api';
 
 @Component({
   selector: 'app-movie-options',
@@ -20,8 +21,8 @@ import { Navigator, useScreen } from '../nav/public-api';
 })
 export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
-  profileImgBase = "https://image.tmdb.org/t/p/w154";
-  movieImgBase = "https://image.tmdb.org/t/p/w342";
+  profileImgBase = tmdbImageBase('profile', 130);
+  movieImgBase = tmdbImageBase('poster', 150);
 
   movieId;
   casts;

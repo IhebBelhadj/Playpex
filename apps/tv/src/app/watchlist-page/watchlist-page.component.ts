@@ -6,6 +6,7 @@ import { BackgroundService } from '../background.service';
 import { MoviesService } from '../movies.service';
 import { ContinueItem, Library, LibraryService, MediaType, WatchedItem, WatchlistItem } from '../library.service';
 import { Navigator, useScreen } from '../nav/public-api';
+import { tmdbImageBase } from '../ui/public-api';
 
 interface Card {
   key: string;                   // unique on the page: <row>:<mediaType>:<tmdbId>
@@ -54,7 +55,7 @@ const STACK = 'watchlist';      // the rows' pxStack: the focused card is rememb
 })
 export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
-  readonly posterBase = 'https://image.tmdb.org/t/p/w342';
+  readonly posterBase = tmdbImageBase('poster', 180);
 
   rows:Row[] = [];
   loaded = false;

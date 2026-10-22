@@ -26,8 +26,12 @@
 // 1rem = 16px on the 1440 × 810 design (src/styles/_px.scss, dp()) and grows or
 // shrinks with the window: the screen always shows the same layout. Bounded by
 // height too, so a wider than 16:9 screen doesn't push the rows off the bottom.
+// --px-ui-scale (_tokens.scss) makes everything smaller or bigger than that.
+// Floor: 12 real pixels (the one px value on purpose: a readability limit of
+// the screen, not a design length), so the smallest text (dp(12)) never goes
+// under 9px on a small window.
 html {
-  font-size: min(calc(100vw / 90), calc(100vh / 50.625));
+  font-size: max(12px, calc(min(100vw / 90, 100vh / 50.625) * var(--px-ui-scale)));   // ui-check: allow (the root size, floored in real pixels)
 }
 
 body {
@@ -43,7 +47,7 @@ button,
 input,
 select,
 textarea {
-  font-size: dp(13.333);
+  font-size: dp(13.333);   // ui-check: allow (the browser's own control size, scaled)
 }
 
 :focus {

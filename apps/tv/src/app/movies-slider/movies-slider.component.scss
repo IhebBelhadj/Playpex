@@ -18,7 +18,7 @@
     margin: 0;
     padding-top: dp(12);
     font-family: var(--px-font-book);
-    font-size: dp(20);
+    font-size: var(--px-text-body);
     line-height: 1.5;
     color: var(--px-color-text-muted);
   }
@@ -76,7 +76,7 @@
 
 .sectionTitle {
   font-family: var(--px-font-display);
-  font-size: dp(16);
+  font-size: var(--px-text-label);
   opacity: .8;
 }
 

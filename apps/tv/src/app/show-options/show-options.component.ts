@@ -11,6 +11,7 @@ import { Navigator, useScreen } from '../nav/public-api';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbSeries, ImdbService } from '../imdb.service';
+import { tmdbImageBase } from '../ui/public-api';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes, with IMDb ratings (the series', each season's
@@ -27,7 +28,7 @@ import { ImdbSeries, ImdbService } from '../imdb.service';
 })
 export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
-  stillBase = "https://image.tmdb.org/t/p/w300";
+  stillBase = tmdbImageBase('still', 270);
 
   show;
   imdbId:string;

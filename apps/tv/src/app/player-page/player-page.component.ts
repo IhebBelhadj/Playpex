@@ -1,10 +1,9 @@
 import { NotificationService } from './../notification.service';
 import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
 import { PlaybackRequest } from './../playback.service';
-import { NavigationService } from './../navigation.service';
 import { TorrentService } from './../torrent.service';
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import {  repeat, switchMap , takeWhile, filter, catchError } from "rxjs/operators";
+import { Component, OnInit, OnDestroy, ElementRef, NgZone } from '@angular/core';
+import { repeat, switchMap, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
 import { EMPTY, Subscription, timer } from 'rxjs';
 import { ServerService } from '../server.service';
@@ -12,8 +11,11 @@ import { actionForKey } from '../keymap';
 import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
 import { ProfilesService } from '../profiles.service';
-import { Navigator, useScreen } from '../nav/public-api';
-import { dp } from '../ui/public-api';
+import { LayerStack, Navigator, useScreen } from '../nav/public-api';
+import { FocusEngine } from '../movement/movement';
+import { tmdbImageBase } from '../ui/public-api';
+import { EpisodePlaybackService, NextEpisode } from '../episode-playback.service';
+import { environment } from '../../environments/environment';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -21,12 +23,38 @@ const SAVE_EVERY_MS = 15000;
 const KEEPALIVE_EVERY_MS = 60000;
 // Mouse: the controls and the cursor hide after this long without movement
 const POINTER_IDLE_MS = 3000;
+// Keys: the controls hide after this long without a key while playing
+const CONTROLS_IDLE_MS = 6000;
+// Scrubbing: the seek happens this long after the last arrow (one seek for a
+// run of presses: each one restarts a transcoded stream)
+const SCRUB_COMMIT_MS = 700;
+// Up next shows this long before the end (episodes)
+const UP_NEXT_S = 40;
+
+// What a held arrow jumps by: 10 s, then 30 s, then a minute (presses in a row)
+function scrubStep(presses:number):number {
+  return presses <= 5 ? 10 : presses <= 15 ? 30 : 60;
+}
+
+export const SUBTITLE_SIZES = [
+  { key: 'small', label: 'Small', token: '--px-text-heading' },
+  { key: 'medium', label: 'Medium', token: '--px-text-headline' },
+  { key: 'large', label: 'Large', token: '--px-text-title' },
+  { key: 'largest', label: 'Largest', token: '--px-text-large' },
+];
+const SUBTITLE_SIZE_KEY = 'playpex.subtitleSize';
 
 // The player (core.player, src/app/nav): plays its entry's payload, a
 // PlaybackRequest (PlaybackService.play). However it's left (Back, the Back
 // button, an error, "Choose server" when the connection is lost), the
 // torrent's lease is released (the screen's beforeLeave).
-
+//
+// Input (movement system): the controls are pxSection "playerControls", a
+// pxStack of the timeline (one item) and the buttons (a pxGrid). The player
+// takes the arrows itself (a window capture listener, before the library)
+// only where they mean time: Left / Right with the controls hidden or on the
+// timeline scrub (held: faster), and any arrow with the controls hidden shows
+// them. Subtitles are a px-panel layer docked at the right edge.
 @Component({
   selector: 'app-player-page',
   templateUrl: './player-page.component.html',
@@ -39,20 +67,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   playback:PlaybackRequest;
   playerReady = false;
   controlsVisible = false;
-  sidePannelVisible = false;
   moviePlayer:HTMLVideoElement;
   link:string;                // the file's stream path (TorrentFile.link); URLs: server.media()
-  runtime;
-  year;
+  paused = false;
   playerSub:Subscription;
-  controlsEvent;
-  lastSubFocused;
-  arrowKeyEvents;
-  subFocusListener;
-  subtitles:Subtitle[];
-  subtitleProviders:SubtitleProvider[] = [];
-  subtitleProvider:string;
-  subtitlesError:string;
   audioWarning = false;
   audioCheckDone = false;
   buffering = false;          // playback stalled waiting for data
@@ -60,6 +78,34 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   statsVisible = false;
   videoInfo;                  // <video>-side numbers for the stats panel
   statsSub:Subscription;
+
+  readonly stages = ['Starting the torrent', 'Finding peers', 'Reading the torrent', 'Downloading the start'];
+
+  // timeline (fractions of the duration)
+  playedPct = 0;
+  loadedStart = 0;
+  loadedEnd = 0;
+  hoverAt:number | null = null;
+  scrub:{ target:number, direction:number, presses:number } | null = null;
+  private scrubTimer;
+
+  // subtitles
+  subtitlesOpen = false;
+  subtitles:Subtitle[];
+  subtitleProviders:SubtitleProvider[] = [];
+  subtitleProvider:string;
+  subtitlesError:string;
+  selectedSubtitle:Subtitle | null = null;
+  readonly subtitleSizes = SUBTITLE_SIZES;
+  subtitleSize = 'medium';
+  subtitleDelay = 0;          // seconds, positive = later
+  private appliedCueShift = 0; // seconds taken off the cues' file times so far
+
+  // up next (episodes)
+  upNext:NextEpisode | null = null;
+  upNextLooking = false;
+  upNextDismissed = false;
+  readonly stillBase = tmdbImageBase('still', 150);
 
   // Resume point and progress saving for the current profile
   filePath:string;
@@ -69,36 +115,41 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   transcoding = false;
   offset = 0;
   knownDuration = 0;
-  cueShift = 0;
   pendingSeek:number | null = null;   // transcoded seek waiting for its stream
-  seekTimer:any;               // seconds already taken off the subtitle cues
+  seekTimer:any;
   resumeAt:number | null = null;
   resumeDecided = false;      // the saved state arrived (or there is none to ask for)
   resumeApplied = false;
   resumeNotice = '';
   lastSave = 0;
   stateSub:Subscription;
+  nextSub:Subscription;
 
   pointerSub:Subscription;
   pointerIdle;
+  controlsIdle;
   keepaliveTimer;
-  private screen = useScreen<{}, PlaybackRequest>();
+  private screen = useScreen<{ session:string }, PlaybackRequest>();
+  private keyDown = (e:KeyboardEvent) => this.onKeyDown(e);
+  private keyUp = (e:KeyboardEvent) => this.onKeyUp(e);
 
   constructor(
+    private host:ElementRef<HTMLElement>,
+    private zone:NgZone,
     private server:ServerService,
     private torrentService:TorrentService,
-    private navigation:NavigationService,
     private navigator:Navigator,
+    private layers:LayerStack,
+    private engine:FocusEngine,
     private pointer:PointerService,
     private subtitlesService:SubtitlesService,
     private notificationService:NotificationService,
     private library:LibraryService,
     private profiles:ProfilesService,
+    private episodes:EpisodePlaybackService,
   ) { }
 
   ngOnInit(): void {
-    document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
-
     this.playback = this.screen.payload;
     if (!this.playback) {
       this.navigator.back();
@@ -109,8 +160,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.screen.beforeLeave(() => this.releaseTorrent());
     this.screen.onSelect(() => this.select());
     this.screen.onBack(() => this.back());
-
-    this.runtime = this.timeObject((this.playback.runtimeMinutes || 0)*60);
 
     if (this.playback.startAt !== undefined) {
       // chosen on the detail page: resume at this point, or 0 = from the beginning
@@ -127,53 +176,31 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         error: () => this.resumeDecided = true,
       });
     }
+    else this.resumeDecided = true;
 
-    //Moving through time on arrow presses
+    try { this.subtitleSize = localStorage.getItem(SUBTITLE_SIZE_KEY) || 'medium'; } catch (e) { }
+    this.applySubtitleSize();
 
-    this.controlsEvent = (e)=>{
-      if(!this.screen.active) return;
-
-      if (
-        actionForKey(e) == 'right' &&
-        document.activeElement.classList.contains('progress') &&
-        this.controlsVisible &&
-        this.playerReady
-      ) {
-        this.seek("forward")
-      }
-      else if (
-        actionForKey(e) == 'left' &&
-        document.activeElement.classList.contains('progress') &&
-        this.controlsVisible &&
-        this.playerReady
-
-      ){
-        this.seek("backward")
-      }
-
-    }
-    document.addEventListener('keydown' , this.controlsEvent);
-
-    this.subFocusListener = (e)=>{
-
-      if(e.target['classList'].contains('subtitle')){
-        let active = document.activeElement as HTMLElement;
-        this.lastSubFocused = active.dataset['index'];
-        this.scrollSubtitleIntoView(e.target as HTMLElement);
-      }
-
-    }
-    window.addEventListener('sn:focused', this.subFocusListener);
+    // capture: before the spatial-navigation library moves the focus
+    window.addEventListener('keydown', this.keyDown, true);
+    window.addEventListener('keyup', this.keyUp, true);
 
     this.pollStats();
     this.updateClock();
+    this.findNextEpisode();
 
     // Mouse: moving it shows the controls; the wheel scrolls panels natively
     this.pointer.wheelNavigation = false;
     this.pointerSub = this.pointer.moved.subscribe(() => this.onPointerMove());
     this.pointerIdle = setTimeout(() => this.onPointerIdle() , POINTER_IDLE_MS);
 
-    this.year = this.playback.year;
+    // development: a video file, no torrent (window.playpexDev.player())
+    if (this.playback.devSrc && !environment.production) {
+      this.link = this.playback.devSrc;
+      setTimeout(() => this.setupPlayer());
+      return;
+    }
+
     this.magnetUrl = this.playback.magnet;
     let reps = 0;
     this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
@@ -191,7 +218,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.notificationService.sendNotification("error" , e?.error?.error || "Couldn't start this torrent. Check that the Playpex server is running.");
     }, next: data => {
       reps += 1;
-      console.log(reps);
 
       if (data['files']) {
         this.playerSub.unsubscribe();
@@ -210,45 +236,109 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         return;
       }
 
-
       if (reps > 4) {
         this.playerSub.unsubscribe();
         this.leavePlayer();
         this.notificationService.sendNotification("error" , "Couldn't fetch the torrent's metadata (no peers?). Try again later");
       }
     }})
-
-
-
   }
 
   ngOnDestroy(): void {
-
     // last position, while the <video> still has it
     this.saveProgress();
     clearTimeout(this.seekTimer);
+    clearTimeout(this.scrubTimer);
+    clearTimeout(this.controlsIdle);
     this.stateSub?.unsubscribe();
+    this.nextSub?.unsubscribe();
 
-    this.controlsVisible = false;
     this.pointer.wheelNavigation = true;
     this.pointerSub?.unsubscribe();
     clearTimeout(this.pointerIdle);
 
-    if (this.playerSub) this.playerSub.unsubscribe();
-    if (this.statsSub) this.statsSub.unsubscribe();
+    this.playerSub?.unsubscribe();
+    this.statsSub?.unsubscribe();
     clearInterval(this.keepaliveTimer);
     gsap.killTweensOf('.clock');
     gsap.set('.clock' , { clearProps : 'opacity' });
 
     if (this.moviePlayer) this.moviePlayer.src = "";
-    if (this.controlsEvent) document.removeEventListener('keydown' , this.controlsEvent);
-    this.navigation.updateNavigation('remove' , {sectionId : 'timeSlider'})
-    this.navigation.updateNavigation('remove' , {sectionId : 'optionPannel'})
-    this.navigation.updateNavigation('remove' , {sectionId : 'subs'})
-    if (this.arrowKeyEvents) document.removeEventListener('keydown' , this.arrowKeyEvents);
-    window.removeEventListener('sn:focused', this.subFocusListener);
-
+    window.removeEventListener('keydown', this.keyDown, true);
+    window.removeEventListener('keyup', this.keyUp, true);
   }
+
+  // ── what's shown ──────────────────────────────────────────────────────────
+
+  get duration():number {
+    let d = this.mediaDuration();
+    return isFinite(d) && d > 0 ? d : 0;
+  }
+
+  get remaining():number {
+    return Math.max(0, this.duration - this.position());
+  }
+
+  get metaLine():string {
+    if (this.playback?.subtitle) return this.playback.subtitle;
+    let minutes = this.playback?.runtimeMinutes || 0;
+    let length = minutes ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : '';
+    return [this.playback?.year, length].filter(Boolean).join(', ');
+  }
+
+  // what the torrent is doing before the first frame (index into `stages`)
+  get stage():number {
+    if (!this.stats) return 0;
+    if (!this.stats.peers?.total) return 1;
+    if (!this.stats.metadata) return 2;
+    return 3;
+  }
+
+  get endsAt():string {
+    if (!this.duration || !this.playerReady) return '';
+    let end = new Date(Date.now() + this.remaining * 1000 / (this.moviePlayer?.playbackRate || 1));
+    return end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  get scrubPct():number {
+    return this.scrub && this.duration ? this.scrub.target * 100 / this.duration : 0;
+  }
+
+  get scrubDelta():string {
+    if (!this.scrub) return '';
+    let delta = this.scrub.target - this.position();
+    return (delta < 0 ? '−' : '+') + this.clock(Math.abs(delta));
+  }
+
+  get scrubHint():string {
+    if (!this.scrub) return '';
+    let step = scrubStep(this.scrub.presses);
+    let jumps = step >= 60 ? '1 min' : step + ' s';
+    return this.scrubOutsideLoaded ? `${jumps} jumps, not downloaded yet: it loads first` : `${jumps} jumps, hold to go faster`;
+  }
+
+  // the preview lands where nothing is downloaded yet: the jump will wait for it
+  get scrubOutsideLoaded():boolean {
+    if (!this.scrub || !this.duration) return false;
+    let at = this.scrub.target / this.duration;
+    return at < this.loadedStart - .001 || at > this.loadedEnd + .001;
+  }
+
+  get upNextShown():boolean {
+    return !!this.upNext && !this.upNextDismissed && this.playerReady && this.duration > 0 && this.remaining <= UP_NEXT_S;
+  }
+
+  get countdownPct():number {
+    return Math.min(100, Math.max(0, (1 - this.remaining / UP_NEXT_S) * 100));
+  }
+
+  get timingLabel():string {
+    if (!this.subtitleDelay) return 'In sync with the video';
+    let s = Math.abs(this.subtitleDelay).toFixed(1).replace(/\.0$/, '');
+    return this.subtitleDelay > 0 ? `${s} s later` : `${s} s earlier`;
+  }
+
+  // ── the file ──────────────────────────────────────────────────────────────
 
   // Largest file with a container Chromium can play; mp4 wins over mkv/webm
   pickVideoFile(files) {
@@ -295,18 +385,6 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return this.transcoding ? this.knownDuration : this.moviePlayer?.duration;
   }
 
-  // Subtitle cues are in file time; the transcoded stream starts at `offset`
-  shiftCues(){
-    let cues = this.moviePlayer?.textTracks[0]?.cues;
-    let delta = this.offset - this.cueShift;
-    this.cueShift = this.offset;
-    if (!cues || !delta) return;
-    for (let i = 0; i < cues.length; i++) {
-      cues[i].startTime -= delta;
-      cues[i].endTime -= delta;
-    }
-  }
-
   // Chromium can't decode Dolby (AC-3/E-AC-3) or DTS audio: the video plays
   // silently. Say so once, a few seconds in, instead of leaving the user guessing.
   checkAudio() {
@@ -335,14 +413,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let duration = this.mediaDuration();
     if (!isFinite(duration) || this.resumeAt > duration - 30) return;
     this.seekTo(this.resumeAt);
-    this.resumeNotice = `Resuming from ${this.timeDisplayString(this.resumeAt)}`;
+    this.resumeNotice = `Resuming from ${this.clock(this.resumeAt)}`;
     setTimeout(() => this.resumeNotice = '', 5000);
   }
 
   saveProgress() {
     let player = this.moviePlayer;
     // 18+ titles stay out of the library (Continue watching, Watched)
-    if (!this.playback?.tmdbId || this.playback.adult || !player || !this.playerReady || !this.resumeDecided) return;
+    if (!this.playback?.tmdbId || this.playback.adult || this.playback.devSrc || !player || !this.playerReady || !this.resumeDecided) return;
     // don't overwrite the saved position with 0:00 before jumping to it
     if (this.resumeAt && !this.resumeApplied) return;
     let duration = this.mediaDuration();
@@ -395,70 +473,91 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return parts[parts.length - 1];
   }
 
-  // Enter: shows the controls, then plays / pauses or acts on the focused control
-  private select() {
-    if (!this.moviePlayer) return;
-    let active = document.activeElement as HTMLElement;
+  // ── input ─────────────────────────────────────────────────────────────────
+
+  // The arrows that mean time, before the library moves the focus. Everything
+  // else (moving between buttons, the subtitles panel) is the movement system's
+  private onKeyDown(e:KeyboardEvent) {
+    if (!this.screen.active || this.layers.top || !this.playerReady || !this.moviePlayer) return;
+    let action = actionForKey(e);
+    let onTimeline = document.activeElement?.classList.contains('scrubber');
+    let take = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+
+    // the controls are hidden: any key brings them, Left / Right scrub, OK
+    // plays the next episode while Up next shows, else pauses / plays
     if (!this.controlsVisible) {
-      this.showControls();
+      if (action == 'left' || action == 'right') {
+        take();
+        this.zone.run(() => this.scrubBy(action == 'right' ? 1 : -1));
+      }
+      else if (action == 'up' || action == 'down') {
+        take();
+        this.zone.run(() => this.showControls(action == 'up' ? '.scrubber' : '.ctl.play'));
+      }
+      else if (action == 'select') {
+        take();
+        this.zone.run(() => {
+          if (this.upNextShown && this.upNext.torrent) this.playNext();
+          else {
+            this.togglePlay();
+            this.showControls('.ctl.play');
+          }
+        });
+      }
       return;
     }
-    if (!active.classList.contains('controlsElem') || active.classList.contains('playBtn') || active.classList.contains('progress')) {
-      if (this.moviePlayer.paused) this.resumePlayer();
-      else this.pausePlayer();
+
+    if (onTimeline && (action == 'left' || action == 'right')) {
+      take();
+      this.zone.run(() => this.scrubBy(action == 'right' ? 1 : -1));
     }
-    if (active.classList.contains('statsBtn')) this.statsVisible = !this.statsVisible;
-    if (active.classList.contains('ccBtn')) {
-      this.showSidePanel();
-      this.fetchSubs();
+    else if (onTimeline && action == 'up') {
+      take();
+      this.zone.run(() => this.hideControls());
     }
-    if (active.classList.contains('providerTab')) this.switchSubtitleProvider(active.dataset['provider']);
-    if (active.classList.contains('subtitle')) {
-      this.showSubtitle(this.subtitles[Number(active.dataset['index'])]);
-      document.querySelectorAll('.sidePannel .subtitle').forEach(subtitle => subtitle.classList.remove('selected'));
-      active.classList.add('selected');
-    }
+    if (action) this.zone.run(() => this.poke());
   }
 
-  // In-page steps once playing: subtitles panel → controls → stats panel;
-  // then out (before playback is ready: out at once)
+  // letting go of the arrow: the jump happens a moment later
+  private onKeyUp(e:KeyboardEvent) {
+    let action = actionForKey(e);
+    if (!this.scrub || (action != 'left' && action != 'right')) return;
+    clearTimeout(this.scrubTimer);
+    this.scrubTimer = setTimeout(() => this.zone.run(() => this.commitScrub()), SCRUB_COMMIT_MS / 2);
+  }
+
+  // Enter that no button took: on the timeline, the scrub now (or play / pause)
+  private select() {
+    if (!this.moviePlayer) return;
+    if (this.scrub) {
+      this.commitScrub();
+      return;
+    }
+    if (!this.controlsVisible) this.showControls();
+    else this.togglePlay();
+  }
+
+  // In-page steps once playing: a scrub → Up next → controls → stats; then
+  // out (before playback is ready: out at once). The subtitles panel is a
+  // layer: it closes itself
   private back():boolean {
     if (!this.playerReady) return false;
-    if (this.sidePannelVisible) this.hideSidePannel();
+    if (this.scrub) this.cancelScrub();
+    else if (this.upNextShown && !this.controlsVisible) this.upNextDismissed = true;
     else if (this.controlsVisible) this.hideControls();
     else if (this.statsVisible) this.statsVisible = false;
     else return false;
     return true;
   }
 
+  // ── playback ──────────────────────────────────────────────────────────────
+
   setupPlayer(){
-    this.moviePlayer = document.querySelector('.moviePlayer');
-    this.setupNavigation();
-    this.arrowKeyEvents = (e)=>{
-      if(!this.screen.active) return;
+    this.moviePlayer = this.host.nativeElement.querySelector('.moviePlayer');
 
-      if (actionForKey(e) == 'down' && !this.controlsVisible) {
-        this.showControls();
-        /*let timeSlider = document.querySelector('.progress') as HTMLElement
-        setTimeout(()=>{
-          timeSlider.focus({preventScroll : true})
-        } , 10)*/
-      }
-
-      if (actionForKey(e) == 'up' && this.controlsVisible && document.activeElement.classList.contains('progress')) {
-
-        this.hideControls();
-      }
-
-
-    }
-    document.addEventListener('keydown' , this.arrowKeyEvents);
-
-
-
-    this.moviePlayer.src = this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
-    this.setupTimeSlider()
-    this.moviePlayer.play();
+    this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
+      : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
+    this.moviePlayer.play()?.catch(() => {});
     // e.g. HEVC/x265 or AVI that Chromium can't decode
     this.moviePlayer.addEventListener('error', () => {
       if (!this.screen.active || !this.moviePlayer.getAttribute('src')) return;
@@ -467,185 +566,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     });
     this.moviePlayer.addEventListener('canplay', () => {
       this.applyResume();
-      setTimeout(()=>{
+      if (this.playerReady) return;
+      setTimeout(() => {
         this.playerReady = true;
-        document.querySelector('.playerPageContainer .loading').classList.add('hidden');
         this.updateClock();
       } , 1500)
     });
 
     // Stalls mid-playback: spinner + swarm stats until data flows again
     this.moviePlayer.addEventListener('waiting', () => {
-      if (!this.playerReady) return;
-      this.buffering = true;
-      document.querySelector('.playerPageContainer .loading').classList.remove('hidden');
+      if (this.playerReady) this.buffering = true;
     });
-    this.moviePlayer.addEventListener('playing', () => {
-      if (!this.buffering) return;
-      this.buffering = false;
-      document.querySelector('.playerPageContainer .loading').classList.add('hidden');
-    });
+    this.moviePlayer.addEventListener('playing', () => this.buffering = false);
 
-    this.moviePlayer.addEventListener('play', () => this.updateClock());
-    this.moviePlayer.addEventListener('pause', () => this.updateClock());
+    this.moviePlayer.addEventListener('play', () => { this.paused = false; this.updateClock(); this.poke(); });
+    this.moviePlayer.addEventListener('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); });
 
-    // Progress for Continue watching / history: periodically, on pause and at the end
+    // fires again each time the transcoded stream restarts
+    this.moviePlayer.addEventListener('loadedmetadata', () => this.updateTimeline());
     this.moviePlayer.addEventListener('timeupdate', () => {
+      this.checkAudio();
+      this.updateTimeline();
+      // Progress for Continue watching / history: periodically, on pause and at the end
       if (!this.moviePlayer.paused && Date.now() - this.lastSave > SAVE_EVERY_MS) this.saveProgress();
+      if (this.upNext && !this.upNext.torrent && !this.upNextLooking && this.remaining <= UP_NEXT_S + 60) this.lookUpNextRelease();
     });
-    this.moviePlayer.addEventListener('pause', () => this.saveProgress());
-    this.moviePlayer.addEventListener('ended', () => this.saveProgress());
-
-
-
+    this.moviePlayer.addEventListener('progress', () => this.updateTimeline());
+    this.moviePlayer.addEventListener('ended', () => {
+      this.saveProgress();
+      if (this.upNext?.torrent && !this.upNextDismissed) this.playNext();
+    });
   }
 
-  setupNavigation(){
-
-    this.navigation.updateNavigation('add' , {
-      id: 'timeSlider',
-      selector: '.playerPageContainer .timeSlider .progress',
-      straightOnly: true,
-    })
-
-    this.navigation.updateNavigation('add' , {
-      id: 'optionPannel',
-      selector: '.playerPageContainer .options .optBtn',
-
-      straightOnly: true,
-    })
-
-
+  togglePlay() {
+    if (!this.moviePlayer) return;
+    if (this.moviePlayer.paused) this.moviePlayer.play()?.catch(() => {});
+    else this.moviePlayer.pause();
   }
 
-  showControls(){
-
-    let controlPannel = document.querySelector('.playerPageContainer .controls') as HTMLElement;
-
-    if(!this.controlsVisible){
-      let contolsTl = gsap.timeline();
-
-      controlPannel['style']['display'] = "block";
-
-      this.navigation.updateNavigation('makeFocusable',{});
-
-      controlPannel.classList.add("expended")
-      contolsTl.to('.playerPageContainer .controls' , {opacity : 1 , duration : .2 })
-      contolsTl.to('.playerPageContainer .controls' , {y:0 , duration : .2 ,delay : -.15})
-
-      this.controlsVisible = true;
-      this.updateClock();
-
-      }
-
-  }
-
-
-  pausePlayer(){
-    this.moviePlayer.pause();
-    document.querySelector('.playBtn img')['src'] = "assets/icons/pause.svg";
-    document.querySelector('.playBtn img')['style']['transform'] = `translateX(${dp(1)})`
-  }
-
-  resumePlayer(){
-    this.moviePlayer.play();
-
-    document.querySelector('.playBtn img')['src'] = "assets/icons/playSharp.svg";
-    document.querySelector('.playBtn img')['style']['transform'] = `translateX(${dp(3)})`
-  }
-
-  hideControls(){
-    let controlPannel = document.querySelector('.playerPageContainer .controls') as HTMLElement;
-
-    if(this.controlsVisible){
-      this.controlsVisible = false;
-      this.updateClock();
-
-      let contolsTl = gsap.timeline();
-      contolsTl.to('.playerPageContainer .controls' , {y: dp(200) , duration : .2 })
-      contolsTl.to('.playerPageContainer .controls' , {opacity : 0, duration : .2 , delay : -.15 , onComplete(){
-
-        controlPannel['style']['display'] = "none";
-      }})
-    }
-
-  }
-
-  hideSidePannel(){
-    let sidePannel = document.querySelector('.playerPageContainer .sidePannel') as HTMLElement;
-
-    let sideTl = gsap.timeline();
-    sideTl.to('.playerPageContainer .sidePannel' , {x: dp(-200) , duration : .2 })
-    sideTl.to('.playerPageContainer .sidePannel' , {opacity : 0, duration : .2 , delay : -.15 , onComplete(){
-
-      sidePannel['style']['display'] = "none";
-    }})
-
-    this.sidePannelVisible = false;
-    let subBtn = document.querySelector('.ccBtn') as HTMLElement;
-    subBtn.focus({preventScroll : true});
-    this.navigation.updateNavigation('remove',{sectionId : 'subs'})
-
-  }
-
-  showSidePanel(){
-
-    let sidePannel = document.querySelector('.playerPageContainer .sidePannel') as HTMLElement;
-
-    let sideTl = gsap.timeline();
-
-    // flex, like the stylesheet: the subtitle list fills the rest and scrolls
-    sidePannel['style']['display'] = "flex";
-    sidePannel['style']['transform'] = 'translate(0% , 0%)';
-
-    sideTl.to('.playerPageContainer .sidePannel' , {opacity : 1 , duration : .2 })
-    sideTl.to('.playerPageContainer .sidePannel' , {x:0 , duration : .2 ,delay : -.15})
-
-
-    this.sidePannelVisible = true;
-
-    this.navigation.updateNavigation('add' , {
-      id: 'subs',
-      selector: '.playerPageContainer .sidePannel .controlsElem',
-      straightOnly: true,
-    })
-  }
-
-  setupTimeSlider(){
-
-
-    let durationDisp = document.querySelector('.duration') as HTMLElement;
-    let currentDisp = document.querySelector('.currentTime') as HTMLElement;
-    let slider = document.querySelector('.progress') as HTMLElement;
-
-
-
-    // fires again each time the transcoded stream restarts: listen once
-    let listening = false;
-    this.moviePlayer.onloadedmetadata = () => {
-
-      durationDisp.innerHTML = this.timeDisplayString(this.mediaDuration())
-      if (listening) return;
-      listening = true;
-
-      this.moviePlayer.addEventListener('timeupdate' , ()=>{
-        this.checkAudio();
-        //update Time Slider here
-        currentDisp.textContent = this.timeDisplayString(this.position())
-        slider.style.width = Math.floor(this.position() *100 /this.mediaDuration())+"%"
-        this.updateBuffered();
-
-      })
-      this.moviePlayer.addEventListener('progress' , () => this.updateBuffered());
-
-    };
-
-
-  }
-
-  seek(direction){
-    if (direction == 'forward') this.seekTo(this.position() + 30);
-    else if(direction == 'backward') this.seekTo(this.position() - 30);
+  jump(seconds:number) {
+    if (!this.playerReady) return;
+    this.seekTo(Math.min(this.duration || Infinity, this.position() + seconds));
   }
 
   seekTo(time:number){
@@ -658,40 +619,114 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       // one lookup.
       this.pendingSeek = time;
       this.moviePlayer.pause();
-      if (this.playerReady) {
-        this.buffering = true;
-        document.querySelector('.playerPageContainer .loading')?.classList.remove('hidden');
-      }
+      if (this.playerReady) this.buffering = true;
       clearTimeout(this.seekTimer);
       this.seekTimer = setTimeout(() => {
         let target = time;
         fetch(this.server.media(this.link.replace('/files/' , '/keyframe/') , { t: target }))
           .then(r => r.json()).catch(() => ({time: target}))
-          .then(data => {
+          .then(data => this.zone.run(() => {
             if (this.pendingSeek !== target || !this.screen.active) return; // a newer seek won
             this.offset = data['time'];
             this.pendingSeek = null;
             this.moviePlayer.src = this.streamUrl(this.offset);
-            this.moviePlayer.play();
-            this.shiftCues();
-          });
+            this.moviePlayer.play()?.catch(() => {});
+            this.applyCueShift();
+          }));
       } , 500);
     }
+    this.updateTimeline();
+  }
 
+  // played, and the downloaded range around the playhead (it shows how far
+  // playback can go without waiting; past it, the timeline is hatched)
+  updateTimeline(){
+    let duration = this.duration;
+    if (!duration || !this.moviePlayer) return;
+    this.playedPct = Math.min(100, this.position() * 100 / duration);
 
-    let currentDisp = document.querySelector('.currentTime') as HTMLElement;
-    let slider = document.querySelector('.progress') as HTMLElement;
-    let duration = this.mediaDuration();
+    let offset = this.transcoding ? this.offset : 0;
+    let ranges = this.moviePlayer.buffered;
+    let current = this.moviePlayer.currentTime;
+    for (let i = 0; i < ranges.length; i++) {
+      if (ranges.start(i) <= current + 0.5 && ranges.end(i) >= current) {
+        this.loadedStart = (ranges.start(i) + offset) / duration;
+        this.loadedEnd = Math.min(1, (ranges.end(i) + offset) / duration);
+        return;
+      }
+    }
+    this.loadedStart = this.loadedEnd = this.position() / duration;
+  }
 
-    currentDisp.textContent = this.timeDisplayString(time)
-    slider.style.width = Math.floor(time *100 /duration)+"%"
-    this.updateBuffered();
+  // ── scrubbing ─────────────────────────────────────────────────────────────
+
+  // One press: a preview mark moves by the step (faster while held); the seek
+  // waits until the arrow has been let go a moment
+  scrubBy(direction:number) {
+    if (!this.duration) return;
+    if (!this.scrub || this.scrub.direction != direction) {
+      this.scrub = { target: this.scrub?.target ?? this.position(), direction, presses: 0 };
+    }
+    this.scrub.presses++;
+    this.scrub.target = Math.min(this.duration - 1, Math.max(0, this.scrub.target + direction * scrubStep(this.scrub.presses)));
+    this.showControls('.scrubber');
+    clearTimeout(this.scrubTimer);
+    this.scrubTimer = setTimeout(() => this.zone.run(() => this.commitScrub()), SCRUB_COMMIT_MS * 2);
+  }
+
+  commitScrub() {
+    clearTimeout(this.scrubTimer);
+    if (!this.scrub) return;
+    let target = this.scrub.target;
+    this.scrub = null;
+    this.seekTo(target);
+    this.poke();
+  }
+
+  cancelScrub() {
+    clearTimeout(this.scrubTimer);
+    this.scrub = null;
+  }
+
+  // ── controls ──────────────────────────────────────────────────────────────
+
+  // `focus`: what to focus in them (CSS selector), default the play button
+  showControls(focus = '.ctl.play') {
+    if (!this.controlsVisible) {
+      this.controlsVisible = true;
+      this.updateClock();
+    }
+    let el = this.host.nativeElement.querySelector('.controls ' + focus) as HTMLElement;
+    if (el && document.activeElement !== el) setTimeout(() => this.engine.focus(el, 'restore'));
+    this.poke();
+  }
+
+  hideControls() {
+    if (!this.controlsVisible) return;
+    this.cancelScrub();
+    this.controlsVisible = false;
+    clearTimeout(this.controlsIdle);
+    this.updateClock();
+  }
+
+  // A key (or the focus moving) keeps the controls up; while playing they go
+  // after a while without one
+  poke() {
+    clearTimeout(this.controlsIdle);
+    if (!this.controlsVisible) return;
+    this.controlsIdle = setTimeout(() => this.zone.run(() => {
+      if (this.moviePlayer?.paused || this.scrub || this.subtitlesOpen || this.pointer.visible) return;
+      this.hideControls();
+    }), CONTROLS_IDLE_MS);
   }
 
   // ── mouse ─────────────────────────────────────────────────────────────────
 
   onPointerMove(){
-    if (this.playerReady) this.showControls();
+    if (this.playerReady && !this.controlsVisible) {
+      this.controlsVisible = true;
+      this.updateClock();
+    }
     clearTimeout(this.pointerIdle);
     this.pointerIdle = setTimeout(() => this.onPointerIdle() , POINTER_IDLE_MS);
   }
@@ -700,32 +735,25 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // (they hid the cursor already) or is resting on the controls
   onPointerIdle(){
     if (!this.pointer.visible) return;
-    if (document.querySelector('.playerPageContainer :is(.controls, .sidePannel, .statsPanel):hover')) return;
+    if (this.host.nativeElement.querySelector(':is(.controls, .statsPanel, .upNext):hover')) return;
 
     this.pointer.hide();
-    if (this.playerReady && !this.sidePannelVisible && !this.moviePlayer.paused) this.hideControls();
+    if (this.playerReady && !this.subtitlesOpen && !this.moviePlayer.paused) this.hideControls();
   }
 
   onVideoClick(){
-    if (!this.playerReady) return;
-    if (this.moviePlayer.paused) this.resumePlayer();
-    else this.pausePlayer();
+    if (this.playerReady) this.togglePlay();
   }
 
   // The timeline seeks where it's clicked (data-pointer="own": no select key)
   onTimelineClick(e:MouseEvent){
-    let duration = this.mediaDuration();
-    if (!this.playerReady || !isFinite(duration)) return;
-    this.seekTo(this.timelineFraction(e) * duration);
+    if (!this.playerReady || !this.duration) return;
+    this.cancelScrub();
+    this.seekTo(this.timelineFraction(e) * this.duration);
   }
 
   onTimelineHover(e:MouseEvent){
-    let label = document.querySelector('.playerPageContainer .hoverTime') as HTMLElement;
-    let duration = this.mediaDuration();
-    if (!label || !isFinite(duration)) return;
-    let fraction = this.timelineFraction(e);
-    label.style.left = (fraction * 100) + '%';
-    label.textContent = this.timeDisplayString(fraction * duration);
+    this.hoverAt = this.duration ? this.timelineFraction(e) : null;
   }
 
   timelineFraction(e:MouseEvent){
@@ -733,25 +761,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return Math.min(1 , Math.max(0 , (e.clientX - rect.left) / rect.width));
   }
 
-  // Light bar for the buffered range around the playhead (it starts behind the
-  // playhead, so it shows how far ahead playback can go without waiting)
-  updateBuffered(){
-    let bar = document.querySelector('.playerPageContainer .buffered') as HTMLElement;
-    let duration = this.mediaDuration();
-    let offset = this.transcoding ? this.offset : 0;
-    if (!bar || !duration) return;
-
-    let ranges = this.moviePlayer.buffered;
-    let current = this.moviePlayer.currentTime;
-    for (let i = 0; i < ranges.length; i++) {
-      if (ranges.start(i) <= current + 0.5 && ranges.end(i) >= current) {
-        bar.style.left = ((ranges.start(i) + offset) * 100 / duration) + "%";
-        bar.style.width = ((ranges.end(i) - ranges.start(i)) * 100 / duration) + "%";
-        return;
-      }
-    }
-    bar.style.width = "0%";
-  }
+  // ── stats ─────────────────────────────────────────────────────────────────
 
   // Peers / speed / downloaded under the spinner, polled while it's shown
   pollStats(){
@@ -779,7 +789,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return {
       bufferedAhead : Math.round(ahead) + ' s',
       resolution : player.videoWidth ? player.videoWidth + '×' + player.videoHeight : '…',
-      droppedFrames : quality ? quality.droppedVideoFrames + ' / ' + quality.totalVideoFrames : '…',
+      droppedFrames : quality ? quality.droppedVideoFrames + ' of ' + quality.totalVideoFrames : '…',
     };
   }
 
@@ -796,45 +806,54 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     gsap.to('.clock' , { opacity : watching ? 0 : 1 , duration : .3 });
   }
 
-
-
-  //Time in seconds to display string
-  timeDisplayString(duration){
-
-    let hh = Math.floor(duration/3600);
-    let min = Math.floor((duration - hh *3600)/60)
-    let sec = Math.floor(duration - min * 60 - hh* 3600);
-
-    let minDisp =  min < 10? "0" + String(min) : String(min);
-    let secDisp = sec < 10 ? "0" + String(sec) : String(sec);
-
-
-    return hh+":"+minDisp+":"+secDisp;
-
+  // 1:02:05 past an hour, 4:05 under
+  clock(seconds:number):string {
+    seconds = Math.max(0, Math.floor(seconds || 0));
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor(seconds % 3600 / 60);
+    let s = seconds % 60;
+    let pad = (n:number) => (n < 10 ? '0' : '') + n;
+    return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
   }
 
-  timeObject(duration){
-    let hh = Math.floor(duration/3600);
-    let min = Math.floor((duration - hh *3600)/60)
-    let sec = Math.floor(duration - min * 60 - hh* 3600);
+  // ── up next ───────────────────────────────────────────────────────────────
 
-    let minDisp =  min < 10? "0" + String(min) : String(min);
-    let secDisp = sec < 10 ? "0" + String(sec) : String(sec);
-
-    return {
-      hh : hh,
-      min : minDisp,
-      sec : secDisp
-    }
+  // Episodes: the one after this, from TMDB (its release is looked up later)
+  findNextEpisode() {
+    let p = this.playback;
+    if (!p.season || !p.episode || !p.tmdbId || p.adult) return;
+    this.nextSub = this.episodes.next(p.tmdbId, p.season, p.episode, p.imdbId).subscribe(next => this.upNext = next);
   }
 
+  lookUpNextRelease(then?:() => void) {
+    if (!this.upNext || this.upNextLooking) return;
+    this.upNextLooking = true;
+    let next = this.upNext;
+    this.episodes.bestTorrent(next).subscribe(torrent => {
+      this.upNextLooking = false;
+      next.torrent = torrent;
+      if (torrent) then?.();
+    });
+  }
 
-  fetchSubs(){
-    if (this.subtitleProviders.length) {
-      this.focusSubtitles();
+  playNext() {
+    if (!this.upNext) return;
+    if (!this.upNext.torrent) {
+      if (!this.upNextLooking) this.lookUpNextRelease(() => this.playNext());
       return;
     }
+    this.saveProgress();
+    this.episodes.playNext(this.upNext);
+  }
 
+  // ── subtitles ─────────────────────────────────────────────────────────────
+
+  openSubtitles() {
+    this.subtitlesOpen = true;
+    if (!this.subtitleProviders.length && this.subtitles === undefined) this.fetchSubs();
+  }
+
+  fetchSubs(){
     this.subtitlesService.getProviders().subscribe(providers => {
       let kind = this.playback.season ? 'episode' : 'movie';
       this.subtitleProviders = providers.filter(p => p.enabled && p.supports[kind]);
@@ -842,7 +861,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.loadSubtitles((preferred || this.subtitleProviders[0])?.id);
     } , () => {
       this.subtitles = [];
-      this.subtitlesError = "Subtitle service unavailable";
+      this.subtitlesError = "The subtitle service isn't answering. Try again in a moment.";
     })
   }
 
@@ -856,11 +875,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.subtitleProvider = provider;
     this.subtitles = undefined;
     this.subtitlesError = undefined;
-    this.lastSubFocused = undefined;
 
     if (!provider || !this.playback.imdbId) {
       this.subtitles = [];
-      this.subtitlesError = provider ? "No IMDb id for this title" : "No subtitle provider available";
+      this.subtitlesError = provider ? "This title has no IMDb id, so subtitles can't be looked up." : "No subtitle source is turned on. Turn one on in the server's dashboard.";
       return;
     }
 
@@ -868,42 +886,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.subtitlesService.search(provider , query).subscribe(result => {
       if (provider != this.subtitleProvider) return;
       this.subtitles = result.subtitles;
-      this.focusSubtitles();
     } , () => {
       if (provider != this.subtitleProvider) return;
       this.subtitles = [];
-      this.subtitlesError = "This provider is unavailable right now";
+      this.subtitlesError = "This source isn't answering. Try another one.";
     })
   }
 
-  // Focus the last chosen subtitle, else the first one, else the provider tab
-  focusSubtitles(){
-    setTimeout(()=>{
-      let target =
-        document.querySelector(`.sidePannel .subtitle[data-index="${this.lastSubFocused}"]`) ||
-        document.querySelector('.sidePannel .subtitle') ||
-        document.querySelector('.sidePannel .providerTab.selected');
-      (target as HTMLElement)?.focus({preventScroll : true});
-      // reopening the panel: jump straight to it, no animation
-      if (target) this.scrollSubtitleIntoView(target as HTMLElement , 'auto');
-    } , 100)
-  }
-
-  // Keep the focused subtitle inside the (natively scrolling) list
-  scrollSubtitleIntoView(node:HTMLElement , behavior:ScrollBehavior = 'smooth'){
-    let list = node.closest('.sidePannel .content') as HTMLElement;
-    if (!list) return;
-    let listRect = list.getBoundingClientRect();
-    let rect = node.getBoundingClientRect();
-    let top = list.scrollTop;
-    if (rect.top < listRect.top) top -= listRect.top - rect.top;
-    else if (rect.bottom > listRect.bottom) top += rect.bottom - listRect.bottom;
-    else return;
-    list.scrollTo({ top , behavior });
-  }
-
   showSubtitle(subtitle:Subtitle){
-    if (!subtitle) return;
+    if (!subtitle || !this.moviePlayer) return;
+    this.selectedSubtitle = subtitle;
     this.moviePlayer.querySelectorAll('track').forEach(track => track.remove());
     let track = document.createElement('track');
     track.kind = 'subtitles';
@@ -914,9 +906,44 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.moviePlayer.appendChild(track);
     track.addEventListener('load', () => {
       track.track.mode = 'showing';
-      this.cueShift = 0;
-      this.shiftCues();
+      this.appliedCueShift = 0;
+      this.applyCueShift();
     });
   }
 
+  hideSubtitles() {
+    this.selectedSubtitle = null;
+    this.moviePlayer?.querySelectorAll('track').forEach(track => track.remove());
+  }
+
+  setSubtitleSize(key:string) {
+    this.subtitleSize = key;
+    try { localStorage.setItem(SUBTITLE_SIZE_KEY, key); } catch (e) { }
+    this.applySubtitleSize();
+  }
+
+  private applySubtitleSize() {
+    let size = SUBTITLE_SIZES.find(s => s.key == this.subtitleSize) || SUBTITLE_SIZES[1];
+    this.host.nativeElement.style.setProperty('--px-subtitle-size', `var(${size.token})`);
+  }
+
+  shiftSubtitles(seconds:number) {
+    this.subtitleDelay = Math.round((this.subtitleDelay + seconds) * 10) / 10;
+    this.applyCueShift();
+  }
+
+  // Cues are in file time. Shown at file time − the transcoded stream's
+  // offset + the user's delay: only the difference with what was already
+  // applied moves them
+  applyCueShift(){
+    let cues = this.moviePlayer?.textTracks[0]?.cues;
+    let target = (this.transcoding ? this.offset : 0) - this.subtitleDelay;
+    let delta = target - this.appliedCueShift;
+    if (!cues || !delta) return;
+    this.appliedCueShift = target;
+    for (let i = 0; i < cues.length; i++) {
+      cues[i].startTime -= delta;
+      cues[i].endTime -= delta;
+    }
+  }
 }

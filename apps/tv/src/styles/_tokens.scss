@@ -11,6 +11,13 @@
 
 :root {
 
+  // ── scale ──────────────────────────────────────────────────────────────────
+  // How big the whole UI is on a given screen: multiplies the root font size
+  // (styles.scss), so every dp() length follows. 1 = the 1440 × 810 design
+  // filling the screen; below 1, smaller content, more of it on screen (full-
+  // screen frames are in vw / vh and still fill it).
+  --px-ui-scale: 0.8;
+
   // ── palette ────────────────────────────────────────────────────────────────
   --px-white: #fff;
   --px-black: #000;
@@ -91,6 +98,12 @@
   --px-surface-score: rgba(21, 21, 21, .18);            // the title block's scores
   --px-surface-row: rgba(0, 0, 0, .38);                 // a list's rows (releases)
   --px-surface-pane: rgba(0, 0, 0, .62);                // the player's panels
+  --px-surface-pane-solid: rgba(20, 20, 20, .94);       // a panel docked at an edge (px-panel edge="end")
+  // the player's timeline: what's loaded around the playhead, and the ground a
+  // jump would have to download first (hatched)
+  --px-timeline-loaded: rgba(255, 255, 255, .38);
+  --px-timeline-track: rgba(255, 255, 255, .1);
+  --px-gradient-timeline-unloaded: repeating-linear-gradient(-60deg, rgba(255, 255, 255, .14) 0 #{dp(2)}, rgba(255, 255, 255, 0) #{dp(2)} #{dp(6)});
   --px-surface-badge: rgba(0, 0, 0, .7);                // badges and notices over artwork
   --px-surface-shade: rgba(0, 0, 0, .55);               // a darkened image (edit overlay, progress track)
   --px-surface-raised: rgba(20, 20, 20, .85);           // a dialog's panel
@@ -112,6 +125,7 @@
   --px-gradient-rows-fade: linear-gradient(0deg, rgb(19, 19, 19) 0%, rgba(143, 143, 143, 0) 50%);
   --px-gradient-edge-back: linear-gradient(90deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
   --px-gradient-edge-forward: linear-gradient(270deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
+  --px-gradient-panel-end: linear-gradient(270deg, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 60%);   // a panel docked at the right edge
   --px-gradient-player-controls: linear-gradient(0deg, var(--px-black) 0%, rgba(0, 0, 0, .6) 49%, rgba(0, 0, 0, 0) 65%);
   --px-gradient-trailer: linear-gradient(39deg, var(--px-black) 0%, rgba(0, 0, 0, .94) 55%, rgba(0, 0, 0, .76) 78%, rgba(0, 0, 0, .48) 89%);
   --px-gradient-adult-backdrop:
@@ -134,11 +148,20 @@
   --px-font-book: 'NetflixBk';
   --px-font-light: 'Netflixlt';
   --px-font-display: 'FuturaLt';        // row titles of the sections
-  --px-text-hero: 2.8rem;               // a title's name
+  // the type scale: every font size is one of these steps (docs/ui-system-plan.md
+  // §6; 30 sizes merged into 11 on 2026-10-22)
+  --px-text-tiny: #{dp(12)};            // badges, tags
+  --px-text-small: #{dp(14)};           // meta lines, captions
+  --px-text-label: #{dp(16)};           // buttons, chips, cards' names
+  --px-text-lead: #{dp(18)};            // hints, a setting's name
+  --px-text-body: #{dp(19.2)};          // an overview, dialog options (1.2rem at 16px)
+  --px-text-heading: #{dp(22)};
+  --px-text-headline: #{dp(26)};
   --px-text-title: #{dp(32)};           // a panel's title
-  --px-text-body: 1.2rem;               // an overview
-  --px-text-row: #{dp(16)};             // a row's title
-  --px-text-small: #{dp(14)};
+  --px-text-large: #{dp(36)};
+  --px-text-hero: #{dp(44.8)};          // a title's name
+  --px-text-display: #{dp(54)};         // full-screen headings (Who's watching?)
+  --px-text-row: var(--px-text-label);  // a row's title
 
   // ── shape and space (primitives, from step 3) ──────────────────────────────
   --px-radius-xs: #{dp(2)};

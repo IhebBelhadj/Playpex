@@ -15,6 +15,8 @@ export const UI_API_VERSION = 0;
 
 export { GalleryComponent };
 export { dp, DESIGN_PX_PER_REM } from './units';
+export { tmdbImageBase, TmdbImageKind } from './images';
+export { display, UI_SCALES, DEFAULT_UI_SCALE, UiScaleOption, previewUiScale, saveUiScale } from './display';
 
 // overlays (step 2)
 export { PxDialogComponent, PxOptionComponent, PxPanelComponent, PxChipComponent, PxDialogHostComponent };

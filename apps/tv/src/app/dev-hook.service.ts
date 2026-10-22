@@ -4,6 +4,7 @@ import { environment } from '../environments/environment';
 import { ConnectionService } from './connection.service';
 import { InputDispatcher, Intent, LayerStack, NavAction, Navigator } from './nav/public-api';
 import { NotificationService } from './notification.service';
+import { PlaybackService } from './playback.service';
 import { PlayChoiceService } from './play-choice.service';
 import { ProfilesService } from './profiles.service';
 import { ReleasesKind, ReleasesService } from './releases.service';
@@ -29,6 +30,9 @@ export interface PlaypexDev {
   input(action:NavAction):boolean;
   // the open layers' ids, bottom to top
   layers():string[];
+  // the player on a plain video file (no torrent): a movie, or Breaking Bad
+  // S01E01 (its Up next is S01E02)
+  player(src:string, kind?:'movie' | 'episode'):void;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -43,6 +47,7 @@ export class DevHook {
     private notifications:NotificationService,
     private connection:ConnectionService,
     private dispatcher:InputDispatcher,
+    private playback:PlaybackService,
     private layerStack:LayerStack,
     private zone:NgZone,
   ) { }
@@ -62,6 +67,11 @@ export class DevHook {
       overlay: kind => run(() => this.overlay(kind)),
       input: action => run(() => this.dispatcher.dispatch(action)),
       layers: () => this.layerStack.layers.map(layer => layer.def.id),
+      player: (src, kind = 'movie') => run(() => this.playback.play(kind == 'episode'
+        ? { title: 'Breaking Bad', subtitle: 'S01E01 · Pilot', magnet: '', devSrc: src, imdbId: 'tt0903747',
+            season: 1, episode: 1, mediaType: 'tv', tmdbId: 1396, startAt: 0 }
+        : { title: 'Heat', year: '1995', runtimeMinutes: 170, magnet: '', devSrc: src, imdbId: 'tt0113277',
+            mediaType: 'movie', tmdbId: 949, startAt: 0 })),
     };
     window['playpexDev'] = hook;
   }

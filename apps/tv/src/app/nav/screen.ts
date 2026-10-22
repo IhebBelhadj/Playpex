@@ -6,7 +6,7 @@ import type { Injector } from '@angular/core';
 // declarations only need these.
 
 export type ScreenKind = 'section' | 'detail' | 'fullscreen' | 'system' | 'root';
-export type Requirement = 'server' | 'profile' | 'adult';
+export type Requirement = 'display' | 'server' | 'profile' | 'adult';
 
 // "Open screen X with params P and payload D", as data: what code hands to the
 // Navigator, what a menu entry or a plugin's link holds

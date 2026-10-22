@@ -30,13 +30,13 @@
 .heading {
   font-family: var(--px-font-book);
   font-weight: normal;
-  font-size: dp(54);
+  font-size: var(--px-text-display);
   margin: 0;
 }
 
 .intro {
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   color: var(--px-color-text-muted);
   margin: dp(8) 0 0;
 }
@@ -110,7 +110,7 @@
   background: var(--px-surface-field);
   color: var(--px-color-text-soft);
   font-family: var(--px-font-book);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   text-align: left;
   transition: background var(--px-dur-fast), color var(--px-dur-fast);
 
@@ -131,7 +131,7 @@
 .nameField {
   width: 100%;
   height: dp(54);
-  font-size: dp(22);
+  font-size: var(--px-text-heading);
   margin-bottom: 0;
 
   &.placeholder {
@@ -143,21 +143,21 @@
   min-height: dp(22);
   margin: dp(8) 0 dp(6);
   font-family: var(--px-font-book);
-  font-size: dp(16);
+  font-size: var(--px-text-label);
   color: var(--px-color-error);
 }
 
 .settingTitle {
   font-family: var(--px-font-bold);
   font-weight: normal;
-  font-size: dp(19);
+  font-size: var(--px-text-body);
   color: var(--px-color-text-secondary);
   margin: dp(14) 0 dp(8);
 }
 
 .settingHint {
   font-family: var(--px-font-light);
-  font-size: dp(15);
+  font-size: var(--px-text-label);
   color: var(--px-color-text-dim);
   margin: dp(-2) 0 dp(10);
 }
@@ -207,7 +207,7 @@
   background: transparent;
   color: var(--px-color-text-muted);
   font-family: var(--px-font-book);
-  font-size: dp(17);
+  font-size: var(--px-text-label);
   letter-spacing: dp(2);
   text-transform: uppercase;
   transition: all var(--px-dur-fast);
@@ -238,7 +238,7 @@
 // under its avatar, so it's its own
 .panelTitle {
   font-family: var(--px-font-bold);
-  font-size: dp(32);
+  font-size: var(--px-text-title);
   margin: 0 0 dp(26);
 }
 
@@ -286,6 +286,6 @@
   margin: dp(-10) 0 0;
   text-align: center;
   font-family: var(--px-font-light);
-  font-size: dp(18);
+  font-size: var(--px-text-lead);
   color: var(--px-color-text-secondary);
 }

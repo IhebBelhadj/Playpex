@@ -114,6 +114,14 @@ export class AppComponent implements AfterViewInit , OnInit{
   }
 
   ngOnInit(){
+    // prefers-reduced-motion for GSAP too (the CSS durations are tokens, 0
+    // there): every timeline runs 1000× faster, so it lands at once and its
+    // callbacks still fire. The shell lives as long as the window: no cleanup
+    let reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    let applyMotion = () => gsap.globalTimeline.timeScale(reducedMotion.matches ? 1000 : 1);
+    applyMotion();
+    reducedMotion.addEventListener('change', applyMotion);
+
     this.previousImgElement = document.querySelector('.previousBackground') as HTMLElement;
     this.newImgElement = document.querySelector('.newBackground') as HTMLElement;
     this.imgStaticTl = gsap.timeline();

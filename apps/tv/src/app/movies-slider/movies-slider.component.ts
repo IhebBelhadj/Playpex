@@ -11,6 +11,7 @@ import { SplashService } from '../splash.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { Navigator, useScreen } from '../nav/public-api';
 import { dp } from '../ui/public-api';
+import { tmdbImageBase } from '../ui/public-api';
 
 const PAGE_SIZE = 20;          // TMDB results per page
 const LOAD_AHEAD = 10;         // next page this many posters before a row's end
@@ -37,7 +38,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   moviesSub:Subscription;
   sliderEventSub:Subscription;
   focusListener;
-  imgBaseUrl = "https://image.tmdb.org/t/p/w342";
+  imgBaseUrl = tmdbImageBase('poster', 180);
   private screen = useScreen();
   private opening = false;
 

@@ -72,7 +72,7 @@
               [attr.data-id]="movie.id"
               (pxSelect)="openSimilar(movie)">
                 <div class="imgContainer">
-                  <img src="{{profileImgBase + movie?.poster_path}}" alt="">
+                  <img src="{{movieImgBase + movie?.poster_path}}" alt="">
                 </div>
             </button>
             <span *ngIf="movie.poster_path && movie.original_language == 'en'" class="name">{{movie?.original_title | slice:0:16}} {{movie?.original_title.length > 16 ? "..." : ""}}</span>
