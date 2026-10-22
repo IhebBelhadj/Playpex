@@ -1,19 +1,15 @@
 <splash></splash>
-<div class="masterContainer" [attr.data-px-accent]="accent">
-  <menu class="menu"></menu>
+<px-shell [accent]="accent">
+  <menu class="menu" pxShellMenu></menu>
   <notification-handler></notification-handler>
   <torrent-picker></torrent-picker>
   <px-dialog-host></px-dialog-host>
+  <px-toast-host></px-toast-host>
   <connection-lost></connection-lost>
   <router-outlet></router-outlet>
   <back-button></back-button>
   <clock class="clock"></clock>
-</div>
+  <img pxShellBackdrop class="background_img newBackground">
+  <img pxShellBackdrop class="background_img previousBackground">
+</px-shell>
 <nav-debug></nav-debug>
-
-<div class="overlay"></div>
-
-<img class="background_img newBackground" >
-<img class="background_img previousBackground">
-
-<div class="background"></div>

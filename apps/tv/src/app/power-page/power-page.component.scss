@@ -16,23 +16,5 @@
     display: flex;
     flex-direction: column;
     gap: dp(20);
-    .powerBtn {
-      width: dp(380);
-      height: dp(60);
-      background: var(--px-surface-solid);
-      color: var(--px-color-text-secondary);
-      font-size: var(--px-text-label);
-      font-family: var(--px-font-light);
-      opacity: .8;
-      border-radius: dp(5);
-      border: none;
-    }
-  }
-
-  .focused {
-    background: var(--px-color-focus) !important;
-    opacity: 1 !important;
-    color: var(--px-color-on-focus) !important;
-    box-shadow: var(--px-shadow-button);
   }
 }

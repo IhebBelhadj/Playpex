@@ -1,0 +1,137 @@
+@use 'px' as *;
+
+:host {
+  display: block;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: dp(18);
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-heading);
+}
+
+.px-title {
+  max-width: dp(800);
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-hero);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: dp(8) 0 dp(15);
+}
+
+.genres {
+  margin: 0;
+  font-family: var(--px-font-light);
+  opacity: .6;
+}
+
+.note {
+  max-width: dp(760);
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  margin: dp(20) 0 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+}
+
+.statusLine {
+  width: dp(440);
+  margin-top: dp(10);
+  --px-progress-height: #{dp(4)};
+}
+
+.overview {
+  max-width: dp(700);
+  margin: dp(50) 0 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  line-height: dp(39);
+  letter-spacing: dp(1);
+  opacity: .62;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  &.empty { opacity: .4; }
+}
+
+.credits {
+  display: flex;
+  gap: dp(48);
+  margin: dp(18) 0 0;
+
+  dt {
+    margin-bottom: dp(4);
+    font-family: var(--px-font-light);
+    font-size: var(--px-text-small);
+    opacity: .5;
+  }
+
+  dd {
+    margin: 0;
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    opacity: .85;
+  }
+}
+
+// a list page's header over its rows: one line of title, the rest close
+:host(.layout-section) {
+  .px-title {
+    margin-top: .67em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    margin: dp(10) 0 dp(15);
+    --px-meta-gap: #{dp(15)};
+  }
+
+  .overview {
+    margin-top: dp(22);
+    line-height: dp(36);
+  }
+}
+
+// the episode page: the show above, tighter
+:host(.layout-episode) {
+  .eyebrow { opacity: 1; }
+
+  .px-title {
+    margin: dp(10) 0 dp(18);
+    line-height: 1.1;
+  }
+
+  .meta {
+    margin: 0;
+    --px-meta-gap: #{dp(8)} #{dp(12)};
+  }
+
+  .overview { margin-top: dp(24); }
+}
+
+// loading
+.sk {
+  margin-bottom: dp(14);
+
+  &.meta { margin-bottom: dp(40); }
+}

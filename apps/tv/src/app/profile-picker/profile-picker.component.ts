@@ -52,9 +52,7 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
     // (the PIN pad is a layer: it takes the keys while it's open)
     this.screen.onSelect(active => {
       if (this.entering || !this.splashService.cleared) return;
-      if (active.classList.contains('retryBtn')) this.load();
-      else if (active.classList.contains('manageBtn')) this.toggleManage();
-      else if (active.classList.contains('profileTile')) this.choose(active.dataset['id']);
+      if (active.classList.contains('profileTile')) this.choose(active.dataset['id']);
     });
     this.screen.onBack(() => {
       if (this.entering || !this.splashService.cleared) return true;
@@ -99,7 +97,7 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
       error: err => {
         this.loaded = true;
         this.loadError = ProfilesService.errorMessage(err);
-        setTimeout(() => (document.querySelector('.profilesPage .retryBtn') as HTMLElement)?.focus({ preventScroll: true }), 0);
+        setTimeout(() => (document.querySelector('.profilesPage [data-px-key="retry"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
       }
     });
   }

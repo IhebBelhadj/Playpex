@@ -4,31 +4,21 @@
   [pxStack]="stackId" align="row-top" motion="transform">
   <div class="overlay"></div>
   <!-- the section's search / filters (movies-page): while they load, or find nothing -->
-  <p class="searchNote" *ngIf="catalog.search && searchEmpty">{{ searchNote }}</p>
+  <px-empty class="searchNote" *ngIf="catalog.search && searchEmpty" [text]="searchNote"></px-empty>
   <div class="content" pxTrack>
     <ng-container *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
     <!-- rows are created in category order; empty ones are still loading -->
-    <div class="section" *ngIf="category.value.length" pxStackItem>
-      <h3 class="sectionTitle">{{category.key}}</h3>
-      <div class="slider" rowArrows>
-        <div class="elements_wrapper sliderSection" [pxRow]="category.key" align="start"
-          [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)">
-
-          <button class="element" pxItem [pxItemKey]="movie?.id"
-            *ngFor="let movie of category.value ; let i=index; trackBy:trackById"
-            [attr.data-id]="movie?.id"
-            [attr.data-section]="category.key"
-            [attr.data-index]="i"
-            (pxSelect)="open(movie)">
-
-            <img src="{{imgBaseUrl + movie?.poster_path}}" alt="">
-
-          </button>
-
-        </div>
-      </div>
-    </div>
+    <px-card-row class="section" *ngIf="category.value.length" pxStackItem [rowKey]="category.key" [title]="category.key"
+      [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)">
+      <ng-container *ngFor="let movie of category.value; let i = index; trackBy: trackById">
+        <px-card variant="poster" [key]="movie?.id" [image]="movie?.poster_path ? imgBaseUrl + movie.poster_path : null"
+          [title]="movie?.title || movie?.name || ''" [data]="{ id: movie?.id, section: category.key, index: i }"
+          (pxSelect)="open(movie)"></px-card>
+      </ng-container>
+    </px-card-row>
 
     </ng-container>
+    <!-- plugins' rows (ui/slots), after the section's; not while a search / filters stand in -->
+    <px-slot *ngIf="!catalog.search" [name]="slotName" [context]="slotContext"></px-slot>
   </div>
 </div>

@@ -1,6 +1,6 @@
 # UI system (tokens, components, layouts, slots): plan
 
-Status (2026-10-22): **steps 0 and 1 done** (harness, tokens); **step 2 (overlays) built, verification unfinished** (see "Step 2 notes": what's left before it counts as done); **review items of 2026-10-22 done** (§0: per-device UI scale with a first-start screen and Settings, root size floor, the type scale, image sizes, reduced motion for GSAP, `check:ui`). Decisions A–J (§11) taken: the recommended defaults, except **G: rem, not px** (every length is `dp(n)`, the UI scales with the screen); the amber change of §6 approved. Read the root `CLAUDE.md`, `apps/tv/src/app/CLAUDE.md`, `docs/movement-system-plan.md` and `docs/navigation-system-plan.md` first; this plan assumes them. It builds on the navigation system as it is in the code (`apps/tv/src/app/nav/`, `public-api.ts`, `NAV_API_VERSION = 1`: screens, navigator, layers, `pxSelect`; its plan's status line still reads "proposed", and its step 7, the example plugin and `docs/tv-plugins.md`, isn't done). The movement system decides how focus moves, the navigation system which screen is shown and who gets an input; this plan covers **what a screen is built from.**
+Status (2026-10-22, evening): **steps 0–7 done**: harness, tokens, overlays, atoms, cards and rows, title info and layouts, models and slots, the contract (`UI_API_VERSION = 1`) with the example plugin and `docs/tv-plugins.md`; **§13 built** (screen edges, media keys, toasts, loading states, the performance tool and baseline, `check:contrast`); **§14 done**. Step notes below each step; what stayed out (and why) is in them. Decisions A–J (§11) as before; K–P (§13) taken with the recommended defaults, N measured and left for the user (§13.6). The movement system decides how focus moves, the navigation system which screen is shown and who gets an input; this plan covers **what a screen is built from.**
 
 ## 0. Findings and open items (2026-10-20, from writing this plan)
 
@@ -19,7 +19,9 @@ Decided by the user (2026-10-21), before step 0:
 2. **The amber change (§6)**: yes. Done in step 1.
 3. Visual scope: parity first, then the §6 items (not a redesign while migrating).
 
-Still open: correcting the navigation plan's status line (doc-only, not done).
+~~Still open: correcting the navigation plan's status line~~: done 2026-10-22.
+
+Gap review (2026-10-22, planned, not built): **§13** TV interface essentials (screen edges, media keys, toasts, loading states, performance budget, contrast) and **§14** plan housekeeping. Settings move to the server DB: `docs/settings-plan.md`.
 
 ### Review of 2026-10-22 (what the plan was missing)
 
@@ -32,7 +34,7 @@ Decided by the user: the UI scale per device, set on the first start and in Sett
 - **Enforcement**: `npm run check:ui` (`apps/tv/scripts/check-ui.js`) fails on colour / font / z-index / px literals and font sizes outside the scale; exceptions carry `// ui-check: allow (reason)`.
 - **Screenshot references** re-shot (scale 0.8, the type scale): `.screens/baseline` (1440 × 810), `baseline-1080`; the scale-1 sets kept as `baseline-scale1` / `baseline-1080-scale1`. `scripts/screens.js` writes `uiScale` (`--scale`, default 0.8) into its copy of `client.json` and shoots `settings` and `display` too.
 
-**Player** (2026-10-22, asked by the user with the frontend-design brief; features chosen: seek preview with hold-to-speed, next episode, subtitle size and sync): on the movement system (`pxSection="playerControls"`, `pxStack` of the timeline and a `pxGrid` of buttons; a window capture listener takes only the arrows that mean time), Angular state instead of GSAP display toggles, the subtitles panel a `px-panel` layer (new `edge="end"` variant: docked, side gradient, new tokens `--px-surface-pane-solid`, `--px-gradient-panel-end`). Signature: the timeline shows played (amber), downloaded around the playhead (`--px-timeline-loaded`) and the rest hatched (`--px-gradient-timeline-unloaded`); a scrub preview outlines its tab when it lands on the hatched part. Buttons are icons that grow into a labelled white pill when focused (new `assets/icons/next.svg`). Route `player/:session` so the next episode can replace the entry with a new component. Verified with a scratch scenario (keys on a 15 min ffmpeg test clip through `window.playpexDev.player()`): 25 checks (controls, button movement, held scrub previews without seeking then seeks once, controls-hidden scrub, OK pauses, subtitles layer + size + timing + focus back, stats, Up next card / button / dismiss) and the replace (new component, same depth, Back to the screen before). Not run: a real torrent and the next episode's real release (they'd download one); the streaming code itself is unchanged.
+**Player** (2026-10-22, asked by the user with the frontend-design brief; features chosen: seek preview with hold-to-speed, next episode, subtitle size and sync): on the movement system (`pxSection="playerControls"`, `pxStack` of the timeline and a `pxGrid` of buttons; a window capture listener takes only the arrows that mean time), Angular state instead of GSAP display toggles, the subtitles panel a `px-panel` layer (new `edge="end"` variant: docked, side gradient, new tokens `--px-surface-pane-solid`, `--px-gradient-panel-end`). Signature: the timeline shows played (amber), downloaded around the playhead (`--px-timeline-loaded`) and the rest hatched (`--px-gradient-timeline-unloaded`); a scrub preview outlines its tab when it lands on the hatched part. Buttons are icons that grow into a labelled white pill when focused (new `assets/icons/next.svg`). Route `player/:session` so the next episode can replace the entry with a new component. Verified with a scratch scenario (keys on a 15 min ffmpeg test clip through `window.playpexDev.player()`): 25 checks (controls, button movement, held scrub previews without seeking then seeks once, controls-hidden scrub, OK pauses, subtitles layer + size + timing + focus back, stats, Up next card / button / dismiss) and the replace (new component, same depth, Back to the screen before). Not run: a real torrent and the next episode's real release (they'd download one); the streaming code itself is unchanged. Same day, after the user's review: the subtitles panel became **Settings** (the "•••" button; CC opens it on Subtitles): tabs on top (moving onto one shows it; tabs and content are one `pxStack`, so Up from the content returns to the shown tab, which a side rail of tabs couldn't guarantee) for Subtitles, Size & timing (with a live sample line), Audio (volume, mute), Video (speed, fit / fill), Stats (with "Show on screen while watching"; the separate stats toggle is gone). New movement option `enter="selected"` (a chip group is entered on its current choice). Checked with a second scenario (17 checks). The movie page's similar-title posters and cast portraits had no size of their own (they relied on the image's natural size, which `tmdbImageBase()` changed): now sized by their frame (`object-fit: cover`), and posterless titles no longer leave empty slots. Then, from the user's next review: quantities became sliders (**`px-slider`**, `ui/controls/`, a step-3 atom pulled forward: one focusable item, ←/→ and click / drag change it, `origin` and named `stops`, `role="slider"`): subtitle size and timing, volume, speed, and new Zoom and Brightness; picture modes Fit / Fill / Stretch / Original size; no line under the tabs. Scenario: 22 checks, including a click on a track.
 
 Planned where they belong (not built):
 - Layouts and the scale (step 5): regions sized by the screen (`vh`, the menu's spread icons, rows pushed to the bottom) and content sized by the scale; at 0.8 the movies list has a taller gap above the rows. Each layout says which regions follow which.
@@ -52,7 +54,7 @@ One shared set of UI primitives for Playpex TV that:
 
 Like the other two systems, it can be adopted **page by page**: a page not yet migrated keeps its own markup and SCSS until it's moved, and each step leaves the app looking the same.
 
-Non-goals: a visual redesign (parity first; changes are listed and decided, §6), the plugin loader (packaging, sandboxing, distribution: §12), the player's controls (planned as tokens only; redesigned on its own on 2026-10-22, see §0 "Player"), the dashboard (`apps/dashboard` has shadcn/ui), an Angular upgrade (works on 14.1 as installed).
+Non-goals: a visual redesign (parity first; changes are listed and decided, §6), the plugin loader (packaging, sandboxing, distribution: §12), the player's own layout (it stays in `player-page/`; its controls come from `ui/`: `px-button variant="icon"`, `px-tabs`, `px-slider`, `px-chip`, `px-panel edge="end"`), the dashboard (`apps/dashboard` has shadcn/ui), an Angular upgrade (works on 14.1 as installed).
 
 ## 2. What the UI looks like in code today
 
@@ -425,19 +427,19 @@ Visual changes, measured (pixel diff of `step1/` against `before-tokens/`, the c
 Checks: `ng build` (production and development) clean; movement + nav specs 60 / 60; the literals grep (§9) finds only the `@font-face` names in `styles.scss`.
 
 Migration checklist (the copies of §2, ticked as steps move them to `ui/`):
-- [ ] Title block ×5: `movie-description`, `episode-page`, `adult-title`, `watchlist-page`, `adult-browse` (step 5)
-- [ ] Action tiles ×4: `movie-options`, `show-options`, `episode-page`, `adult-title` (step 3)
-- [ ] Row titles ×8 and rows ×12 (step 4): movies / TV rows (`movies-slider`), watch list, 18+ posters, search results, cast, similar, seasons, episodes (show page), episodes (episode page), guests, 18+ cast, 18+ more
-- [ ] Poster cards ×4, episode cards ×2, portraits ×3 (step 4)
+- [x] Title block ×5: `movie-description`, `episode-page`, `adult-title`, `watchlist-page`, `adult-browse` (step 5)
+- [x] Action tiles ×4: `movie-options`, `show-options`, `episode-page`, `adult-title` (step 3)
+- [x] Row titles ×8 and rows ×12 (step 4): movies / TV rows (`movies-slider`), watch list, 18+ posters, search results, cast, similar, seasons, episodes (show page), episodes (episode page), guests, 18+ cast, 18+ more
+- [x] Poster cards ×4, episode cards ×2, portraits ×3 (step 4)
 - [x] Modal frames: `torrent-picker`, `play-choice` (now `Dialogs.choose`), `connection-lost`, `notification-handler` (step 2)
 - [x] Full-screen panels: `catalog-filter-panel`, 18+ filter panel (`adult-browse`), `text-keyboard`, `pin-pad`, `profile-editor` panels, `connect-page` pairing (step 2)
-- [ ] Chips ×6 + search filters + season chips (step 3; the two filter panels' chips are `px-chip` since step 2)
-- [ ] Search field / toolbar buttons ×3: `movies-page`, `adult-browse`, `releases-page` rail (step 3)
-- [ ] Outline buttons ×7: `watchlist-page`, `adult-browse`, `catalog-filter-panel`, `releases-page`, `profile-editor`, `profile-picker`, `connect-page` (step 3)
-- [ ] Switches ×2: `profile-editor`, `releases-page` (step 3)
-- [ ] Key grids ×3: `text-keyboard`, `pin-pad`, the search page's own keyboard (decide in step 3)
-- [ ] Empty states / notes ×5+ (step 3)
-- [ ] Page skeletons: section ×3, detail ×2, rail ×1, full screen ×4 (step 5)
+- [x] Chips ×6 + search filters + season chips (step 3; the two filter panels' chips are `px-chip` since step 2; the title blocks' chips are `px-meta`'s; season chips stay the show page's own, in `px-card-row`'s template)
+- [x] Search field / toolbar buttons ×3: `movies-page`, `adult-browse`, `releases-page` rail (step 3)
+- [x] Outline buttons ×7: `watchlist-page`, `adult-browse`, `catalog-filter-panel`, `releases-page`, `profile-editor`, `profile-picker`, `connect-page` (step 3)
+- [x] Switches ×2: `profile-editor`, `releases-page` (step 3)
+- [x] Key grids ×3: decided in step 3: `text-keyboard` / `pin-pad` keep their keys on `px-panel`; the search page keeps its own inline keyboard (see step 3 notes)
+- [x] Empty states / notes ×5+ (step 3)
+- [x] Page skeletons: section ×3, detail ×2, rail ×1 (+ Settings), full screen ×4 (step 5; the power page stays a page cover)
 
 ### Step 2: overlays
 - `px-dialog`, `px-option`, `px-panel`, `Dialogs` + `<px-dialog-host>`.
@@ -467,11 +469,7 @@ Visual changes (§6, decision H), measured against before shots (a scratch build
 - Filter panels: one layout (the list page's): 18+ panel padding 40 → 36, group titles 30/14 → 26/12, chip padding 14 → 16, actions margin 16 (+28 on the buttons) → 30, period chips wrap; both titles stay put while the groups scroll.
 - Panels' titles are `<h2>` (were `<p>` in the keyboard / editor): same font and size.
 
-Left to do before step 2 is done:
-1. **Rebuild and re-shoot** (`npm run screens -w apps/tv`; the references were re-shot on 2026-10-22 at scale 0.8 with the type scale, compare with those): the first run predates two fixes (dialog `width` is the content width, not border-box: dialogs were 80 dp narrow; first option not shown focused in an unfocused window: focus now goes through the FocusEngine). Compare the 4 overlay shots with the before set and the rest with `.screens/baseline`. The before set lives only in the session scratchpad: rebuild it if needed (old overlay files are in git history once committed, or in this step's diff).
-2. **Scenario run** (keys + mouse): a scratch script (`scenarios.js`, Electron, `sendInputEvent`) covers picker navigation / trap, connection lost over the picker (Back closes only the top one, focus back in the picker), play choice Enter, error OK, click / hover / right click on options, the movies and 18+ filter panels (open on the selected chip, Enter selects, Back → filter button), keyboard on `/connect` (typing, Back → "Enter address"), avatar panel and PIN pad in the profile editor, the gallery's Dialogs. Its first run finished but **wasn't read**; re-run on the fixed build and read it. Not covered yet: a panel above a dialog never taking input below it, the pairing panel (needs a server to pair with).
-3. Look at the panels by eye (keyboard, PIN pad, both filter panels, avatars, delete confirmation, pairing).
-4. Docs: `apps/tv/src/app/CLAUDE.md` (shell layout, component index rows of the migrated overlays, services rows for `PlayChoiceService` / `Dialogs`, "UI system" section), then mark step 2 done here.
+Finished 2026-10-22: rebuilt and re-shot (`.screens/pre-step3`, against `.screens/baseline`): the four overlay shots show one frame, the first option focused (the two fixes hold); panels checked by eye in the same set and in the scenario shots. The old scratch scenario wasn't kept: `scripts/scenario.js` + `scripts/scenarios/*.js` replace it (step 3 notes); the overlay paths are covered by `settings` (a `px-panel` calibration: Back restores, focus back), `media-keys`, `plugin` (`Dialogs.confirm` then a toast) and the overlay specs. Docs: `apps/tv/src/app/CLAUDE.md` updated.
 
 ### Step 3: atoms and the action bar
 - `px-action`, `px-action-bar`, `px-button`, `px-chip`, `px-search-field`, `px-switch`, `px-score`, `px-meta`, `px-progress`, `px-empty`, `px-spinner`.
@@ -502,6 +500,35 @@ Left to do before step 2 is done:
 ### Step 7: contract, example, docs
 - `ui/public-api.ts` complete, `UI_API_VERSION = 1`; the example plugin of `navigation-system-plan.md` step 7 built with this plan's additions (§7). If that step is done together with this one, one example covers both.
 - Docs: `docs/tv-plugins.md` (author guide draft: screens, layouts, primitives, slots, tokens; like `docs/api/` for server clients), the "Recipes › Add a new page / Add a row" parts and a new "UI system" section of `apps/tv/src/app/CLAUDE.md`, the component index updated, the root `CLAUDE.md` conventions bullet ("tokens only, primitives from `ui/`").
+
+### Steps 3–7 notes (2026-10-22)
+
+Built in one pass after the settings plan's server side; every step verified with the build (development and production), `check:ui`, `check:contrast`, the `ui` / `movement` / `nav` specs (107, all pass; the full suite has only the 14 CLI "should create" stubs failing, as on the last commit), screenshots (`.screens/pre-step3`, `step3`, `step4`, `step5`, `step5-scale0.7`, `step5-scale1.15`, `final`) and keyboard scenarios.
+
+**Scenario runner** (new, kept): `apps/tv/scripts/scenario.js` + `scripts/scenarios/<name>.js` (`npm run scenario -w apps/tv -- <name>`): Electron like `screens.js`, real keys (`sendInputEvent`), checks, shots, CDP (`t.cdp`); `--server <url>` uses a throwaway server (e.g. `PLAYPEX_CONFIG_DIR=… PLAYPEX_PORT=28480 npm run server`, loopback, device `tv-scenario`). Scenarios: `rows` (15 checks), `settings` (20), `media-keys` (8, `PLAYPEX_TEST_CLIP`), `plugin` (10), `perf` (§13.5). Electron's `sendInputEvent` has no FastForward / Rewind key names: those are DOM events. `window.playpexDev` gained `api`, `deviceId`, `plugin(name, on)`.
+
+**Step 3 (atoms)**, `ui/atoms/`, `ui/controls/`, `ui/toast/`: `px-action` (+ `onIcon`, `busyLabel`; `--px-action-label-width`), `px-action-bar` (projected tiles and/or `ActionModel`s → `(picked)`; padding, not margin, so it never collapses into its neighbours), `px-button` (`outline` · `primary` · `filled` · `danger` · `toolbar` (`active`, `quiet`, `dim`, `size="l"`) · `plate` · `icon` (the player's: round, a white pill with its label when focused); `caps`, `size`, `round`, `width`, `align`), `px-search-field`, `px-switch` (a focusable row; restyled through `--px-switch-*`), `px-score` (+ `label`: a provider's name), `px-meta`, `px-progress`, `px-spinner`, `px-empty` (`size="hero"`, `busy`, `(act)`), `px-skeleton`, `px-tabs` (from the player; `vertical` for rails), `Toasts` + `<px-toast-host>` (§13.3), `dur()` in `ui/units.ts`, `ui/models.ts`. `OnPush` on every primitive (also the step 2 ones; the slider marks itself on keys / drags); ARIA: `role="dialog"` + `aria-modal` on dialogs and panels, `listbox` / `option`, `switch` + `aria-checked`, `slider`, `tablist` / `tab`, `progressbar`, `status` (toasts, spinner), `aria-pressed` on chips and on/off tiles, `aria-busy`. New tokens: `--px-zoom-control`, `--px-gradient-shimmer`, `--px-z-toast` (system / splash renumbered 13–14, order unchanged), `--px-safe-*`, `--px-screen-h/-w`.
+- Migrated: the tiles of the 4 title pages; the toolbars (movies, 18+, the releases rail); the filter panels' buttons; the outline buttons of the watch list, 18+, filter panels, releases, profile editor (caps), profile picker, `/connect` (`size="l" round`); both switches; the search filters' and the releases rail's chips → `px-chip`; the empty states / notes (watch list, 18+, releases, the list page's and the search page's notes) → `px-empty`; the power menu (`plate`); the player's buttons (`icon`) and its tabs (`px-tabs`).
+- Kept, decided: the profile picker's tiles (square avatars with an edit overlay, a kids tag and a lock: not a portrait card); the search page's own keyboard (always on screen with live results; `<text-keyboard>` is a modal panel) and no `px-text-field` until a second text input needs one; keypads keep their keys on `px-panel`.
+- Visual changes (§6, measured on the shots): the 18+ filter button's max width 300 → 420 (the movies one); releases rail: "Back to <title>" all white (the prefix was muted), "Clear search" padding 12 → 16; chips of the search page / releases rail: h40 → 42, padding 20 → 16, zoom 1.08 → 1.06, still dark (`--px-chip-bg`) with white labels (`--px-chip-color`, §13.6); "Manage Profiles" spacing 3 → 2 dp, muted instead of dim; `/connect` buttons: label 19.2 → 18, a 1 dp grey outline instead of 2 dp; empty-state notes line-height 1.7 (the list page's was 1.5, the search page's a 16 px .7 line).
+
+**Step 4 (cards and rows)**, `ui/cards/`: `px-card` (`poster` · `compact` · `portrait` · `still`; a shimmer after 300 ms while the image loads, faded in once `decode()`d, the title (initials on a portrait) when there's none or it fails; badges `tv` / `watched` / `upcoming` / `current` / text; progress; `busy` cover; `dim`; caption: number, title, rating, subtitle, `meta`; `data` = `data-*` on the focusable element), `px-card-row` (title in `section` / `detail` tone, `rowArrows`, `pxRow` with the same keys, gutters through `--px-row-*`, `pxCardTemplate` escape hatch, `CardModel` items → `(picked)`, `loading` skeletons).
+- All 12 rows migrated: movies / TV, watch list, 18+ posters, search results (people as portraits), cast (movie, 18+), similar, 18+ "More from", seasons (the chip stays the page's, in the template), episodes (show and episode pages, `still`), guests. Fixed on the way: `adult-browse`'s `.sliderContainer` margin (`margin: auto -10 0`).
+- Kept, decided: the release rows and the `/connect` server list stay the pages' own (principle 4 names the release row; `/connect` is a bespoke "TV source" list); no `px-option` list variant.
+- Visual changes: compact and portrait focus zoom 1.13 → 1.1 (`--px-zoom-card`); cast names in 120 dp instead of 95 (one line for "Robert De Niro"); search portraits 140 → 130, search posters 225 → 230 high; the cast row's gap under its title approximated (46 dp).
+- Verified: `rows` scenario (moves, description following, paging near the end, the same poster after a title and Back, a title page's Down / Up through buttons, cast, similar).
+
+**Step 5 (title info and layouts)**, `ui/title/`, `ui/layouts/`: `px-title-info` (`detail` · `section` · `episode`; eyebrow (+ `[pxEyebrow]`), meta (+ `[pxMeta]`), genres, notes, status + amber line, clamped overview, fallback, credits; skeleton while loading) on the 5 title blocks; `px-shell` (`.masterContainer` frame, backdrop and its overlay, `app.component.html`), `px-section-layout` (watch list, 18+ posters), `px-detail-layout` (movies-page's `.pageContainer`, the 18+ title), `px-rail-layout` (releases page, Settings), `px-fullscreen-layout` (picker, editor, `/connect`, the first-start display: brand, safe area). The power menu stays a page cover.
+- Visual changes: the description's overview is clamped to 4 lines instead of cut at 255 characters; the meta line's gaps are one rule; the watch list's overview is clamped to 3 lines; the 18+ posters' title sits .67em down (was .4em).
+- Layouts and the UI scale (shot at 0.7 and 1.15): section pages keep their rows at the bottom at every scale (the gap shows the title's backdrop: the convention of TV sections), the menu is already a centred block; detail pages scroll. Nothing else moved.
+
+**Step 6 (models and slots)**, `ui/slots/`: the catalog `SLOTS` with typed contexts (`MovieContext`, `ShowContext`, `EpisodeContext`, `SectionContext`, `TitleMetaContext`, `WatchlistContext`), `ContributionRegistry` / `defineContribution` / `CONTRIBUTIONS` (ids `plugin.<id>.<name>` or `core.<name>`, one kind matching the slot, no duplicates, at most 3 per plugin and slot, order then id, adult contributions never for kids, a plugin's keys prefixed `<pluginId>:`, a throwing or erroring contribution shows nothing), `<px-slot>` (actions → `px-action`s, rows → `px-card-row`s with paging and skeletons, meta → `px-meta`; Observables followed, dropped on a new context; intents opened through the `Navigator`). Placed in: the movie / show / episode action bars, the movie / show pages' rows, the Movies / TV sections' rows (not while a search stands in), the watch list's rows, the description's meta line. Core builders in `src/app/slot-contexts.ts`.
+- Decided per slot (E): the core's own actions and rows stay in the templates: they depend on page state a read-only context doesn't carry (resume position, busy, the toggles' optimistic state, the season curve). The slots are proven by the example plugin and the gallery's slot section.
+- Specs `ui/slots/slots.spec.ts` (9).
+
+**Step 7 (contract, example, docs)**: `UI_API_VERSION = 1`; `ui/public-api.ts` exports everything above; stable tokens marked `// stable` in `_tokens.scss` (§14.5); the example plugin `src/app/plugins-dev/hello/` (development builds: screens `plugin.hello.section` (`p/hello/home`) and `plugin.hello.title` (`p/hello/title/:id`), built on `px-section-layout` / `px-detail-layout` / `px-title-info` / a paged row / `Dialogs.confirm` + a toast; contributions (an action in `core.movie.actions`, a paged row in `core.movies.rows`) installed with `window.playpexDev.plugin('hello', true)` so the core's screenshots stay the core's; it imports only `nav/public-api` and `ui/public-api`); `docs/tv-plugins.md`; the guides. Scenario `plugin` (10 checks).
+
+Definition of done for a primitive (§14.3), applied to every one above: a spec, every state in the gallery, `check:ui` clean, `OnPush`, its ARIA role, exported from `public-api.ts`, a line in `apps/tv/src/app/CLAUDE.md`, listed here.
 
 ## 9. Verification
 
@@ -544,6 +571,91 @@ Changed: `styles.scss`, `app.module.ts`, `app.component.html` (dialog host, acce
 - More themes (light, high contrast). Other resolutions are handled (decision G + the per-device scale).
 - Translation: labels are English and written in templates; no i18n in this plan. Primitives keep text out of their own markup (labels are inputs), so a later translation layer only touches pages.
 - Sharing tokens with the dashboard (`apps/dashboard`, shadcn/ui) through `packages/protocol` or a `packages/design-tokens`.
+
+## 13. TV interface essentials (planned 2026-10-22, not built)
+
+From the gap review of 2026-10-22, asked by the user ("plan first, don't implement"); **built the same day** (status in §13.8). Six things a 10-foot UI needs that no step covered. Settings they add are stored as in `docs/settings-plan.md` (server DB). Decisions K–P at the end.
+
+### 13.1 Screen edges (overscan / safe area)
+Many TVs crop 2–5 % of the picture at each edge, and Electron can't detect it.
+- Setting `display.safeArea` (device, 0–6 % of each dimension, default 0). Tokens `--px-safe-x` / `--px-safe-y` on `:root`, set from it like `--px-ui-scale` (`ui/display.ts`).
+- **What moves in**: everything you read or focus (menu, back button, clock, page content, dialogs, panels, toasts, player controls, subtitles via `video::cue` line position). **What stays at the edge**: backdrops, the video itself, scrims.
+- Where: the shell (`.masterContainer` padding) and the player now; the layouts own it from step 5 (`px-shell`, `px-fullscreen-layout`). Rows that bleed to the right edge keep bleeding: only their first item respects the inset (`px-row-gutter` + `scroll-padding-inline`).
+- **Settings › Display › Screen edges**: a full-screen calibration (`core.settings.edges`, a `px-panel`): four corner marks and a frame at the current inset; ←/→ (or a `px-slider`) shrink / grow it until the marks are fully visible, Enter keeps, Back restores (the same preview rule as `<display-size>`). Offered on the first-start `/display` screen too, after the size (decision K).
+- Verify: screenshots at 0 and 5 % (every screen + player), nothing focusable or text outside the frame; `check:ui` rule: `position: fixed` / `absolute` elements in `ui/` and pages use the safe tokens or carry `// ui-check: allow (edge-to-edge)`.
+
+### 13.2 Remote media keys
+`keymap.ts` knows six actions; remotes and keyboards also send `MediaPlayPause`, `MediaPlay`, `MediaPause`, `MediaStop`, `MediaFastForward`, `MediaRewind`, `MediaTrackNext`, `MediaTrackPrevious`, and some send `BrowserBack` / `GoBack` for Back.
+- `keymap.ts`: new actions `playPause`, `play`, `pause`, `stop`, `forward`, `rewind`, `next`, `previous`; `back` also gets `BrowserBack` and `GoBack`. Not `Backspace` (the text keyboard and fields use it).
+- **The player** handles them through the **Media Session API** (`navigator.mediaSession.setActionHandler`; Chromium routes hardware media keys there, and the OS media overlay / MPRIS on Linux shows the title and poster from `MediaMetadata`), plus the keymap actions for keys Chromium doesn't route (decision L). `forward` / `rewind` = the held-scrub of the arrows (preview, one seek on release), `next` = the next episode (when there is one), `stop` = leave the player.
+- Outside the player: `playPause` on a title page = its Play button (decision L), the rest unused. `InputDispatcher` sends them to the top owner like every input; a page that doesn't handle one ignores it.
+- Verify: a scenario with `sendInputEvent` for each key name; by hand with a real remote / keyboard media keys on Linux (MPRIS) and Windows.
+
+### 13.3 Toasts (short, non-blocking messages)
+Today a message is a dialog (takes focus) or nothing.
+- **`Toasts`** service + **`<px-toast-host>`** in `app.component.html` (next to `<px-dialog-host>`): `toasts.show({ text, detail?, tone: 'info' | 'success' | 'error', icon?, key?, durationMs? })` → a handle with `dismiss()`. Same `key` replaces the visible one (rapid watch-list toggles show one toast).
+- **Never focusable, never takes input**: anything that needs an answer is a `Dialogs` call. One visible at a time, a queue of 3, 4 s default (errors 6 s); bottom-start inside the safe area, above player controls; `--px-z-toast` between `alert` and `system`; `role="status"`, `aria-live="polite"`; reduced motion: no slide.
+- Uses: watch list / watched toggles, a setting that failed to save (settings plan §7), subtitles loaded / not found, "Reconnecting…" before the connection-lost dialog, a torrent that went BUSY. `notification-handler`'s informational messages move here; blocking errors stay a dialog.
+- In the gallery (every tone, long text, replace by key, queue); specs for the queue and the key rule.
+
+### 13.4 Loading states
+Only "Finding torrents…" and ad-hoc notes exist; rows and pages pop in.
+- **`px-skeleton`** (`variant: 'poster' | 'still' | 'portrait' | 'line' | 'block'`, sizes from the same tokens as `px-card`; a slow shimmer, static with reduced motion). Not focusable: a row of skeletons can't be entered, focus waits for the first real item (the `FocusEngine` rule for late items).
+- Where: `px-card-row` shows N skeleton cards (as many as fit) until its first page (step 4); `px-card` uses it as its placeholder, then fades the image in after `decode()`, and shows the title fallback on error (step 4 already lists the states); `px-title-info` has a loading form (step 5); detail pages show the skeleton header while TMDB answers.
+- **Timing**: shown only after 300 ms (no flash on fast answers), and an answer never moves what's already focused.
+- `px-spinner` stays for actions (`busy`).
+
+### 13.5 Performance budget
+Nothing measures speed today; TV hardware is weaker than a dev machine.
+- **Reference machines** (decision M): the dev machine at 4K and one low-end box at 1080p (e.g. an Intel N100 mini PC; a Raspberry Pi 5 if it's a target).
+- **Budget**: moving focus ≤ 1 dropped frame per move at 60 fps; no long task > 50 ms while navigating; first rows visible ≤ 1.5 s after picking a profile (warm cache); JS heap back within 10 % after opening and leaving 10 detail pages; image bytes per screen within 1.5× of `tmdbImageBase()`'s ideal.
+- **Tool**: `apps/tv/scripts/perf.js` (like `screens.js`: Electron offscreen, `webContents.debugger` / CDP `Performance` + tracing) runs fixed journeys (hold Right on a row 5 s, Down through 10 rows, open / leave a detail page ×10, open the player settings and move through the tabs) and writes `.perf/<name>.json` (git-ignored); `npm run perf -w apps/tv`. A baseline now, compared at each step.
+- **Rules** for the UI guide: animate only `transform` / `opacity`; no animated `filter: blur` or `backdrop-filter` (check where panels use them); `will-change` only while moving; heavy rows off screen get `content-visibility: auto` if the trace says so.
+
+### 13.6 Contrast and readable sizes
+Text tokens go down to `text-faint` (.38) over moving backdrops, and the smallest type step at the default scale is small for a couch.
+- **`check:contrast`** (in `check-ui.js` or next to it): a table of (text token, ground token) pairs in `_tokens.scss` comments or a JSON; fails under WCAG 4.5 : 1 for body sizes, 3 : 1 for `heading` and up. Text over backdrops is checked against the scrim's worst case (scrim alpha over a white image).
+- **Focus visible from 3 m**: each of the three focus treatments (fill, zoom + un-dim, ring) differs from its unfocused state by ≥ 3 : 1 or a ≥ dp(3) ring.
+- **Size floor**: measure `tiny` / `small` at scale 0.8 on 1080p (≈ 12.8 / 14.9 px) against the common 10-foot minimum (decision N); if too small, raise the steps or limit them to secondary information.
+- Gallery: a contrast sheet (every pair, its ratio).
+
+### 13.7 Where they land
+| Item | Lands with | Depends on |
+|---|---|---|
+| 13.1 Screen edges | its own step now (shell + player), finished by step 5 | settings plan steps 1–3 (`display.safeArea`) |
+| 13.2 Media keys | its own step now (keymap + player) | none |
+| 13.3 Toasts | step 3 (an atom + host) | none; the settings plan uses it |
+| 13.4 Loading states | `px-skeleton` in step 3, used in steps 4–5 | none |
+| 13.5 Performance | tool + baseline now, checked every step | none |
+| 13.6 Contrast | `check:contrast` now, fixes as §6 items (decision H) | none |
+
+Suggested order: settings plan (server, then TV) → 13.2 → 13.3 → 13.1 → 13.5 baseline → 13.6 → 13.4 with steps 3–5.
+
+### 13.8 Status (2026-10-22)
+- **13.1 Screen edges: built.** Setting `display.safeArea` (device) → `applySafeArea()` (`ui/display.ts`) sets `--px-safe-x/-y` (and `--px-screen-h/-w`, the screen inside them, which page heights now use instead of `100vh`). Inside: the shell (`px-shell` padding, clock, back button), full-screen pages (`px-fullscreen-layout`), panels (`px-panel`'s frame, the docked one too), toasts, the player's controls / loading view / notices / Up next / stats (its picture stays edge to edge: `.player` is fixed over the shell). Calibration: `<screen-edges>` (`screen-edges/`, a `px-panel`: dashed frame, four corner marks, a 0–6 % slider by 0.5; the UI follows live; OK keeps, Back restores) from Settings › Display, and offered after the size on the first start (decision K): kept in `localStorage['playpex.safeArea']` until a server has it (`SettingsService` adopts it). Not done: the `check:ui` rule for fixed / absolute elements, subtitle cue positions (`video::cue` can't be moved per cue from CSS).
+- **13.2 Media keys: built.** `keymap.ts`: `playPause`, `play`, `pause`, `stop`, `forward`, `rewind`, `next`, `previous`; Back also `BrowserBack` / `GoBack`. `MediaKeys` (`media-keys.service.ts`): document keydown → actions for the screen shown with no layer open (`for(screen)`). The player: those actions + a Media Session (metadata, play / pause / stop / seek ± / previous / next track while there's an Up next, playback state), deduplicated within 250 ms; forward / rewind = the held scrub (a preview, one seek), previous = from the start, stop = leave. Title pages: Play / PlayPause = their Play (decision L). Scenario `media-keys` (8 checks). Not done: a real remote by hand.
+- **13.3 Toasts: built** (decision O: bottom start). Used for: watch list / watched toggles (success, and failures that used to be an error dialog), settings that failed to save, "Trying to reach <server>…" before the lost-connection dialog. Not moved: subtitles found / not found (the panel shows it), a BUSY torrent (it stops playback: stays a dialog).
+- **13.4 Loading states: built.** `px-skeleton`; `px-card` placeholder / fade-in / failed image; `px-card-row` `loading` (slot rows until their first page); `px-title-info` loading (the description until the first title arrives).
+- **13.5 Performance: built.** `scripts/scenarios/perf.js` (`npm run perf -w apps/tv`; `PLAYPEX_PERF_NAME`): first rows, Right held 5 s, Down ×10, 10 detail pages (heap after 3 to warm up, then twice 10), the player's settings tabs → `.perf/<name>.json` (git-ignored). Baseline `.perf/baseline-step3.json` on the dev machine (decision M's low-end box not available here): 0 dropped frames per move, no long task, warm first rows 53 ms; the heap grew ~10 % per 10 title pages: **a leak, fixed**: `MenuServiceService.sendInstruction` logged its caller (`console.log(source)`), and the console kept every page that collapsed the menu alive (two other stray logs removed too); after: +3 % then +2 %.
+- **13.6 Contrast: built** (decision P: pairs listed in `_tokens.scss`). `npm run check:contrast` (`scripts/check-contrast.js`, 25 pairs, WCAG 4.5 / 3). Fixed as §6 items: `--px-color-text-faint` .38 → .46 (3.6 → 4.6 : 1 on the page ground); chips over pictures get white labels (3.3 → 4.9 : 1 on a dark chip over a bright picture). **Decision N, measured, left open**: at 1080p and the default size, `tiny` / `small` are 12.8 / 14.9 real px, under the ~16 px 10-foot guideline; not raised (it would undo the size the user chose on 2026-10-21): the per-device size (Large and up) is the remedy for a TV across the room. Raise them if wanted.
+
+### Decisions K–P (taken 2026-10-22: the recommended defaults; N measured, see §13.8)
+- **K. Screen edges on the first start**: **offered after the size, skippable** / only in Settings.
+- **L. Media keys**: **Media Session in the player + keymap actions; `playPause` on title pages = Play** / keymap only (turn off Chromium's hardware media key handling) / player only.
+- **M. Low-end reference machine**: **an N100-class mini PC at 1080p** / Raspberry Pi 5 / dev machine only.
+- **N. Smallest readable size**: **measure first, then raise `tiny` / `small` if under ~16 real px at 1080p and default scale** / keep the scale as is.
+- **O. Toast position**: **bottom-start** / top-end (where the stats overlay is).
+- **P. Contrast pairs**: **listed by hand in the tokens file** / derived from the stylesheets (more work, fewer misses).
+
+## 14. Plan housekeeping (from the same review)
+
+Not features, but the plan has drifted from the code. **All done 2026-10-22** (1: `px-slider` has its spec and gallery entries, the tabs / docked panel / icon button are primitives, the timeline stays the player's; 2: §1 rewritten; 3: the definition of done is in the steps 3–7 notes; 4: step 2 finished, `screens.js` shoots the player with `PLAYPEX_TEST_CLIP`; 5: stable tokens marked; 6: the navigation plan's status line, text input decided in step 3):
+1. **Built but not in the plan**: `px-slider` (`ui/controls/`, exported) → §5.2, step 3's list, §10, the checklist; it has no spec and isn't in the gallery. The player's other new pieces are reusable and become primitives: **tabs** (tabs + content in one `pxStack`; the Settings page will need them), `px-panel edge="end"`, the **icon button that grows into a labelled pill** (a `px-button` variant), the **timeline** (`px-progress` variant with loaded ranges).
+2. **§1's non-goal** "the player's controls (tokens only)" is out of date: the player now uses `ui/` primitives. Rewrite the line: the player's own layout stays in the player; its controls come from `ui/`.
+3. **Definition of done for a primitive** (so the slider can't happen again): a spec, every state in the gallery, `check:ui` clean, `OnPush`, its ARIA role, exported from `public-api.ts`, a row in `apps/tv/src/app/CLAUDE.md`, listed here.
+4. **Step 2 is still unverified** (its "left to do" list) while later work landed on top; finish it before step 3. `scripts/screens.js` shoots no player: add shots through `window.playpexDev.player()` on the ffmpeg test clip (controls, settings tabs, Up next).
+5. **Token stability** for plugins (§7 says "the stable ones marked"): mark them in `_tokens.scss` (`// stable`), renaming a stable token keeps the old name as an alias for one `UI_API_VERSION`, removing one bumps it.
+6. `navigation-system-plan.md`'s status line (still "proposed, nothing built"), and text input: decide in step 3 whether the search page keeps its own keyboard and whether a `px-text-field` (any text, not only search) is needed.
 
 ## Legal note
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live. Plugins inherit that framing.

@@ -98,6 +98,8 @@ tags:
   - name: profiles
   - name: library
     description: One profile's watch list, playback progress and history
+  - name: settings
+    description: User settings (per device and per profile), keys in @playpex/protocol settings.js
   - name: trailers
 
 paths:
@@ -1373,7 +1375,7 @@ paths:
     put:
       tags: [profiles]
       operationId: updateProfile
-      summary: Update; `preferences` are merged into the stored ones
+      summary: Update; `preferences.adult` (deprecated) is written to the profile's settings
       requestBody:
         required: true
         content:
@@ -1386,6 +1388,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Profile' }
         '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Error' }
     delete:
@@ -1441,6 +1444,103 @@ paths:
               schema: { $ref: '#/components/schemas/Profile' }
         '400': { $ref: '#/components/responses/Invalid' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /profiles/{profileId}/settings:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    patch:
+      tags: [settings]
+      operationId: updateProfileSettings
+      summary: Change some of the profile's settings
+      description: |
+        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `adult.*`, or
+        `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
+        refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
+        profiles (`FORBIDDEN`). Publishes `settings.changed`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserSettingsPatch' }
+      responses:
+        '200':
+          description: The profile's effective settings, after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSettingValues' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ── settings ────────────────────────────────────────────────────────────────
+  /settings:
+    get:
+      tags: [settings]
+      operationId: getUserSettings
+      summary: The calling device's settings, and a profile's
+      description: |
+        Every registered key with its effective value (stored, else the default), so clients
+        never hard-code defaults. Plus the `client.*` values stored for this device / profile.
+        The device is the one the token names (paired clients), else `X-Playpex-Device` /
+        `?device=` (clients on the server machine); without one → `DEVICE_REQUIRED`.
+      parameters:
+        - $ref: '#/components/parameters/DeviceHeader'
+        - $ref: '#/components/parameters/Device'
+        - name: profile
+          in: query
+          required: false
+          description: A profile id; without it `profile` is null
+          schema: { type: string }
+        - name: definitions
+          in: query
+          required: false
+          description: '`1` adds the registry (`definitions`), for clients that don''t bundle @playpex/protocol'
+          schema: { type: string, enum: ['0', '1'] }
+      responses:
+        '200':
+          description: Effective settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSettings' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /settings/device:
+    patch:
+      tags: [settings]
+      operationId: updateDeviceSettings
+      summary: Change some of the calling device's settings
+      description: |
+        Device-scoped keys only (`display.*`, `player.volume`, `subtitles.size`, or
+        `client.<clientId>.<name>`). `null` resets a key. All or nothing. Publishes `settings.changed`.
+      parameters:
+        - $ref: '#/components/parameters/DeviceHeader'
+        - $ref: '#/components/parameters/Device'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserSettingsPatch' }
+      responses:
+        '200':
+          description: The device's effective settings, after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSettingValues' }
+        '400': { $ref: '#/components/responses/Invalid' }
+    delete:
+      tags: [settings]
+      operationId: resetDeviceSettings
+      summary: Reset every setting of the calling device (its rows are deleted)
+      parameters:
+        - $ref: '#/components/parameters/DeviceHeader'
+        - $ref: '#/components/parameters/Device'
+      responses:
+        '200':
+          description: The device's effective settings (the defaults)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSettingValues' }
+        '400': { $ref: '#/components/responses/Invalid' }
 
   # ── library ─────────────────────────────────────────────────────────────────
   /profiles/{profileId}/library:
@@ -1660,6 +1760,12 @@ components:
         `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
         uses the client's address. Ignored for paired devices (their token names them).
       schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
+    DeviceHeader:
+      name: X-Playpex-Device
+      in: header
+      required: false
+      description: The calling device's own id (`deviceId` of the client), for clients that aren't paired
+      schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,64}$' }
     UserCode:
       name: code
       in: path
@@ -1837,6 +1943,7 @@ components:
           description: Stable code (HTTP status in parentheses)
           enum:
             - INVALID                  # 400
+            - DEVICE_REQUIRED          # 400
             - PAIRING_REQUIRED         # 401
             - ADMIN_REQUIRED           # 401
             - FORBIDDEN                # 403
@@ -2220,7 +2327,10 @@ components:
         avatar: { type: [string, 'null'] }
         isKid: { type: boolean }
         hasPin: { type: boolean }
-        preferences: { type: object, description: 'Free-form client preferences, e.g. { adult: { layout, metadataProvider } }' }
+        preferences:
+          type: object
+          deprecated: true
+          description: 'Read-only view of the profile''s `adult.*` settings, `{ adult: { layout, metadataProvider } }`, kept for one release; use GET /settings?profile='
         createdAt: { type: string, format: date-time }
         lastUsedAt: { type: [string, 'null'], format: date-time }
     ProfileList:
@@ -2244,7 +2354,45 @@ components:
         name: { type: string }
         avatar: { type: string }
         isKid: { type: boolean }
-        preferences: { type: object }
+        preferences:
+          type: object
+          deprecated: true
+          description: 'Only `{ adult: { layout?, metadataProvider? } }` is read (written to the profile''s settings); use PATCH /profiles/{profileId}/settings'
+
+    UserSettingValues:
+      type: object
+      description: '`{ key: value }`: every registered key of the scope with its effective value, plus stored `client.*` keys'
+      additionalProperties: true
+    UserSettingsPatch:
+      type: object
+      description: '`{ key: value | null }`; null resets the key to its default'
+      additionalProperties: true
+    SettingDefinition:
+      type: object
+      required: [scope, type, default]
+      properties:
+        scope: { type: string, enum: [device, profile] }
+        type: { type: string, enum: [number, string, boolean] }
+        default: {}
+        enum: { type: array, items: { type: [number, string] } }
+        min: { type: number }
+        max: { type: number }
+        step: { type: number }
+        nullable: { type: boolean }
+        adult: { type: boolean, description: 'Refused for kids profiles' }
+    UserSettings:
+      type: object
+      required: [device, profile]
+      properties:
+        device: { $ref: '#/components/schemas/UserSettingValues' }
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/UserSettingValues'
+            - type: 'null'
+        definitions:
+          type: object
+          description: 'Only with `?definitions=1`: the registry, `{ key: SettingDefinition }`'
+          additionalProperties: { $ref: '#/components/schemas/SettingDefinition' }
 
     # ── library
     MediaType:

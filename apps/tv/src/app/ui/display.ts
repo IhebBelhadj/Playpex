@@ -9,6 +9,7 @@ import { desktop } from '../desktop';
 //   resolveDisplay()      before Angular boots (main.ts): applies the stored scale
 //   previewUiScale(s)     applies without storing (the picker, while moving)
 //   saveUiScale(s)        applies and stores; display.chosen = true
+//   applySafeArea(f)      the screen edges (a device setting, SettingsService)
 
 export interface UiScaleOption {
   value:number;
@@ -28,11 +29,17 @@ export const DEFAULT_UI_SCALE = .8;
 
 const STORAGE_KEY = 'playpex.uiScale';
 
+// the screen edges chosen before any server knew them (the first start):
+// adopted by SettingsService once connected, applied at boot until then
+const SAFE_AREA_KEY = 'playpex.safeArea';
+
 export const display = {
   /** the stored scale (or the default) */
   scale: DEFAULT_UI_SCALE,
   /** false until someone chose a size on this device */
   chosen: false,
+  /** the screen edges kept on this device (0–0.06), until the server has them */
+  safeArea: 0,
 };
 
 export async function resolveDisplay():Promise<void> {
@@ -47,6 +54,14 @@ export async function resolveDisplay():Promise<void> {
   display.chosen = stored != null;
   display.scale = stored ?? DEFAULT_UI_SCALE;
   previewUiScale(display.scale);
+  try { display.safeArea = Number(localStorage.getItem(SAFE_AREA_KEY)) || 0; } catch (e) { }
+  applySafeArea(display.safeArea);
+}
+
+export function saveSafeArea(fraction:number) {
+  display.safeArea = fraction;
+  applySafeArea(fraction);
+  try { localStorage.setItem(SAFE_AREA_KEY, String(fraction)); } catch (e) { }
 }
 
 export function previewUiScale(scale:number) {
@@ -62,6 +77,16 @@ export async function saveUiScale(scale:number):Promise<void> {
   else {
     try { localStorage.setItem(STORAGE_KEY, String(scale)); } catch (e) { }
   }
+}
+
+// Screen edges (docs/ui-system-plan.md §13.1): what a TV crops at each edge,
+// as a fraction of the screen (setting display.safeArea, 0–0.06). Everything
+// you read or focus stays inside --px-safe-x / --px-safe-y.
+export function applySafeArea(fraction:number | null | undefined) {
+  let f = Math.min(.1, Math.max(0, Number(fraction) || 0));
+  let root = document.documentElement.style;
+  root.setProperty('--px-safe-x', `calc(100vw * ${f})`);
+  root.setProperty('--px-safe-y', `calc(100vh * ${f})`);
 }
 
 function parse(value:string | null):number | null {

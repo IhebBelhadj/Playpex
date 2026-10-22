@@ -146,23 +146,23 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     this.catalog.typing = false;
     query = query.trim();
     if (query != this.catalog.query) this.show(query, this.catalog.filters);
-    this.focusToolbar('.searchField');
+    this.focusToolbar('[data-px-key="search"]');
   }
 
   onSearchCancelled() {
     this.catalog.typing = false;
-    this.focusToolbar('.searchField');
+    this.focusToolbar('[data-px-key="search"]');
   }
 
   onFiltersApplied(filters:CatalogFilters) {
     this.catalog.filtering = false;
     if (!sameFilters(filters, this.catalog.filters)) this.show(this.catalog.query, filters);
-    this.focusToolbar('.filterBtn');
+    this.focusToolbar('[data-px-key="filters"]');
   }
 
   closeFilters() {
     this.catalog.filtering = false;
-    this.focusToolbar('.filterBtn');
+    this.focusToolbar('[data-px-key="filters"]');
   }
 
   // The rows for a search and / or filters: a query → one row of TMDB search
@@ -188,7 +188,7 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
 
   clearSearch() {
     this.catalog.endSearch();
-    this.focusToolbar('.searchField');
+    this.focusToolbar('[data-px-key="search"]');
   }
 
   private focusToolbar(selector:string) {

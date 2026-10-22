@@ -24,6 +24,12 @@ UI system: **[`docs/ui-system-plan.md`](docs/ui-system-plan.md)** (plan + status
 
 Server / client split: **[`docs/server-separation-plan.md`](docs/server-separation-plan.md)** (plan + status, in progress): the server becomes its own product (Playpex Media Server) and the TV app one of several clients over a versioned API (`packages/protocol/openapi.yaml`). Read its status line before working on the server, the API or packaging.
 
+Settings: **[`docs/settings-plan.md`](docs/settings-plan.md)** (plan, proposed 2026-10-22, nothing built): every user setting in `playpex.db` (`profile_settings`, `device_settings` keyed by the client's device id), a key registry in `packages/protocol`, through the usual routes → services → repositories → Drizzle layers; clients keep only a boot cache (`client.json` `uiScale`). Read it before adding a setting or a `localStorage` key.
+
+Media server: **[`docs/media-server-plan.md`](docs/media-server-plan.md)** (plan, proposed 2026-10-22, nothing built): downloads kept and managed as a torrent client on the Rust engine rqbit (a supervised sidecar on loopback; leaving the player pauses, never deletes; dashboard Downloads page), a media library of the admin's folders (scanned, matched to TMDB, streamed by media ref), playing from disk first through one sources endpoint (`POST /play/sources`), and a DLNA / UPnP AV server. Read it before touching the torrent lifecycle, `sessions.js`, storage or the play flow.
+
+Plugins: **[`docs/plugins-plan.md`](docs/plugins-plan.md)** (plan, proposed 2026-10-22, nothing built): `.ppx` packages with a manifest and permissions, server code in a QuickJS / WASM sandbox with a host API, middleware hooks (`play.collect` / `rank` / `before`, release / subtitle / metadata providers), declarative TV screens and contributions rendered by core templates (no plugin code in the TV), admin install and signatures, and the 18+ section moved out of the core into a plugin. Read it with `docs/tv-plugins.md` before adding extension points or 18+ code.
+
 More detailed guides live next to the code:
 
 | Area | Guide |

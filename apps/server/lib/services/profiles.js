@@ -6,6 +6,7 @@
 var crypto = require('crypto'),
   errors = require('./errors'),
   validate = require('./validate'),
+  registry = require('@playpex/protocol/settings'),
   dataErrors = require('../data/errors');
 
 var MAX_PROFILES = 8,
@@ -24,15 +25,29 @@ function pinMatches(profile, pin) {
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
+// Deprecated `preferences` (settings plan §6): a read-only view of the
+// profile's adult.* settings, { adult: { layout, metadataProvider } }, kept
+// for one release; writes of preferences.adult go to the settings.
+var ADULT_PREFERENCES = { layout: 'adult.layout', metadataProvider: 'adult.metadataProvider' };
+
+function preferencesFrom(entries) {
+  var adult = {};
+  Object.keys(ADULT_PREFERENCES).forEach(function (field) {
+    var entry = entries.filter(function (e) { return e.key === ADULT_PREFERENCES[field]; })[0];
+    adult[field] = entry ? entry.value : registry.SETTINGS[ADULT_PREFERENCES[field]].default;
+  });
+  return { adult: adult };
+}
+
 /** What leaves the service: never the PIN hash or salt */
-function toPublic(profile) {
+function toPublic(profile, entries) {
   return {
     id: profile.id,
     name: profile.name,
     avatar: profile.avatar,
     isKid: profile.isKid,
     hasPin: !!profile.pinHash,
-    preferences: profile.preferences || {},
+    preferences: profile.isKid ? {} : preferencesFrom(entries || []),
     createdAt: profile.createdAt,
     lastUsedAt: profile.lastUsedAt
   };
@@ -67,12 +82,34 @@ function preferences(value) {
   return value;
 }
 
+// preferences.adult → { 'adult.layout': …, 'adult.metadataProvider': … } (validated)
+function adultSettings(value) {
+  var adult = preferences(value).adult, patch = {};
+  if (adult == null) {
+    return patch;
+  }
+  if (typeof adult !== 'object' || Array.isArray(adult)) {
+    throw errors.invalid('preferences.adult must be an object');
+  }
+  Object.keys(ADULT_PREFERENCES).forEach(function (field) {
+    if (adult[field] !== undefined) {
+      var problem = registry.validate(ADULT_PREFERENCES[field], adult[field], 'profile');
+      if (problem) {
+        throw errors.invalid(problem);
+      }
+      patch[ADULT_PREFERENCES[field]] = adult[field];
+    }
+  });
+  return patch;
+}
+
 /**
  * @param {import('../data/contracts').Repositories} repositories
  * @param {{ now?: function(): Date }} [options]
  */
 module.exports = function profilesService(repositories, options) {
   var repo = repositories.profiles,
+    settings = repositories.settings,
     now = (options && options.now) || function () { return new Date(); },
     failures = new Map();   // profileId → { count, lockedUntil }
 
@@ -83,6 +120,26 @@ module.exports = function profilesService(repositories, options) {
       }
       return profile;
     });
+  }
+
+  function present(profile) {
+    if (!profile) {
+      return profile;
+    }
+    return settings.list({ kind: 'profile', id: profile.id }).then(function (entries) {
+      return toPublic(profile, entries);
+    });
+  }
+
+  function writePreferences(profile, value) {
+    var patch = adultSettings(value);
+    if (!Object.keys(patch).length) {
+      return Promise.resolve(profile);
+    }
+    if (profile.isKid) {
+      throw errors.forbidden('Kids profiles have no 18+ settings');
+    }
+    return settings.setMany({ kind: 'profile', id: profile.id }, patch, now()).then(function () { return profile; });
   }
 
   function onDuplicate(err) {
@@ -110,11 +167,11 @@ module.exports = function profilesService(repositories, options) {
     MAX_PROFILES: MAX_PROFILES,
 
     list: function () {
-      return repo.list().then(function (rows) { return rows.map(toPublic); });
+      return repo.list().then(function (rows) { return Promise.all(rows.map(present)); });
     },
 
     get: function (id) {
-      return requireProfile(id).then(toPublic);
+      return requireProfile(id).then(present);
     },
 
     /** The profile used last, to preselect it in the picker (null when none) */
@@ -122,33 +179,40 @@ module.exports = function profilesService(repositories, options) {
       return repo.list().then(function (rows) {
         var used = rows.filter(function (p) { return p.lastUsedAt; })
           .sort(function (a, b) { return b.lastUsedAt - a.lastUsedAt; });
-        return used.length ? toPublic(used[0]) : null;
+        return used.length ? present(used[0]) : null;
       });
     },
 
     /** @param {{ name: string, avatar?: string, isKid?: boolean, pin?: string, preferences?: object }} input */
     create: function (input) {
       input = input || {};
+      var prefs;
       return Promise.resolve().then(function () {
         var profile = Object.assign({
           id: crypto.randomUUID(),
           name: name(input.name),
           avatar: validate.optionalString(input.avatar, 'avatar', 200),
           isKid: !!input.isKid,
-          preferences: input.preferences == null ? {} : preferences(input.preferences),
+          preferences: {},
           createdAt: now(),
           lastUsedAt: null
         }, pinFields(input.pin));
+        prefs = input.preferences == null ? null : input.preferences;
+        if (prefs) {
+          adultSettings(prefs);   // validate before inserting
+        }
         return repo.count().then(function (count) {
           if (count >= MAX_PROFILES) {
             throw errors.conflict('At most ' + MAX_PROFILES + ' profiles');
           }
           return repo.insert(profile);
         });
-      }).then(toPublic, onDuplicate);
+      }).then(function (profile) {
+        return prefs && !profile.isKid ? writePreferences(profile, prefs) : profile;
+      }, onDuplicate).then(present);
     },
 
-    /** @param {{ name?: string, avatar?: string|null, isKid?: boolean, preferences?: object }} patch preferences are merged */
+    /** @param {{ name?: string, avatar?: string|null, isKid?: boolean, preferences?: object }} patch preferences.adult (deprecated) is written to the settings */
     update: function (id, patch) {
       patch = patch || {};
       return requireProfile(id).then(function (profile) {
@@ -162,14 +226,18 @@ module.exports = function profilesService(repositories, options) {
         if (patch.isKid !== undefined) {
           changes.isKid = !!patch.isKid;
         }
+        var write = patch.preferences !== undefined ? function (p) {
+          return writePreferences(Object.assign({}, p, { isKid: changes.isKid !== undefined ? changes.isKid : p.isKid }),
+            patch.preferences).then(function () { return p; });
+        } : function (p) { return p; };
         if (patch.preferences !== undefined) {
-          changes.preferences = Object.assign({}, profile.preferences, preferences(patch.preferences));
+          adultSettings(patch.preferences);   // validate before writing anything
         }
         if (!Object.keys(changes).length) {
-          return profile;
+          return write(profile);
         }
-        return repo.update(id, changes);
-      }).then(toPublic, onDuplicate);
+        return repo.update(id, changes).then(write);
+      }).then(present, onDuplicate);
     },
 
     /** Set, change or (with null) remove the PIN */
@@ -177,7 +245,7 @@ module.exports = function profilesService(repositories, options) {
       return requireProfile(id).then(function (profile) {
         failures.delete(id);
         return repo.update(profile.id, pinFields(pin));
-      }).then(toPublic);
+      }).then(present);
     },
 
     /**
@@ -195,7 +263,7 @@ module.exports = function profilesService(repositories, options) {
           failures.delete(id);
         }
         return repo.update(id, { lastUsedAt: now() });
-      }).then(toPublic);
+      }).then(present);
     },
 
     /** Deletes the profile and its watchlist, progress, history and ratings */

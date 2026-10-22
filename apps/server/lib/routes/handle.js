@@ -17,10 +17,14 @@ module.exports = function handle(work, successStatus) {
       if (!err.status) {
         log.error(req.method + ' ' + req.path + ' failed', { err: err });
       }
-      res.status(err.status || 500).json({
+      var body = {
         error: err.status ? err.message : 'Internal error',
         code: err.code || 'INTERNAL'
-      });
+      };
+      if (err.status && Array.isArray(err.errors)) {
+        body.errors = err.errors;   // INVALID settings: one message per bad key
+      }
+      res.status(err.status || 500).json(body);
     });
   };
 };

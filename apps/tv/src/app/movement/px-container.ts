@@ -11,7 +11,10 @@ import { Motion, MotionKind, ScrollMotion, TransformMotion } from './motion';
 import { PxItemDirective } from './px-item.directive';
 
 export type ContainerKind = 'row' | 'grid' | 'stack';
-export type EnterMode = 'remembered' | 'nearest';
+// How focus lands when it enters the container: its remembered entry, the
+// on-screen entry nearest to where it comes from, or the selected one (a
+// chip group: the entry that is or holds `.selected`, else the first)
+export type EnterMode = 'remembered' | 'nearest' | 'selected';
 
 const NEAR_END_THROTTLE = 300;   // ms between two nearEnd emissions
 const SAVE_DELAY = 150;          // ms after the last scroll event before saving the offsets
@@ -171,6 +174,10 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     let pick = this.enter == 'remembered'
       ? rememberedIndex(this.positions.get(this.storeKey), entries.map(e => this.entryKey(e)))
       : -1;
+    if (this.enter == 'selected') {
+      pick = entries.findIndex(e => e.matches('.selected') || !!e.querySelector('.selected'));
+      if (pick < 0) pick = 0;
+    }
     if (pick < 0) pick = this.nearestVisible(entries, origin);
     return this.resolve(entries[pick], origin);
   }

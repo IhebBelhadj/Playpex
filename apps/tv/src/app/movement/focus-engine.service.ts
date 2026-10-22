@@ -187,6 +187,38 @@ export class FocusEngine {
     });
   }
 
+  // Can the keys get from section `from` to `el` (in section `to`), in as many
+  // steps as it takes (settings → its rail → the menu)? Only through
+  // restricted sections' `leaveFor`; an unrestricted one reaches anything
+  reaches(from:string, el:HTMLElement, to:string):boolean {
+    let seen = new Set<string>([from]);
+    let queue = [from];
+    while (queue.length) {
+      let config = spatialNavigation.sectionConfig(queue.shift());
+      if (!config || config.restrict != 'self-only') return true;
+      let dests = Object.values(config.leaveFor || {});
+      if (dests.some(dest => this.leads(dest, el, to))) return true;
+      dests.forEach(dest => this.sectionsOf(dest).forEach(id => {
+        if (!seen.has(id)) { seen.add(id); queue.push(id); }
+      }));
+    }
+    return false;
+  }
+
+  // The sections a `leaveFor` value can lead into
+  private sectionsOf(dest:any):string[] {
+    let targets:string[] = typeof dest == 'string' ? [dest] : dest?.targets || [];
+    let ids:string[] = [];
+    targets.forEach(target => {
+      if (target.charAt(0) == '@') { ids.push(target.slice(1)); return; }
+      let els = /^(stack|row|grid):/.test(target)
+        ? Array.from(this.find(target)?.host.querySelectorAll('[data-px-item], .focusable') || [])
+        : Array.from(document.querySelectorAll(target));
+      els.forEach(e => { let id = spatialNavigation.sectionOf(e); if (id) ids.push(id); });
+    });
+    return ids;
+  }
+
   // Entering a section as the library would (last focused, default, first)
   private sectionEntry(sectionId:string):HTMLElement | null {
     let config = spatialNavigation.sectionConfig(sectionId);

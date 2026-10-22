@@ -1,0 +1,37 @@
+@use 'px' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.title {
+  margin: 0 0 dp(18);
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-headline);
+}
+
+// a page's own empty state, where its title block would be
+:host(.hero) .title {
+  margin: .67em 0 dp(18);
+  max-width: dp(800);
+  font-size: var(--px-text-hero);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text {
+  margin: 0;
+  max-width: dp(640);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  line-height: 1.7;
+  color: var(--px-color-text-muted);
+}
+
+.action {
+  margin-top: dp(28);
+}

@@ -1,8 +1,13 @@
+import { ProfilesService } from '../profiles.service';
+import { profileContext, titleRef } from '../slot-contexts';
+import { MovieContext } from '../ui/public-api';
+import { Toasts } from '../ui/public-api';
+import { MediaKeys } from '../media-keys.service';
 import { NotificationService } from './../notification.service';
 import { Observable, Subscription } from 'rxjs';
 import { MoviesService } from './../movies.service';
 import { NavigationService } from './../navigation.service';
-import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
@@ -21,6 +26,10 @@ import { tmdbImageBase } from '../ui/public-api';
 })
 export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
+  private toasts = inject(Toasts);
+
+  private profiles = inject(ProfilesService);
+
   profileImgBase = tmdbImageBase('profile', 130);
   movieImgBase = tmdbImageBase('poster', 150);
 
@@ -32,6 +41,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   canPlay = false;
   findingTorrents = false;    // 18+ movie: Play is looking up torrents
   selectedMovie;
+  // what plugins' actions and rows on this page get (ui/slots)
+  slotContext:MovieContext | null = null;
 
   // The current profile's state for this movie
   inWatchlist = false;
@@ -42,6 +53,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
   // params { id } (TMDB id); payload: the TMDB movie it was opened from
   private screen = useScreen<{ id:string }, any>();
+  // a remote's Play key = the Play button (§13.2)
+  private mediaSub = inject(MediaKeys).for(this.screen).subscribe(a => (a == 'playPause' || a == 'play') && this.onPlay());
   private subscriptions:Subscription[] = [];
 
   constructor(
@@ -83,6 +96,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.mediaSub.unsubscribe();
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
     this.subscriptions.forEach(s => s.unsubscribe());
 
@@ -96,6 +110,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     let ready = (data) => {
       this.selectedMovie = data;
       this.moviesService.assignSelection(this.selectedMovie);
+      this.slotContext = { movie: titleRef(data), profile: profileContext(this.profiles.current.value) };
       this.getPlayData();
       this.loadLibraryState();
     };
@@ -109,17 +124,22 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     }));
   }
 
+  byCredit = (i:number, c:any) => c.credit_id;
+  byId = (i:number, m:any) => m.id;
+
   getPageData(id){
 
     this.moviesService.getCredits(id)
     .subscribe(data =>{
-      this.casts = data['cast'];
+      // people with a photo only
+      this.casts = (data['cast'] || []).filter(c => c.profile_path);
       this.restoreInRows();
     })
 
     this.moviesService.getSimilarMovies(id)
     .subscribe(data =>{
-      this.similar = data['results'];
+      // titles with a poster, in English
+      this.similar = (data['results'] || []).filter(m => m.poster_path && m.original_language == 'en');
       this.restoreInRows();
     })
 
@@ -128,7 +148,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       let trailer;
       for(let video of data['results']){
         if (video['name'].includes('Official Trailer')) {
-          console.log(video);
           trailer = video['key'];
           break;
         }
@@ -229,11 +248,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       ? this.library.addToWatchlist(this.movieRef(), LibraryService.artworkOf(this.selectedMovie))
       : this.library.removeFromWatchlist(this.movieRef());
     request.subscribe({
-      next: () => this.libraryBusy = false,
+      next: () => {
+        this.libraryBusy = false;
+        this.toasts.show({ text: adding ? 'Added to your watch list' : 'Removed from your watch list', tone: 'success', key: 'library' });
+      },
       error: () => {
         this.libraryBusy = false;
         this.inWatchlist = !adding;
-        this.notificationService.sendNotification("error", "Couldn't update your watch list. Is the Playpex server running?");
+        this.toasts.show({ text: "Couldn't update your watch list", detail: 'Is the Playpex server running?', tone: 'error', key: 'library' });
       }
     });
   }
@@ -249,13 +271,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     request.subscribe({
       next: () => {
         this.libraryBusy = false;
+        this.toasts.show({ text: marking ? 'Marked as watched' : 'Marked as not watched', tone: 'success', key: 'library' });
         this.resumeLabel = '';
         this.resume = null;
       },
       error: () => {
         this.libraryBusy = false;
         this.watched = !marking;
-        this.notificationService.sendNotification("error", "Couldn't update what you've watched. Is the Playpex server running?");
+        this.toasts.show({ text: "Couldn't update what you've watched", detail: 'Is the Playpex server running?', tone: 'error', key: 'library' });
       }
     });
   }

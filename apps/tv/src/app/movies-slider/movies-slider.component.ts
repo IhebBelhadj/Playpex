@@ -1,6 +1,9 @@
+import { profileContext } from '../slot-contexts';
+import { SectionContext, SlotName } from '../ui/public-api';
+import { ProfilesService } from '../profiles.service';
 import { NavigationService } from './../navigation.service';
 import { MenuServiceService } from './../menu-service.service';
-import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { MoviesService } from '../movies.service';
 import { hasFilters } from '../catalog-filters';
 import { ActivatedRoute } from '@angular/router';
@@ -31,6 +34,11 @@ const LOAD_AHEAD = 10;         // next page this many posters before a row's end
 })
 export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy {
 
+  private profiles = inject(ProfilesService);
+  // plugins' rows of this section (ui/slots)
+  slotName:SlotName = 'core.movies.rows';
+  slotContext:SectionContext | null = null;
+
   readonly loadAhead = LOAD_AHEAD;
   movies = {};
   catalog:Catalog;
@@ -56,6 +64,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   ngOnInit(): void {
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
     this.stackId = `catalog:${this.catalog.media}`;
+    this.slotName = this.catalog.media == 'tv' ? 'core.shows.rows' : 'core.movies.rows';
+    this.slotContext = { section: this.catalog.media, profile: profileContext(this.profiles.current.value), query: '', filters: {} };
     this.movies = this.catalog.items.getValue();
 
     this.moviesSub = this.catalog.items.subscribe(data => this.movies = data);
@@ -76,7 +86,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       if (!active || active.classList.contains('menuItem')) return false;
       if (this.catalog.search && active.closest('.sliderContainer')) {
         // back on a search result: to the search bar, results kept
-        (document.querySelector('.sectionToolbar .searchField') as HTMLElement)?.focus({ preventScroll: true });
+        (document.querySelector('.sectionToolbar [data-px-key="search"]') as HTMLElement)?.focus({ preventScroll: true });
       } else if (active.closest('.sliderContainer')) {
         // back on a poster: its row returns to the start, the menu opens
         let row = this.engine.containerOf(active.closest('[data-px-container="row"]'));

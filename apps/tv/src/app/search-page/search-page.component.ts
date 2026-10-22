@@ -80,8 +80,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
     this.screen.onSelect(active => {
       if (active.classList.contains('keyboardBtn')) this.typeKey(active);
-      else if (active.classList.contains('filterChip')) this.setFilter(active.dataset['filter']);
-      else if (active.classList.contains('result')) this.open(this.itemFor(active));
+      else if (active.classList.contains('px-card')) this.open(this.itemFor(active));
     });
 
     // a section without the menu: out to the power menu at once (the

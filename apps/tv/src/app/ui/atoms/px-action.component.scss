@@ -1,0 +1,76 @@
+@use 'px' as *;
+
+// the button is the bar's item
+:host {
+  display: contents;
+}
+
+.px-action {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--px-color-text);
+  opacity: .67;
+}
+
+.tile {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: dp(102);
+  height: dp(60);
+  border-radius: dp(5);
+  background: var(--px-surface-tile);
+
+  img {
+    width: dp(26);
+    filter: var(--px-icon-light);
+  }
+}
+
+.label {
+  margin-top: dp(12);
+  max-width: var(--px-action-label-width, #{dp(110)});
+  text-align: center;
+  line-height: 1.25;
+}
+
+// How far in: amber, like everywhere progress shows
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: dp(3);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--px-color-progress);
+  }
+}
+
+// In the watch list / watched: the icon takes the app's amber
+.on:not(.focused) .tile img {
+  filter: var(--px-icon-on);
+}
+
+.disabled {
+  opacity: .35;
+}
+
+.focused {
+  opacity: 1;
+
+  .tile {
+    background: var(--px-color-focus);
+
+    img { filter: none; }
+  }
+}

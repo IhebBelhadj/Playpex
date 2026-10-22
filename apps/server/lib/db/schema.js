@@ -47,7 +47,8 @@ var profiles = sqliteTable('profiles', {
   // Optional PIN (scrypt). Both null = profile is not locked.
   pinHash: text('pin_hash'),
   pinSalt: text('pin_salt'),
-  // Free-form per-profile settings (subtitle provider/languages, ...)
+  // Deprecated (settings plan §6): its `adult` part was moved to
+  // profile_settings by migration 0004; dropped in a later release
   preferences: text('preferences', { mode: 'json' }).notNull().$defaultFn(function () { return {}; }),
   createdAt: timestamp('created_at').notNull(),
   lastUsedAt: timestamp('last_used_at')
@@ -131,6 +132,36 @@ var ratings = sqliteTable('ratings', {
   return [
     primaryKey({ columns: [table.profileId, table.mediaType, table.tmdbId] }),
     check('ratings_value_check', sql`${table.value} in (-1, 1)`)
+  ];
+});
+
+// ── settings (docs/settings-plan.md) ────────────────────────────────────────
+// User settings, one row per key (keys and defaults: @playpex/protocol
+// settings.js). A missing row = the key's default. Values are JSON.
+
+// Per-profile settings ('subtitles.provider', 'adult.layout', …); deleted with the profile.
+var profileSettings = sqliteTable('profile_settings', {
+  profileId: profileId(),
+  key: text('key').notNull(),
+  value: text('value', { mode: 'json' }).notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.profileId, table.key] })
+  ];
+});
+
+// Per-device settings ('display.uiScale', 'player.volume', …), keyed by the id
+// the client sends (X-Playpex-Device; a paired device's client_device_id).
+// Loopback clients have no `devices` row, so no foreign key.
+var deviceSettings = sqliteTable('device_settings', {
+  deviceId: text('device_id').notNull(),
+  key: text('key').notNull(),
+  value: text('value', { mode: 'json' }).notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.deviceId, table.key] })
   ];
 });
 
@@ -254,6 +285,8 @@ module.exports = {
   progress: progress,
   history: history,
   ratings: ratings,
+  profileSettings: profileSettings,
+  deviceSettings: deviceSettings,
   authUser: authUser,
   authSession: authSession,
   authAccount: authAccount,

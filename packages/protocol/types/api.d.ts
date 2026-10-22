@@ -1295,7 +1295,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getProfile"];
-        /** Update; `preferences` are merged into the stored ones */
+        /** Update; `preferences.adult` (deprecated) is written to the profile's settings */
         put: operations["updateProfile"];
         post?: never;
         /** Delete the profile and all its data */
@@ -1340,6 +1340,76 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/profiles/{profileId}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profileId: components["parameters"]["ProfileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change some of the profile's settings
+         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `adult.*`, or
+         *     `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
+         *     refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
+         *     profiles (`FORBIDDEN`). Publishes `settings.changed`.
+         */
+        patch: operations["updateProfileSettings"];
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The calling device's settings, and a profile's
+         * @description Every registered key with its effective value (stored, else the default), so clients
+         *     never hard-code defaults. Plus the `client.*` values stored for this device / profile.
+         *     The device is the one the token names (paired clients), else `X-Playpex-Device` /
+         *     `?device=` (clients on the server machine); without one → `DEVICE_REQUIRED`.
+         */
+        get: operations["getUserSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Reset every setting of the calling device (its rows are deleted) */
+        delete: operations["resetDeviceSettings"];
+        options?: never;
+        head?: never;
+        /**
+         * Change some of the calling device's settings
+         * @description Device-scoped keys only (`display.*`, `player.volume`, `subtitles.size`, or
+         *     `client.<clientId>.<name>`). `null` resets a key. All or nothing. Publishes `settings.changed`.
+         */
+        patch: operations["updateDeviceSettings"];
         trace?: never;
     };
     "/profiles/{profileId}/library": {
@@ -1515,7 +1585,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -1830,7 +1900,10 @@ export interface components {
             avatar: string | null;
             isKid: boolean;
             hasPin: boolean;
-            /** @description Free-form client preferences, e.g. { adult: { layout, metadataProvider } } */
+            /**
+             * @deprecated
+             * @description Read-only view of the profile's `adult.*` settings, `{ adult: { layout, metadataProvider } }`, kept for one release; use GET /settings?profile=
+             */
             preferences: Record<string, never>;
             /** Format: date-time */
             createdAt: string;
@@ -1853,7 +1926,41 @@ export interface components {
             name?: string;
             avatar?: string;
             isKid?: boolean;
+            /**
+             * @deprecated
+             * @description Only `{ adult: { layout?, metadataProvider? } }` is read (written to the profile's settings); use PATCH /profiles/{profileId}/settings
+             */
             preferences?: Record<string, never>;
+        };
+        /** @description `{ key: value }`: every registered key of the scope with its effective value, plus stored `client.*` keys */
+        UserSettingValues: {
+            [key: string]: unknown;
+        };
+        /** @description `{ key: value | null }`; null resets the key to its default */
+        UserSettingsPatch: {
+            [key: string]: unknown;
+        };
+        SettingDefinition: {
+            /** @enum {string} */
+            scope: "device" | "profile";
+            /** @enum {string} */
+            type: "number" | "string" | "boolean";
+            default: unknown;
+            enum?: (number | string)[];
+            min?: number;
+            max?: number;
+            step?: number;
+            nullable?: boolean;
+            /** @description Refused for kids profiles */
+            adult?: boolean;
+        };
+        UserSettings: {
+            device: components["schemas"]["UserSettingValues"];
+            profile: components["schemas"]["UserSettingValues"] | null;
+            /** @description Only with `?definitions=1`: the registry, `{ key: SettingDefinition }` */
+            definitions?: {
+                [key: string]: components["schemas"]["SettingDefinition"];
+            };
         };
         /** @enum {string} */
         MediaType: "movie" | "tv";
@@ -2500,6 +2607,8 @@ export interface components {
          *     uses the client's address. Ignored for paired devices (their token names them).
          */
         Device: string;
+        /** @description The calling device's own id (`deviceId` of the client), for clients that aren't paired */
+        DeviceHeader: string;
         /** @description The code the device shows; case and dashes don't matter */
         UserCode: string;
         /** @description `<name>/<version>; api=<n>` — shown to the admin next to the pairing request */
@@ -4456,6 +4565,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            403: components["responses"]["Error"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Error"];
         };
@@ -4535,6 +4645,137 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    updateProfileSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profileId: components["parameters"]["ProfileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description The profile's effective settings, after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingValues"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getUserSettings: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description A profile id; without it `profile` is null */
+                profile?: string;
+                /** @description `1` adds the registry (`definitions`), for clients that don't bundle @playpex/protocol */
+                definitions?: "0" | "1";
+            };
+            header?: {
+                /** @description The calling device's own id (`deviceId` of the client), for clients that aren't paired */
+                "X-Playpex-Device"?: components["parameters"]["DeviceHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Effective settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    resetDeviceSettings: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: {
+                /** @description The calling device's own id (`deviceId` of the client), for clients that aren't paired */
+                "X-Playpex-Device"?: components["parameters"]["DeviceHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The device's effective settings (the defaults) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingValues"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+        };
+    };
+    updateDeviceSettings: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: {
+                /** @description The calling device's own id (`deviceId` of the client), for clients that aren't paired */
+                "X-Playpex-Device"?: components["parameters"]["DeviceHeader"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description The device's effective settings, after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingValues"];
+                };
+            };
+            400: components["responses"]["Invalid"];
         };
     };
     getLibrary: {

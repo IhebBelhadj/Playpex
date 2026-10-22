@@ -1,5 +1,4 @@
-<div class="profileEditor">
-  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+<px-fullscreen-layout class="profileEditor">
 
   <div class="editorContent" *ngIf="ready" [class.dimmed]="panel" pxSection="profileEditor">
     <h1 class="heading">{{ id ? 'Edit Profile' : 'Add Profile' }}</h1>
@@ -19,10 +18,9 @@
 
         <h2 class="settingTitle">Kids Profile</h2>
         <p class="settingHint">Recommendations stick to family and animation titles.</p>
-        <button class="field toggleField focusable" data-field="kid">
-          <span class="label">This profile is for a kid</span>
-          <span class="switch" [class.on]="isKid"><span class="knob"></span></span>
-        </button>
+        <div class="toggleField">
+          <px-switch key="kid" label="This profile is for a kid" [on]="isKid" (pxSelect)="saving || (isKid = !isKid)"></px-switch>
+        </div>
 
         <h2 class="settingTitle">Profile Lock</h2>
         <p class="settingHint">{{ pinActive ? 'A PIN is needed to open this profile.' : 'Anyone can open this profile.' }}</p>
@@ -35,9 +33,9 @@
     </div>
 
     <div class="actions">
-      <button class="actionBtn primary focusable" data-action="save">{{ saving ? 'Saving…' : 'Save' }}</button>
-      <button class="actionBtn focusable" data-action="cancel">Cancel</button>
-      <button *ngIf="id" class="actionBtn focusable" data-action="delete">Delete Profile</button>
+      <px-button key="save" variant="filled" [caps]="true" [label]="saving ? 'Saving…' : 'Save'" (pxSelect)="saving || save()"></px-button>
+      <px-button key="cancel" [caps]="true" label="Cancel" (pxSelect)="saving || cancel()"></px-button>
+      <px-button *ngIf="id" key="delete" [caps]="true" label="Delete Profile" (pxSelect)="saving || openPanel('confirmDelete', null)"></px-button>
     </div>
   </div>
 
@@ -67,8 +65,8 @@
     <p class="panelTitle">Delete {{ name }}?</p>
     <p class="confirmText">This profile's watch list, viewing history, resume points and ratings will be deleted for good.</p>
     <div class="actions">
-      <button class="actionBtn focusable" (pxSelect)="saving || closePanel()">Keep Profile</button>
-      <button class="actionBtn danger focusable" (pxSelect)="saving || remove()">Delete Profile</button>
+      <px-button key="keep" [caps]="true" label="Keep Profile" (pxSelect)="saving || closePanel()"></px-button>
+      <px-button key="confirmDelete" variant="danger" [caps]="true" label="Delete Profile" (pxSelect)="saving || remove()"></px-button>
     </div>
   </px-panel>
 
@@ -79,4 +77,4 @@
     (completed)="onPinSet($event)"
     (cancelled)="onPinCancelled()">
   </pin-pad>
-</div>
+</px-fullscreen-layout>

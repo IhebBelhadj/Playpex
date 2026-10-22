@@ -283,7 +283,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     // (the keyboard and the pairing panel are layers: their own keys)
     this.screen.onSelect(active => {
       if (this.leaving || !this.splashService.cleared) return;
-      const action = active?.dataset['action'];
+      const action = active?.dataset['action'] || active?.dataset['pxKey'];
       if (action == 'server') this.choose(this.servers.find(s => s.id == active.dataset['id']));
       if (action == 'startLocal') this.startLocal();
       if (action == 'address') this.typing = true;
@@ -411,13 +411,13 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     }), () => this.zone.run(() => {
       this.probing = false;
       this.message = `No Playpex server answered at ${this.address}.`;
-      this.focusDefault('[data-action="address"]');
+      this.focusDefault('[data-px-key="address"]');
     }));
   }
 
   onAddressCancelled() {
     this.typing = false;
-    this.focusDefault('[data-action="address"]');
+    this.focusDefault('[data-px-key="address"]');
   }
 
   update() {
@@ -492,8 +492,8 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private focusPairing(button:'cancel' | 'again') {
     setTimeout(() => {
-      const el = (document.querySelector(`.pairingPanel [data-pair="${button}"]`)
-        || document.querySelector('.pairingPanel [data-pair="cancel"]')) as HTMLElement;
+      const el = (document.querySelector(`.pairingPanel [data-px-key="${button}"]`)
+        || document.querySelector('.pairingPanel [data-px-key="cancel"]')) as HTMLElement;
       el?.focus({ preventScroll: true });
     }, 0);
   }

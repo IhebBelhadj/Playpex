@@ -1,0 +1,5 @@
+<div class="px-tabs" [class.vertical]="vertical" [pxGrid]="gridId" enter="selected" role="tablist"
+  [attr.aria-orientation]="vertical ? 'vertical' : null">
+  <button *ngFor="let t of tabs; trackBy: byKey" class="px-tab" pxItem [pxItemKey]="'tab:' + t.key" [attr.data-tab]="t.key"
+    role="tab" [attr.aria-selected]="t.key == active" [class.active]="t.key == active" [class.selected]="t.key == active">{{ t.label }}</button>
+</div>

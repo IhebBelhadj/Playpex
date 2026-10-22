@@ -1,77 +1,45 @@
-<div class="adultBrowse">
+<px-section-layout class="adultBrowse">
 
   <!-- Search, filters and the other layout -->
   <div class="toolbar" pxSection="adultToolbar"
     [leaveFor]="{ left: '@menu', down: ['stack:adult-browse', '@adultPosters'] }">
     <div class="seal" aria-label="Adults only">18+</div>
-    <button class="searchField focusable" [class.empty]="!state.query">
-      <img src="assets/icons/search.svg" alt="">
-      <span class="fieldText">{{ state.query || 'Search titles' }}</span>
-    </button>
-    <button class="filterBtn focusable" [class.active]="state.studio || state.period">
-      <img src="assets/icons/opts.svg" alt="">
-      <span class="fieldText">{{ filterLabel }}</span>
-    </button>
-    <button class="clearAll focusable" *ngIf="filtered">Clear</button>
+    <px-search-field key="search" [query]="state.query" placeholder="Search titles"></px-search-field>
+    <px-button key="filters" variant="toolbar" icon="opts" [label]="filterLabel" [active]="!!(state.studio || state.period)"></px-button>
+    <px-button *ngIf="filtered" key="clear" variant="toolbar" [quiet]="true" label="Clear"></px-button>
     <span class="spacer"></span>
-    <button class="layoutSwitch focusable">
-      <img src="assets/icons/rows.svg" alt="">
-      List view
-    </button>
+    <px-button key="layout" variant="toolbar" [quiet]="true" icon="rows" label="List view"></px-button>
   </div>
 
   <!-- Posters, and the empty state's way out: one section -->
   <div class="postersArea" pxSection="adultPosters" [leaveFor]="{ left: '@menu', up: '@adultToolbar' }">
 
   <!-- The focused title, laid out like <movie-description> -->
-  <header class="titleInfo" *ngIf="spot && !note">
-    <h1 class="name">{{ spot.title }}</h1>
-    <div class="infos">
-      <p class="year" *ngIf="spot.year">{{ spot.year }}</p>
-      <span class="chip" *ngIf="spot.studio || details?.studio">{{ (details?.studio || spot.studio).name }}</span>
-      <span class="chip" *ngIf="details?.runtime">{{ runtime(details.runtime) }}</span>
-      <span class="score" *ngIf="spot.rating">{{ provider?.name }} {{ spot.rating | number:'1.1-1' }}</span>
-    </div>
-    <p class="performers" *ngIf="performers">{{ performers }}</p>
-    <p class="overview" *ngIf="spot.overview">{{ spot.overview }}</p>
-  </header>
+  <px-title-info class="titleInfo" *ngIf="spot && !note" [info]="titleInfo" layout="section"></px-title-info>
 
-  <header class="titleInfo" *ngIf="note">
-    <h1 class="name">{{ loadError ? '18+ catalog unavailable' : 'No titles' }}</h1>
-    <p class="note">{{ note }}</p>
-    <button class="actionBtn retryBtn focusable" *ngIf="loadError || !filtered">Try again</button>
-    <!-- never a dead end: the empty state has its own way out -->
-    <button class="actionBtn primary clearAll focusable" *ngIf="!loadError && filtered">
-      {{ state.query ? 'Clear search' : 'Clear filters' }}
-    </button>
-  </header>
+  <!-- never a dead end: the empty state has its own way out -->
+  <px-empty class="titleInfo" *ngIf="note" size="hero" [title]="loadError ? '18+ catalog unavailable' : 'No titles'" [text]="note"
+    [action]="loadError || !filtered ? 'Try again' : state.query ? 'Clear search' : 'Clear filters'"
+    [actionKey]="loadError || !filtered ? 'retry' : 'clear'" [actionVariant]="loadError || !filtered ? 'outline' : 'primary'"
+    (act)="loadError || !filtered ? load() : clearAll()"></px-empty>
 
-  <header class="titleInfo" *ngIf="!spot && !note && loading">
-    <p class="note">Loading {{ provider?.name || 'the catalog' }}…</p>
-  </header>
+  <px-empty class="titleInfo" *ngIf="!spot && !note && loading" size="hero" [busy]="true"
+    [text]="'Loading ' + (provider?.name || 'the catalog') + '…'"></px-empty>
 
   <!-- Category-style rows, like the movies page -->
   <div class="sliderContainer" *ngIf="state.rows.length && !loadError" pxStack="adult-browse" align="row-top" motion="transform">
     <div class="overlay"></div>
     <div class="content" pxTrack>
-      <div class="section" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem [attr.data-row]="row.key">
-        <h3 class="sectionTitle">{{ row.title }}</h3>
-        <div class="slider" rowArrows>
-          <div class="sliderSection" [pxRow]="row.key" align="start" [loadAhead]="loadAhead" (nearEnd)="loadMore(row)">
-            <button *ngFor="let item of row.items; let i = index; trackBy: trackItem" class="card focusable"
-              pxItem [pxItemKey]="item.id"
-              [attr.data-row]="row.key"
-              [attr.data-index]="i">
-              <img *ngIf="item.poster" [src]="item.poster" alt="" loading="lazy">
-              <span class="fallbackTitle" *ngIf="!item.poster">{{ item.title }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <px-card-row class="section" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem [attr.data-row]="row.key"
+        [rowKey]="row.key" [title]="row.title" [loadAhead]="loadAhead" (nearEnd)="loadMore(row)">
+        <ng-container *ngFor="let item of row.items; let i = index; trackBy: trackItem">
+          <px-card variant="poster" [key]="item.id" [image]="item.poster" [title]="item.title" [data]="{ row: row.key, index: i }"></px-card>
+        </ng-container>
+      </px-card-row>
     </div>
   </div>
   </div>
-</div>
+</px-section-layout>
 
 <!-- Filters: studio and release period, applied together -->
 <px-panel *ngIf="panel == 'filters'" class="filterPanel" id="adultFilterPanel" title="Filter titles" align="start" [width]="1040"
@@ -91,8 +59,8 @@
     </div>
 
     <div class="panelActions" pxGrid enter="nearest">
-      <button class="actionBtn primary focusable" pxItem (pxSelect)="applyFilters()">Show titles</button>
-      <button class="actionBtn focusable" pxItem (pxSelect)="draftStudio = null; draftPeriod = ''">Reset filters</button>
+      <px-button key="apply" variant="primary" label="Show titles" (pxSelect)="applyFilters()"></px-button>
+      <px-button key="reset" label="Reset filters" (pxSelect)="draftStudio = null; draftPeriod = ''"></px-button>
     </div>
   </div>
 </px-panel>

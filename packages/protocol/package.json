@@ -8,6 +8,8 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "settings.js",
+    "settings.d.ts",
     "mdns.js",
     "local.js",
     "openapi.yaml",

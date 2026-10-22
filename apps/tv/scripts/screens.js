@@ -51,6 +51,21 @@ const SHOTS = [
   { name: 'connect', run: "reset({ screen: 'core.connect' })" },
 ];
 
+// The player on a local video file (no torrent: window.playpexDev.player), when
+// PLAYPEX_TEST_CLIP names one, e.g. made with
+//   ffmpeg -f lavfi -i testsrc=size=1280x720:rate=24:duration=300 -f lavfi -i sine=duration=300 -c:v libx264 -pix_fmt yuv420p -c:a aac clip.mp4
+// Shots: the controls, then its Settings panel.
+const CLIP = process.env.PLAYPEX_TEST_CLIP;
+if (CLIP) {
+  // Down shows the controls on Play (the player's own key); then Settings, selected
+  const show = "(document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })), 'controls')";
+  const settings = "(window.SpatialNavigation.focus(document.querySelector('.buttons [data-px-key=\"settings\"]')), window.playpexDev.input('select'), 'settings')";
+  SHOTS.splice(SHOTS.length - 1, 0,
+    { name: 'player', before: 'profile()', run: `player(${JSON.stringify('file://' + CLIP)}, 'episode')`, settle: 6000, js: show },
+    { name: 'player-settings', run: "screen()", js: settings, settle: 1500, after: "input('back')" },
+  );
+}
+
 function option(name, fallback) {
   const i = process.argv.indexOf('--' + name);
   return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
@@ -125,6 +140,11 @@ async function shoot(win) {
       if (shot.before) console.log('  ' + shot.before + ' → ' + await dev(wc, shot.before));
       await dev(wc, shot.run);
       await wait(shot.settle || settle);
+      // a scripted step (show the player's controls…), then a short settle
+      if (shot.js) {
+        await wc.executeJavaScript(shot.js);
+        await wait(800);
+      }
       await until(wc, IMAGES_DONE, 5000, 'images').catch(() => {});
       await wait(400);
       const screen = await dev(wc, 'screen()');

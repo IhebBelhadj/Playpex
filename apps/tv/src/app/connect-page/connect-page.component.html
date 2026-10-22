@@ -1,5 +1,4 @@
-<div class="connectPage">
-  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+<px-fullscreen-layout class="connectPage" [center]="false">
 
   <div class="connectLayout" pxSection="serverPicker" pxStack>
     <div class="sources">
@@ -34,19 +33,17 @@
         </p>
 
         <div class="actions" pxGrid>
-          <button *ngIf="needsAppUpdate" class="actionBtn primary focusable" pxItem pxItemKey="update"
-            data-action="update" (focus)="focusedKey = 'update'">{{ updateLabel }}</button>
-          <button class="actionBtn focusable" pxItem pxItemKey="address" data-action="address"
-            (focus)="focusedKey = 'address'">Enter address</button>
-          <button class="actionBtn focusable" pxItem pxItemKey="rescan" data-action="rescan"
-            (focus)="focusedKey = 'rescan'">Search again</button>
+          <px-button *ngIf="needsAppUpdate" key="update" variant="filled" size="l" [round]="true" [label]="updateLabel"
+            (focusin)="focusedKey = 'update'"></px-button>
+          <px-button key="address" size="l" [round]="true" label="Enter address" (focusin)="focusedKey = 'address'"></px-button>
+          <px-button key="rescan" size="l" [round]="true" label="Search again" (focusin)="focusedKey = 'rescan'"></px-button>
         </div>
       </ng-container>
 
       <ng-template #browser>
         <p class="browserNote">Finding and pairing servers needs the Playpex TV app. Here the UI uses <b>{{ server.url || 'no server' }}</b>; enter another address to switch.</p>
         <div class="actions" pxGrid>
-          <button class="actionBtn focusable" pxItem pxItemKey="address" data-action="address">Enter address</button>
+          <px-button key="address" size="l" [round]="true" label="Enter address"></px-button>
         </div>
       </ng-template>
 
@@ -70,7 +67,7 @@
   </p>
 
   <!-- Pairing: the code, where to approve it, a QR code for a phone -->
-  <px-panel *ngIf="pairing" id="pairing" [restoreFocus]="false" focus="[data-pair=&quot;cancel&quot;]" (back)="leaving || cancelPairing()">
+  <px-panel *ngIf="pairing" id="pairing" [restoreFocus]="false" focus="[data-px-key=&quot;cancel&quot;]" (back)="leaving || cancelPairing()">
     <div class="pairingPanel">
       <p class="panelTitle">Pair this TV with {{ pairing.server.name }}</p>
 
@@ -109,11 +106,10 @@
       </ng-template>
 
       <div class="pairButtons" pxGrid>
-        <button *ngIf="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
-          class="actionBtn primary focusable" pxItem pxItemKey="again" data-pair="again"
-          (pxSelect)="leaving || startPairing(pairing.server)">Get a new code</button>
-        <button class="actionBtn focusable" pxItem pxItemKey="cancel" data-pair="cancel"
-          (pxSelect)="leaving || cancelPairing()">Cancel</button>
+        <px-button *ngIf="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
+          key="again" variant="filled" size="l" [round]="true" label="Get a new code"
+          (pxSelect)="leaving || startPairing(pairing.server)"></px-button>
+        <px-button key="cancel" size="l" [round]="true" label="Cancel" (pxSelect)="leaving || cancelPairing()"></px-button>
       </div>
     </div>
   </px-panel>
@@ -129,4 +125,4 @@
     (done)="onAddressDone($event)"
     (cancelled)="onAddressCancelled()">
   </text-keyboard>
-</div>
+</px-fullscreen-layout>

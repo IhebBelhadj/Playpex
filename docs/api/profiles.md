@@ -10,7 +10,7 @@ GET /api/v1/profiles
 
 ```json
 { "profiles": [ { "id": "…", "name": "Sam", "avatar": "avatar-03", "isKid": false, "hasPin": true,
-                  "preferences": {}, "createdAt": "…", "lastUsedAt": "…" } ],
+                  "preferences": { "adult": { "layout": "posters", "metadataProvider": null } }, "createdAt": "…", "lastUsedAt": "…" } ],
   "lastUsedId": "…", "maxProfiles": 8 }
 ```
 
@@ -21,7 +21,7 @@ GET /api/v1/profiles
 
 **PINs and kids profiles are enforced by the client.** The server checks the PIN on `unlock`, but once paired, a device can read any profile's data and call every route (plan §14.2). Respect `hasPin` and `isKid` in your UI: hide the 18+ section for kids profiles, don't open a locked profile without its PIN.
 
-Managing profiles: `POST /profiles` `{name, avatar?, isKid?, pin?}` (409 on a duplicate name or past 8), `PUT /profiles/{id}` `{name?, avatar?, isKid?, preferences?}` (`preferences` is merged; free-form JSON per client, e.g. `preferences.adult` in the TV app), `PUT /profiles/{id}/pin` `{pin}` or `{pin: null}` (4–6 digits), `DELETE /profiles/{id}` (deletes all its data).
+Managing profiles: `POST /profiles` `{name, avatar?, isKid?, pin?}` (409 on a duplicate name or past 8), `PUT /profiles/{id}` `{name?, avatar?, isKid?, preferences?}` (`preferences` is **deprecated**: only `preferences.adult` is read, and written to the profile's settings; a profile's settings are in [Settings](settings.md)), `PUT /profiles/{id}/pin` `{pin}` or `{pin: null}` (4–6 digits), `DELETE /profiles/{id}` (deletes all its data).
 
 ## The library
 

@@ -321,6 +321,14 @@ test('auth: pairing (RFC 8628), device tokens, admin session, revoke', function 
       assert.equal(mine[0].paired, true);
       assert.equal(mine[0].deviceName, 'Bedroom TV');
     })
+    // a paired device's settings are keyed by the id it sent (tv-1), whatever header it adds
+    .then(function () {
+      return call('PATCH', '/settings/device', { 'player.volume': 35 },
+        { expect: 200, token: token, headers: { 'X-Playpex-Device': 'someone-else' } });
+    })
+    .then(function () { return call('GET', '/settings', undefined, { expect: 200, admin: true, headers: { 'X-Playpex-Device': 'tv-1' } }); })
+    .then(function (res) { assert.equal(res.body.device['player.volume'], 35); })
+    .then(function () { return call('GET', '/settings', undefined, { expect: 400, admin: true }); })   // the admin isn't a device
     // denied requests
     .then(function () { return call('POST', '/auth/device/code', { client_id: 'playpex-tv' }, { expect: 200 }); })
     .then(function (res) {
@@ -333,6 +341,9 @@ test('auth: pairing (RFC 8628), device tokens, admin session, revoke', function 
     .then(function () { return call('DELETE', '/admin/devices/' + deviceId, undefined, { expect: 200, admin: true }); })
     .then(function () { return call('GET', '/profiles', undefined, { expect: 401, generic: true, token: token }); })
     .then(function () { return call('DELETE', '/admin/devices/' + deviceId, undefined, { expect: 404, admin: true }); })
+    // … and its settings
+    .then(function () { return call('GET', '/settings', undefined, { expect: 200, admin: true, headers: { 'X-Playpex-Device': 'tv-1' } }); })
+    .then(function (res) { assert.equal(res.body.device['player.volume'], 100); })
     .then(function () { return call('GET', '/sessions', undefined, { expect: 200, admin: true }); })
     .then(function (res) { assert.equal(res.body.filter(function (s) { return s.deviceId === deviceId; }).length, 0); })
     // password change signs the admin out, then sign in again for the tests below
@@ -618,6 +629,99 @@ test('library of a profile', function () {
     .then(function () { return call('DELETE', p + '/watched/movie/550', undefined, { expect: 200 }); })
     .then(function () { return call('DELETE', p + '/watchlist/movie/603', undefined, { expect: 200 }); })
     .then(function () { return call('GET', '/profiles/nope/library', undefined, { expect: 404 }); });
+});
+
+test('settings: device and profile, defaults, reset, rules', function () {
+  var protocolSettings = require('@playpex/protocol/settings'),
+    DEV = { headers: { 'X-Playpex-Device': 'settings-test' } },
+    kid, adult;
+  function opts(expect, extra) {
+    return Object.assign({ expect: expect }, DEV, extra);
+  }
+  return call('GET', '/settings', undefined, { expect: 400 })
+    .then(function (res) { assert.equal(res.body.code, 'DEVICE_REQUIRED'); })
+    .then(function () { return call('GET', '/settings?device=bad%20id', undefined, { expect: 400 }); })
+    // effective values: every registered key with its default
+    .then(function () { return call('GET', '/settings?definitions=1', undefined, opts(200)); })
+    .then(function (res) {
+      assert.deepEqual(res.body.device, protocolSettings.defaults('device'));
+      assert.equal(res.body.profile, null);
+      assert.deepEqual(Object.keys(res.body.definitions).sort(), Object.keys(protocolSettings.SETTINGS).sort());
+      return call('GET', '/settings?device=settings-test', undefined, { expect: 200 });
+    })
+    .then(function (res) { assert.equal(res.body.definitions, undefined); })
+    .then(function () {
+      return call('PATCH', '/settings/device', { 'player.volume': 40, 'subtitles.size': 'large',
+        'client.playpex-tv.lastTab': { tab: 'audio' } }, opts(200));
+    })
+    .then(function (res) {
+      assert.equal(res.body['player.volume'], 40);
+      assert.equal(res.body['subtitles.size'], 'large');
+      assert.deepEqual(res.body['client.playpex-tv.lastTab'], { tab: 'audio' });
+      assert.equal(res.body['display.uiScale'], 0.8);
+    })
+    // all or nothing: one bad key refuses the patch
+    .then(function () { return call('PATCH', '/settings/device', { 'player.volume': 50, 'player.nope': 1 }, opts(400)); })
+    .then(function (res) { assert.equal(res.body.errors.length, 1); })
+    .then(function () { return call('PATCH', '/settings/device', { 'player.volume': 101 }, opts(400)); })
+    .then(function () { return call('PATCH', '/settings/device', { 'player.volume': 42 }, opts(400)); })      // step 5
+    .then(function () { return call('PATCH', '/settings/device', { 'display.uiScale': 0.75 }, opts(400)); })  // not a size
+    .then(function () { return call('PATCH', '/settings/device', { 'adult.layout': 'compact' }, opts(400)); }) // a profile key
+    .then(function () { return call('PATCH', '/settings/device', { 'client.playpex-tv.big': 'x'.repeat(5000) }, opts(400)); })
+    .then(function () { return call('PATCH', '/settings/device', {}, opts(400)); })
+    .then(function () { return call('GET', '/settings', undefined, opts(200)); })
+    .then(function (res) { assert.equal(res.body.device['player.volume'], 40); })
+    // another device doesn't see them
+    .then(function () { return call('GET', '/settings?device=other-device', undefined, { expect: 200 }); })
+    .then(function (res) { assert.equal(res.body.device['player.volume'], 100); })
+    // null resets one key; DELETE resets them all
+    .then(function () { return call('PATCH', '/settings/device', { 'subtitles.size': null }, opts(200)); })
+    .then(function (res) {
+      assert.equal(res.body['subtitles.size'], 'medium');
+      assert.equal(res.body['player.volume'], 40);
+      return call('DELETE', '/settings/device', undefined, opts(200));
+    })
+    .then(function (res) { assert.deepEqual(res.body, protocolSettings.defaults('device')); })
+    // profiles: adult keys refused for kids (and not shown), the deprecated preferences answered from the settings
+    .then(function () { return call('POST', '/profiles', { name: 'Settings adult' }, { expect: 201 }); })
+    .then(function (res) {
+      adult = res.body.id;
+      assert.deepEqual(res.body.preferences, { adult: { layout: 'posters', metadataProvider: null } });
+      return call('POST', '/profiles', { name: 'Settings kid', isKid: true }, { expect: 201 });
+    })
+    .then(function (res) { kid = res.body.id; })
+    .then(function () { return call('GET', '/settings?profile=' + adult, undefined, opts(200)); })
+    .then(function (res) { assert.deepEqual(res.body.profile, protocolSettings.defaults('profile')); })
+    .then(function () { return call('GET', '/settings?profile=nope', undefined, opts(404)); })
+    .then(function () {
+      return call('PATCH', '/profiles/' + adult + '/settings', { 'adult.layout': 'compact', 'subtitles.provider': 'yify',
+        'player.autoplayNext': false }, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.equal(res.body['adult.layout'], 'compact');
+      assert.equal(res.body['player.autoplayNext'], false);
+      return call('GET', '/profiles/' + adult, undefined, { expect: 200 });
+    })
+    .then(function (res) { assert.equal(res.body.preferences.adult.layout, 'compact'); })
+    .then(function () { return call('PUT', '/profiles/' + adult, { preferences: { adult: { metadataProvider: 'tmdb' } } }, { expect: 200 }); })
+    .then(function (res) { assert.deepEqual(res.body.preferences.adult, { layout: 'compact', metadataProvider: 'tmdb' }); })
+    .then(function () { return call('PUT', '/profiles/' + adult, { preferences: { adult: { layout: 'grid' } } }, { expect: 400 }); })
+    .then(function () { return call('PATCH', '/profiles/' + adult + '/settings', { 'player.volume': 10 }, { expect: 400 }); })
+    .then(function () { return call('PATCH', '/profiles/nope/settings', { 'player.autoplayNext': true }, { expect: 404 }); })
+    .then(function () { return call('PATCH', '/profiles/' + kid + '/settings', { 'adult.layout': 'compact' }, { expect: 403 }); })
+    .then(function () { return call('PATCH', '/profiles/' + kid + '/settings', { 'player.autoplayNext': false }, { expect: 200 }); })
+    .then(function (res) { assert.equal(res.body['adult.layout'], undefined); })
+    .then(function () { return call('PUT', '/profiles/' + kid, { preferences: { adult: { layout: 'compact' } } }, { expect: 403 }); })
+    // deleting a profile deletes its settings
+    .then(function () { return call('DELETE', '/profiles/' + adult, undefined, { expect: 200 }); })
+    .then(function () {
+      return require('../lib/userData').database().then(function (db) {
+        var schema = require('../lib/db/schema'), orm = require('drizzle-orm');
+        return db.select().from(schema.profileSettings).where(orm.eq(schema.profileSettings.profileId, adult));
+      });
+    })
+    .then(function (rows) { assert.equal(rows.length, 0); })
+    .then(function () { return call('DELETE', '/profiles/' + kid, undefined, { expect: 200 }); });
 });
 
 test('torrents without network', function () {

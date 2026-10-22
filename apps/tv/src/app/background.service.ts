@@ -19,7 +19,6 @@ export class BackgroundService {
     }
 
     if (url != this.previousUrl) {
-      console.log(url + ' vs ' + this.previousUrl);
       this.previousUrl = url;
       this.subject.next({ img_url: url });
     }

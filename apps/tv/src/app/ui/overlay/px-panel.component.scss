@@ -30,7 +30,7 @@
   flex-direction: column;
   align-items: center;
   max-height: 100vh;
-  padding: dp(36) 0;
+  padding: calc(var(--px-safe-y) + #{dp(36)}) 0;
   box-sizing: border-box;
 
   &.start {
@@ -39,7 +39,7 @@
 
   .end > & {
     height: 100vh;
-    padding: dp(48) dp(40) dp(32);
+    padding: calc(var(--px-safe-y) + #{dp(48)}) calc(var(--px-safe-x) + #{dp(40)}) calc(var(--px-safe-y) + #{dp(32)}) dp(40);
     background: var(--px-surface-pane-solid);
   }
 }

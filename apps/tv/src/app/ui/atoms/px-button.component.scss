@@ -1,0 +1,189 @@
+@use 'px' as *;
+
+:host {
+  display: contents;
+}
+
+.px-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: dp(12);
+  padding: dp(12) dp(30);
+  border: dp(1) solid var(--px-color-outline);
+  background: transparent;
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  white-space: nowrap;
+  transition: all var(--px-dur-fast);
+
+  .text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    border-color: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+  }
+}
+
+.v-primary:not(.focused) {
+  border-color: var(--px-color-focus);
+  color: var(--px-color-text);
+}
+
+.v-filled:not(.focused) {
+  background: var(--px-surface-fill-soft);
+  border-color: var(--px-surface-fill-soft);
+  color: var(--px-color-on-focus);
+}
+
+.v-danger.focused {
+  background: var(--px-color-danger);
+  border-color: var(--px-color-danger);
+  color: var(--px-color-text);
+}
+
+.caps {
+  letter-spacing: dp(2);
+  text-transform: uppercase;
+}
+
+.large {
+  padding: dp(12) dp(34);
+  font-size: var(--px-text-lead);
+}
+
+.round {
+  border-radius: var(--px-radius-m);
+}
+
+.disabled {
+  opacity: .4;
+}
+
+.start {
+  justify-content: flex-start;
+}
+
+// ── toolbar: a dark rounded control, icon + label ─────────────────────────────
+.v-toolbar {
+  max-width: dp(420);
+  height: dp(44);
+  padding: 0 dp(16);
+  border: none;
+  border-radius: var(--px-radius-l);
+  background: var(--px-surface-control);
+  color: var(--px-color-text);
+  transition: transform var(--px-dur), background var(--px-dur), color var(--px-dur);
+
+  img {
+    width: dp(18);
+    filter: var(--px-icon-light);
+    opacity: .8;
+  }
+
+  // what's in use: the ring of a chosen chip
+  &.active:not(.focused) {
+    background: var(--px-surface-2);
+    box-shadow: var(--px-ring-selected);
+  }
+
+  &.quiet:not(.focused) {
+    background: none;
+    color: var(--px-color-text-muted);
+  }
+
+  // the release list's rail: a taller field
+  &.large {
+    height: dp(54);
+    padding: 0 dp(18);
+    gap: dp(14);
+    font-size: var(--px-text-lead);
+
+    img { width: dp(20); }
+  }
+
+  &.dim .text { color: var(--px-color-text-faint); }
+  &.dim.focused .text { color: var(--px-color-on-focus-muted); }
+
+  &.focused {
+    transform: scale(var(--px-zoom-control));
+
+    img { filter: none; opacity: 1; }
+  }
+}
+
+// ── plate: a wide dark plate (the power menu) ────────────────────────────────
+.v-plate {
+  height: dp(60);
+  border: none;
+  border-radius: dp(5);
+  background: var(--px-surface-solid);
+  color: var(--px-color-text-secondary);
+  font-family: var(--px-font-light);
+  opacity: .8;
+
+  &.focused {
+    opacity: 1;
+    box-shadow: var(--px-shadow-button);
+  }
+}
+
+// ── icon: round, the focused one grows into a white pill with its label ─────
+.v-icon {
+  height: dp(52);
+  padding: 0 dp(14);
+  gap: 0;
+  border: none;
+  border-radius: var(--px-radius-pill);
+  background: var(--px-surface-control);
+  color: var(--px-color-on-focus);
+  font-family: var(--px-font-bold);
+  transition: background var(--px-dur-fast), transform var(--px-dur-fast);
+
+  img {
+    width: dp(24);
+    height: dp(24);
+    filter: var(--px-icon-light);
+  }
+
+  .text {
+    display: inline-block;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width var(--px-dur), opacity var(--px-dur), margin var(--px-dur);
+  }
+
+  &.large {
+    height: dp(62);
+    padding: 0 dp(19);
+    font-size: var(--px-text-label);
+
+    img {
+      width: dp(26);
+      height: dp(26);
+    }
+  }
+
+  &.active img {
+    filter: var(--px-icon-on);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    transform: scale(var(--px-zoom-tile));
+
+    img { filter: none; }
+
+    .text {
+      max-width: dp(260);
+      margin-left: dp(10);
+      opacity: 1;
+    }
+  }
+}

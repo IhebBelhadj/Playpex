@@ -28,17 +28,15 @@ $rowH: dp(92);
 }
 
 .releasesPage {
-  display: grid;
-  grid-template-columns: dp(360) minmax(0, 1fr);
-  gap: dp(48);
-  height: 100vh;
-  padding: 0 dp(60) 0 dp(35);
+  --px-rail-padding: 0 #{dp(60)} 0 var(--px-page-gutter);
+  --px-rail-gap: #{dp(48)};
   color: var(--px-color-text);
 }
 
 // ── left rail ───────────────────────────────────────────────────────────────
 
 .rail {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -49,51 +47,6 @@ $rowH: dp(92);
 .railHead {
   width: 100%;
   margin-bottom: dp(40);
-}
-
-.originBack {
-  display: flex;
-  align-items: center;
-  gap: dp(12);
-  width: 100%;
-  height: dp(58);
-  padding: 0 dp(18) 0 dp(14);
-  border: none;
-  border-radius: dp(8);
-  background: var(--px-surface-control);
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  text-align: left;
-
-  svg {
-    flex: none;
-    width: dp(22);
-    height: dp(22);
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-
-    .originLabel { color: var(--px-color-on-focus); }
-  }
-}
-
-.originText {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.originLabel {
-  color: var(--px-color-text);
 }
 
 .seal {
@@ -109,67 +62,6 @@ $rowH: dp(92);
   letter-spacing: dp(-.5);
 }
 
-.searchField {
-  display: flex;
-  align-items: center;
-  gap: dp(14);
-  width: 100%;
-  height: dp(54);
-  padding: 0 dp(18);
-  border: none;
-  border-radius: dp(8);
-  background: var(--px-surface-control);
-  color: var(--px-color-text);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-lead);
-  text-align: left;
-  transition: transform var(--px-dur), background var(--px-dur);
-
-  img {
-    width: dp(20);
-    filter: var(--px-icon-light);
-    opacity: .8;
-  }
-
-  .searchText {
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &.empty .searchText {
-    color: var(--px-color-text-faint);
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-    transform: scale(1.04);
-
-    img { filter: none; }
-    &.empty .searchText { color: var(--px-color-on-focus-muted); }
-  }
-}
-
-.clearSearch {
-  margin-top: dp(10);
-  padding: dp(6) dp(12);
-  border: none;
-  border-radius: dp(6);
-  background: none;
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  transition: all var(--px-dur);
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-  }
-}
-
 .groupTitle {
   margin: dp(38) 0 dp(14);
   font-family: var(--px-font-book);
@@ -178,139 +70,38 @@ $rowH: dp(92);
   color: var(--px-color-text-muted);
 }
 
-// Same chips as the search page's filters
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: dp(8);
+  // over the backdrop: the darker chip, a white label
+  --px-chip-bg: var(--px-surface-control);
+  --px-chip-color: var(--px-color-text);
 }
 
-.chip {
-  height: dp(40);
-  padding: 0 dp(16);
-  border: none;
-  border-radius: dp(20);
-  background: var(--px-surface-control);
-  color: var(--px-color-text-secondary);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  transition: all var(--px-dur);
-
-  &.selected {
-    color: var(--px-color-text);
-    background: var(--px-surface-2);
-    box-shadow: inset 0 0 0 dp(1.5) var(--px-color-line-strong);
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-    box-shadow: none;
-    scale: 1.08;
-  }
+.clearSearch {
+  margin-top: dp(10);
 }
 
-// As the profile editor's kids switch
 .playableToggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: dp(18);
-  width: 100%;
   margin-top: dp(38);
-  padding: dp(14) dp(16);
-  border: none;
-  border-radius: dp(8);
-  background: var(--px-surface-control);
-  color: var(--px-color-text);
-  text-align: left;
-  transition: all var(--px-dur);
-
-  .toggleText {
-    font-family: var(--px-font-book);
-    font-size: var(--px-text-label);
-  }
-
-  .toggleHint {
-    display: block;
-    margin-top: dp(4);
-    font-family: var(--px-font-light);
-    font-size: var(--px-text-small);
-    color: var(--px-color-text-faint);
-  }
-
-  .switch {
-    position: relative;
-    flex: none;
-    width: dp(46);
-    height: dp(26);
-    border-radius: dp(13);
-    background: var(--px-surface-3);
-    transition: background var(--px-dur);
-
-    .knob {
-      position: absolute;
-      top: dp(3);
-      left: dp(3);
-      width: dp(20);
-      height: dp(20);
-      border-radius: 50%;
-      background: var(--px-white);
-      transition: transform var(--px-dur);
-    }
-
-    &.on {
-      background: var(--px-wine);
-      .knob { transform: translateX(dp(20)); }
-    }
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-
-    .toggleHint { color: var(--px-color-on-focus-muted); }
-    .switch:not(.on) { background: var(--px-color-on-focus-line); }
-  }
+  --px-switch-on: var(--px-wine);
 }
 
-// Back to the poster layout: quiet, at the bottom of the rail
+// back to the poster layout: quiet, at the bottom of the rail
 .layoutSwitch {
-  display: flex;
-  align-items: center;
-  gap: dp(12);
   margin-top: auto;
   margin-bottom: dp(44);
-  padding: dp(10) dp(14);
-  border: none;
-  border-radius: dp(8);
-  background: none;
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  transition: all var(--px-dur);
-
-  img {
-    width: dp(18);
-    filter: var(--px-icon-light);
-    opacity: .7;
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-
-    img { filter: none; opacity: 1; }
-  }
 }
 
 // ── releases ────────────────────────────────────────────────────────────────
 
 .releases {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100vh;
+  min-height: 0;
   padding-top: dp(48);
 }
 
@@ -337,32 +128,6 @@ $rowH: dp(92);
 
 .listNote {
   margin-top: dp(40);
-
-  p {
-    max-width: dp(620);
-    margin: 0;
-    font-family: var(--px-font-book);
-    font-size: var(--px-text-body);
-    line-height: 1.7;
-    color: var(--px-color-text-muted);
-  }
-}
-
-.retryBtn {
-  margin-top: dp(24);
-  padding: dp(12) dp(30);
-  border: dp(1) solid var(--px-color-outline);
-  background: transparent;
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  transition: all var(--px-dur-fast);
-
-  &.focused {
-    background: var(--px-color-focus);
-    border-color: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-  }
 }
 
 .releasesViewport {

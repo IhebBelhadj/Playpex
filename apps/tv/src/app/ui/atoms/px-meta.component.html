@@ -1,0 +1,7 @@
+<ng-container *ngFor="let m of items; trackBy: byIndex" [ngSwitch]="m.kind">
+  <span *ngSwitchCase="'text'" class="text" [class.small]="$any(m).small">{{ $any(m).text }}</span>
+  <span *ngSwitchCase="'chip'" class="chip"><img *ngIf="$any(m).icon" [src]="icon($any(m).icon)" alt="">{{ $any(m).text }}</span>
+  <span *ngSwitchCase="'seal'" class="seal">{{ $any(m).text }}</span>
+  <px-score *ngSwitchCase="'score'" class="score" [source]="$any(m).source" [value]="$any(m).value" [votes]="$any(m).votes"
+    [label]="$any(m).label || null"></px-score>
+</ng-container>

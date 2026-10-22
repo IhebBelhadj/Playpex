@@ -202,7 +202,8 @@ defineScreen({
   chrome: ADULT,
 });
 
-// This device's settings (for now: the display size)
+// Settings: this device's (size, screen edges, volume, subtitle size) and the
+// profile's (subtitle source, autoplay, 18+), SettingsService
 defineScreen({
   id: 'core.settings',
   path: 'settings',

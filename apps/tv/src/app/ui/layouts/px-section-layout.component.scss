@@ -1,0 +1,10 @@
+@use 'px' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: var(--px-screen-h);
+  min-width: 0;
+  box-sizing: border-box;
+  padding-left: var(--px-page-gutter);
+}

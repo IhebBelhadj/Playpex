@@ -221,3 +221,24 @@
     color: var(--px-color-on-focus);
   }
 }
+
+.px-gallery-wide {
+  max-width: none;
+  align-items: center;
+  margin-bottom: dp(16);
+}
+
+.px-gallery-row {
+  display: flex;
+  align-items: flex-start;
+  gap: dp(16);
+  margin-top: dp(16);
+}
+
+.px-gallery-progress {
+  display: flex;
+  flex-direction: column;
+  gap: dp(12);
+  width: dp(400);
+  margin-top: dp(16);
+}

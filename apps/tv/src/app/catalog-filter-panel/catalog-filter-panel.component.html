@@ -27,8 +27,8 @@
     </div>
 
     <div class="panelActions" pxGrid enter="nearest">
-      <button class="actionBtn primary focusable" pxItem (pxSelect)="apply()">Show {{ noun }}</button>
-      <button class="actionBtn focusable" pxItem (pxSelect)="reset()">Reset filters</button>
+      <px-button key="apply" variant="primary" [label]="'Show ' + noun" (pxSelect)="apply()"></px-button>
+      <px-button key="reset" label="Reset filters" (pxSelect)="reset()"></px-button>
     </div>
   </div>
 </px-panel>

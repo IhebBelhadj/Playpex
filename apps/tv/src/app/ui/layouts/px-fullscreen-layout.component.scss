@@ -1,0 +1,29 @@
+@use 'px' as *;
+
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-root-page);
+  display: block;
+  box-sizing: border-box;
+  padding: var(--px-safe-y) var(--px-safe-x);
+  background: var(--px-surface-bg);
+}
+
+.px-brand {
+  position: absolute;
+  top: calc(var(--px-safe-y) + #{dp(34)});
+  left: calc(var(--px-safe-x) + #{dp(48)});
+  height: dp(34);
+}
+
+.px-fullscreen-body {
+  width: 100%;
+  height: 100%;
+
+  &.center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

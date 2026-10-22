@@ -1,23 +1,6 @@
 // Full-screen over the shell, like the picker
 @use 'px' as *;
 
-.profileEditor {
-  position: fixed;
-  inset: 0;
-  z-index: var(--px-z-root-page);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--px-surface-bg);
-}
-
-.brand {
-  position: absolute;
-  top: dp(34);
-  left: dp(48);
-  height: dp(34);
-}
-
 .editorContent {
   width: dp(760);
   transition: opacity var(--px-dur) ease;
@@ -162,74 +145,23 @@
   margin: dp(-2) 0 dp(10);
 }
 
+// the kids switch, as one of the fields
 .toggleField {
   width: 100%;
-  justify-content: space-between;
-
-  .switch {
-    position: relative;
-    width: dp(46);
-    height: dp(26);
-    border-radius: dp(13);
-    background: var(--px-grey-4);
-    transition: background var(--px-dur-fast);
-
-    .knob {
-      position: absolute;
-      top: dp(3);
-      left: dp(3);
-      width: dp(20);
-      height: dp(20);
-      border-radius: 50%;
-      background: var(--px-white);
-      transition: transform var(--px-dur-fast);
-    }
-
-    &.on {
-      background: var(--px-color-positive);
-
-      .knob {
-        transform: translateX(dp(20));
-      }
-    }
-  }
+  margin-bottom: dp(10);
+  --px-switch-bg: var(--px-surface-field);
+  --px-switch-color: var(--px-color-text-soft);
+  --px-switch-text: var(--px-text-lead);
+  --px-switch-radius: #{dp(4)};
+  --px-switch-padding: 0 #{dp(18)};
+  --px-switch-min-height: #{dp(48)};
+  --px-switch-off: var(--px-grey-4);
 }
 
 .actions {
   display: flex;
   gap: dp(18);
   margin-top: dp(34);
-}
-
-.actionBtn {
-  padding: dp(12) dp(30);
-  border: dp(1) solid var(--px-color-outline);
-  background: transparent;
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  letter-spacing: dp(2);
-  text-transform: uppercase;
-  transition: all var(--px-dur-fast);
-
-  &.primary {
-    background: var(--px-surface-fill-soft);
-    border-color: var(--px-surface-fill-soft);
-    color: var(--px-color-on-focus);
-  }
-
-  &.danger.focused {
-    background: var(--px-color-danger) !important;
-    border-color: var(--px-color-danger) !important;
-    color: var(--px-color-text) !important;
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    border-color: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-    transform: scale(1.04);
-  }
 }
 
 // ── overlay panels ─────────────────────────────────────────────────────────

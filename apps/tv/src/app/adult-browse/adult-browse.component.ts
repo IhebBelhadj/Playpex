@@ -1,3 +1,4 @@
+import { MetaItem, TitleInfoModel } from '../ui/public-api';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { catchError, debounceTime, forkJoin, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
@@ -20,6 +21,8 @@ const PERFORMERS_SHOWN = 4;
 // from the profile's metadata provider (AdultService.metaProvider(): TMDB by
 // default, ThePornDB with a key). Toolbar: search (on-screen keyboard),
 // filters (studio, release period) and the switch to the compact list.
+const SEARCH_FIELD = '.adultBrowse [data-px-key="search"]';
+
 @Component({
   selector: 'app-adult-browse',
   templateUrl: './adult-browse.component.html',
@@ -83,6 +86,24 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
         : `${this.provider?.name || 'This catalog'} has no titles for ${this.filterLabel}. Try another studio or Any time.`;
     }
     return '';
+  }
+
+  // the focused title (<px-title-info>): year, studio, runtime, the
+  // provider's rating; performers; overview
+  get titleInfo():TitleInfoModel {
+    let spot = this.spot;
+    let meta:MetaItem[] = [];
+    if (spot.year) meta.push({ kind: 'text', text: String(spot.year) });
+    let studio = this.details?.studio || spot.studio;
+    if (studio) meta.push({ kind: 'chip', text: studio.name });
+    if (this.details?.runtime) meta.push({ kind: 'chip', text: this.runtime(this.details.runtime) });
+    if (spot.rating) meta.push({ kind: 'score', source: 'provider', value: spot.rating, label: this.provider?.name || '' });
+    return {
+      title: spot.title,
+      meta,
+      notes: this.performers ? [this.performers] : [],
+      overview: spot.overview || '',
+    };
   }
 
   get performers():string {
@@ -153,32 +174,36 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── input ───────────────────────────────────────────────────────────────
 
+  clearAll() {
+    this.change({ query: '', studio: null, period: '' }, SEARCH_FIELD);
+  }
+
   private select(active:HTMLElement) {
-    if (active.classList.contains('searchField')) this.panel = 'keyboard';
-    else if (active.classList.contains('filterBtn')) this.openFilters();
-    else if (active.classList.contains('clearAll')) this.change({ query: '', studio: null, period: '' }, '.adultBrowse .searchField');
-    else if (active.classList.contains('layoutSwitch')) this.switchLayout();
-    else if (active.classList.contains('retryBtn')) this.load();
-    else if (active.classList.contains('card')) this.open(active);
+    let key = active.dataset['pxKey'];
+    if (key == 'search') this.panel = 'keyboard';
+    else if (key == 'filters') this.openFilters();
+    else if (key == 'clear') this.clearAll();
+    else if (key == 'layout') this.switchLayout();
+    else if (active.classList.contains('px-card')) this.open(active);
   }
 
   // posters → toolbar → menu; on the menu Back leaves (the power menu)
   private back(active:HTMLElement):boolean {
     if (!active || active.classList.contains('menuItem')) return false;
     if (active.closest('.toolbar')) this.focusSelector('.menuItem.active');
-    else this.focusSelector('.adultBrowse .searchField');
+    else this.focusSelector(SEARCH_FIELD);
     return true;
   }
 
   onSearchDone(query:string) {
     this.panel = null;
     if (query != this.state.query) this.change({ query });
-    this.focusSelector('.adultBrowse .searchField');
+    this.focusSelector(SEARCH_FIELD);
   }
 
   onSearchCancelled() {
     this.panel = null;
-    this.focusSelector('.adultBrowse .searchField');
+    this.focusSelector(SEARCH_FIELD);
   }
 
   // A <px-panel> (a layer of the nav system while open: its own select /
@@ -253,7 +278,7 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
         if (failed && failed == rows.length) {
           this.loadError = `Couldn't reach ${this.provider.name}. Check your connection, then try again.`;
           this.setState({ loaded: true });
-          setTimeout(() => this.focusSelector('.adultBrowse .retryBtn'), 0);
+          setTimeout(() => this.focusSelector('.adultBrowse [data-px-key="retry"]'), 0);
           return;
         }
         this.setState({ rows: rows.filter(r => r && r.items.length), loaded: true });
@@ -328,13 +353,13 @@ export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
   private restoreFocus() {
     if (this.panel || this.engine.restore(`stack:${STACK}`)) return;
     let target = document.querySelector('.adultBrowse .titleInfo .focusable') as HTMLElement
-      || document.querySelector('.adultBrowse .searchField') as HTMLElement;
+      || document.querySelector(SEARCH_FIELD) as HTMLElement;
     target?.focus({ preventScroll: true });
   }
 
   // The title info follows the focused poster (scrolling is the rows' job)
   private onFocus(node:HTMLElement) {
-    if (!node.classList.contains('card')) return;
+    if (!node.classList.contains('px-card')) return;
     let row = this.state.rows.find(r => r.key == node.dataset['row']);
     let item = row?.items[Number(node.dataset['index'])];
     if (!row || !item) return;

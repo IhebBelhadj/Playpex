@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } from 'rxjs';
 import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
+import { SettingsService } from './settings.service';
 
 // ── catalog (metadata providers, lib/adultMeta) ─────────────────────────────
 
@@ -50,8 +51,9 @@ export interface AdultPage {
 
 export type AdultSort = 'popular' | 'newest' | 'rated';
 
-// How the section looks and where its catalog comes from: per profile, in
-// the server's profile preferences (`preferences.adult`). Settings will edit them.
+// How the section looks and where its catalog comes from: per profile, the
+// settings `adult.layout` / `adult.metadataProvider` (SettingsService; edited in
+// Settings › 18+, never for kids profiles).
 export type AdultLayout = 'posters' | 'compact';
 
 export interface AdultPreferences {
@@ -101,7 +103,8 @@ export class AdultService {
   private metaProviders$:Observable<MetaProvider[]>;
   private meta = `${this.server.api}/adult/meta`;
 
-  constructor(private http:HttpClient, private profiles:ProfilesService, private server:ServerService) {
+  constructor(private http:HttpClient, private profiles:ProfilesService, private server:ServerService,
+    private settings:SettingsService) {
     // what one profile searched isn't the next one's business (a preferences
     // update re-emits the same profile: keep the state then)
     profiles.current.pipe(map(p => p?.id || null), distinctUntilChanged()).subscribe(() => this.reset());
@@ -110,19 +113,21 @@ export class AdultService {
   // ── preferences ─────────────────────────────────────────────────────────
 
   get preferences():AdultPreferences {
-    let saved = this.profiles.current.value?.preferences?.['adult'] || {};
+    // until the settings answered: what the profile said when it was picked
+    let saved = this.settings.loaded$.value
+      ? { layout: this.settings.value('adult.layout'), metadataProvider: this.settings.value('adult.metadataProvider') }
+      : this.profiles.current.value?.preferences?.['adult'] || {};
     return {
       layout: saved['layout'] == 'compact' ? 'compact' : 'posters',
       metadataProvider: saved['metadataProvider'] || null,
     };
   }
 
-  // Saved to the profile on the server
+  // The profile's settings (applied at once, saved in the background)
   setPreferences(patch:Partial<AdultPreferences>): Observable<AdultPreferences> {
-    let profile = this.profiles.current.value;
-    let next = { ...this.preferences, ...patch };
-    if (!profile) return of(next);
-    return this.profiles.update(profile.id, { preferences: { adult: next } }).pipe(map(() => this.preferences));
+    if (patch.layout !== undefined) this.settings.set('adult.layout', patch.layout);
+    if (patch.metadataProvider !== undefined) this.settings.set('adult.metadataProvider', patch.metadataProvider);
+    return of(this.preferences);
   }
 
   // The screen of a layout (src/app/nav/screens.ts)

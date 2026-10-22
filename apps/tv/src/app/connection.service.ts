@@ -1,3 +1,4 @@
+import { ToastHandle, Toasts } from './ui/public-api';
 import { Injectable, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subject } from 'rxjs';
@@ -27,6 +28,7 @@ export class ConnectionService {
 
   private failures = 0;
   private refusing = false;
+  private reconnecting:ToastHandle | null = null;
   private changes = new Subject<void>();
 
   constructor(
@@ -34,6 +36,7 @@ export class ConnectionService {
     private http:HttpClient,
     private navigator:Navigator,
     private zone:NgZone,
+    private toasts:Toasts,
   ) { }
 
   get serverName():string {
@@ -42,10 +45,19 @@ export class ConnectionService {
 
   succeeded() {
     this.failures = 0;
+    this.reconnecting?.dismiss();
+    this.reconnecting = null;
   }
 
   failed() {
-    if (++this.failures >= ConnectionService.FAILURES && !this.isOpen && this.navigator.current?.screen.id != 'core.connect') {
+    let onConnect = this.navigator.current?.screen.id == 'core.connect';
+    // the first failures: a toast (it may come back by itself), then the dialog
+    if (++this.failures < ConnectionService.FAILURES && !this.isOpen && !onConnect) {
+      this.reconnecting = this.toasts.show({ text: `Trying to reach ${this.server.name || 'the server'}…`, key: 'connection' });
+    }
+    if (this.failures >= ConnectionService.FAILURES && !this.isOpen && !onConnect) {
+      this.reconnecting?.dismiss();
+      this.reconnecting = null;
       this.isOpen = true;
       this.stillLost = false;
       this.changes.next();

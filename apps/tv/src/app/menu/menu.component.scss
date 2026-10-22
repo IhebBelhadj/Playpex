@@ -13,7 +13,7 @@
 .menuContainer {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--px-screen-h);
   padding: dp(118) 0 dp(14);
   box-sizing: border-box;
 }

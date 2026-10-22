@@ -5,8 +5,8 @@
 
 .backButton {
   position: fixed;
-  top: dp(68);
-  left: dp(18);
+  top: calc(var(--px-safe-y) + #{dp(68)});
+  left: calc(var(--px-safe-x) + #{dp(18)});
   z-index: var(--px-z-back-button);
   display: grid;
   place-items: center;

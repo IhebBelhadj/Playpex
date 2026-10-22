@@ -24,6 +24,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "check:ui": "node scripts/check-ui.js",
+    "check:contrast": "node scripts/check-contrast.js",
     "electron": "ng build --base-href ./ && electron .",
     "electron:last": "node -e \"require('fs').existsSync('dist/playpex/index.html') || (console.error('No build in apps/tv/dist/playpex: run npm run build (or npm run electron) first'), process.exit(1))\" && electron .",
     "pack": "ng build --base-href ./ && electron-builder --dir",
@@ -31,7 +32,9 @@
     "dist:linux": "ng build --base-href ./ && electron-builder --linux",
     "dist:win": "ng build --base-href ./ && electron-builder --win",
     "dist:mac": "ng build --base-href ./ && electron-builder --mac",
-    "screens": "ng build --configuration development --base-href ./ --output-path dist/screens && electron scripts/screens.js"
+    "screens": "ng build --configuration development --base-href ./ --output-path dist/screens && electron scripts/screens.js",
+    "scenario": "ng build --configuration development --base-href ./ --output-path dist/screens && electron scripts/scenario.js",
+    "perf": "ng build --configuration development --base-href ./ --output-path dist/screens && electron scripts/scenario.js perf"
   },
   "dependencies": {
     "@playpex/protocol": "*",

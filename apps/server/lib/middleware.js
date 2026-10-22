@@ -62,7 +62,7 @@ function cors(req, res, next) {
   if (allowedOrigin(origin, req)) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Vary', 'Origin');
-    res.header('Access-Control-Allow-Methods', 'OPTIONS, HEAD, GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Methods', 'OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE');
     res.header('Access-Control-Allow-Headers',
       req.headers['access-control-request-headers'] || 'Origin, X-Requested-With, Content-Type, Accept, Range');
     res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');

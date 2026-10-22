@@ -1,0 +1,298 @@
+@use 'px' as *;
+
+// the button is the row's item
+:host {
+  display: contents;
+}
+
+.px-card {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: var(--px-card-w);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--px-color-text);
+  text-align: left;
+}
+
+.art {
+  position: relative;
+  display: block;
+  width: var(--px-card-w);
+  height: var(--px-card-h);
+  overflow: hidden;
+  border-radius: var(--px-card-radius, 0);
+  background: var(--px-surface-card);
+  transition: transform var(--px-dur), opacity var(--px-dur), outline-color var(--px-dur);
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    opacity: 0;
+    transition: opacity var(--px-dur-slow);
+
+    &.loaded { opacity: 1; }
+  }
+}
+
+// the image is on its way: px-skeleton's shimmer, drawn by the frame itself,
+// only after 300 ms (fast answers don't flash)
+.art.loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--px-gradient-shimmer);
+  background-size: 300% 100%;
+  opacity: 0;
+  animation: shimmer 1.8s ease-in-out .3s infinite, appear var(--px-dur-slow) .3s forwards;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+@keyframes appear {
+  to { opacity: 1; }
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: dp(14);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+  text-align: center;
+}
+
+.badges {
+  position: absolute;
+  top: dp(8);
+  left: dp(8);
+  display: flex;
+  gap: dp(6);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: dp(4);
+  padding: dp(3) dp(7);
+  border-radius: dp(4);
+  background: var(--px-surface-badge);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-tiny);
+  letter-spacing: dp(.5);
+
+  img {
+    width: dp(12);
+    height: dp(12);
+    filter: var(--px-icon-light);
+  }
+
+  // this page's own item
+  &.b-current {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+  }
+}
+
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  --px-progress-height: #{dp(4)};
+}
+
+.busyCover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--px-surface-badge);
+  text-align: center;
+  --px-spinner-size: #{dp(28)};
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: dp(4);
+  min-width: 0;
+  margin-top: dp(10);
+}
+
+.title {
+  display: flex;
+  gap: dp(10);
+  min-width: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  opacity: .75;
+
+  .titleText {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .number {
+    flex: none;
+    font-family: var(--px-font-bold);
+    opacity: .55;
+  }
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: dp(14);
+  min-width: 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+
+  .subtitle {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: dp(6);
+  font-family: var(--px-font-bold);
+  color: var(--px-color-text-soft);
+
+  img {
+    display: block;
+    width: dp(26);
+  }
+}
+
+.dim {
+  opacity: .5;
+}
+
+.focused .title {
+  opacity: 1;
+}
+
+// ── variants ─────────────────────────────────────────────────────────────────
+
+// the section rows: the whole card zooms, colour comes back
+.v-poster {
+  --px-card-w: #{dp(180)};
+  --px-card-h: #{dp(270)};
+
+  .art {
+    opacity: .75;
+
+    > img.loaded { filter: saturate(.6); }
+  }
+
+  &.focused .art {
+    opacity: 1;
+    transform: scale(var(--px-zoom-card));
+
+    > img { filter: none; }
+  }
+}
+
+.v-compact {
+  --px-card-w: #{dp(150)};
+  --px-card-h: #{dp(230)};
+
+  .art {
+    opacity: .8;
+
+    > img.loaded { filter: saturate(.6); }
+  }
+
+  &.focused .art {
+    opacity: 1;
+    transform: scale(var(--px-zoom-card));
+
+    > img { filter: none; }
+  }
+}
+
+.v-portrait {
+  --px-card-w: #{dp(130)};
+  --px-card-h: #{dp(130)};
+  --px-card-radius: 50%;
+  align-items: center;
+  width: dp(140);
+
+  .art {
+    border: dp(3) solid transparent;
+    box-sizing: border-box;
+  }
+
+  .fallback {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-headline);
+  }
+
+  .caption {
+    margin-top: dp(20);
+  }
+
+  .title {
+    justify-content: center;
+    max-width: dp(120);
+    font-family: var(--px-font-light);
+    text-align: center;
+    opacity: .7;
+
+    .titleText { white-space: normal; }
+  }
+
+  .meta {
+    justify-content: center;
+    max-width: dp(120);
+    text-align: center;
+
+    .subtitle { white-space: normal; }
+  }
+
+  &.focused .art {
+    border-color: var(--px-color-focus);
+    transform: scale(var(--px-zoom-card));
+  }
+}
+
+.v-still {
+  --px-card-w: #{dp(270)};
+  --px-card-h: #{dp(152)};
+  --px-card-radius: #{dp(6)};
+
+  .art { outline: dp(3) solid transparent; }
+
+  &.focused .art {
+    outline-color: var(--px-color-focus);
+    transform: scale(var(--px-zoom-tile));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .art, .art > img { transition: none; }
+  .art.loading::before { animation: appear 0s .3s forwards; }
+}

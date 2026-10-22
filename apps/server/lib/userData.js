@@ -11,6 +11,7 @@ var database = require('./db'),
   data = require('./data'),
   services = require('./services'),
   tmdb = require('./tmdb'),
+  events = require('./events'),
   log = require('./logger').child('db');
 
 var ready = null;
@@ -20,7 +21,7 @@ function getState() {
     ready = database.open().then(function (connection) {
       return {
         connection: connection,
-        services: services.createServices(data.createRepositories(connection.db), { catalog: tmdb })
+        services: services.createServices(data.createRepositories(connection.db), { catalog: tmdb, publish: events.publish })
       };
     });
     ready.catch(function (err) {

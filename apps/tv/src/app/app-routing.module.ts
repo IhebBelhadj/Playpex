@@ -5,6 +5,8 @@ import { DisplayGuard } from './display.guard';
 import { ServerGuard } from './server.guard';
 import { SCREENS } from './nav/screen-registry';
 import './nav/screens';
+// the example plugin's screens (development builds; docs/tv-plugins.md)
+import './plugins-dev/hello/hello-plugin';
 
 // The routes are generated from the screens (src/app/nav/screens.ts): frames
 // become parent routes, `requires` become guards. Nothing navigates with the

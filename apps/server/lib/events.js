@@ -7,7 +7,8 @@
 //
 // Topics (everyone):  server.status (on connect, then every 30 s),
 //                     torrent.stats (every 2 s while torrents run),
-//                     session.started / session.updated / session.ended
+//                     session.started / session.updated / session.ended,
+//                     settings.changed { scope, ownerId, keys } (lib/services/settings.js)
 // Admin only:         log (info and above), device.paired / device.revoked,
 //                     pairing.requested / pairing.approved / pairing.denied,
 //                     host.updated (desktop app: start at login, updater state)

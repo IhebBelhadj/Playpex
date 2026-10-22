@@ -21,7 +21,7 @@ const RULES = [
   { name: 'font family literal (use --px-font-*)', re: /font-family:\s*['"]/, unlessFontFace: true },
   { name: 'z-index literal (use --px-z-*)', re: /z-index:\s*-?\d/ },
   { name: 'px length (use dp(n))', re: /\b\d*\.?\d+px\b/ },
-  { name: 'font size outside the type scale (use --px-text-*)', re: /font-size:(?!\s*(?:var\(--px-text-|inherit\b|\d+%|\d*\.?\d+em\b))/ },
+  { name: 'font size outside the type scale (use --px-text-*)', re: /font-size:(?!\s*(?:var\(--px-text-|var\(--px-[\w-]+,\s*var\(--px-text-|inherit\b|\d+%|\d*\.?\d+em\b))/ },
 ];
 
 function files(dir) {

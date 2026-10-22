@@ -5,27 +5,13 @@
 @use 'px' as *;
 
 
-.connectPage {
-  position: fixed;
-  inset: 0;
-  z-index: var(--px-z-root-page);
-  background: var(--px-surface-bg);
-}
-
-.brand {
-  position: absolute;
-  top: dp(34);
-  left: dp(48);
-  height: dp(34);
-}
-
 .connectLayout {
   display: grid;
   grid-template-columns: minmax(0, dp(660)) dp(460);
   justify-content: center;
   align-items: center;
   column-gap: dp(96);
-  height: 100vh;
+  height: 100%;
   padding: dp(110) dp(64) dp(80);
   box-sizing: border-box;
 }
@@ -267,29 +253,6 @@
 .actions {
   flex: none;
   margin-top: dp(64);
-}
-
-.actionBtn {
-  padding: dp(13) dp(28);
-  border: dp(2) solid var(--px-surface-3);
-  border-radius: dp(6);
-  background: transparent;
-  color: var(--px-color-text-soft);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-body);
-
-  &.primary {
-    background: var(--px-surface-fill-soft);
-    border-color: var(--px-surface-fill-soft);
-    color: var(--px-color-on-focus);
-    font-family: var(--px-font-bold);
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    border-color: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-  }
 }
 
 .message {

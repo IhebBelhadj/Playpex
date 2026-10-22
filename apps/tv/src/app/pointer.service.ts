@@ -170,17 +170,15 @@ export class PointerService {
   }
 
   // A restricted section (modal, panel, keyboard overlay) can only be left
-  // the ways its `leaveFor` allows, as with the arrow keys
+  // the ways its `leaveFor` allows, as with the arrow keys; anything the keys
+  // reach in several steps (a setting → its tab → the menu) the mouse reaches
+  // at once
   private canReach(el:HTMLElement):boolean {
     let current = document.activeElement as HTMLElement;
     let from = current && current !== document.body ? spatialNavigation.sectionOf(current) : undefined;
     let to = spatialNavigation.sectionOf(el);
     if (!from || from == to) return true;
-
-    let config = spatialNavigation.sectionConfig(from);
-    if (!config || config.restrict != 'self-only') return true;
-
-    return Object.values(config.leaveFor || {}).some(dest => this.engine.leads(dest, el, to));
+    return this.engine.reaches(from, el, to);
   }
 
   // Hover focus: never scrolls, doesn't change what rows remember

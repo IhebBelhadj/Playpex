@@ -19,8 +19,6 @@ export interface Subtitle {
   name: string;
 }
 
-const PROVIDER_KEY = "playpex.subtitleProvider";
-
 @Injectable({
   providedIn: 'root'
 })
@@ -49,13 +47,6 @@ export class SubtitlesService {
     return `${this.server.api}/subtitles/file?${params}`;
   }
 
-  // The player remembers the provider picked last time
-  get preferredProvider():string {
-    try { return localStorage.getItem(PROVIDER_KEY); } catch (e) { return null; }
-  }
-
-  set preferredProvider(id:string) {
-    try { localStorage.setItem(PROVIDER_KEY, id); } catch (e) { }
-  }
+  // The provider picked last time is the profile's setting `subtitles.provider` (SettingsService)
 
 }

@@ -1,5 +1,6 @@
 <div class="player" [class.ready]="playerReady" [class.controlsShown]="controlsVisible" [class.scrubbing]="!!scrub">
-  <video crossorigin="anonymous" class="moviePlayer" (click)="onVideoClick()"></video>
+  <video crossorigin="anonymous" class="moviePlayer" [style.object-fit]="pictureFit" [style.transform]="zoom != 100 ? 'scale(' + zoom / 100 + ')' : null"
+    [style.filter]="brightness != 100 ? 'brightness(' + brightness / 100 + ')' : null" (click)="onVideoClick()"></video>
 
   <!-- Before the first frame: what the torrent is doing, as the steps it goes
        through; later stalls: the same spinner with the swarm's numbers -->
@@ -77,37 +78,31 @@
 
       <div class="buttons" pxGrid>
         <div class="group">
-          <button class="ctl" pxItem pxItemKey="subtitles" (pxSelect)="openSubtitles()">
-            <img src="assets/icons/caption.svg" alt=""><span class="label">Subtitles</span>
-          </button>
+          <px-button variant="icon" key="subtitles" icon="caption" label="Subtitles" (pxSelect)="openSettings('subtitles')"></px-button>
         </div>
         <div class="group center">
-          <button class="ctl" pxItem pxItemKey="back10" (pxSelect)="jump(-10)">
-            <img src="assets/icons/leftSeek.svg" alt=""><span class="label">10 s back</span>
-          </button>
-          <button class="ctl play" pxItem pxItemKey="play" (pxSelect)="togglePlay()">
-            <img [src]="paused ? 'assets/icons/playSharp.svg' : 'assets/icons/pause.svg'" alt=""><span class="label">{{ paused ? 'Play' : 'Pause' }}</span>
-          </button>
-          <button class="ctl" pxItem pxItemKey="fwd10" (pxSelect)="jump(10)">
-            <img src="assets/icons/rightSeek.svg" alt=""><span class="label">10 s ahead</span>
-          </button>
+          <px-button variant="icon" key="back10" icon="leftSeek" label="10 s back" (pxSelect)="jump(-10)"></px-button>
+          <px-button variant="icon" size="l" key="play" [icon]="paused ? 'playSharp' : 'pause'" [label]="paused ? 'Play' : 'Pause'"
+            (pxSelect)="togglePlay()"></px-button>
+          <px-button variant="icon" key="fwd10" icon="rightSeek" label="10 s ahead" (pxSelect)="jump(10)"></px-button>
         </div>
         <div class="group end">
-          <button class="ctl" *ngIf="upNext" pxItem pxItemKey="next" (pxSelect)="playNext()">
-            <img src="assets/icons/next.svg" alt=""><span class="label">{{ upNextLooking ? 'Finding a release…' : 'Next episode' }}</span>
-          </button>
-          <button class="ctl" pxItem pxItemKey="stats" [class.on]="statsVisible" (pxSelect)="statsVisible = !statsVisible">
-            <img src="assets/icons/opts.svg" alt=""><span class="label">{{ statsVisible ? 'Hide stats' : 'Stats' }}</span>
-          </button>
+          <px-button variant="icon" *ngIf="upNext" key="next" icon="next" [label]="upNextLooking ? 'Finding a release…' : 'Next episode'"
+            (pxSelect)="playNext()"></px-button>
+          <px-button variant="icon" key="settings" icon="opts" label="Settings" (pxSelect)="openSettings()"></px-button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Stats for nerds: toggled by the stats button, stays up while watching -->
+  <!-- Stats on screen: Settings › Stats › "Show on screen while watching" -->
   <div class="statsPanel" *ngIf="statsVisible">
     <p class="statsTitle">Stats</p>
-    <dl>
+    <ng-container *ngTemplateOutlet="statsList"></ng-container>
+  </div>
+
+  <ng-template #statsList>
+    <dl class="statsList">
       <dt>Peers</dt><dd>{{ stats ? stats.peers.total + ' (' + stats.peers.unchocked + ' sending)' : '…' }}</dd>
       <dt>Download</dt><dd>{{ stats ? formatBytes(stats.speed.down) + '/s' : '…' }}</dd>
       <dt>Downloaded</dt><dd>{{ stats ? formatBytes(stats.traffic.down) : '…' }}</dd>
@@ -115,52 +110,87 @@
       <dt>Buffered ahead</dt><dd>{{ videoInfo?.bufferedAhead || '…' }}</dd>
       <dt>Resolution</dt><dd>{{ videoInfo?.resolution || '…' }}</dd>
       <dt>Dropped frames</dt><dd>{{ videoInfo?.droppedFrames || '…' }}</dd>
-      <dt>Audio</dt><dd>{{ transcoding ? 'Converted to AAC by the server' : 'Direct' }}</dd>
     </dl>
-  </div>
+  </ng-template>
 
-  <!-- Subtitles: a layer docked at the right edge (Back closes it, focus goes
-       back to the Subtitles button) -->
-  <px-panel *ngIf="subtitlesOpen" id="subs" edge="end" [width]="460" title="Subtitles"
-    focus=".subRow.selected" (closed)="subtitlesOpen = false">
-    <div class="subsBody" pxStack="subtitles">
-      <div class="subsGroup" *ngIf="subtitleProviders.length > 1">
-        <p class="groupLabel">Source</p>
-        <div class="chips" pxGrid>
+  <!-- Settings: a layer docked at the right edge. Tabs on top (moving onto
+       one shows it), its content under them: one pxStack, so Up from the
+       content always comes back to the shown tab. Back closes it and the
+       focus goes back to the button that opened it -->
+  <px-panel *ngIf="settingsOpen" id="playerSettings" edge="end" [width]="620" title="Settings"
+    focus=".px-tab.active" (closed)="settingsOpen = false">
+    <div class="settingsBody" pxStack="playerSettings">
+      <px-tabs gridId="settingsTabs" [tabs]="tabs" [active]="tab" (activeChange)="tab = $any($event)"></px-tabs>
+
+      <!-- Subtitles: the source, then the list (it scrolls on its own) -->
+      <ng-container *ngIf="tab == 'subtitles'">
+        <div class="chips" pxGrid="subtitleSources" enter="selected" *ngIf="subtitleProviders.length > 1">
           <px-chip *ngFor="let p of subtitleProviders" [key]="'provider:' + p.id" [label]="p.name"
             [selected]="p.id == subtitleProvider" (pxSelect)="switchSubtitleProvider(p.id)"></px-chip>
         </div>
-      </div>
-
-      <div class="subList" pxGrid="subtitleList">
-        <button class="subRow" pxItem pxItemKey="off" [class.selected]="!selectedSubtitle" (pxSelect)="hideSubtitles()">
-          <span class="subName">Off</span>
-        </button>
-        <button *ngFor="let subtitle of subtitles || []; let i = index" class="subRow" pxItem [pxItemKey]="'sub:' + i"
-          [class.selected]="subtitle === selectedSubtitle" (pxSelect)="showSubtitle(subtitle)">
-          <span class="subName">{{ subtitle.name }}</span>
-          <span class="subLang">{{ subtitle.languageName }}</span>
-        </button>
-        <p class="subNote" *ngIf="!subtitles">Looking for subtitles…</p>
-        <p class="subNote" *ngIf="subtitles && !subtitles.length">{{ subtitlesError || 'This source has no subtitles for this title.' }}</p>
-      </div>
-
-      <div class="subsGroup">
-        <p class="groupLabel">Size</p>
-        <div class="chips" pxGrid>
-          <px-chip *ngFor="let size of subtitleSizes" [key]="'size:' + size.key" [label]="size.label"
-            [selected]="size.key == subtitleSize" (pxSelect)="setSubtitleSize(size.key)"></px-chip>
+        <div class="subList" pxGrid="subtitleList" enter="selected">
+          <button class="subRow" pxItem pxItemKey="off" [class.selected]="!selectedSubtitle" (pxSelect)="hideSubtitles()">
+            <span class="subName">Off</span>
+          </button>
+          <button *ngFor="let subtitle of subtitles || []; let i = index" class="subRow" pxItem [pxItemKey]="'sub:' + i"
+            [class.selected]="subtitle === selectedSubtitle" (pxSelect)="showSubtitle(subtitle)">
+            <span class="subName">{{ subtitle.name }}</span>
+            <span class="subLang">{{ subtitle.languageName }}</span>
+          </button>
+          <p class="note" *ngIf="!subtitles">Looking for subtitles…</p>
+          <p class="note" *ngIf="subtitles && !subtitles.length">{{ subtitlesError || 'This source has no subtitles for this title. Try another source.' }}</p>
         </div>
-      </div>
+      </ng-container>
 
-      <div class="subsGroup">
-        <p class="groupLabel">Timing <span class="timingValue">{{ timingLabel }}</span></p>
-        <div class="chips" pxGrid>
-          <px-chip key="timing:earlier" label="Earlier" (pxSelect)="shiftSubtitles(-0.5)"></px-chip>
-          <px-chip key="timing:later" label="Later" (pxSelect)="shiftSubtitles(0.5)"></px-chip>
-          <px-chip *ngIf="subtitleDelay" key="timing:reset" label="Reset" (pxSelect)="shiftSubtitles(-subtitleDelay)"></px-chip>
+      <!-- Size & timing: a sample at the chosen size, then the two sliders -->
+      <ng-container *ngIf="tab == 'style'">
+        <div class="cueSample" aria-hidden="true"><span>Subtitles will look like this.</span></div>
+        <px-slider key="size" label="Size" [min]="0" [max]="subtitleSizes.length - 1" [step]="1"
+          [value]="subtitleSizeIndex" [stops]="sizeStops" [format]="sizeName"
+          (valueChange)="setSubtitleSize(subtitleSizes[$event].key)"></px-slider>
+        <div class="setting">
+          <px-slider key="timing" label="Timing" [min]="-5" [max]="5" [step]="0.5" [origin]="0"
+            [value]="subtitleDelay" [format]="timingText" (valueChange)="setSubtitleDelay($event)"></px-slider>
+          <p class="settingHelp">For subtitles made for another release: move right if they show before the line is spoken.</p>
         </div>
-      </div>
+      </ng-container>
+
+      <!-- Audio: volume (remembered on this device) -->
+      <ng-container *ngIf="tab == 'audio'">
+        <px-slider key="volume" label="Volume" [min]="0" [max]="100" [step]="5"
+          [value]="volume" [format]="volumeText" (valueChange)="setVolume($event)"></px-slider>
+        <div class="chips" pxGrid="mute" enter="selected">
+          <px-chip key="volume:mute" [label]="muted ? 'Sound off' : 'Turn sound off'" [selected]="muted" (pxSelect)="toggleMute()"></px-chip>
+        </div>
+        <p class="settingHelp">{{ transcoding ? "This release's audio (Dolby or DTS) is converted by the server so it plays here." : 'The audio plays as it is in the release.' }}</p>
+      </ng-container>
+
+      <!-- Video: speed, then the picture -->
+      <ng-container *ngIf="tab == 'video'">
+        <px-slider key="speed" label="Speed" [min]="0.5" [max]="2" [step]="0.25" [origin]="1"
+          [value]="speed" [format]="speedText" (valueChange)="setSpeed($event)"></px-slider>
+        <div class="setting">
+          <p class="settingName">Picture</p>
+          <div class="chips" pxGrid="picture" enter="selected">
+            <px-chip *ngFor="let mode of pictureModes" [key]="'picture:' + mode.key" [label]="mode.label"
+              [selected]="mode.key == pictureMode" (pxSelect)="pictureMode = mode.key"></px-chip>
+          </div>
+          <p class="settingHelp">{{ pictureHelp }}</p>
+        </div>
+        <px-slider key="zoom" label="Zoom" [min]="100" [max]="150" [step]="5"
+          [value]="zoom" [format]="percentText" (valueChange)="zoom = $event"></px-slider>
+        <px-slider key="brightness" label="Brightness" [min]="50" [max]="150" [step]="5" [origin]="100"
+          [value]="brightness" [format]="percentText" (valueChange)="brightness = $event"></px-slider>
+      </ng-container>
+
+      <!-- Stats: the numbers, and whether they stay on screen -->
+      <ng-container *ngIf="tab == 'stats'">
+        <ng-container *ngTemplateOutlet="statsList"></ng-container>
+        <div class="chips" pxGrid="statsOnScreen" enter="selected">
+          <px-chip key="stats:screen" [label]="statsVisible ? 'Shown on screen while watching' : 'Show on screen while watching'"
+            [selected]="statsVisible" (pxSelect)="statsVisible = !statsVisible"></px-chip>
+        </div>
+      </ng-container>
     </div>
   </px-panel>
 </div>

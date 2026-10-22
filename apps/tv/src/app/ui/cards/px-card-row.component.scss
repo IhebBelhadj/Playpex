@@ -1,0 +1,33 @@
+@use 'px' as *;
+
+// a flex item of wide rows: without min-width 0 it grows to the row's width
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// the list pages' row titles; on title pages (`detail`) the size of a plain
+// heading (1.17em of the text around it)
+.px-row-title {
+  margin: var(--px-row-title-margin, 1em 0);
+  font-family: var(--px-row-title-font, var(--px-font-display));
+  font-size: var(--px-text-row);
+  opacity: .8;
+
+  &.detail {
+    font-family: var(--px-font-book);
+    font-size: 1.17em;
+    opacity: .9;
+  }
+}
+
+// room for the focused card's zoom inside the row (a sideways scrolling box
+// clips vertically too), given back to the layout by the margins
+.px-row {
+  display: flex;
+  gap: var(--px-row-gap, #{dp(10)});
+  padding: var(--px-row-gutter-block, #{dp(16)}) var(--px-row-gutter-inline, #{dp(10)});
+  margin: calc(-1 * var(--px-row-gutter-block, #{dp(16)})) calc(-1 * var(--px-row-gutter-inline, #{dp(10)}))
+    var(--px-row-margin-bottom, calc(-1 * var(--px-row-gutter-block, #{dp(16)})));
+  scroll-padding-inline: var(--px-row-scroll-padding, var(--px-row-gutter-inline, #{dp(10)}));
+}

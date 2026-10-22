@@ -13,6 +13,7 @@ Branch on `code`, show `error`. Some list routes add an empty list next to it (`
 | Code | Status | Meaning, what to do |
 |---|---|---|
 | `INVALID` | 400 | bad parameters or body (malformed JSON too). Some routes add `errors[]` |
+| `DEVICE_REQUIRED` | 400 | the route needs to know the calling device: send `X-Playpex-Device` (or `?device=`); paired clients: send `deviceId` with `PUT /devices/me` ([settings](settings.md)) |
 | `PAIRING_REQUIRED` | 401 | no valid device token: pair, or pair again if it was revoked ([auth](auth.md)) |
 | `ADMIN_REQUIRED` | 401 | an admin-only route; not for clients |
 | `FORBIDDEN` | 403 | e.g. a wrong profile PIN |

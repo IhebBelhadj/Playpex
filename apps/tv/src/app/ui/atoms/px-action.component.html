@@ -1,0 +1,9 @@
+<button class="px-action focusable" pxItem [pxItemKey]="key" [class.on]="on" [class.busy]="busy"
+  [class.disabled]="disabled" [attr.aria-pressed]="onIcon !== null ? on : null" [attr.aria-busy]="busy || null"
+  [attr.aria-disabled]="disabled || null">
+  <span class="tile">
+    <img [src]="src" alt="">
+    <span class="progress" *ngIf="progress && !busy"><span [style.width.%]="progress * 100"></span></span>
+  </span>
+  <span class="label">{{ busy && busyLabel ? busyLabel : label }}</span>
+</button>

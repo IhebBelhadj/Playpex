@@ -10,8 +10,8 @@
   padding: 0 dp(16);
   border: none;
   border-radius: dp(21);
-  background: var(--px-surface-1);
-  color: var(--px-color-text-secondary);
+  background: var(--px-chip-bg, var(--px-surface-1));
+  color: var(--px-chip-color, var(--px-color-text-secondary));
   font-family: var(--px-font-book);
   font-size: var(--px-text-label);
   white-space: nowrap;

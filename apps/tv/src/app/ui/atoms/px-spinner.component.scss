@@ -1,0 +1,27 @@
+@use 'px' as *;
+
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: dp(12);
+  color: var(--px-color-text-muted);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+}
+
+.ring {
+  width: var(--px-spinner-size, #{dp(22)});
+  height: var(--px-spinner-size, #{dp(22)});
+  border: dp(2.5) solid var(--px-color-progress-track);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin .9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring { animation: none; }
+}

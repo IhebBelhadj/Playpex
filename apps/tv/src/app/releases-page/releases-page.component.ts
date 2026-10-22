@@ -38,12 +38,16 @@ const SEARCH_HINT: Record<ReleasesKind, string> = {
 // saved progress), never saved for 18+ (PlaybackRequest.adult).
 // Screens core.adult.releases (a section) and core.releases.movies / .shows
 // (src/app/nav): the payload is the ReleasesOrigin of a "Find releases".
+const SEARCH_FIELD = '.releasesPage [data-px-key="search"]';
+
 @Component({
   selector: 'app-releases-page',
   templateUrl: './releases-page.component.html',
   styleUrls: ['./releases-page.component.scss']
 })
 export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
+
+  readonly SEARCH_FIELD = SEARCH_FIELD;
 
   qualities:QualityChoice[] = [
     { id: '', label: 'Any' },
@@ -77,7 +81,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     private releases:ReleasesService,
     private adult:AdultService,
     private navigation:NavigationService,
-    private navigator:Navigator,
+    public navigator:Navigator,
     private playback:PlaybackService,
     private route:ActivatedRoute,
     private engine:FocusEngine,
@@ -136,7 +140,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
       this.loading = false;
       if (error) {
         this.loadError = `Couldn't reach ${this.provider?.name || 'the source'}. Try again, or pick another source.`;
-        if (page == 1) setTimeout(() => this.focusSelector('.releasesPage .retryBtn'), 0);
+        if (page == 1) setTimeout(() => this.focusSelector('.releasesPage [data-px-key="retry"]'), 0);
         return;
       }
       let known = new Set(page == 1 ? [] : state.releases.map(r => r.hash));
@@ -178,7 +182,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Back from the player: the same release in focus, the list where it was
     setTimeout(() => {
-      if (!this.positions.get(this.listId)?.key || !this.engine.restore(`grid:${this.listId}`)) this.focusSelector('.releasesPage .searchField');
+      if (!this.positions.get(this.listId)?.key || !this.engine.restore(`grid:${this.listId}`)) this.focusSelector(SEARCH_FIELD);
     }, 0);
   }
 
@@ -191,15 +195,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private select(active:HTMLElement) {
     let data = active.dataset;
-    if (active.classList.contains('searchField')) this.keyboardOpen = true;
-    else if (active.classList.contains('clearSearch')) this.change({ query: '', imdb: null }, '.releasesPage .searchField');
-    else if (data['provider']) this.change({ provider: data['provider'] });
-    else if (data['quality'] !== undefined) this.change({ quality: data['quality'] as ReleaseQuality });
-    else if (active.classList.contains('playableToggle')) this.change({ playableOnly: !this.state.playableOnly });
-    else if (active.classList.contains('retryBtn')) this.load();
-    else if (active.classList.contains('layoutSwitch')) this.switchLayout();
-    else if (active.classList.contains('originBack')) this.navigator.back();
-    else if (data['hash']) this.play(this.state.releases.find(r => r.hash == data['hash']));
+    if (data['hash']) this.play(this.state.releases.find(r => r.hash == data['hash']));
   }
 
   // In-page steps: list → rail → (the 18+ section's own list) the menu; then
@@ -217,7 +213,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 18+ poster layout (saved to the profile; Settings will offer it too):
   // the section's other screen, in place of this one
-  private switchLayout() {
+  switchLayout() {
     let go = () => this.navigator.reset({ screen: this.adult.layoutScreen('posters') });
     this.adult.setPreferences({ layout: 'posters' }).subscribe({ next: go, error: go });
   }
@@ -225,17 +221,17 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   onSearchDone(query:string) {
     this.keyboardOpen = false;
     if (query != this.state.query) this.change({ query });
-    this.focusSelector('.releasesPage .searchField');
+    this.focusSelector(SEARCH_FIELD);
   }
 
   onSearchCancelled() {
     this.keyboardOpen = false;
-    this.focusSelector('.releasesPage .searchField');
+    this.focusSelector(SEARCH_FIELD);
   }
 
   // ── list ────────────────────────────────────────────────────────────────
 
-  private change(patch:Partial<ReleasesState>, focusAfter?:string) {
+  change(patch:Partial<ReleasesState>, focusAfter?:string) {
     let changed = Object.keys(patch).some(k => patch[k] != this.state[k]);
     if (!changed) return;
     this.setState({ ...patch, releases: [], page: 0, hasMore: false, loaded: false });

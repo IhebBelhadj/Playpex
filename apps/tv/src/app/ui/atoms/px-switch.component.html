@@ -1,0 +1,8 @@
+<button class="px-switch focusable" pxItem [pxItemKey]="key" role="switch" [attr.aria-checked]="on"
+  [class.on]="on" [class.disabled]="disabled" [attr.aria-disabled]="disabled || null">
+  <span class="text">
+    {{ label }}<ng-content></ng-content>
+    <span class="hint" *ngIf="hint">{{ hint }}</span>
+  </span>
+  <span class="track"><span class="knob"></span></span>
+</button>

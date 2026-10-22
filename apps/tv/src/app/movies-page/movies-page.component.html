@@ -1,24 +1,19 @@
 <!-- A scrolling pxStack (src/app/movement): its entries are the routed page's
      rows (the list's translated rows, a detail page's buttons and rows) -->
-<div class="pageContainer" pxStack>
+<px-detail-layout class="pageContainer" pxStack>
   <!-- List page: search and filter this section (their rows stand in for the section's) -->
   <div class="sectionToolbar" *ngIf="onList" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
-    <button class="searchField focusable" [class.empty]="!catalog.query" (pxSelect)="catalog.typing = true">
-      <img src="assets/icons/search.svg" alt="">
-      <span class="fieldText">{{ catalog.query || searchHint }}</span>
-    </button>
-    <button class="filterBtn focusable" [class.active]="filtered" (pxSelect)="catalog.filtering = true">
-      <img src="assets/icons/opts.svg" alt="">
-      <span class="fieldText">{{ filterLabel }}</span>
-    </button>
-    <button class="clearSearch focusable" *ngIf="catalog.search" (pxSelect)="clearSearch()">Clear</button>
+    <px-search-field key="search" [query]="catalog.query" [placeholder]="searchHint" (pxSelect)="catalog.typing = true"></px-search-field>
+    <px-button key="filters" variant="toolbar" icon="opts" [label]="filterLabel" [active]="filtered"
+      (pxSelect)="catalog.filtering = true"></px-button>
+    <px-button *ngIf="catalog.search" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearSearch()"></px-button>
   </div>
   <!-- an episode page shows its own title block -->
   <!-- (nor while a search / filters show nothing: it would describe an earlier title) -->
   <movie-description *ngIf="!onEpisode && !(onList && viewEmpty)"></movie-description>
   <router-outlet></router-outlet>
 
-</div>
+</px-detail-layout>
 
 <text-keyboard *ngIf="catalog.typing"
   [title]="searchHint"

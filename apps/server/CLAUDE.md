@@ -33,6 +33,7 @@ The torrent part (`store`/`engine`/`progressbar`/`serialize`) follows the struct
 | `lib/sessions.js` | **Leases, reaper, limits, sessions** (plan §5.6), see "Lifecycle of a torrent". `device(req)` (a paired device = its token's device, `req.auth`; others: `X-Playpex-Device` header / `?device=` / `addr:<ip>`), `acquire` / `release`, `trackStream` (open media responses keep a lease active), `takeTranscodeSlot`, `canAdd` (store's `beforeAdd`), `report` (keepalive body), `reap`, `list` / `stopSession`, `dropDevice` (a revoked device's streams and leases), `activeStats` (events' `torrent.stats`); publishes `session.started/updated/ended`; `start()` / `stop()` from `index.js`; `configure({graceMs, idleMs})` for tests. |
 | `lib/errors.js` | `fail(res, code, message, extra?)` → `{error, code}` with the code's status; `codeForStatus(status)`. |
 | `test/contract.test.js` | Contract test (`node:test` + ajv): real server on a free port with temp dirs (`PLAYPEX_DISCOVERY=0`), every answer checked against `openapi.yaml`; prints which operations it didn't exercise. |
+| `test/migrations.test.js` | Migration test: a DB migrated up to `0002_auth` (a copy of the journal cut there) with profiles holding `preferences.adult`, opened by `lib/db` → rows in `profile_settings`. |
 | `test/discovery.test.js` | Discovery test: real server with temp dirs, UDP responder on a free port, mDNS on the real network (a short-lived "Playpex test <pid>" service): answer contents, junk ignored, address filter, TXT record, rename, restart on another port, turned off → goodbye. |
 | `lib/releases.js` | "Find releases" lists (`browse`, `providers`) per kind `adult` / `movie` / `tv`: `PROVIDERS` table, paging, quality/playable filters, most seeded first. See **Release lists** below. |
 | `lib/present.js` | Release name → display fields: `adult(name)` (`title, studio, year`, porn naming) and `release(name, kind)` (`title, year, studio: null` + for `tv` `season, episode, pack`). |
@@ -52,15 +53,15 @@ The torrent part (`store`/`engine`/`progressbar`/`serialize`) follows the struct
 | `lib/engine.js` | `torrent-stream` factory; downloads to `<cache>/torrent_data/` (metadata cache in `<cache>/torrent-stream/`); on `ready` auto-selects the largest file (the stream endpoint narrows the selection); free BitTorrent port from 6881. |
 | `lib/util.js` | Unused helpers. |
 | `lib/stats.js`, `lib/progressbar.js` | Torrent stats / piece-bitfield → progress runs. |
-| `lib/routes/profiles.js`, `lib/routes/library.js`, `lib/routes/handle.js` | `/api/v1/profiles` and `/api/v1/profiles/:profileId/…` routers (mounted at the end of `lib/api.js`); `handle(work)` = shared JSON/error adapter. |
-| `lib/db/`, `lib/data/`, `lib/services/`, `lib/userData.js`, `lib/tmdb.js` | Per-profile user data (profiles, watchlist, resume points, history, ratings, recommendations) — see **User data** below. |
+| `lib/routes/profiles.js`, `lib/routes/library.js`, `lib/routes/settings.js`, `lib/routes/handle.js` | `/api/v1/profiles`, `/api/v1/profiles/:profileId/…` and `/api/v1/settings` (+ `PATCH /profiles/:id/settings`) routers (mounted at the end of `lib/api.js`); `handle(work)` = shared JSON/error adapter (a ServiceError's `errors[]` is passed on). |
+| `lib/db/`, `lib/data/`, `lib/services/`, `lib/userData.js`, `lib/tmdb.js` | Per-profile user data (profiles, watchlist, resume points, history, ratings, recommendations) and user settings (per device, per profile) — see **User data** below. |
 | `torrents/` | **Legacy** location of state and downloads (before `lib/paths.js`); no longer written. `torrent_data/` is git-ignored — never force-add. |
 
 ## HTTP API (`lib/api.js`)
 
 **Every route lives under `/api/v1`** (a `v1` router in `lib/api.js`); the paths in the tables below are relative to it (`GET /torrents` = `GET /api/v1/torrents`). The contract is **`packages/protocol/openapi.yaml`**: change a route or an answer there first, regenerate the types (`npm run generate -w packages/protocol`), and run the contract test (`npm test -w apps/server`; `PLAYPEX_TEST_NETWORK=1` adds the provider routes). Unversioned paths from before (`/torrents/…`, `/upload`, `/youtube/…`, `/api/<x>`) are rewritten onto v1 by `legacyAliases` until plan step 9.
 
-- **Errors**: always `{ error, code }` through `lib/errors.js#fail(res, code, message, extra?)`; codes and statuses in `@playpex/protocol` `ERROR_CODES` (`INVALID` 400, `PAIRING_REQUIRED` / `ADMIN_REQUIRED` 401, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_ATTEMPTS`, `INTERNAL`, `UPSTREAM` 502, `PROBE_FAILED`, `PROVIDER_NOT_CONFIGURED` 503, `TRANSCODER_UNAVAILABLE` 503, `BUSY` 503 (a limit), + `HOST_NOT_ALLOWED` / `ORIGIN_NOT_ALLOWED` 403, `CLIENT_TOO_OLD` / `SERVER_TOO_OLD` 426, `NOT_SUPPORTED` 501 (desktop-only routes on another host)). Some list routes keep an empty list next to it (`torrents: []`, `subtitles: []`). Unknown routes → 404 `NOT_FOUND`, malformed JSON → 400 `INVALID`. Actions without data answer `{ ok: true }`.
+- **Errors**: always `{ error, code }` through `lib/errors.js#fail(res, code, message, extra?)`; codes and statuses in `@playpex/protocol` `ERROR_CODES` (`INVALID` 400, `DEVICE_REQUIRED` 400 (settings routes without a device id), `PAIRING_REQUIRED` / `ADMIN_REQUIRED` 401, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_ATTEMPTS`, `INTERNAL`, `UPSTREAM` 502, `PROBE_FAILED`, `PROVIDER_NOT_CONFIGURED` 503, `TRANSCODER_UNAVAILABLE` 503, `BUSY` 503 (a limit), + `HOST_NOT_ALLOWED` / `ORIGIN_NOT_ALLOWED` 403, `CLIENT_TOO_OLD` / `SERVER_TOO_OLD` 426, `NOT_SUPPORTED` 501 (desktop-only routes on another host)). Some list routes keep an empty list next to it (`torrents: []`, `subtitles: []`). Unknown routes → 404 `NOT_FOUND`, malformed JSON → 400 `INVALID`. Actions without data answer `{ ok: true }`.
 - **Versions**: optional `X-Playpex-Client: <name>/<version>; api=<n>` → 426 when outside `MIN_API_VERSION`…`API_VERSION`.
 - **Docs**: `GET /openapi.yaml` (the spec, from `@playpex/protocol`; no auth, also in the desktop package) and `GET /docs` → 302 `/docs` (the dashboard renders the client author guide `docs/api/` there, public). **A protocol change updates the spec, then the guide** (`docs/api/*.md`: flows, limits, error codes, event topics).
 - **Auth**: every route but `GET /server`, `/openapi.yaml`, `/docs`, the device flow and `/admin/setup` needs a paired device's token, a local (loopback) client, or the admin; see **Auth** below. Never log tokens: `requestLog` drops query strings (`?access_token=`), and ffmpeg's stderr is redacted (`internal=`).
@@ -77,14 +78,14 @@ One Better Auth user, the **owner** (admin), made without a password on first st
 | `GET\|POST /admin/setup` body `{username, password}` | anyone · loopback | `{needed, local}` · creates the admin once (409 after), loopback only, no foreign Origin |
 | `PUT /admin/password` `{currentPassword, newPassword}` | admin | 403 wrong password; signs out every admin session, devices stay |
 | `GET /admin/pairing` · `POST /admin/pairing/:code/approve` · `…/deny` | admin | `{requests: [{userCode, clientId, client, address, requestedAt, expiresAt}]}`; code in any case, dashes ignored; 404 unknown/expired, 409 already handled |
-| `GET /admin/devices` · `PUT /admin/devices/:id` `{name}` · `DELETE /admin/devices/:id` | admin | list (most recent first, `online`: events socket open or seen < 90 s) · rename · revoke (session deleted → 401 at once; its streams closed, leases released) |
+| `GET /admin/devices` · `PUT /admin/devices/:id` `{name}` · `DELETE /admin/devices/:id` | admin | list (most recent first, `online`: events socket open or seen < 90 s) · rename · revoke (session deleted → 401 at once; its streams closed, leases released, its `device_settings` deleted) |
 | `GET /admin/overview` | admin | `lib/system.js#overview` (`server.recovery` set in recovery mode) |
 | `GET\|PUT /admin/host` `{openAtLogin?, checkForUpdates?}` · `POST /admin/host/update/check` · `POST /admin/host/update/install` `{force?}` | admin | `{kind, desktop}` (`desktop` = the desktop app's state, null elsewhere) · forwarded to the supervisor (501 `NOT_SUPPORTED` when not desktop) · install: 409 while sessions exist unless `force`, 409 with no downloaded update |
 | `POST /admin/restart` | admin | `{ok, port, currentPort}`, then `restart()` 200 ms after the answer |
 | `GET\|PUT /admin/settings` · `POST /admin/settings/check-port` `{port}` | admin | `publicView()` + `file`, `logLevels` · `update()` (400 `INVALID` + `errors[]`; log level applied at once) · `{port, free, current, owner}` |
 | `GET /admin/logs?level=&area=&since=&limit=` · `GET /admin/logs/download` | admin | ring buffer `{entries, levels, file}` · zip of the log files (`yazl`) |
 | `GET /admin/storage` · `POST /admin/storage/clear` · `DELETE /admin/storage/items/:name` · `POST /admin/storage/check` `{dir}` | admin | `lib/storage.js` (+ `deleteAfterWatching`); 409 when a running torrent uses the entry |
-| `GET /events` (WebSocket) | client | `{topic, time, data}`: `server.status`, `torrent.stats`, `session.*`; admin also `log`, `device.*`, `pairing.*`, `host.updated`; `?topics=` prefixes |
+| `GET /events` (WebSocket) | client | `{topic, time, data}`: `server.status`, `torrent.stats`, `session.*`, `settings.changed`; admin also `log`, `device.*`, `pairing.*`, `host.updated`; `?topics=` prefixes |
 
 Callers (`req.auth`): `device` (Bearer header or `?access_token=`; session not expired and in `devices`; expiry slides a year, renewed at most daily; `lastSeenAt` / `address` updated at most every minute), `admin` (Better Auth's signed cookie, not a device session, ≤ 30 days old), `local` (socket address is loopback and `security.requirePairingOnLoopback` off), `internal` (`?internal=<per-process secret>` from loopback: ffmpeg / ffprobe reading through `files/`). Admin-only client routes: `GET /sessions`, `DELETE /sessions/:id`. Pairing works before the admin has a password (CLI approval binds codes to the owner).
 - Every upstream-backed route answers on failure (`502 UPSTREAM`) — keep it that way; a hanging request leaves the UI spinning forever.
@@ -184,7 +185,7 @@ Adding a torrent provider: module with `search(...)` returning `{ provider, name
 |---|---|
 | `GET /profiles` | `{ profiles: [...], lastUsedId, maxProfiles }` |
 | `POST /profiles` body `{name, avatar?, isKid?, pin?}` | 201 + profile; 409 duplicate name / too many |
-| `GET\|PUT\|DELETE /profiles/:id` | PUT body `{name?, avatar?, isKid?, preferences?}` (preferences merged); DELETE cascades to all the profile's data |
+| `GET\|PUT\|DELETE /profiles/:id` | PUT body `{name?, avatar?, isKid?, preferences?}` (`preferences` **deprecated**: only `preferences.adult.{layout,metadataProvider}` is read, written to the profile's settings; answered as a view of them, `{}` for kids); DELETE cascades to all the profile's data (settings too) |
 | `POST /profiles/:id/unlock` body `{pin?}` | the profile (and records it as last used); 403 wrong PIN, 429 after 5 failures (30 s) |
 | `PUT /profiles/:id/pin` body `{pin}` / `{pin: null}` | set / remove the lock |
 
@@ -200,6 +201,15 @@ Title = `/:mediaType/:tmdbId` (`movie`|`tv`); episodes add `season`/`episode` (q
 | `PUT\|DELETE …/watched/:mediaType/:tmdbId` | mark watched (logged in history) / forget the progress row (history kept) |
 | `GET …/history` | raw finished views, newest first |
 
+### Settings (`lib/routes/settings.js` → `services.settings`; docs/settings-plan.md, client guide `docs/api/settings.md`)
+Keys, scopes, defaults and validation: `@playpex/protocol/settings` (`SETTINGS`, `validate`, `defaults`). Device = a paired device's `clientDeviceId` (else its id; a header is ignored), anyone else (loopback, admin) its `X-Playpex-Device` / `?device=` (`DEVICE_ID` shape), else 400 `DEVICE_REQUIRED`.
+| Method & path | Behavior |
+|---|---|
+| `GET /settings?profile=&definitions=1` | `{ device, profile \| null, definitions? }`: every registered key of the scope with its effective value (stored, else default) + stored `client.<clientId>.<name>` keys; kids profiles: no `adult.*` keys; 404 unknown profile |
+| `PATCH /settings/device` · `PATCH /profiles/:id/settings` body `{key: value \| null}` | the owner's effective settings after the change. All or nothing (`INVALID` + `errors[]` per bad key: unknown key, other scope, bad value, `client.*` > 4 KB); `null` = reset (row deleted); `adult.*` on a kids profile → 403. Publishes `settings.changed {scope, ownerId, keys}` (every client) |
+| `DELETE /settings/device` | deletes the device's rows → its defaults |
+CORS allows `PATCH` (since the settings routes; the TV shell's own CORS answer is in `apps/tv/electron/auth.js`).
+
 Profile JSON: `{ id, name, avatar, isKid, hasPin, preferences, createdAt, lastUsedAt }`. Errors: `{ error, code }` with the ServiceError status (500 + `INTERNAL` otherwise). CORS allows `PUT`, not `PATCH`. Any local process or paired device can call these (no per-profile rules on the server yet, plan §14.2); other web pages are kept out by the Host/Origin checks (`lib/middleware.js`). The PIN only gates the UI.
 
 ### YouTube
@@ -214,7 +224,7 @@ Three layers; each only imports the one below it:
 ```
 lib/services/   business rules, validation, ServiceError {code, status}   ← routes call these
      │ repositories only (contract: lib/data/contracts.js)
-lib/data/       data access layer: createRepositories(db) → {profiles, watchlist, progress, history, ratings}
+lib/data/       data access layer: createRepositories(db) → {profiles, watchlist, progress, history, ratings, settings}
      │          current implementation: lib/data/drizzle/*.js
 lib/db/         schema.js (Drizzle tables) · driver.js (node:sqlite ↔ Drizzle) · index.js (open + migrate) · migrations/
 ```
@@ -224,15 +234,16 @@ lib/db/         schema.js (Drizzle tables) · driver.js (node:sqlite ↔ Drizzle
 - **Schema change**: edit `lib/db/schema.js`, run `npm run db:generate` (drizzle-kit, config in `apps/server/drizzle.config.js`; works from the root too), commit the new file in `lib/db/migrations/`. Never edit an applied migration.
 - **Replacing the database**: another SQLite driver (better-sqlite3, libsql) → only `driver.js`. Another engine → new schema/driver in `lib/db` and a repository implementation satisfying `contracts.js`, selected in `lib/data/index.js`. Repositories return plain objects, `null` for not found, and reject with `data/errors.DuplicateError` on unique violations; they use array results + `util.first` instead of SQLite-only `.get()`.
 - **Don't use `db.transaction()`**: with the async proxy over a sync driver, other requests can run between BEGIN and COMMIT. Use `db.batch([...])`, which the driver runs in one BEGIN/COMMIT without yielding.
-- **Services** (`createServices(repositories, {catalog, now})`):
+- **Services** (`createServices(repositories, {catalog, now, publish})`; `publish` = `events.publish`, given by `lib/userData.js`):
   - `profiles`: list/get/create/update/remove, optional 4–6 digit PIN (scrypt; `setPin`, `unlock` with 5-failure / 30 s lockout), `lastUsed`. Max 8 profiles, names unique case-insensitively. Public shape has `hasPin`, never the hash. Removing a profile cascades to all its rows. The PIN only gates the UI; the DB is not encrypted.
   - `watchlist`: list/contains/add/remove/toggle.
   - `playback`: `saveProgress` (finished at ≥ 90 %, first finish appends to history), `getResume` (null under 5 % or finished; includes `infoHash`/`filePath` of the release), `continueWatching` (`kind: 'resume'|'next'` — for `'next'` the UI resolves the following episode), `titleProgress`, `markWatched`/`markUnwatched`, `history`.
   - `ratings`: thumbs up/down (`1`/`-1`).
+  - `settings`: `get({deviceId, profileId?, definitions?})`, `device(id)`, `profile(id)`, `updateDevice(id, patch)`, `updateProfile(id, patch)`, `resetDevice(id)`, `forgetDevice(id)`; rules above (**Settings**). The `settings` repository (`list / get / set / setMany (one db.batch) / remove / removeAll` per owner `{kind: 'profile'|'device', id}`) is also used by `profiles` for the deprecated `preferences` view.
   - `recommendations.forProfile`: seeds = finished views + likes (recency half-life 45 d), TMDB `/recommendations` per seed (`lib/tmdb.js`, cached 6 h), scored and genre-boosted, excluding watched/in-progress/disliked/adult; kid profiles keep Animation/Family/Kids. Empty with no history.
 - Titles are `(mediaType 'movie'|'tv', tmdbId)`; movies use season = episode = 0.
 - **HTTP**: profiles and the library (watchlist, progress, history) are exposed (`lib/routes/*.js`, `handle(work)` → JSON, `err.status` or 500). Ratings / recommendations routes are still to add (same pattern).
-- **Migrations so far**: `0000_init`, `0001_artwork` (backdrop/poster columns on watchlist, progress, history), `0002_auth` (Better Auth's `auth_user`, `auth_session`, `auth_account`, `auth_verification`, `auth_device_code` + our `address`/`client`/`requested_at` on it, and `devices`). The auth tables use Better Auth's field names as JS keys (its Drizzle adapter maps by them); `lib/auth` shares the connection through `userData.database()`.
+- **Migrations so far**: `0000_init`, `0001_artwork` (backdrop/poster columns on watchlist, progress, history), `0002_auth` (Better Auth's `auth_user`, `auth_session`, `auth_account`, `auth_verification`, `auth_device_code` + our `address`/`client`/`requested_at` on it, and `devices`), `0003_settings` (`profile_settings`, cascading from profiles; `device_settings`, keyed by the client device id, no FK: loopback clients have no `devices` row; one row per key, value JSON), `0004_settings_data` (hand-written, `drizzle-kit generate --custom`: copies `profiles.preferences.adult.layout / metadataProvider` into `profile_settings`; the `preferences` column stays one release, then a migration drops it; checked by `test/migrations.test.js`). The auth tables use Better Auth's field names as JS keys (its Drizzle adapter maps by them); `lib/auth` shares the connection through `userData.database()`.
 
 ## Lifecycle of a torrent
 

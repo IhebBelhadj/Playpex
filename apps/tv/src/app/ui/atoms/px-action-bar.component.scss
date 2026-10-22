@@ -1,0 +1,14 @@
+@use 'px' as *;
+
+:host {
+  display: block;
+}
+
+// --px-action-bar-margin: the episode page's is tighter (dp(20) 0). Padding,
+// not margin: it never collapses into the neighbours' margins
+.px-action-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: dp(12);
+  padding: var(--px-action-bar-margin, #{dp(25)} 0);
+}

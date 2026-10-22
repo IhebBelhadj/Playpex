@@ -1,13 +1,16 @@
+import type { SettingValues } from '@playpex/protocol/settings';
+import { SettingsService } from '../settings.service';
 import { NotificationService } from './../notification.service';
 import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
 import { PlaybackRequest } from './../playback.service';
 import { TorrentService } from './../torrent.service';
-import { Component, OnInit, OnDestroy, ElementRef, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, NgZone, inject } from '@angular/core';
 import { repeat, switchMap, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
 import { EMPTY, Subscription, timer } from 'rxjs';
 import { ServerService } from '../server.service';
-import { actionForKey } from '../keymap';
+import { actionForKey, MediaAction } from '../keymap';
+import { MediaKeys } from '../media-keys.service';
 import { EpisodeKey, LibraryService } from '../library.service';
 import { PointerService } from '../pointer.service';
 import { ProfilesService } from '../profiles.service';
@@ -42,7 +45,24 @@ export const SUBTITLE_SIZES = [
   { key: 'large', label: 'Large', token: '--px-text-title' },
   { key: 'largest', label: 'Largest', token: '--px-text-large' },
 ];
-const SUBTITLE_SIZE_KEY = 'playpex.subtitleSize';
+
+export type SettingsTab = 'subtitles' | 'style' | 'audio' | 'video' | 'stats';
+const TABS:{ key:SettingsTab, label:string }[] = [
+  { key: 'subtitles', label: 'Subtitles' },
+  { key: 'style', label: 'Size & timing' },
+  { key: 'audio', label: 'Audio' },
+  { key: 'video', label: 'Video' },
+  { key: 'stats', label: 'Stats' },
+];
+
+// How the picture fills the screen (object-fit), and what each one does
+type PictureMode = 'fit' | 'fill' | 'stretch' | 'original';
+const PICTURE_MODES:{ key:PictureMode, label:string, fit:string, help:string }[] = [
+  { key: 'fit', label: 'Fit', fit: 'contain', help: 'The whole picture, with bars where it doesn\'t match the screen.' },
+  { key: 'fill', label: 'Fill', fit: 'cover', help: 'No bars: the edges that don\'t fit are cut off.' },
+  { key: 'stretch', label: 'Stretch', fit: 'fill', help: 'No bars and nothing cut: the picture is stretched to the screen.' },
+  { key: 'original', label: 'Original size', fit: 'none', help: 'Pixel for pixel, as large as the video is.' },
+];
 
 // The player (core.player, src/app/nav): plays its entry's payload, a
 // PlaybackRequest (PlaybackService.play). However it's left (Back, the Back
@@ -54,7 +74,10 @@ const SUBTITLE_SIZE_KEY = 'playpex.subtitleSize';
 // takes the arrows itself (a window capture listener, before the library)
 // only where they mean time: Left / Right with the controls hidden or on the
 // timeline scrub (held: faster), and any arrow with the controls hidden shows
-// them. Subtitles are a px-panel layer docked at the right edge.
+// them. Settings (subtitles, their size and timing, audio, video, stats) are
+// a px-panel layer docked at the right edge, with tabs.
+const PLAY_BUTTON = '.buttons [data-px-key="play"]';
+
 @Component({
   selector: 'app-player-page',
   templateUrl: './player-page.component.html',
@@ -89,8 +112,34 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   scrub:{ target:number, direction:number, presses:number } | null = null;
   private scrubTimer;
 
+  // the settings panel (a layer: subtitles, their size and timing, audio,
+  // video, stats); moving onto a tab shows it
+  settingsOpen = false;
+  readonly tabs = TABS;
+  tab:SettingsTab = 'subtitles';
+
+  // audio / video
+  volume = 100;               // %
+  muted = false;
+  speed = 1;
+  readonly pictureModes = PICTURE_MODES;
+  pictureMode:PictureMode = 'fit';
+  zoom = 100;                 // %
+  brightness = 100;           // %
+
+  // the sliders' value labels
+  readonly percentText = (v:number) => v + ' %';
+  readonly volumeText = (v:number) => this.muted ? 'Sound off' : v + ' %';
+  readonly speedText = (v:number) => v == 1 ? 'Normal' : v + '×';
+  readonly sizeName = (i:number) => SUBTITLE_SIZES[i]?.label || '';
+  readonly sizeStops = SUBTITLE_SIZES.map((s, i) => ({ value: i, label: s.label }));
+  readonly timingText = (v:number) => {
+    if (!v) return 'In sync';
+    let s = Math.abs(v).toFixed(1).replace(/\.0$/, '');
+    return v > 0 ? `${s} s later` : `${s} s earlier`;
+  };
+
   // subtitles
-  subtitlesOpen = false;
   subtitles:Subtitle[];
   subtitleProviders:SubtitleProvider[] = [];
   subtitleProvider:string;
@@ -130,6 +179,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   controlsIdle;
   keepaliveTimer;
   private screen = useScreen<{ session:string }, PlaybackRequest>();
+  // media keys while the player is shown and no layer is open (§13.2)
+  private mediaSub = inject(MediaKeys).for(this.screen).subscribe(action => this.onMedia(action));
+  private lastMedia:{ action:MediaAction | null, at:number } = { action: null, at: 0 };
   private keyDown = (e:KeyboardEvent) => this.onKeyDown(e);
   private keyUp = (e:KeyboardEvent) => this.onKeyUp(e);
 
@@ -147,6 +199,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private library:LibraryService,
     private profiles:ProfilesService,
     private episodes:EpisodePlaybackService,
+    private settings:SettingsService,
   ) { }
 
   ngOnInit(): void {
@@ -178,7 +231,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
     else this.resumeDecided = true;
 
-    try { this.subtitleSize = localStorage.getItem(SUBTITLE_SIZE_KEY) || 'medium'; } catch (e) { }
+    // this device's settings (SettingsService: the server's, the defaults until it answers)
+    this.subtitleSize = this.settings.value('subtitles.size');
+    this.volume = this.settings.value('player.volume');
     this.applySubtitleSize();
 
     // capture: before the spatial-navigation library moves the focus
@@ -247,6 +302,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   ngOnDestroy(): void {
     // last position, while the <video> still has it
     this.saveProgress();
+    this.mediaSub?.unsubscribe();
+    this.stopMediaSession();
     clearTimeout(this.seekTimer);
     clearTimeout(this.scrubTimer);
     clearTimeout(this.controlsIdle);
@@ -332,10 +389,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return Math.min(100, Math.max(0, (1 - this.remaining / UP_NEXT_S) * 100));
   }
 
-  get timingLabel():string {
-    if (!this.subtitleDelay) return 'In sync with the video';
-    let s = Math.abs(this.subtitleDelay).toFixed(1).replace(/\.0$/, '');
-    return this.subtitleDelay > 0 ? `${s} s later` : `${s} s earlier`;
+  get subtitleSizeIndex():number {
+    return Math.max(0, SUBTITLE_SIZES.findIndex(s => s.key == this.subtitleSize));
+  }
+
+  get pictureFit():string {
+    return PICTURE_MODES.find(m => m.key == this.pictureMode)?.fit || 'contain';
+  }
+
+  get pictureHelp():string {
+    return PICTURE_MODES.find(m => m.key == this.pictureMode)?.help || '';
   }
 
   // ── the file ──────────────────────────────────────────────────────────────
@@ -492,7 +555,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       }
       else if (action == 'up' || action == 'down') {
         take();
-        this.zone.run(() => this.showControls(action == 'up' ? '.scrubber' : '.ctl.play'));
+        this.zone.run(() => this.showControls(action == 'up' ? '.scrubber' : PLAY_BUTTON));
       }
       else if (action == 'select') {
         take();
@@ -500,7 +563,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           if (this.upNextShown && this.upNext.torrent) this.playNext();
           else {
             this.togglePlay();
-            this.showControls('.ctl.play');
+            this.showControls(PLAY_BUTTON);
           }
         });
       }
@@ -555,6 +618,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   setupPlayer(){
     this.moviePlayer = this.host.nativeElement.querySelector('.moviePlayer');
 
+    this.applyVolume();
     this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
       : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
     this.moviePlayer.play()?.catch(() => {});
@@ -570,6 +634,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       setTimeout(() => {
         this.playerReady = true;
         this.updateClock();
+        this.startMediaSession();
       } , 1500)
     });
 
@@ -579,8 +644,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     });
     this.moviePlayer.addEventListener('playing', () => this.buffering = false);
 
-    this.moviePlayer.addEventListener('play', () => { this.paused = false; this.updateClock(); this.poke(); });
-    this.moviePlayer.addEventListener('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); });
+    this.moviePlayer.addEventListener('play', () => { this.paused = false; this.updateClock(); this.poke(); this.mediaState(); });
+    this.moviePlayer.addEventListener('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); this.mediaState(); });
 
     // fires again each time the transcoded stream restarts
     this.moviePlayer.addEventListener('loadedmetadata', () => this.updateTimeline());
@@ -594,7 +659,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.moviePlayer.addEventListener('progress', () => this.updateTimeline());
     this.moviePlayer.addEventListener('ended', () => {
       this.saveProgress();
-      if (this.upNext?.torrent && !this.upNextDismissed) this.playNext();
+      // the profile's "Autoplay next episode" (on by default)
+      if (this.upNext?.torrent && !this.upNextDismissed && this.settings.value('player.autoplayNext')) this.playNext();
     });
   }
 
@@ -658,6 +724,87 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.loadedStart = this.loadedEnd = this.position() / duration;
   }
 
+  // ── media keys (§13.2) ───────────────────────────────────────────────────
+
+  // A remote's / keyboard's media keys (MediaKeys) and the Media Session's
+  // actions (hardware keys Chromium routes there, the OS media overlay): one
+  // stream. Forward / rewind are the held scrub of the arrows (a preview, one
+  // seek once they stop); next = the next episode; previous = from the start
+  private onMedia(action:MediaAction) {
+    if (!this.moviePlayer) return;
+    if (action == 'stop') return this.leavePlayer();
+    if (!this.playerReady) return;
+    // a hardware key can arrive both ways: once
+    let now = Date.now();
+    if (action == this.lastMedia.action && now - this.lastMedia.at < 250) return;
+    this.lastMedia = { action, at: now };
+    switch (action) {
+      case 'playPause':
+        this.togglePlay();
+        this.showControls(PLAY_BUTTON);
+        break;
+      case 'play':
+        if (this.moviePlayer.paused) this.togglePlay();
+        break;
+      case 'pause':
+        if (!this.moviePlayer.paused) this.togglePlay();
+        this.showControls(PLAY_BUTTON);
+        break;
+      case 'forward':
+      case 'rewind':
+        this.scrubBy(action == 'forward' ? 1 : -1);
+        clearTimeout(this.scrubTimer);
+        this.scrubTimer = setTimeout(() => this.zone.run(() => this.commitScrub()), SCRUB_COMMIT_MS);
+        break;
+      case 'next':
+        if (this.upNext) this.playNext();
+        break;
+      case 'previous':
+        this.seekTo(0);
+        this.showControls(PLAY_BUTTON);
+        break;
+    }
+  }
+
+  private startMediaSession() {
+    let session = navigator.mediaSession;
+    if (!session || typeof MediaMetadata == 'undefined') return;
+    let poster = this.playback.artwork?.posterPath;
+    // the OS overlay's thumbnail: its own fixed size, not the screen's (not tmdbImageBase)
+    try {
+      session.metadata = new MediaMetadata({
+        title: this.playback.subtitle ? `${this.playback.title}: ${this.playback.subtitle}` : this.playback.title,
+        artist: 'Playpex',
+        artwork: poster ? [{ src: `https://image.tmdb.org/t/p/w342${poster}`, sizes: '342x513', type: 'image/jpeg' }] : [],
+      });
+    } catch (e) { }
+    let on = (name:MediaSessionAction, action:MediaAction) => {
+      try { session.setActionHandler(name, () => this.onMedia(action)); } catch (e) { }
+    };
+    on('play', 'play');
+    on('pause', 'pause');
+    on('stop', 'stop');
+    on('seekforward', 'forward');
+    on('seekbackward', 'rewind');
+    on('previoustrack', 'previous');
+    if (this.upNext) on('nexttrack', 'next');
+    this.mediaState();
+  }
+
+  private mediaState() {
+    if (navigator.mediaSession && this.playerReady) navigator.mediaSession.playbackState = this.paused ? 'paused' : 'playing';
+  }
+
+  private stopMediaSession() {
+    let session = navigator.mediaSession;
+    if (!session) return;
+    for (let name of ['play', 'pause', 'stop', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'] as MediaSessionAction[]) {
+      try { session.setActionHandler(name, null); } catch (e) { }
+    }
+    session.metadata = null;
+    session.playbackState = 'none';
+  }
+
   // ── scrubbing ─────────────────────────────────────────────────────────────
 
   // One press: a preview mark moves by the step (faster while held); the seek
@@ -691,7 +838,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // ── controls ──────────────────────────────────────────────────────────────
 
   // `focus`: what to focus in them (CSS selector), default the play button
-  showControls(focus = '.ctl.play') {
+  showControls(focus = PLAY_BUTTON) {
     if (!this.controlsVisible) {
       this.controlsVisible = true;
       this.updateClock();
@@ -715,7 +862,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.controlsIdle);
     if (!this.controlsVisible) return;
     this.controlsIdle = setTimeout(() => this.zone.run(() => {
-      if (this.moviePlayer?.paused || this.scrub || this.subtitlesOpen || this.pointer.visible) return;
+      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.pointer.visible) return;
       this.hideControls();
     }), CONTROLS_IDLE_MS);
   }
@@ -738,7 +885,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (this.host.nativeElement.querySelector(':is(.controls, .statsPanel, .upNext):hover')) return;
 
     this.pointer.hide();
-    if (this.playerReady && !this.subtitlesOpen && !this.moviePlayer.paused) this.hideControls();
+    if (this.playerReady && !this.settingsOpen && !this.moviePlayer.paused) this.hideControls();
   }
 
   onVideoClick(){
@@ -766,11 +913,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Peers / speed / downloaded under the spinner, polled while it's shown
   pollStats(){
     this.statsSub = timer(0 , 1000).pipe(
-      filter(() => !!this.torrentHash && (!this.playerReady || this.buffering || this.statsVisible)),
+      filter(() => !!this.torrentHash && (!this.playerReady || this.buffering || this.statsVisible || (this.settingsOpen && this.tab == 'stats'))),
       switchMap(() => this.torrentService.getStats(this.torrentHash).pipe(catchError(() => EMPTY))),
     ).subscribe(stats => {
       this.stats = stats;
-      if (this.statsVisible) this.videoInfo = this.readVideoInfo();
+      if (this.statsVisible || this.settingsOpen) this.videoInfo = this.readVideoInfo();
     });
   }
 
@@ -846,18 +993,50 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.episodes.playNext(this.upNext);
   }
 
-  // ── subtitles ─────────────────────────────────────────────────────────────
+  // ── settings ──────────────────────────────────────────────────────────────
 
-  openSubtitles() {
-    this.subtitlesOpen = true;
+  // the CC button: on Subtitles; "•••": the tab used last
+  openSettings(tab?:SettingsTab) {
+    if (tab) this.tab = tab;
+    this.settingsOpen = true;
+    this.videoInfo = this.readVideoInfo();
     if (!this.subtitleProviders.length && this.subtitles === undefined) this.fetchSubs();
   }
+
+  setVolume(percent:number) {
+    this.muted = false;
+    this.volume = percent;
+    this.applyVolume();
+    // a slider: stored once it stops moving
+    this.settings.set('player.volume', percent, { debounceMs: 500 });
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    this.applyVolume();
+  }
+
+  private applyVolume() {
+    if (!this.moviePlayer) return;
+    this.moviePlayer.volume = this.volume / 100;
+    this.moviePlayer.muted = this.muted;
+  }
+
+  setSpeed(rate:number) {
+    this.speed = rate;
+    if (!this.moviePlayer) return;
+    // the default too: a new src (a transcoded seek) resets the rate to it
+    this.moviePlayer.defaultPlaybackRate = rate;
+    this.moviePlayer.playbackRate = rate;
+  }
+
+  // ── subtitles ─────────────────────────────────────────────────────────────
 
   fetchSubs(){
     this.subtitlesService.getProviders().subscribe(providers => {
       let kind = this.playback.season ? 'episode' : 'movie';
       this.subtitleProviders = providers.filter(p => p.enabled && p.supports[kind]);
-      let preferred = this.subtitleProviders.find(p => p.id == this.subtitlesService.preferredProvider);
+      let preferred = this.subtitleProviders.find(p => p.id == this.settings.value('subtitles.provider'));
       this.loadSubtitles((preferred || this.subtitleProviders[0])?.id);
     } , () => {
       this.subtitles = [];
@@ -867,7 +1046,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   switchSubtitleProvider(id:string){
     if (!id || id == this.subtitleProvider) return;
-    this.subtitlesService.preferredProvider = id;
+    // the profile's subtitle source from now on
+    this.settings.set('subtitles.provider', id);
     this.loadSubtitles(id);
   }
 
@@ -918,8 +1098,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   setSubtitleSize(key:string) {
     this.subtitleSize = key;
-    try { localStorage.setItem(SUBTITLE_SIZE_KEY, key); } catch (e) { }
     this.applySubtitleSize();
+    this.settings.set('subtitles.size', key as SettingValues['subtitles.size'], { debounceMs: 500 });
   }
 
   private applySubtitleSize() {
@@ -927,8 +1107,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.host.nativeElement.style.setProperty('--px-subtitle-size', `var(${size.token})`);
   }
 
-  shiftSubtitles(seconds:number) {
-    this.subtitleDelay = Math.round((this.subtitleDelay + seconds) * 10) / 10;
+  setSubtitleDelay(seconds:number) {
+    this.subtitleDelay = Math.round(seconds * 10) / 10;
     this.applyCueShift();
   }
 

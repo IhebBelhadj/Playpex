@@ -1,4 +1,6 @@
-import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { MetaItem, TitleInfoModel } from '../ui/public-api';
+import { MediaKeys } from '../media-keys.service';
+import { AfterViewInit, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { catchError, of, Subscription } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { BackgroundService } from '../background.service';
@@ -35,6 +37,8 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private titleSub:Subscription;
   private screen = useScreen<{ provider:string, id:string }, AdultTitle>();
+  // a remote's Play key = the Play button (§13.2)
+  private mediaSub = inject(MediaKeys).for(this.screen).subscribe(a => (a == 'playPause' || a == 'play') && this.play());
 
   constructor(
     private adult:AdultService,
@@ -45,8 +49,26 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     private torrents:TorrentService,
     private torrentPicker:TorrentPickerService,
     private playback:PlaybackService,
-    private navigator:Navigator,
+    public navigator:Navigator,
   ) { }
+
+  // the title block (<px-title-info>): year, the 18+ seal, studio, runtime,
+  // the provider's rating; director; overview
+  get titleInfo():TitleInfoModel {
+    let item = this.item;
+    let meta:MetaItem[] = [];
+    if (item.year) meta.push({ kind: 'text', text: String(item.year) });
+    meta.push({ kind: 'seal', text: '18+' });
+    if (this.studio) meta.push({ kind: 'chip', text: this.studio.name });
+    if (this.details?.runtime) meta.push({ kind: 'chip', text: this.runtime(this.details.runtime) });
+    if (item.rating) meta.push({ kind: 'score', source: 'provider', value: item.rating, label: this.provider?.name || '' });
+    return {
+      title: item.title,
+      meta,
+      notes: this.details?.director ? ['Directed by ' + this.details.director] : [],
+      overview: item.overview || '',
+    };
+  }
 
   get studio() {
     return this.details?.studio || this.item?.studio || null;
@@ -88,20 +110,13 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     // Back on the menu: into the page again (then out, the nav system's pop)
     this.screen.onBack(() => {
       if (!document.activeElement?.classList.contains('menuItem')) return false;
-      this.focusSelector('.adultTitle [data-action="play"]');
+      this.focusSelector('.adultTitle [data-px-key="play"]');
       return true;
-    });
-    this.screen.onSelect(active => {
-      let action = active.dataset['action'];
-      if (action == 'play') this.play();
-      else if (action == 'releases') this.findReleases(this.item?.title);
-      else if (active.dataset['performer'] !== undefined) this.findReleases(this.details?.performers[Number(active.dataset['performer'])]?.name);
-      else if (action == 'back') this.navigator.back();
-      else if (active.classList.contains('card')) this.open(this.more[Number(active.dataset['index'])]);
     });
   }
 
   ngOnDestroy(): void {
+    this.mediaSub.unsubscribe();
     this.titleSub?.unsubscribe();
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -140,13 +155,13 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // The compact list, searched for this title (or a performer) on the current
   // release source
-  private findReleases(query:string | undefined) {
+  findReleases(query:string | undefined) {
     if (!query) return;
     this.releases.open('adult', query, { label: this.item?.title || query });
   }
 
   // "More from": that title's page, over this one
-  private open(item:AdultTitle | undefined) {
+  open(item:AdultTitle | undefined) {
     if (!item) return;
     this.navigator.open({ screen: 'core.adult.title', params: { provider: this.providerId, id: item.id }, payload: item });
   }
@@ -168,13 +183,16 @@ export class AdultTitleComponent implements OnInit, AfterViewInit, OnDestroy {
     return h ? `${h}h ${m}m` : `${m}m`;
   }
 
+  byName = (i:number, p:any) => p.name;
+  byId = (i:number, m:any) => m.id;
+
   initials(name:string):string {
     return name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
   }
 
   // Play, or back from the player / a release list: what was focused
   private focusStart() {
-    if (!this.screen.ready()) this.focusSelector('.adultTitle [data-action="play"]');
+    if (!this.screen.ready()) this.focusSelector('.adultTitle [data-px-key="play"]');
   }
 
   private focusSelector(selector:string) {

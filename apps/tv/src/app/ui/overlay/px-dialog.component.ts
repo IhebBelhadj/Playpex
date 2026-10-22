@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Input } from '@angular/core';
 import { LayerStack } from '../../nav/public-api';
 import { dp } from '../units';
 import { PxOverlay } from './px-overlay';
@@ -19,6 +19,7 @@ import { PxOverlay } from './px-overlay';
   selector: 'px-dialog',
   templateUrl: './px-dialog.component.html',
   styleUrls: ['./px-dialog.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PxDialogComponent extends PxOverlay {
 

@@ -21,6 +21,8 @@ import { PowerPageComponent } from './power-page/power-page.component';
 import { DisplaySizeComponent } from './display-size/display-size.component';
 import { DisplaySetupComponent } from './display-setup/display-setup.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
+import { ScreenEdgesComponent } from './screen-edges/screen-edges.component';
+import { HELLO_COMPONENTS } from './plugins-dev/hello/hello-plugin';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
@@ -69,6 +71,8 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     DisplaySizeComponent,
     DisplaySetupComponent,
     SettingsPageComponent,
+    ScreenEdgesComponent,
+    ...HELLO_COMPONENTS,
     ShowOptionsComponent,
     TorrentPickerComponent,
     ProfilePickerComponent,

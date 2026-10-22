@@ -1,0 +1,25 @@
+@use 'px' as *;
+
+:host {
+  display: inline-flex;
+  align-items: center;
+  padding: dp(7);
+  border-radius: dp(5);
+  background: var(--px-surface-score);
+  font-family: var(--px-font-book);
+  opacity: .9;
+  white-space: nowrap;
+}
+
+img {
+  display: block;
+  width: dp(40);
+  margin-right: dp(10);
+}
+
+.votes {
+  margin-left: dp(8);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  opacity: .7;
+}

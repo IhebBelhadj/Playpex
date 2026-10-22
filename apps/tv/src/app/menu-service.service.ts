@@ -10,9 +10,9 @@ export class MenuServiceService {
   menuState = "expanded";
   constructor() { }
 
-  sendInstruction(instruction: string , source) {
-    console.log(source);
-
+  // `source` (the calling component) isn't logged: the console would keep
+  // every page that ever sent one alive (docs/ui-system-plan.md §13.5)
+  sendInstruction(instruction: string , source?) {
     this.subject.next({ instruction: instruction });
   }
 

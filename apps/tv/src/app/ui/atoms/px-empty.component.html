@@ -1,0 +1,9 @@
+<px-spinner *ngIf="busy" [label]="text"></px-spinner>
+<ng-container *ngIf="!busy">
+  <p class="title" *ngIf="title">{{ title }}</p>
+  <p class="text" *ngIf="text">{{ text }}</p>
+  <ng-content></ng-content>
+  <div class="action" *ngIf="action">
+    <px-button [key]="actionKey" [label]="action" [variant]="actionVariant" (pxSelect)="act.emit()"></px-button>
+  </div>
+</ng-container>

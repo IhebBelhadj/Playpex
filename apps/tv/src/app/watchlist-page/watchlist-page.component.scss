@@ -13,11 +13,7 @@
 }
 
 .libraryPage {
-  display: flex;
-  flex-direction: column;
   justify-content: space-between;
-  height: 100vh;
-  padding-left: dp(35);
 }
 
 // ── title info (as <movie-description>; not called .description: the menu hides every .description in the document) ────────────────────────────────────
@@ -26,70 +22,8 @@
   padding-top: dp(40);
 }
 
-.name {
-  font-family: var(--px-font-bold);
-  font-weight: normal;
-  font-size: var(--px-text-hero);
-  margin: .67em 0 0;
-  max-width: dp(800);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.infos {
-  display: flex;
-  align-items: center;
-  gap: dp(15);
-  margin: dp(10) 0 dp(15);
-}
-
 // The rest mirrors movie-description: year, chips, score, genres, overview
-.year {
-  font-family: var(--px-font-light);
-  font-size: var(--px-text-heading);
-  margin: 0;
-}
-
-.chip {
-  font-family: var(--px-font-light);
-  font-size: var(--px-text-tiny);
-  padding: dp(8);
-  border-radius: dp(5);
-  background: var(--px-surface-chip);
-  opacity: .8;
-}
-
-.score {
-  font-family: var(--px-font-book);
-  padding: dp(7);
-  border-radius: dp(5);
-  background: var(--px-surface-score);
-  opacity: .9;
-}
-
-.categories {
-  font-family: var(--px-font-light);
-  opacity: .6;
-}
-
 // Where this profile is with the title
-.status {
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-body);
-  margin: dp(20) 0 0;
-}
-
-.overview {
-  max-width: dp(700);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-body);
-  line-height: dp(36);
-  letter-spacing: dp(1);
-  opacity: .62;
-  margin: dp(22) 0 0;
-}
-
 .note {
   max-width: dp(640);
   font-family: var(--px-font-book);
@@ -100,37 +34,6 @@
 }
 
 // The one accent: how far into it you are
-.progressLine {
-  width: dp(440);
-  height: dp(4);
-  margin-top: dp(10);
-  background: var(--px-color-progress-track);
-
-  span {
-    display: block;
-    height: 100%;
-    background: var(--px-color-progress);
-    transition: width var(--px-dur-slow) ease;
-  }
-}
-
-.actionBtn {
-  margin-top: dp(28);
-  padding: dp(12) dp(30);
-  border: dp(1) solid var(--px-color-outline);
-  background: transparent;
-  color: var(--px-color-text-muted);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  transition: all var(--px-dur-fast);
-
-  &.focused {
-    background: var(--px-color-focus);
-    border-color: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-  }
-}
-
 // ── rows (pxStack of pxRows, motion="transform": the stack clips, its
 // track and the rows are translated, src/app/movement) ─────────────────────
 
@@ -157,86 +60,8 @@
   }
 }
 
-.sectionTitle {
-  font-family: var(--px-font-display);
-  font-weight: normal;
-  font-size: var(--px-text-label);
-  opacity: .8;
-}
 
-.sliderSection {
-  display: flex;
-  // room for the focused poster's zoom (1.1 → 9px sideways, 13.5px up and
-  // down; a sideways scrolling row clips vertically too), not enough to show
-  // the previous poster (10px gap); the margins give it back to the layout
-  padding: dp(16) dp(10);
-  margin: dp(-16) dp(-10) dp(4);
-  scroll-padding-inline: dp(10);
-}
-
-.card {
-  position: relative;
-  flex: none;
-  width: dp(180);
-  height: dp(270);
-  margin-right: dp(10);
-  padding: 0;
-  border: none;
-  opacity: .75;
-  background: var(--px-surface-card);
-  transition: all var(--px-dur);
-
-  img {
-    display: block;
-    width: dp(180);
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(.6);
-  }
-
-  &.focused {
-    transform: scale(1.1);
-    opacity: 1;
-    z-index: var(--px-z-raise);
-
-    img {
-      filter: saturate(1);
-    }
-  }
-}
-
-// Continue watching: progress along the poster's bottom edge
-.cardProgress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: dp(4);
-  background: var(--px-surface-shade);
-
-  span {
-    display: block;
-    height: 100%;
-    background: var(--px-color-progress);
-  }
-}
-
-.fallbackTitle {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: dp(14);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  color: var(--px-color-text-muted);
-  text-align: center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card,
-  .progressLine span {
-    transition: none;
-  }
+// every row (plugins' too): poster gutters, a little space under each
+.content {
+  --px-row-margin-bottom: #{dp(4)};
 }

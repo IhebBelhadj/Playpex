@@ -1,0 +1,16 @@
+<button class="px-slider" pxItem [pxItemKey]="key" data-pointer="own" [disabled]="disabled"
+  role="slider" [attr.aria-label]="label" [attr.aria-valuemin]="min" [attr.aria-valuemax]="max"
+  [attr.aria-valuenow]="value" [attr.aria-valuetext]="format(value)" (mousedown)="onDown($event)">
+  <span class="head">
+    <span class="label">{{ label }}</span>
+    <span class="value">{{ format(value) }}</span>
+  </span>
+  <span class="track">
+    <span class="fill" [style.left.%]="fillStart * 100" [style.width.%]="(fillEnd - fillStart) * 100"></span>
+    <span class="originMark" *ngIf="origin !== null && origin > min" [style.left.%]="at(origin) * 100"></span>
+    <span class="thumb" [style.left.%]="at(value) * 100"></span>
+  </span>
+  <span class="stops" *ngIf="stops">
+    <span *ngFor="let s of stops" [style.left.%]="at(s.value) * 100" [class.current]="s.value == value">{{ s.label }}</span>
+  </span>
+</button>

@@ -1,11 +1,10 @@
-<div class="displayPage" pxSection="displaySetup">
-  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+<px-fullscreen-layout class="displayPage" pxSection="displaySetup">
 
-  <div class="content">
+  <div class="content" *ngIf="step == 'size'">
     <h1 class="heading">How big should Playpex look?</h1>
     <p class="hint">Move between the sizes: the screen changes as you go. Pick the one that reads comfortably from where you sit. You can change it later in Settings.</p>
 
-    <display-size [autofocus]="true" (chosen)="done()"></display-size>
+    <display-size [autofocus]="true" (chosen)="sizeChosen()"></display-size>
 
     <div class="sample" aria-hidden="true">
       <p class="sampleTitle">Trending</p>
@@ -14,4 +13,16 @@
       </div>
     </div>
   </div>
-</div>
+
+  <!-- then the screen edges (some TVs crop them): offered, skippable -->
+  <div class="content" *ngIf="step == 'edges'">
+    <h1 class="heading">Does the whole picture fit?</h1>
+    <p class="hint">Some TVs cut off the edges of the picture. If the menu or the clock look cut off, bring everything in a little. You can change it later in Settings.</p>
+    <div class="edgeActions" pxGrid>
+      <px-button key="fits" variant="filled" size="l" [round]="true" label="It fits, continue" (pxSelect)="done()"></px-button>
+      <px-button key="adjust" size="l" [round]="true" label="Adjust screen edges" (pxSelect)="adjusting = true"></px-button>
+    </div>
+  </div>
+</px-fullscreen-layout>
+
+<screen-edges *ngIf="adjusting" [value]="safeArea" (done)="edgesChosen($event)" (cancelled)="adjusting = false"></screen-edges>

@@ -1,0 +1,17 @@
+<px-panel id="screenEdges" [restoreFocus]="false" (back)="cancel()">
+  <!-- the inset frame: its corner marks must be fully visible -->
+  <div class="edges" aria-hidden="true">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+  </div>
+
+  <div class="body">
+    <h2 class="title">Screen edges</h2>
+    <p class="help">Some TVs cut off the edges of the picture. Move the frame in until you can see all four corner marks, whole.</p>
+    <div class="control" pxGrid>
+      <px-slider key="edges" label="Frame inset" [min]="0" [max]="6" [step]="0.5" [value]="percent" [format]="format"
+        (valueChange)="preview($event)" (pxSelect)="keep()"></px-slider>
+    </div>
+    <p class="keys">OK keeps it · Back cancels</p>
+  </div>
+</px-panel>

@@ -1,0 +1,53 @@
+@use 'px' as *;
+
+// the frame follows --px-safe-x / -y (ui/display.ts applySafeArea), set live
+.edges {
+  position: fixed;
+  inset: var(--px-safe-y) var(--px-safe-x);
+  border: dp(2) dashed var(--px-color-line-strong);
+  pointer-events: none;
+  transition: inset var(--px-dur-fast);
+}
+
+.corner {
+  position: absolute;
+  width: dp(56);
+  height: dp(56);
+  border: 0 solid var(--px-color-focus);
+
+  &.tl { top: 0; left: 0; border-top-width: dp(6); border-left-width: dp(6); }
+  &.tr { top: 0; right: 0; border-top-width: dp(6); border-right-width: dp(6); }
+  &.bl { bottom: 0; left: 0; border-bottom-width: dp(6); border-left-width: dp(6); }
+  &.br { bottom: 0; right: 0; border-bottom-width: dp(6); border-right-width: dp(6); }
+}
+
+.body {
+  width: dp(560);
+  text-align: center;
+}
+
+.title {
+  margin: 0 0 dp(14);
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-title);
+}
+
+.help {
+  margin: 0 0 dp(34);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  line-height: 1.45;
+  color: var(--px-color-text-muted);
+}
+
+.control {
+  text-align: left;
+}
+
+.keys {
+  margin: dp(24) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-dim);
+}

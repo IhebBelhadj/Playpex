@@ -1,0 +1,28 @@
+<ng-container *ngIf="info && !loading; else skeleton">
+  <p class="eyebrow" *ngIf="info.eyebrow">{{ info.eyebrow }}<ng-content select="[pxEyebrow]"></ng-content></p>
+  <h1 class="px-title">{{ info.title }}</h1>
+  <div class="meta">
+    <px-meta *ngIf="info.meta?.length" [items]="info.meta"></px-meta>
+    <ng-content select="[pxMeta]"></ng-content>
+  </div>
+  <p class="genres" *ngIf="info.genres?.length"><span *ngFor="let g of info.genres">{{ g }} . </span></p>
+  <p class="note" *ngFor="let n of info.notes">{{ n }}</p>
+  <ng-container *ngIf="info.status">
+    <p class="status">{{ info.status }}</p>
+    <px-progress *ngIf="info.progress" class="statusLine" [value]="info.progress"></px-progress>
+  </ng-container>
+  <p class="overview" *ngIf="info.overview" [style.-webkit-line-clamp]="lines">{{ info.overview }}</p>
+  <p class="overview empty" *ngIf="!info.overview && info.overviewFallback">{{ info.overviewFallback }}</p>
+  <dl class="credits" *ngIf="info.credits?.length">
+    <div *ngFor="let c of info.credits">
+      <dt>{{ c.label }}</dt>
+      <dd>{{ c.names.join(', ') }}</dd>
+    </div>
+  </dl>
+</ng-container>
+<ng-template #skeleton>
+  <px-skeleton class="sk" variant="line" [width]="sk.title[0]" [height]="sk.title[1]"></px-skeleton>
+  <px-skeleton class="sk meta" variant="line" [width]="sk.meta[0]" [height]="sk.meta[1]"></px-skeleton>
+  <px-skeleton class="sk" variant="line" [width]="sk.line"></px-skeleton>
+  <px-skeleton class="sk" variant="line" [width]="sk.short"></px-skeleton>
+</ng-template>

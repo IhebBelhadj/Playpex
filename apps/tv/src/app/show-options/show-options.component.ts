@@ -1,4 +1,7 @@
-import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { profileContext, titleRef } from '../slot-contexts';
+import { ProfilesService } from '../profiles.service';
+import { MediaKeys } from '../media-keys.service';
+import { Component, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
@@ -11,7 +14,8 @@ import { Navigator, useScreen } from '../nav/public-api';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbSeries, ImdbService } from '../imdb.service';
-import { tmdbImageBase } from '../ui/public-api';
+import { Badge, ShowContext, Toasts, tmdbImageBase } from '../ui/public-api';
+import { formatDate } from '@angular/common';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes, with IMDb ratings (the series', each season's
@@ -27,6 +31,10 @@ import { tmdbImageBase } from '../ui/public-api';
   styleUrls: ['./show-options.component.scss']
 })
 export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
+
+  private toasts = inject(Toasts);
+
+  private profiles = inject(ProfilesService);
 
   stillBase = tmdbImageBase('still', 270);
 
@@ -55,6 +63,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   private restoreEpisode = false;    // back on the show: focus the remembered episode
   // params { id } (TMDB TV id); state: the season shown
   private screen = useScreen<{ id:string }>();
+  // a remote's Play key = the Play button (§13.2)
+  private mediaSub = inject(MediaKeys).for(this.screen).subscribe(a => (a == 'playPause' || a == 'play') && this.play());
 
   constructor(
     private navigator:Navigator,
@@ -96,6 +106,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       ).subscribe(({ request, data }) => {
         this.loadingEpisodes = false;
         this.selectedSeason = request.season;
+        this.updateSlotContext();
         this.screen.setState('season', request.season);
         this.seasonName = data['name'];
         this.focusedEpisode = null;
@@ -124,6 +135,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.mediaSub.unsubscribe();
     this.subscriptions.forEach(s => s.unsubscribe());
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
@@ -137,6 +149,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.moviesService.getTvDetails(id).subscribe(show => {
       this.show = show;
       this.imdbId = show['external_ids']?.['imdb_id'];
+      this.updateSlotContext();
       this.loadImdb();
       this.trailer = this.pickTrailer(show['videos']?.['results'] || []);
 
@@ -165,7 +178,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   focusPlay(){
-    (document.querySelector('.showOptionsContainer .play') as HTMLElement)?.focus({preventScroll : true});
+    (document.querySelector('.showOptionsContainer [data-px-key="play"]') as HTMLElement)?.focus({preventScroll : true});
   }
 
   // The series' IMDb rating goes in the description (as a movie's does)
@@ -231,11 +244,14 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       ? this.library.addToWatchlist(ref , LibraryService.artworkOf(this.show))
       : this.library.removeFromWatchlist(ref);
     request.subscribe({
-      next : () => this.libraryBusy = false,
+      next : () => {
+        this.libraryBusy = false;
+        this.toasts.show({ text: adding ? 'Added to your watch list' : 'Removed from your watch list', tone: 'success', key: 'library' });
+      },
       error : () => {
         this.libraryBusy = false;
         this.inWatchlist = !adding;
-        this.notificationService.sendNotification("error" , "Couldn't update your watch list. Is the Playpex server running?");
+        this.toasts.show({ text: "Couldn't update your watch list", detail: 'Is the Playpex server running?', tone: 'error', key: 'library' });
       }
     });
   }
@@ -283,6 +299,30 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     }, this.isAdult ? null : this.imdbId || null);
   }
 
+  // what plugins' actions and rows on this page get (ui/slots)
+  slotContext:ShowContext | null = null;
+
+  private updateSlotContext() {
+    if (!this.show) return;
+    this.slotContext = { show: titleRef(this.show, this.imdbId), season: this.selectedSeason ?? null, profile: profileContext(this.profiles.current.value) };
+  }
+
+  bySeason = (i:number, s:any) => s.season_number;
+  byEpisode = (i:number, ep:any) => ep.episode_number;
+
+  // an episode card's runtime and air date
+  episodeMeta(ep):string[] {
+    let meta = [];
+    if (ep.runtime) meta.push(ep.runtime + ' min');
+    if (ep.air_date) meta.push(formatDate(ep.air_date, 'd MMM y', 'en-US'));
+    return meta;
+  }
+
+  episodeBadges(ep):Badge[] | null {
+    if (ep.upcoming) return ['upcoming'];
+    return this.progressOf(ep)?.finished ? ['watched'] : null;
+  }
+
   // The episode's own page: its details, ratings, Play and Find releases
   openEpisode(ep){
     if (!ep) return;
@@ -292,7 +332,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   // A focused season loads its episodes (scrolling is the movement system's)
   onFocus(node:HTMLElement){
     if (!this.screen.active) return;
-    this.focusedEpisode = node.classList.contains('episodeBtn')
+    this.focusedEpisode = node.dataset['episode'] !== undefined
       ? this.episodes[Number(node.dataset['index'])]?.episode_number ?? null
       : null;
     if (!node.classList.contains('season')) return;

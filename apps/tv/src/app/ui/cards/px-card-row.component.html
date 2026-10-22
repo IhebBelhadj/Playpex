@@ -1,0 +1,15 @@
+<h3 class="px-row-title" [class.detail]="tone == 'detail'" *ngIf="title">{{ title }}<ng-content select="[pxRowTitle]"></ng-content></h3>
+<ng-content select="[pxRowHeader]"></ng-content>
+<div class="px-row-viewport" rowArrows>
+  <div class="px-row" [pxRow]="rowKey" [align]="align" [loadAhead]="loadAhead" (nearEnd)="nearEnd.emit()">
+    <!-- the core's own cards, projected (declared in its page: no transplanted views to re-check) -->
+    <ng-content></ng-content>
+    <!-- view models (slots, plugins) -->
+    <px-card *ngFor="let m of items; trackBy: trackBy" [key]="m.key" [variant]="m.variant || variant" [image]="m.image"
+      [title]="m.title" [subtitle]="m.subtitle || ''" [badges]="m.badges || null" [progress]="m.progress ?? null"
+      [rating]="m.rating || null" (pxSelect)="picked.emit(m)"></px-card>
+    <ng-container *ngIf="loading && !items?.length">
+      <px-skeleton *ngFor="let s of skeletons" [variant]="variant"></px-skeleton>
+    </ng-container>
+  </div>
+</div>

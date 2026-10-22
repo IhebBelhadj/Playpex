@@ -1,4 +1,4 @@
-<div class="sizes" pxGrid enter="remembered">
+<div class="sizes" pxGrid enter="selected">
   <px-chip *ngFor="let s of scales" [key]="s.value" [label]="s.label" [selected]="s.value == stored"
     [attr.data-scale]="s.value" (pxSelect)="pick(s.value)">
     <span class="percent">{{ percent(s.value) }}</span>

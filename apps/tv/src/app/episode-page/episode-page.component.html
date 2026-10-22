@@ -2,73 +2,27 @@
      season's episodes row, the guest stars row. The title block above them
      stands in for <movie-description>, which movies-page hides here. -->
 <div class="episodePageContainer" pxSection="episodePage" [leaveFor]="{ left: '@menu' }">
-  <header class="episodeHeader" *ngIf="episode">
-    <p class="showLine">
-      <span class="showName">{{show?.name}}</span>
-      <span class="position">Season {{seasonNumber}}, episode {{episode.episode_number}}</span>
-    </p>
-    <h1 class="name">{{episode.name}}</h1>
+  <px-title-info class="episodeHeader" *ngIf="episode" [info]="titleInfo" layout="episode">
+    <span pxEyebrow class="position">Season {{seasonNumber}}, episode {{episode.episode_number}}</span>
+  </px-title-info>
 
-    <div class="infos">
-      <div class="imdb_score" *ngIf="imdbEpisode?.rating as rating">
-        <img src="assets/icons/imdbsvg.svg" alt="IMDb">
-        <strong>{{rating | number:'1.1-1'}}</strong>
-        <span class="votes" *ngIf="imdbEpisode.votes">{{votes(imdbEpisode.votes)}} votes</span>
-      </div>
-      <div class="tmdb_score" *ngIf="episode.vote_average">TMDB {{episode.vote_average | number:'1.1-1'}}</div>
-      <p class="aired" *ngIf="episode.air_date">
-        {{episode.upcoming ? 'Airs' : 'Aired'}} {{episode.air_date | date:'d MMMM y'}}
-      </p>
-      <div class="chip" *ngIf="episode.runtime">{{episode.runtime}} min</div>
-      <div class="chip" *ngIf="topOfSeason">Best rated of season {{seasonNumber}}</div>
-      <div class="chip watchedChip" *ngIf="watched">
-        <img src="assets/icons/tick.svg" alt="">Watched
-      </div>
-    </div>
-
-    <p class="overview" *ngIf="episode.overview">{{episode.overview}}</p>
-    <p class="overview empty" *ngIf="!episode.overview">No description for this episode yet.</p>
-
-    <dl class="credits" *ngIf="directors.length || writers.length">
-      <div *ngIf="directors.length">
-        <dt>Directed by</dt>
-        <dd>{{directors.join(', ')}}</dd>
-      </div>
-      <div *ngIf="writers.length">
-        <dt>Written by</dt>
-        <dd>{{writers.slice(0, 3).join(', ')}}</dd>
-      </div>
-    </dl>
-  </header>
-
-  <div class="optionPannel" pxGrid>
-    <button class="option focusable play" pxItem pxItemKey="play" (pxSelect)="play()">
-      <div class="imgContainer">
-        <img src="assets/icons/play.svg" alt="">
-        <div class="resumeLine" *ngIf="resumeRatio && !resolving">
-          <span [style.width.%]="resumeRatio * 100"></span>
-        </div>
-      </div>
-      <span>{{ resolving ? 'Finding torrents…' : resumeLabel || 'Play ' + code }}</span>
-    </button>
+  <!-- the episode page's bar is tighter and its labels wider ("Resume (12 min left)") -->
+  <px-action-bar class="actions">
+    <px-action key="play" icon="play" [label]="resumeLabel || 'Play ' + code" busyLabel="Finding torrents…"
+      [busy]="resolving" [progress]="resumeRatio || null" (pxSelect)="play()"></px-action>
     <!-- every source's releases of this episode -->
-    <button class="option focusable findReleases" pxItem pxItemKey="releases" (pxSelect)="findReleases()">
-      <div class="imgContainer">
-        <img src="assets/icons/search.svg" alt="">
-      </div>
-      <span>Find releases</span>
-    </button>
+    <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
     <!-- 18+ titles never go in the profile's library -->
-    <button *ngIf="!isAdult" class="option focusable addWatched" pxItem pxItemKey="watched" [class.on]="watched" (pxSelect)="toggleWatched()">
-      <div class="imgContainer">
-        <img [src]="watched ? 'assets/icons/tick.svg' : 'assets/icons/mark.svg'" alt="">
-      </div>
-      <span>{{ watched ? 'Watched' : 'Mark as watched' }}</span>
-    </button>
-  </div>
+    <px-action *ngIf="!isAdult" key="watched" icon="mark" onIcon="tick" [on]="watched"
+      [label]="watched ? 'Watched' : 'Mark as watched'" (pxSelect)="toggleWatched()"></px-action>
+    <!-- plugins' actions (ui/slots) -->
+    <px-slot name="core.episode.actions" [context]="slotContext"></px-slot>
+  </px-action-bar>
 
-  <div class="episodes" *ngIf="episodes.length" pxStackItem>
-    <div class="rowHeader">
+  <px-card-row class="episodes" *ngIf="episodes.length" pxStackItem rowKey="seasonEpisodes" tone="detail" align="third"
+    variant="still">
+    <!-- the row's title, with the season's ratings beside it -->
+    <div pxRowHeader class="rowHeader">
       <h3 class="sectionTitle">
         {{seasonName}}
         <span class="count">{{episodes.length}} episodes</span>
@@ -76,54 +30,21 @@
       <season-curve [episodes]="episodes" [imdb]="seasonImdb"
         [current]="episode?.episode_number" [highlight]="focusedEpisode"></season-curve>
     </div>
-    <div class="rowViewport" rowArrows>
-      <div class="content" pxRow="seasonEpisodes" align="third">
-        <div class="episodeCard" *ngFor="let ep of episodes; let i = index"
-          [class.upcoming]="ep.upcoming" [class.current]="ep === episode">
-          <button class="displayedElem focusable episodeBtn"
-            pxItem [pxItemKey]="ep.episode_number"
-            [attr.data-index]="i"
-            (pxSelect)="openEpisode(ep)">
-            <div class="imgContainer">
-              <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
-              <span class="badge nowBadge" *ngIf="ep === episode">On this page</span>
-              <span class="badge" *ngIf="ep !== episode && ep.upcoming">Upcoming</span>
-              <ng-container *ngIf="progressOf(ep) as progress">
-                <span class="badge watchedBadge" *ngIf="progress.finished && ep !== episode">
-                  <img src="assets/icons/tick.svg" alt="">Watched
-                </span>
-                <div class="epProgress" *ngIf="!progress.finished">
-                  <span [style.width.%]="progress.ratio * 100"></span>
-                </div>
-              </ng-container>
-            </div>
-          </button>
-          <span class="cardName"><span class="number">{{ep.episode_number}}</span><span class="title">{{ep.name}}</span></span>
-          <span class="meta">
-            <span class="epRating" *ngIf="episodeRating(ep) as rating">
-              <img src="assets/icons/imdbsvg.svg" alt="IMDb">{{rating | number:'1.1-1'}}
-            </span>
-            <span *ngIf="ep.runtime">{{ep.runtime}} min</span>
-            <span *ngIf="ep.air_date">{{ep.air_date | date:'d MMM y'}}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+    <ng-container *ngFor="let ep of episodes; let i = index; trackBy: byEpisode">
+      <px-card variant="still" [key]="ep.episode_number" [image]="ep.still_path ? stillBase + ep.still_path : null"
+        [title]="ep.name" [number]="ep.episode_number" [dim]="ep.upcoming && ep !== episode"
+        [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
+        [meta]="episodeMeta(ep)" [badges]="episodeBadges(ep)"
+        [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
+        [data]="{ index: i, episode: ep.episode_number }" (pxSelect)="openEpisode(ep)"></px-card>
+    </ng-container>
+  </px-card-row>
 
-  <div class="guests" *ngIf="guests.length" pxStackItem>
-    <h3 class="sectionTitle">Guest stars</h3>
-    <div class="rowViewport" rowArrows>
-      <div class="content guestsRow" pxRow="guests" align="third">
-        <button class="guest focusable" *ngFor="let guest of guests"
-          pxItem [pxItemKey]="guest.credit_id">
-          <div class="imgContainer">
-            <img [src]="profileBase + guest.profile_path" alt="">
-          </div>
-          <span class="guestName">{{guest.name}}</span>
-          <span class="character" *ngIf="guest.character">{{guest.character}}</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <px-card-row class="guests" *ngIf="guests.length" pxStackItem rowKey="guests" title="Guest stars" tone="detail" align="third"
+   >
+    <ng-container *ngFor="let guest of guests; trackBy: byCredit">
+      <px-card variant="portrait" [key]="guest.credit_id" [image]="profileBase + guest.profile_path" [title]="guest.name"
+        [subtitle]="guest.character || ''"></px-card>
+    </ng-container>
+  </px-card-row>
 </div>

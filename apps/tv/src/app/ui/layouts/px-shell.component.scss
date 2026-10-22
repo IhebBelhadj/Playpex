@@ -1,0 +1,38 @@
+@use 'px' as *;
+
+:host {
+  display: contents;
+}
+
+// the shell row: the menu rail, then the page
+.masterContainer {
+  position: relative;
+  z-index: var(--px-z-shell);
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  // the screen edges (§13.1): everything in the shell stays inside them
+  box-sizing: border-box;
+  padding: var(--px-safe-y) var(--px-safe-x);
+  overflow: hidden;
+}
+
+// the backdrop, to the screen's edge: a gradient, the title's picture over it
+// (the projected images), and the overlay that darkens it towards the menu
+.background {
+  position: fixed;
+  top: 0;
+  z-index: var(--px-z-backdrop);
+  min-width: 100%;
+  min-height: 100vh;
+  background: var(--px-gradient-backdrop);
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  z-index: var(--px-z-backdrop-overlay);
+  width: 100%;
+  height: 100vh;
+  background: var(--px-gradient-backdrop-overlay);
+}

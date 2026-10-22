@@ -64,6 +64,128 @@
   </section>
 
   <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Actions</h2>
+    <px-action-bar>
+      <px-action key="g-play" icon="play" label="Play"></px-action>
+      <px-action key="g-resume" icon="play" label="Resume (58 min left)" [progress]="0.42"></px-action>
+      <px-action key="g-busy" icon="play" label="Play" busyLabel="Finding torrents…" [busy]="true"></px-action>
+      <px-action key="g-on" icon="bookmark" onIcon="tick" label="In your watch list" [on]="true"></px-action>
+      <px-action key="g-off" icon="bookmark" onIcon="tick" label="Add to watch list"></px-action>
+      <px-action key="g-disabled" icon="trailer" label="Trailer" [disabled]="true"></px-action>
+    </px-action-bar>
+    <p class="px-gallery-label">From models (a slot's contributions):</p>
+    <px-action-bar [actions]="actionModels" (picked)="result = 'picked: ' + $event.key"></px-action-bar>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Buttons</h2>
+    <div class="px-gallery-chips px-gallery-wide" pxGrid>
+      <px-button key="g-outline" label="Try again"></px-button>
+      <px-button key="g-primary" variant="primary" label="Show titles"></px-button>
+      <px-button key="g-filled" variant="filled" [caps]="true" label="Save"></px-button>
+      <px-button key="g-danger" variant="danger" [caps]="true" label="Delete Profile"></px-button>
+      <px-button key="g-large" size="l" [round]="true" label="Enter address"></px-button>
+      <px-button key="g-disabled-b" label="Disabled" [disabled]="true"></px-button>
+    </div>
+    <div class="px-gallery-chips px-gallery-wide" pxGrid>
+      <px-search-field key="g-search" placeholder="Search movies"></px-search-field>
+      <px-search-field key="g-search-q" query="the long goodbye of a very long query that is cut"></px-search-field>
+      <px-button key="g-toolbar" variant="toolbar" icon="opts" label="Filters"></px-button>
+      <px-button key="g-toolbar-on" variant="toolbar" icon="opts" label="Comedy, 1990s, 7 and up" [active]="true"></px-button>
+      <px-button key="g-quiet" variant="toolbar" [quiet]="true" label="Clear"></px-button>
+    </div>
+    <div class="px-gallery-chips px-gallery-wide" pxGrid>
+      <px-button key="g-plate" variant="plate" [width]="plateWidth" label="Shutdown"></px-button>
+      <px-button key="g-icon" variant="icon" icon="caption" label="Subtitles"></px-button>
+      <px-button key="g-icon-l" variant="icon" size="l" icon="playSharp" label="Play"></px-button>
+      <px-button key="g-icon-on" variant="icon" icon="opts" label="Settings" [active]="true"></px-button>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Controls</h2>
+    <div class="px-gallery-overlays">
+      <div class="px-gallery-sheet" pxGrid>
+        <px-switch key="g-switch" label="Only releases that play here" hint="Hides x265, 4K and Dolby / DTS audio"
+          [on]="switchOn" (pxSelect)="switchOn = !switchOn"></px-switch>
+        <px-switch key="g-switch-off" label="This profile is for a kid" [on]="false"></px-switch>
+        <px-slider key="g-slider" label="Volume" [min]="0" [max]="100" [step]="5" [value]="volume" [format]="percent"
+          (valueChange)="volume = $event"></px-slider>
+        <px-slider key="g-slider-origin" label="Timing" [min]="-5" [max]="5" [step]="0.5" [origin]="0" [value]="-1.5"></px-slider>
+      </div>
+      <div class="px-gallery-column" pxStack="galleryTabs">
+        <px-tabs gridId="galleryTabsRow" [tabs]="tabs" [active]="tab" (activeChange)="tab = $event"></px-tabs>
+        <p class="px-gallery-label">Shown: {{ tab }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Meta, scores, progress</h2>
+    <px-meta [items]="meta"></px-meta>
+    <div class="px-gallery-row">
+      <px-score source="imdb" [value]="8.3" votes="712K"></px-score>
+      <px-score source="tmdb" [value]="7.94"></px-score>
+      <px-score source="provider" [value]="4.2"></px-score>
+    </div>
+    <div class="px-gallery-progress">
+      <px-progress [value]="0.1"></px-progress>
+      <px-progress [value]="0.6"></px-progress>
+      <px-progress [value]="0.6" variant="line"></px-progress>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Empty, loading</h2>
+    <div class="px-gallery-overlays">
+      <px-empty title="Nothing here yet" text="Titles you add show up here." action="Browse movies" actionKey="g-empty"
+        (act)="result = 'empty: act'"></px-empty>
+      <px-empty [busy]="true" text="Loading the catalog…"></px-empty>
+      <px-spinner></px-spinner>
+    </div>
+    <div class="px-gallery-row">
+      <px-skeleton variant="poster" [delay]="0"></px-skeleton>
+      <px-skeleton variant="compact" [delay]="0"></px-skeleton>
+      <px-skeleton variant="still" [delay]="0"></px-skeleton>
+      <px-skeleton variant="portrait" [delay]="0"></px-skeleton>
+      <div class="px-gallery-column">
+        <px-skeleton variant="line" width="20rem" [delay]="0"></px-skeleton>
+        <px-skeleton variant="line" width="14rem" [delay]="0"></px-skeleton>
+        <px-skeleton variant="block" width="20rem" [delay]="0"></px-skeleton>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Cards</h2>
+    <px-card-row rowKey="g-cards" title="Every variant and state" align="start">
+      <ng-container *ngFor="let c of cards; trackBy: byKey">
+        <px-card [variant]="c.variant" [key]="c.key" [image]="c.image" [title]="c.title" [subtitle]="c.subtitle || ''"
+          [number]="c.number ?? null" [badges]="c.badges || null" [progress]="c.progress ?? null" [rating]="c.rating || null"
+          [meta]="c.meta || null" [busy]="!!c.busy" busyLabel="Finding torrents…" [dim]="!!c.dim"></px-card>
+      </ng-container>
+    </px-card-row>
+    <px-card-row rowKey="g-loading" title="A row still loading (skeletons)" [items]="[]" [loading]="true"></px-card-row>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Title info</h2>
+    <div class="px-gallery-overlays">
+      <px-title-info [info]="titleInfo" layout="detail"></px-title-info>
+      <px-title-info [info]="null" [loading]="true"></px-title-info>
+    </div>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
+    <h2 class="px-gallery-name" pxItem tabindex="-1">Slots</h2>
+    <p class="px-gallery-label">core.movie.actions with the contributions installed (window.playpexDev.plugin('hello', true) adds the example plugin's):</p>
+    <px-action-bar>
+      <px-action key="g-core" icon="play" label="A core tile"></px-action>
+      <px-slot name="core.movie.actions" [context]="slotContext"></px-slot>
+    </px-action-bar>
+  </section>
+
+  <section class="px-gallery-group" pxStackItem>
     <h2 class="px-gallery-name" pxItem tabindex="-1">Overlays</h2>
     <div class="px-gallery-overlays">
       <div class="px-gallery-sheet" pxGrid>
@@ -81,6 +203,10 @@
           <button class="px-gallery-button" pxItem (pxSelect)="confirm()">Dialogs.confirm</button>
           <button class="px-gallery-button" pxItem (pxSelect)="alert()">Dialogs.alert</button>
           <button class="px-gallery-button" pxItem (pxSelect)="panel = true">px-panel</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="toast('info')">Toast</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="toast('success')">Toast (success, same key)</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="toast('error')">Toast (error)</button>
+          <button class="px-gallery-button" pxItem (pxSelect)="toastQueue()">4 toasts (queue of 3)</button>
         </div>
         <p class="px-gallery-label">{{ result }}</p>
       </div>

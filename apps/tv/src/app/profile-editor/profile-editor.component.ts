@@ -81,7 +81,6 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
       if (this.saving) return;
       let data = active.dataset;
       if (data['field']) this.activateField(data['field']);
-      else if (data['action']) this.activateAction(data['action']);
     });
     // saving: stay until it's done
     this.screen.onBack(() => this.saving);
@@ -103,9 +102,6 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
         this.returnFocus = 'name';
         this.panel = 'keyboard';
         break;
-      case 'kid':
-        this.isKid = !this.isKid;
-        break;
       case 'pin':
         this.returnFocus = 'pin';
         this.panel = 'pin';
@@ -117,23 +113,17 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private activateAction(action:string) {
-    if (action == 'save') this.save();
-    else if (action == 'cancel') this.cancel();
-    else if (action == 'delete') this.openPanel('confirmDelete', null);
-  }
-
   // ── panels ────────────────────────────────────────────────────────────────
 
   // <px-panel>s: they focus their current avatar / "Keep Profile"; the focus
   // comes back through closePanel()
-  private openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null) {
+  openPanel(panel:'avatars' | 'confirmDelete', returnFocus:string | null) {
     this.panel = panel;
     this.returnFocus = returnFocus;
   }
 
   closePanel() {
-    let returnTo = this.panel == 'confirmDelete' ? '[data-action="delete"]' : null;
+    let returnTo = this.panel == 'confirmDelete' ? '[data-px-key="delete"]' : null;
     this.panel = null;
     if (returnTo) this.focus(returnTo);
     else this.show(this.returnFocus || 'name');
@@ -163,7 +153,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
 
   // ── save / delete ─────────────────────────────────────────────────────────
 
-  private save() {
+  save() {
     let name = this.name.trim();
     if (!name) {
       this.error = 'Please enter a name';
@@ -212,7 +202,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
     });
   }
 
-  private cancel() {
+  cancel() {
     this.toPicker();
   }
 

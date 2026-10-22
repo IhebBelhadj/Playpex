@@ -1,57 +1,29 @@
-<div class="libraryPage" pxSection="library" [leaveFor]="{ left: '@menu' }">
+<px-section-layout class="libraryPage" pxSection="library" [leaveFor]="{ left: '@menu' }">
 
   <!-- The focused title, laid out like <movie-description> -->
-  <header class="titleInfo" *ngIf="spot && !isEmpty && !loadError">
-    <h1 class="name">{{ spot.title }}</h1>
-    <div class="infos">
-      <p class="year" *ngIf="details?.year">{{ details.year }}</p>
-      <span class="chip">{{ spot.mediaType == 'tv' ? 'Series' : 'Movie' }}</span>
-      <span class="chip" *ngIf="details?.length">{{ details.length }}</span>
-      <span class="score" *ngIf="details?.score">TMDB {{ details.score | number:'1.1-1' }}</span>
-    </div>
-    <div class="categories" *ngIf="details?.genres?.length">
-      <span *ngFor="let genre of details.genres">{{ genre }} . </span>
-    </div>
+  <!-- The focused title, laid out like <movie-description>, with where this profile is with it -->
+  <px-title-info class="titleInfo" *ngIf="spot && !isEmpty && !loadError" [info]="titleInfo" layout="section"></px-title-info>
 
-    <!-- where this profile is with it -->
-    <p class="status">{{ spot.meta }}</p>
-    <div class="progressLine" *ngIf="spot.progress">
-      <span [style.width.%]="spot.progress * 100"></span>
-    </div>
+  <px-empty class="titleInfo" *ngIf="isEmpty" size="hero" title="Your watch list is empty"
+    text="Save movies and shows with “Add to watch list” on their page. Anything you start watching shows up here too, so you can pick up where you left off."
+    action="Browse movies" actionKey="browse" (act)="navigator.switchSection('core.movies')"></px-empty>
 
-    <p class="overview" *ngIf="details?.overview">{{ details.overview }}</p>
-  </header>
-
-  <header class="titleInfo" *ngIf="isEmpty">
-    <h1 class="name">Your watch list is empty</h1>
-    <p class="note">Save movies and shows with “Add to watch list” on their page. Anything you start watching shows up here too, so you can pick up where you left off.</p>
-    <button class="actionBtn browseBtn focusable">Browse movies</button>
-  </header>
-
-  <header class="titleInfo" *ngIf="loadError">
-    <h1 class="name">Watch list unavailable</h1>
-    <p class="note">{{ loadError }}</p>
-    <button class="actionBtn retryBtn focusable">Try again</button>
-  </header>
+  <px-empty class="titleInfo" *ngIf="loadError" size="hero" title="Watch list unavailable" [text]="loadError"
+    action="Try again" actionKey="retry" (act)="load()"></px-empty>
 
   <!-- Category-style rows, like the movies page -->
   <div class="sliderContainer" *ngIf="rows.length" pxStack="watchlist" align="row-top" motion="transform">
     <div class="overlay"></div>
     <div class="content" pxTrack>
-      <div class="section" *ngFor="let row of rows" pxStackItem [attr.data-row]="row.key">
-        <h3 class="sectionTitle">{{ row.title }}</h3>
-        <div class="slider" rowArrows>
-          <div class="sliderSection" [pxRow]="row.key" align="start">
-            <button *ngFor="let card of row.cards" class="card focusable"
-              pxItem [pxItemKey]="card.key"
-              [attr.data-key]="card.key">
-              <img *ngIf="posterUrl(card) as src" [src]="src" alt="">
-              <span class="fallbackTitle" *ngIf="!card.posterPath">{{ card.title }}</span>
-              <span class="cardProgress" *ngIf="card.progress"><span [style.width.%]="card.progress * 100"></span></span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <px-card-row class="section" *ngFor="let row of rows" pxStackItem [attr.data-row]="row.key" [rowKey]="row.key"
+        [title]="row.title">
+        <ng-container *ngFor="let card of row.cards">
+          <px-card variant="poster" [key]="card.key" [image]="posterUrl(card)" [title]="card.title" [progress]="card.progress || null"
+            [data]="{ key: card.key }"></px-card>
+        </ng-container>
+      </px-card-row>
+      <!-- plugins' rows (ui/slots), after the library's -->
+      <px-slot name="core.watchlist.rows" [context]="slotContext"></px-slot>
     </div>
   </div>
-</div>
+</px-section-layout>

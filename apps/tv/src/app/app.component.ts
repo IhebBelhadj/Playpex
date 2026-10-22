@@ -1,3 +1,5 @@
+import { MediaKeys } from './media-keys.service';
+import { SettingsService } from './settings.service';
 import { NavigationService } from './navigation.service';
 import { BackgroundService } from './background.service';
 import { AfterViewInit, Component, OnInit } from '@angular/core';
@@ -38,7 +40,12 @@ export class AppComponent implements AfterViewInit , OnInit{
     // created before the first navigation, so it sees it
     private navigator:Navigator,
     devHook:DevHook,
+    // loads this device's and the profile's settings from the start
+    settings:SettingsService,
+    mediaKeys:MediaKeys,
     ){
+    // remote / keyboard media keys → the screen shown (§13.2)
+    mediaKeys.init();
     // development builds: window.playpexDev (scripts/screens.js)
     devHook.install();
     navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);

@@ -59,3 +59,4 @@ apps/tv/release/
 
 # Playpex TV UI screenshots (apps/tv/scripts/screens.js)
 apps/tv/.screens/
+apps/tv/.perf/

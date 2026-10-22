@@ -1,0 +1,29 @@
+<button #button class="px-card focusable" pxItem [pxItemKey]="key" [class.v-poster]="variant == 'poster'"
+  [class.v-compact]="variant == 'compact'" [class.v-portrait]="variant == 'portrait'" [class.v-still]="variant == 'still'" [class.dim]="dim"
+  [class.busy]="busy" [attr.aria-label]="title + (subtitle ? ', ' + subtitle : '')" [attr.aria-busy]="busy || null">
+  <!-- loading: a CSS shimmer on the frame (no component per card: rows hold dozens) -->
+  <span class="art" [class.loading]="showImage && !loaded">
+    <img *ngIf="showImage; else fallback" #img [src]="image" alt="" [class.loaded]="loaded" (load)="onLoad(img)" (error)="onError()">
+    <!-- marks on the artwork: one view, only when there are any -->
+    <ng-container *ngIf="badges?.length || progress || busy">
+      <span class="badges" *ngIf="badges?.length">
+        <span *ngFor="let b of badges" class="badge" [ngClass]="'b-' + badgeKind(b)">
+          <img *ngIf="b == 'watched'" src="assets/icons/tick.svg" alt="">{{ badgeText(b) }}
+        </span>
+      </span>
+      <px-progress *ngIf="progress" class="progress" [value]="progress"></px-progress>
+      <span class="busyCover" *ngIf="busy"><px-spinner [label]="busyLabel"></px-spinner></span>
+    </ng-container>
+  </span>
+  <span class="caption" *ngIf="caption">
+    <span class="title"><span class="number" *ngIf="number !== null">{{ number }}</span><span class="titleText">{{ title }}</span></span>
+    <span class="meta" *ngIf="subtitle || rating || meta?.length">
+      <span class="rating" *ngIf="rating">
+        <img *ngIf="rating.source == 'imdb'" src="assets/icons/imdbsvg.svg" alt="IMDb"><span *ngIf="rating.source == 'tmdb'">TMDB</span>{{ rating.value | number:'1.1-1' }}
+      </span>
+      <span class="subtitle" *ngIf="subtitle">{{ subtitle }}</span>
+      <span *ngFor="let m of meta">{{ m }}</span>
+    </span>
+  </span>
+</button>
+<ng-template #fallback><span class="fallback">{{ variant == 'portrait' ? initials : title }}</span></ng-template>

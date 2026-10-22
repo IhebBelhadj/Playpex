@@ -21,6 +21,7 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `session.started` | a device takes a lease on a torrent | a `Session` (see below) |
 | `session.updated` | a keepalive with a playback state arrives | a `Session` |
 | `session.ended` | the lease is released, reaped, or stopped by the admin | `{ id, deviceId, infoHash }` |
+| `settings.changed` | a device's or a profile's settings were written or reset ([settings](settings.md)) | `{ scope: 'device' \| 'profile', ownerId, keys }` |
 
 Payload schemas: `ServerStatusEvent`, `TorrentStatsEvent`, `Session`, `SessionEndedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).
 

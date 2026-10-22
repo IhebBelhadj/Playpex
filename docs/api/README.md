@@ -14,6 +14,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | [Pairing and auth](auth.md) | the RFC 8628 device flow, tokens, clients on the server machine, re-pairing |
 | [Playing a torrent](playback.md) | catalog sources, adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
+| [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |
 | [Errors, versions, limits](errors-and-versions.md) | error shapes, codes, API versions, rate limits, security notes |
 

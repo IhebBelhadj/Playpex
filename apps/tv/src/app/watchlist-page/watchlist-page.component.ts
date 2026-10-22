@@ -1,4 +1,7 @@
-import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { profileContext } from '../slot-contexts';
+import { ProfilesService } from '../profiles.service';
+import { MetaItem, TitleInfoModel, WatchlistContext } from '../ui/public-api';
+import { AfterViewInit, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { FocusEngine } from '../movement/movement';
@@ -55,6 +58,10 @@ const STACK = 'watchlist';      // the rows' pxStack: the focused card is rememb
 })
 export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
+  private profiles = inject(ProfilesService);
+  // plugins' rows of the watch list (ui/slots)
+  slotContext:WatchlistContext = { profile: profileContext(this.profiles.current.value) };
+
   readonly posterBase = tmdbImageBase('poster', 180);
 
   rows:Row[] = [];
@@ -76,7 +83,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     private navigation:NavigationService,
     private background:BackgroundService,
     private moviesService:MoviesService,
-    private navigator:Navigator,
+    public navigator:Navigator,
     private engine:FocusEngine,
   ) { }
 
@@ -113,9 +120,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
       return true;
     });
     this.screen.onSelect(active => {
-      if (active.classList.contains('card')) this.open(this.cards.get(active.dataset['key']));
-      else if (active.classList.contains('browseBtn')) this.navigator.switchSection('core.movies');
-      else if (active.classList.contains('retryBtn')) this.load();
+      if (active.classList.contains('px-card')) this.open(this.cards.get(active.dataset['key']));
     });
 
     this.focusListener = (e) => this.onFocus(e.target as HTMLElement);
@@ -140,7 +145,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
         this.loaded = true;
         this.rows = [];
         this.loadError = "Couldn't load your watch list. Check that the Playpex server is running, then try again.";
-        setTimeout(() => this.focusSelector('.libraryPage .retryBtn'), 0);
+        setTimeout(() => this.focusSelector('.libraryPage [data-px-key="retry"]'), 0);
       }
     });
   }
@@ -241,7 +246,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   // The remembered card (back from a title page), else the first one
   private focusInitial() {
     if (this.isEmpty) {
-      this.focusSelector('.libraryPage .browseBtn');
+      this.focusSelector('.libraryPage [data-px-key="browse"]');
       return;
     }
     this.engine.restore(`stack:${STACK}`);
@@ -249,7 +254,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
 
   // The description follows the focused card (scrolling is the rows' job)
   private onFocus(node:HTMLElement) {
-    if (!this.screen.active || !node.classList.contains('card')) return;
+    if (!this.screen.active || !node.classList.contains('px-card')) return;
     let card = this.cards.get(node.dataset['key']);
     if (!card) return;
 
@@ -297,6 +302,25 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
       score: data['vote_average'] || null,
       genres: (data['genres'] || []).map(g => g['name']),
       overview,
+    };
+  }
+
+  // the focused title (<px-title-info>): year, kind, length, TMDB; genres;
+  // the profile's status with its amber line; overview
+  get titleInfo():TitleInfoModel {
+    let spot = this.spot, details = this.details;
+    let meta:MetaItem[] = [];
+    if (details?.year) meta.push({ kind: 'text', text: String(details.year) });
+    meta.push({ kind: 'chip', text: spot.mediaType == 'tv' ? 'Series' : 'Movie' });
+    if (details?.length) meta.push({ kind: 'chip', text: details.length });
+    if (details?.score) meta.push({ kind: 'score', source: 'tmdb', value: details.score });
+    return {
+      title: spot.title,
+      meta,
+      genres: details?.genres || [],
+      status: spot.meta,
+      progress: spot.progress || null,
+      overview: details?.overview || '',
     };
   }
 

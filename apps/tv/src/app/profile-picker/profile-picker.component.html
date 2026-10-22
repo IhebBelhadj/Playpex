@@ -1,5 +1,4 @@
-<div class="profilesPage">
-  <img class="brand" src="assets/icons/logo_full.svg" alt="Playpex">
+<px-fullscreen-layout class="profilesPage">
 
   <div class="profilesContent" *ngIf="loaded" pxSection="profiles">
     <ng-container *ngIf="!loadError; else failed">
@@ -27,15 +26,18 @@
         </button>
       </div>
 
-      <button *ngIf="profiles.length" class="manageBtn focusable" [class.done]="managing">
-        {{ managing ? 'Done' : 'Manage Profiles' }}
-      </button>
+      <div class="manage" *ngIf="profiles.length">
+        <px-button key="manage" size="l" [variant]="managing ? 'filled' : 'outline'" [caps]="!managing"
+          [label]="managing ? 'Done' : 'Manage Profiles'" (pxSelect)="toggleManage()"></px-button>
+      </div>
     </ng-container>
 
     <ng-template #failed>
       <h1 class="heading">Profiles unavailable</h1>
       <p class="hint">{{ loadError }}</p>
-      <button class="manageBtn retryBtn focusable">Try again</button>
+      <div class="manage">
+        <px-button key="retry" size="l" [caps]="true" label="Try again" (pxSelect)="load()"></px-button>
+      </div>
     </ng-template>
   </div>
 
@@ -46,4 +48,4 @@
     (completed)="onPinCompleted($event)"
     (cancelled)="onPinCancelled()">
   </pin-pad>
-</div>
+</px-fullscreen-layout>

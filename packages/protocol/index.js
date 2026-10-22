@@ -56,6 +56,7 @@ var DISCOVERY = {
 // Every error answer is { error: <message for people>, code: <one of these> }
 var ERROR_CODES = {
   INVALID: 400,                  // bad parameters or body
+  DEVICE_REQUIRED: 400,          // the route needs to know the calling device (X-Playpex-Device / ?device=)
   PAIRING_REQUIRED: 401,         // no valid device token: pair (POST /auth/device/code)
   ADMIN_REQUIRED: 401,           // an admin route without the admin's session
   FORBIDDEN: 403,                // e.g. wrong profile PIN
@@ -96,7 +97,11 @@ function clientHeader(name, version) {
   return name + '/' + version + '; api=' + API_VERSION;
 }
 
+// User settings registry (settings.js): keys, scopes, defaults, validation
+var settings = require('./settings');
+
 module.exports = {
+  SETTINGS: settings.SETTINGS,
   API_VERSION: API_VERSION,
   MIN_API_VERSION: MIN_API_VERSION,
   API_PREFIX: API_PREFIX,

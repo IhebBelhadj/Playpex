@@ -5,6 +5,10 @@
 // playhead (light), the rest hatched (a jump there waits for the torrent).
 
 $side: 64;          // the controls' and the loading view's side margin (dp)
+// … inside the screen edges (§13.1): the picture goes to the edge, what you read doesn't
+$inset-x: calc(var(--px-safe-x) + #{dp($side)});
+@function from-bottom($n) { @return calc(var(--px-safe-y) + #{dp($n)}); }
+@function from-top($n) { @return calc(var(--px-safe-y) + #{dp($n)}); }
 
 :host {
   display: block;
@@ -13,7 +17,9 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
 }
 
 .player {
-  position: relative;
+  // the whole screen, over the shell's screen-edge padding
+  position: fixed;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -45,7 +51,7 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 0 dp($side) dp(72);
+  padding: 0 $inset-x from-bottom(72);
   background: var(--px-gradient-player-controls);
   pointer-events: none;
 
@@ -139,8 +145,8 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
 
 .notice {
   position: absolute;
-  top: dp(40);
-  left: dp($side);
+  top: from-top(40);
+  left: $inset-x;
   max-width: dp(620);
   padding: dp(12) dp(18);
   border-radius: var(--px-radius-m);
@@ -157,7 +163,7 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
   left: 0;
   right: 0;
   bottom: 0;
-  padding: dp(180) dp($side) dp(36);
+  padding: dp(180) $inset-x from-bottom(36);
   background: var(--px-gradient-player-controls);
   opacity: 0;
   visibility: hidden;
@@ -389,71 +395,12 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
   }
 }
 
-// Icon only; the focused one grows into a white pill with its name
-.ctl {
-  display: inline-flex;
-  align-items: center;
-  height: dp(52);
-  padding: 0 dp(14);
-  border: none;
-  border-radius: var(--px-radius-pill);
-  background: var(--px-surface-control);
-  color: var(--px-color-on-focus);
-  font-family: var(--px-font-bold);
-  font-size: var(--px-text-label);
-  white-space: nowrap;
-  transition: background var(--px-dur-fast), transform var(--px-dur-fast);
-
-  img {
-    width: dp(24);
-    height: dp(24);
-    filter: var(--px-icon-light);
-  }
-
-  .label {
-    display: inline-block;
-    max-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-width var(--px-dur), opacity var(--px-dur), margin var(--px-dur);
-  }
-
-  &.play {
-    height: dp(62);
-    padding: 0 dp(19);
-
-    img {
-      width: dp(26);
-      height: dp(26);
-    }
-  }
-
-  &.on img {
-    filter: var(--px-icon-on);
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    transform: scale(var(--px-zoom-tile));
-
-    img {
-      filter: none;
-    }
-
-    .label {
-      max-width: dp(260);
-      margin-left: dp(10);
-      opacity: 1;
-    }
-  }
-}
-
 // ── up next ─────────────────────────────────────────────────────────────────
 
 .upNext {
   position: absolute;
-  right: dp($side);
-  bottom: dp(64);
+  right: $inset-x;
+  bottom: from-bottom(64);
   display: flex;
   gap: dp(16);
   width: dp(470);
@@ -530,8 +477,8 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
 
 .statsPanel {
   position: absolute;
-  top: dp(90);
-  right: dp($side);
+  top: from-top(90);
+  right: $inset-x;
   min-width: dp(300);
   padding: dp(16) dp(20);
   border-radius: var(--px-radius-m);
@@ -545,12 +492,96 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
     font-size: var(--px-text-label);
   }
 
-  dl {
-    display: grid;
-    grid-template-columns: auto auto;
-    gap: dp(6) dp(24);
-    margin: 0;
+  .statsList {
+    font-size: var(--px-text-small);
   }
+}
+
+// ── settings panel (inside px-panel edge="end") ─────────────────────────────
+
+.settingsBody {
+  display: flex;
+  flex-direction: column;
+  gap: dp(24);
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+
+// Tabs: the shown one has a white bar under it; the focused one is a white pill
+.setting {
+  flex: none;
+}
+
+.settingName {
+  margin: 0 0 dp(12);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-soft);
+}
+
+.settingValue {
+  margin-left: dp(8);
+  font-family: var(--px-font-light);
+  color: var(--px-color-text-muted);
+}
+
+.settingHelp {
+  margin: dp(12) 0 0;
+  max-width: dp(500);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  line-height: 1.45;
+  color: var(--px-color-text-muted);
+}
+
+.chips {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(10);
+}
+
+// What a subtitle line looks like at the chosen size, over a still-like ground
+.cueSample {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: dp(150);
+  padding-bottom: dp(18);
+  border-radius: var(--px-radius-m);
+  background: var(--px-gradient-backdrop-overlay), var(--px-surface-2);
+  overflow: hidden;
+
+  span {
+    padding: 0 dp(6);
+    font-family: var(--px-font-book);
+    font-size: var(--px-subtitle-size);   // ui-check: allow (holds a --px-text-* step, set by Size)
+    line-height: 1.3;
+    color: var(--px-color-text);
+    background: var(--px-surface-pane);
+    transition: font-size var(--px-dur);
+  }
+}
+
+// sliders: their focus plate reaches past the content's edge, their text lines up with it
+.settingsBody px-slider {
+  flex: none;
+  margin: 0 dp(-16);
+}
+
+.setting .settingHelp {
+  margin-top: dp(4);
+}
+
+.statsList {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: dp(8) dp(24);
+  margin: 0;
+  font-size: var(--px-text-label);
+  font-variant-numeric: tabular-nums;
 
   dt {
     font-family: var(--px-font-light);
@@ -562,40 +593,6 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
     text-align: right;
     font-family: var(--px-font-book);
   }
-}
-
-// ── subtitles panel (inside px-panel edge="end") ────────────────────────────
-
-.subsBody {
-  display: flex;
-  flex-direction: column;
-  gap: dp(24);
-  flex: 1;
-  min-height: 0;
-  overflow: visible;
-}
-
-.subsGroup {
-  flex: none;
-}
-
-.groupLabel {
-  margin: 0 0 dp(12);
-  font-family: var(--px-font-bold);
-  font-size: var(--px-text-label);
-  color: var(--px-color-text-soft);
-
-  .timingValue {
-    margin-left: dp(8);
-    font-family: var(--px-font-light);
-    color: var(--px-color-text-muted);
-  }
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: dp(10);
 }
 
 .subList {
@@ -667,7 +664,7 @@ $side: 64;          // the controls' and the loading view's side margin (dp)
   }
 }
 
-.subNote {
+.note {
   margin: dp(8) dp(14);
   font-family: var(--px-font-light);
   font-size: var(--px-text-label);

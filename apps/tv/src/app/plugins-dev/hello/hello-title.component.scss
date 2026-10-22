@@ -1,0 +1,11 @@
+@use 'px' as *;
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.options {
+  min-height: var(--px-screen-h);
+}

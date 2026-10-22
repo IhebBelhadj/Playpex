@@ -1,0 +1,55 @@
+@use 'px' as *;
+
+:host {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+:host {
+  gap: var(--px-meta-gap, 0);
+}
+
+.text {
+  margin-right: dp(15);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-heading);
+
+  &.small {
+    margin: 0 dp(4);
+    font-size: var(--px-text-body);
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: dp(6);
+  margin: dp(4);
+  padding: dp(8);
+
+  img {
+    width: dp(12);
+    filter: var(--px-icon-light);
+  }
+  border-radius: dp(5);
+  background: var(--px-surface-chip);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-tiny);
+  opacity: .7;
+}
+
+.score {
+  margin-left: dp(12);
+}
+
+// the 18+ mark: an outline in the theme's accent
+.seal {
+  margin: dp(4) dp(8) dp(4) 0;
+  padding: dp(5) dp(7);
+  border: dp(1.5) solid var(--px-color-accent);
+  border-radius: dp(5);
+  color: var(--px-color-accent);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-tiny);
+}

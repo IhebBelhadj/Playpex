@@ -588,6 +588,8 @@ v1.all('/youtube/:videoId/', function (req, res) {
 // 18+ section catalog (lib/adultMeta: TMDB, ThePornDB, …)
 v1.use('/adult/meta', require('./routes/adultMeta'));
 
+// User settings, per device and per profile (docs/settings-plan.md)
+v1.use(require('./routes/settings'));
 v1.use('/profiles', require('./routes/profiles'));
 v1.use('/profiles/:profileId', require('./routes/library'));
 

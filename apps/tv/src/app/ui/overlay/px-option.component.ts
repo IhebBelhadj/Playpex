@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 // A row of a <px-dialog>: label, detail line, optional amber progress (how
 // far in), dimmed until focused (then a white fill). Extra content is
@@ -10,6 +10,7 @@ import { Component, Input } from '@angular/core';
   selector: 'px-option',
   templateUrl: './px-option.component.html',
   styleUrls: ['./px-option.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PxOptionComponent {
   @Input() key:string | number | null = null;

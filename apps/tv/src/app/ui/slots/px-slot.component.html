@@ -1,0 +1,13 @@
+<ng-container [ngSwitch]="kind">
+  <ng-container *ngSwitchCase="'actions'">
+    <px-action *ngFor="let a of actions; trackBy: byKey" [key]="a.key" [icon]="a.icon" [label]="a.label"
+      [on]="!!a.on" [progress]="a.progress ?? null" [busy]="!!a.busy" [disabled]="!!a.disabled"
+      [attr.data-slot]="name" (pxSelect)="run(a)"></px-action>
+  </ng-container>
+  <ng-container *ngSwitchCase="'rows'">
+    <px-card-row *ngFor="let r of rows; trackBy: byKey" pxStackItem [attr.data-slot]="name" [rowKey]="r.model.key"
+      [title]="r.model.title" [variant]="r.model.variant || 'poster'" [items]="r.items" [loading]="!r.items.length && !r.last" [loadAhead]="6"
+      (nearEnd)="more(r)" (picked)="pick($event)"></px-card-row>
+  </ng-container>
+  <px-meta *ngSwitchCase="'meta'" [items]="meta"></px-meta>
+</ng-container>

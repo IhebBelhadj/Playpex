@@ -1,0 +1,6 @@
+<button class="px-button focusable" pxItem [pxItemKey]="key" [ngClass]="'v-' + variant" [class.active]="active"
+  [class.quiet]="quiet" [class.caps]="caps" [class.large]="size == 'l'" [class.round]="round" [class.dim]="dim"
+  [class.disabled]="disabled" [class.start]="align == 'start'" [style.width]="width" [attr.aria-disabled]="disabled || null">
+  <img *ngIf="src" [src]="src" alt="">
+  <span class="text">{{ label }}<ng-content></ng-content></span>
+</button>

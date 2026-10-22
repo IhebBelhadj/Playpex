@@ -7,16 +7,8 @@
   flex: 1;
 }
 
-.pageContainer {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100vh;
-  padding-left: dp(35);
-  box-sizing: border-box;
-  // a detail page's row is scrolled fully into view, 40px from the edges
-  scroll-padding-block: dp(40);
-}
+// .pageContainer is a <px-detail-layout> (a scrolling pxStack): the list's
+// toolbar, description and rows, or a title page's
 
 // ── list page: the section's search bar (styled like the 18+ toolbar's) ────
 
@@ -32,69 +24,3 @@
   }
 }
 
-.searchField,
-.filterBtn,
-.clearSearch {
-  display: flex;
-  align-items: center;
-  gap: dp(12);
-  height: dp(44);
-  padding: 0 dp(16);
-  border: none;
-  border-radius: dp(8);
-  background: var(--px-surface-control);
-  color: var(--px-color-text);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-label);
-  white-space: nowrap;
-  transition: transform var(--px-dur), background var(--px-dur), color var(--px-dur);
-
-  img {
-    width: dp(18);
-    filter: var(--px-icon-light);
-    opacity: .8;
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-    transform: scale(1.05);
-
-    img { filter: none; opacity: 1; }
-  }
-}
-
-.searchField {
-  width: dp(320);
-
-  .fieldText {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &.empty .fieldText { color: var(--px-color-text-faint); }
-  &.empty.focused .fieldText { color: var(--px-color-on-focus-muted); }
-}
-
-// shows the filters in use: "Comedy, 1990s, 7 and up"
-.filterBtn {
-  max-width: dp(420);
-
-  .fieldText {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  // filters are on: the ring of a chosen chip
-  &.active:not(.focused) {
-    background: var(--px-surface-2);
-    box-shadow: inset 0 0 0 dp(1.5) var(--px-color-line-strong);
-  }
-}
-
-.clearSearch:not(.focused) {
-  background: none;
-  color: var(--px-color-text-muted);
-}

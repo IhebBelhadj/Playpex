@@ -1,12 +1,89 @@
-<div class="settingsPage" pxSection="settings" [leaveFor]="{ left: '@menu' }">
-  <h1 class="heading">Settings</h1>
+<px-rail-layout class="settingsPage" [railWidth]="280">
+  <div pxRail class="settingsRail" pxSection="settingsRail" [leaveFor]="{ left: '@menu', right: '@settings' }">
+    <h1 class="heading">Settings</h1>
+    <px-tabs gridId="settingsGroups" [vertical]="true" [tabs]="groups" [active]="group" (activeChange)="group = $any($event)"></px-tabs>
+  </div>
 
-  <section class="group">
-    <h2 class="groupTitle">Display</h2>
-    <div class="setting">
-      <p class="label">Size</p>
-      <p class="help">How big text and pictures are on this screen. Moving over a size shows it; Enter keeps it. Saved on this device only.</p>
-      <display-size></display-size>
+  <div pxMain class="settingsMain" pxSection="settings" [leaveFor]="{ left: '@settingsRail' }">
+    <div class="groupBody" pxStack="settings">
+
+      <ng-container *ngIf="group == 'display'">
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Size</h2><span class="scope">On this device</span></header>
+          <p class="help">How big text and pictures are on this screen. Moving over a size shows it; OK keeps it.</p>
+          <display-size></display-size>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Screen edges</h2><span class="scope">On this device</span></header>
+          <p class="help">If this TV cuts off the edges of the picture, bring everything in a little.
+            Now: {{ edgesText(settings.value('display.safeArea')) }}.</p>
+          <px-button key="edges" label="Adjust screen edges" (pxSelect)="edgesOpen = true"></px-button>
+        </section>
+      </ng-container>
+
+      <ng-container *ngIf="group == 'playback'">
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Volume</h2><span class="scope">On this device</span></header>
+          <px-slider key="volume" label="Volume when a video starts" [min]="0" [max]="100" [step]="5"
+            [value]="settings.value('player.volume')" [format]="volumeText"
+            (valueChange)="settings.set('player.volume', $event, { debounceMs: 500 })"></px-slider>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Subtitle size</h2><span class="scope">On this device</span></header>
+          <div class="chips" pxGrid="subtitleSize" enter="selected">
+            <px-chip *ngFor="let s of subtitleSizes" [key]="'size:' + s.key" [label]="s.label"
+              [selected]="s.key == settings.value('subtitles.size')" (pxSelect)="settings.set('subtitles.size', s.key)"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Subtitle source</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Where the player looks for subtitles first. Changing the source in the player changes it here too.</p>
+          <div class="chips" pxGrid="subtitleSource" enter="selected">
+            <px-chip key="source:auto" label="Automatic" [selected]="!subtitleProvider"
+              (pxSelect)="settings.set('subtitles.provider', null)"></px-chip>
+            <px-chip *ngFor="let p of subtitleProviders" [key]="'source:' + p.id" [label]="p.name"
+              [selected]="p.id == subtitleProvider" (pxSelect)="settings.set('subtitles.provider', p.id)"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Next episode</h2><span class="scope">For {{ profileName }}</span></header>
+          <px-switch key="autoplay" label="Play the next episode when one ends" hint="Up next still shows in the last 40 seconds"
+            [on]="settings.value('player.autoplayNext')"
+            (pxSelect)="settings.set('player.autoplayNext', !settings.value('player.autoplayNext'))"></px-switch>
+        </section>
+      </ng-container>
+
+      <ng-container *ngIf="group == 'adult'">
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Layout</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Posters: a catalog with artwork, like the movies. List: torrent releases, most seeded first.</p>
+          <div class="chips" pxGrid="adultLayout" enter="selected">
+            <px-chip key="layout:posters" label="Posters" [selected]="settings.value('adult.layout') == 'posters'"
+              (pxSelect)="settings.set('adult.layout', 'posters')"></px-chip>
+            <px-chip key="layout:compact" label="List" [selected]="settings.value('adult.layout') == 'compact'"
+              (pxSelect)="settings.set('adult.layout', 'compact')"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting" pxStackItem *ngIf="metaProviders.length">
+          <header class="head"><h2 class="label">Catalog source</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Where the poster layout's titles, artwork and performers come from.</p>
+          <div class="chips" pxGrid="adultSource" enter="selected">
+            <px-chip key="meta:default" label="Server default" [selected]="!settings.value('adult.metadataProvider')"
+              (pxSelect)="settings.set('adult.metadataProvider', null)"></px-chip>
+            <px-chip *ngFor="let p of metaProviders" [key]="'meta:' + p.id" [label]="p.name"
+              [selected]="p.id == settings.value('adult.metadataProvider')"
+              (pxSelect)="settings.set('adult.metadataProvider', p.id)"></px-chip>
+          </div>
+        </section>
+      </ng-container>
     </div>
-  </section>
-</div>
+  </div>
+</px-rail-layout>
+
+<screen-edges *ngIf="edgesOpen" [value]="settings.value('display.safeArea')"
+  (done)="keepEdges($event)" (cancelled)="closeEdges()"></screen-edges>

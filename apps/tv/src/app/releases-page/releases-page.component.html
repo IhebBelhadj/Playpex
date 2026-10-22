@@ -1,53 +1,47 @@
-<div class="releasesPage">
+<px-rail-layout class="releasesPage" [railWidth]="360">
 
   <!-- Search, source and filters -->
-  <aside class="rail" pxSection="releasesFilters"
+  <aside pxRail class="rail" pxSection="releasesFilters"
     [leaveFor]="{ left: '@menu', right: ['grid:' + listId, '@releasesList'] }">
     <div class="railHead">
       <!-- opened from a title's "Find releases": the way back to it -->
-      <button class="originBack focusable" *ngIf="origin">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        <span class="originText">Back to <span class="originLabel">{{ origin.label }}</span></span>
-      </button>
+      <px-button *ngIf="origin" key="origin" variant="toolbar" size="l" icon="back" align="start" width="100%"
+        [label]="'Back to ' + origin.label" (pxSelect)="navigator.back()"></px-button>
       <div class="seal" *ngIf="!origin && kind == 'adult'" aria-label="Adults only">18+</div>
     </div>
 
-    <button class="searchField focusable" [class.empty]="!state.query">
-      <img src="assets/icons/search.svg" alt="">
-      <span class="searchText">{{ state.query || 'Search releases' }}</span>
-    </button>
-    <button class="clearSearch focusable" *ngIf="state.query">Clear search</button>
+    <px-search-field key="search" size="l" width="100%" [query]="state.query" placeholder="Search releases"
+      (pxSelect)="keyboardOpen = true"></px-search-field>
+    <div class="clearSearch" *ngIf="state.query">
+      <px-button key="clear" variant="toolbar" [quiet]="true" label="Clear search"
+        (pxSelect)="change({ query: '', imdb: null }, SEARCH_FIELD)"></px-button>
+    </div>
 
     <h2 class="groupTitle">Source</h2>
     <div class="chips">
-      <button *ngFor="let p of providers" class="chip focusable"
-        [class.selected]="p.id == state.provider"
-        [attr.data-provider]="p.id">{{ p.name }}</button>
+      <px-chip *ngFor="let p of providers" [key]="'provider:' + p.id" [label]="p.name"
+        [selected]="p.id == state.provider" (pxSelect)="change({ provider: p.id })"></px-chip>
     </div>
 
     <h2 class="groupTitle">Quality</h2>
     <div class="chips">
-      <button *ngFor="let q of qualities" class="chip focusable"
-        [class.selected]="q.id == state.quality"
-        [attr.data-quality]="q.id">{{ q.label }}</button>
+      <px-chip *ngFor="let q of qualities" [key]="'quality:' + q.id" [label]="q.label"
+        [selected]="q.id == state.quality" (pxSelect)="change({ quality: q.id })"></px-chip>
     </div>
 
-    <button class="playableToggle focusable">
-      <span class="toggleText">
-        Only releases that play here
-        <span class="toggleHint">Hides x265, 4K and Dolby / DTS audio</span>
-      </span>
-      <span class="switch" [class.on]="state.playableOnly"><span class="knob"></span></span>
-    </button>
+    <div class="playableToggle">
+      <px-switch key="playable" label="Only releases that play here" hint="Hides x265, 4K and Dolby / DTS audio"
+        [on]="state.playableOnly" (pxSelect)="change({ playableOnly: !state.playableOnly })"></px-switch>
+    </div>
 
-    <button class="layoutSwitch focusable" *ngIf="kind == 'adult'">
-      <img src="assets/icons/grid.svg" alt="">
-      Poster view
-    </button>
+    <!-- back to the poster layout: quiet, at the bottom of the rail -->
+    <div class="layoutSwitch" *ngIf="kind == 'adult'">
+      <px-button key="layout" variant="toolbar" [quiet]="true" icon="grid" label="Poster view" (pxSelect)="switchLayout()"></px-button>
+    </div>
   </aside>
 
   <!-- That source's releases, most seeded first -->
-  <section class="releases" pxSection="releasesList" [leaveFor]="{ left: '@releasesFilters' }">
+  <section pxMain class="releases" pxSection="releasesList" [leaveFor]="{ left: '@releasesFilters' }">
     <header class="listHeader">
       <h1 class="heading">{{ heading }}</h1>
       <p class="count" *ngIf="state.releases.length">
@@ -55,10 +49,8 @@
       </p>
     </header>
 
-    <div class="listNote" *ngIf="note">
-      <p>{{ note }}</p>
-      <button class="retryBtn focusable" *ngIf="loadError">Try again</button>
-    </div>
+    <px-empty class="listNote" *ngIf="note" [text]="note" [action]="loadError ? 'Try again' : ''" actionKey="retry"
+      (act)="load()"></px-empty>
 
     <div class="releasesViewport" *ngIf="state.releases.length"
       [pxGrid]="listId" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
@@ -99,7 +91,7 @@
       <p class="moreNote" *ngIf="loading && state.releases.length">Loading more…</p>
     </div>
   </section>
-</div>
+</px-rail-layout>
 
 <text-keyboard *ngIf="keyboardOpen"
   title="Search releases"

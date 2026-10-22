@@ -4,6 +4,10 @@
 import type { components, paths, operations } from './types/api';
 
 export type { components, paths, operations };
+export type { SettingKey, SettingValues, SettingScope, SettingDefinition, ClientSettingKey } from './settings';
+import type { SettingKey, SettingDefinition } from './settings';
+/** The user settings registry (settings.js) */
+export declare const SETTINGS: { readonly [K in SettingKey]: SettingDefinition };
 /** Shortcut: Schema<'Profile'> = components['schemas']['Profile'] */
 export type Schema<Name extends keyof components['schemas']> = components['schemas'][Name];
 

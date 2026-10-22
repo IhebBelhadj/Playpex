@@ -1,95 +1,52 @@
 <!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
      seasons row, the episodes row -->
 <div class="showOptionsContainer" pxSection="showOptions" [leaveFor]="{ left: '@menu' }">
-  <div class="optionPannel" pxGrid>
-    <button class="option focusable play" pxItem pxItemKey="play" (pxSelect)="play()">
-      <div class="imgContainer">
-        <img src="assets/icons/play.svg" alt="">
-      </div>
-      <span>Play {{selectedSeason ? 'S' + selectedSeason : ''}}</span>
-    </button>
-    <button class="option focusable trailer" pxItem pxItemKey="trailer" (pxSelect)="playTrailer()">
-      <div class="imgContainer">
-        <img src="assets/icons/trailer.svg" alt="">
-      </div>
-      <span>Trailer</span>
-    </button>
+  <px-action-bar>
+    <px-action key="play" icon="play" [label]="'Play' + (selectedSeason ? ' S' + selectedSeason : '')" (pxSelect)="play()"></px-action>
+    <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="playTrailer()"></px-action>
     <!-- every source's releases of this show: episodes and season packs -->
-    <button class="option focusable findReleases" pxItem pxItemKey="releases" (pxSelect)="findReleases()">
-      <div class="imgContainer">
-        <img src="assets/icons/search.svg" alt="">
-      </div>
-      <span>Find releases</span>
-    </button>
+    <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
     <!-- 18+ titles never go in the profile's library -->
-    <button *ngIf="!isAdult" class="option focusable addWatchlist" pxItem pxItemKey="watchlist" [class.on]="inWatchlist" (pxSelect)="toggleWatchlist()">
-      <div class="imgContainer">
-        <img [src]="inWatchlist ? 'assets/icons/tick.svg' : 'assets/icons/bookmark.svg'" alt="">
-      </div>
-      <span>{{ inWatchlist ? 'In your watch list' : 'Add to watch list' }}</span>
-    </button>
-  </div>
+    <px-action *ngIf="!isAdult" key="watchlist" icon="bookmark" onIcon="tick" [on]="inWatchlist"
+      [label]="inWatchlist ? 'In your watch list' : 'Add to watch list'" (pxSelect)="toggleWatchlist()"></px-action>
+    <!-- plugins' actions (ui/slots) -->
+    <px-slot name="core.show.actions" [context]="slotContext"></px-slot>
+  </px-action-bar>
 
-  <div class="seasons" *ngIf="seasons.length" pxStackItem>
-    <h3 class="sectionTitle">Seasons</h3>
-    <div class="rowViewport" rowArrows>
-      <div class="content" pxRow="seasons" align="third">
-        <button class="season focusable"
-          *ngFor="let season of seasons"
-          pxItem [pxItemKey]="season.season_number"
-          [class.selected]="season.season_number === selectedSeason"
-          [attr.data-season]="season.season_number"
-          (pxSelect)="enterEpisodes()">
-          {{season.name}}
-          <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <px-card-row class="seasons" *ngIf="seasons.length" pxStackItem rowKey="seasons" title="Seasons" tone="detail" align="third"
+   >
+    <!-- a season chip, with the season's IMDb mean -->
+    <ng-container *ngFor="let season of seasons; trackBy: bySeason">
+      <button class="season focusable" pxItem [pxItemKey]="season.season_number"
+        [class.selected]="season.season_number === selectedSeason" [attr.data-season]="season.season_number"
+        (pxSelect)="enterEpisodes()">
+        {{season.name}}
+        <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
+      </button>
+    </ng-container>
+  </px-card-row>
 
-  <div class="episodes" pxStackItem>
-    <div class="rowHeader">
+  <px-card-row class="episodes" pxStackItem rowKey="episodes" tone="detail" align="third" variant="still"
+   >
+    <!-- the row's title, with the season's ratings beside it -->
+    <div pxRowHeader class="rowHeader">
       <h3 class="sectionTitle">
         {{seasonName}}
         <span class="count" *ngIf="episodes.length">{{episodes.length}} episodes</span>
-        <img class="loading" *ngIf="loadingEpisodes" src="assets/icons/loading_small.svg" alt="">
+        <px-spinner *ngIf="loadingEpisodes"></px-spinner>
       </h3>
       <season-curve [episodes]="episodes" [imdb]="selectedSeasonImdb" [highlight]="focusedEpisode"></season-curve>
     </div>
-    <div class="rowViewport" rowArrows>
-      <div class="content" pxRow="episodes" align="third">
-        <div class="episode" *ngFor="let ep of episodes; let i = index" [class.upcoming]="ep.upcoming">
-          <button class="displayedElem focusable episodeBtn"
-            pxItem [pxItemKey]="ep.episode_number"
-            [attr.data-index]="i"
-            (pxSelect)="openEpisode(ep)">
-            <div class="imgContainer">
-              <img *ngIf="ep.still_path" [src]="stillBase + ep.still_path" alt="">
-              <span class="badge" *ngIf="ep.upcoming">Upcoming</span>
-              <ng-container *ngIf="progressOf(ep) as progress">
-                <span class="badge watchedBadge" *ngIf="progress.finished">
-                  <img src="assets/icons/tick.svg" alt="">Watched
-                </span>
-                <div class="epProgress" *ngIf="!progress.finished">
-                  <span [style.width.%]="progress.ratio * 100"></span>
-                </div>
-              </ng-container>
-              <div class="resolving" *ngIf="isResolving(ep)">
-                <img src="assets/icons/loading_small.svg" alt="">
-                <span>Finding torrents…</span>
-              </div>
-            </div>
-          </button>
-          <span class="name"><span class="number">{{ep.episode_number}}</span><span class="title">{{ep.name}}</span></span>
-          <span class="meta">
-            <span class="epRating" *ngIf="episodeRating(ep) as rating">
-              <img src="assets/icons/imdbsvg.svg" alt="IMDb">{{rating | number:'1.1-1'}}
-            </span>
-            <span *ngIf="ep.runtime">{{ep.runtime}} min</span>
-            <span *ngIf="ep.air_date">{{ep.air_date | date:'d MMM y'}}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+    <ng-container *ngFor="let ep of episodes; let i = index; trackBy: byEpisode">
+      <px-card variant="still" [key]="ep.episode_number" [image]="ep.still_path ? stillBase + ep.still_path : null"
+        [title]="ep.name" [number]="ep.episode_number" [dim]="ep.upcoming"
+        [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
+        [meta]="episodeMeta(ep)" [badges]="episodeBadges(ep)"
+        [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
+        [busy]="isResolving(ep)" busyLabel="Finding torrents…" [data]="{ index: i, episode: ep.episode_number }"
+        (pxSelect)="openEpisode(ep)"></px-card>
+    </ng-container>
+  </px-card-row>
+
+  <px-slot name="core.show.rows" [context]="slotContext"></px-slot>
 </div>

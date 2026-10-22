@@ -1,23 +1,6 @@
 // Full-screen over the shell, under the splash video (like the profile picker)
 @use 'px' as *;
 
-.displayPage {
-  position: fixed;
-  inset: 0;
-  z-index: var(--px-z-root-page);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--px-surface-bg);
-}
-
-.brand {
-  position: absolute;
-  top: dp(34);
-  left: dp(48);
-  height: dp(34);
-}
-
 .content {
   display: flex;
   flex-direction: column;
@@ -62,4 +45,10 @@
   height: dp(270);
   border-radius: var(--px-radius-s);
   background: var(--px-surface-2);
+}
+
+.edgeActions {
+  display: flex;
+  gap: dp(18);
+  margin-top: dp(10);
 }

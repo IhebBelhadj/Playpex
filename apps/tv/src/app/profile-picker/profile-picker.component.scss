@@ -1,23 +1,6 @@
 // Full-screen over the shell (menu, backdrop, clock), under the splash video
 @use 'px' as *;
 
-.profilesPage {
-  position: fixed;
-  inset: 0;
-  z-index: var(--px-z-root-page);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--px-surface-bg);
-}
-
-.brand {
-  position: absolute;
-  top: dp(34);
-  left: dp(48);
-  height: dp(34);
-}
-
 .profilesContent {
   display: flex;
   flex-direction: column;
@@ -149,29 +132,3 @@
   }
 }
 
-.manageBtn {
-  padding: dp(12) dp(34);
-  border: dp(1) solid var(--px-color-outline);
-  background: transparent;
-  color: var(--px-color-text-dim);
-  font-family: var(--px-font-book);
-  font-size: var(--px-text-lead);
-  letter-spacing: dp(3);
-  text-transform: uppercase;
-  transition: all var(--px-dur-fast) ease;
-
-  &.done {
-    background: var(--px-surface-fill-soft);
-    border-color: var(--px-surface-fill-soft);
-    color: var(--px-color-on-focus);
-    letter-spacing: dp(1);
-    text-transform: none;
-    font-family: var(--px-font-bold);
-  }
-
-  &.focused {
-    background: var(--px-color-focus);
-    border-color: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-  }
-}

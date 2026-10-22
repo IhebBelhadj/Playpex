@@ -1,8 +1,8 @@
 <div class="pageContainer">
   <div class="powerSection" pxSection="powerControls" pxGrid>
-    <button class="powerBtn" pxItem data-instruction="quit" (pxSelect)="send('quit')">Quit</button>
-    <button class="powerBtn" pxItem data-instruction="sleep" (pxSelect)="send('sleep')">Sleep</button>
-    <button class="powerBtn" pxItem data-instruction="shutdown" (pxSelect)="send('shutdown')">Shutdown</button>
-    <button class="powerBtn" pxItem data-instruction="restart" (pxSelect)="send('restart')">Restart</button>
+    <px-button key="quit" variant="plate" [width]="width" label="Quit" (pxSelect)="send('quit')"></px-button>
+    <px-button key="sleep" variant="plate" [width]="width" label="Sleep" (pxSelect)="send('sleep')"></px-button>
+    <px-button key="shutdown" variant="plate" [width]="width" label="Shutdown" (pxSelect)="send('shutdown')"></px-button>
+    <px-button key="restart" variant="plate" [width]="width" label="Restart" (pxSelect)="send('restart')"></px-button>
   </div>
 </div>

@@ -8,6 +8,8 @@ import { PlaybackService } from './playback.service';
 import { PlayChoiceService } from './play-choice.service';
 import { ProfilesService } from './profiles.service';
 import { ReleasesKind, ReleasesService } from './releases.service';
+import { ServerService } from './server.service';
+import { installHelloPlugin } from './plugins-dev/hello/hello-plugin';
 import { TorrentPickerService } from './torrent-picker.service';
 
 // the overlays overlay() opens with fixture data (their screenshots)
@@ -33,6 +35,11 @@ export interface PlaypexDev {
   // the player on a plain video file (no torrent): a movie, or Breaking Bad
   // S01E01 (its Up next is S01E02)
   player(src:string, kind?:'movie' | 'episode'):void;
+  // the server's API base and this client's device id (scenarios read the settings with them)
+  api:string;
+  deviceId:string;
+  // the example plugin's contributions on / off (src/app/plugins-dev/hello)
+  plugin(name:'hello', on:boolean):void;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,6 +56,7 @@ export class DevHook {
     private dispatcher:InputDispatcher,
     private playback:PlaybackService,
     private layerStack:LayerStack,
+    private server:ServerService,
     private zone:NgZone,
   ) { }
 
@@ -72,6 +80,9 @@ export class DevHook {
             season: 1, episode: 1, mediaType: 'tv', tmdbId: 1396, startAt: 0 }
         : { title: 'Heat', year: '1995', runtimeMinutes: 170, magnet: '', devSrc: src, imdbId: 'tt0113277',
             mediaType: 'movie', tmdbId: 949, startAt: 0 })),
+      api: this.server.api,
+      deviceId: this.server.deviceId,
+      plugin: (name, on) => run(() => installHelloPlugin(on)),
     };
     window['playpexDev'] = hook;
   }

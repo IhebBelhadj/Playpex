@@ -8,13 +8,15 @@ var profilesService = require('./profiles'),
   watchlistService = require('./watchlist'),
   playbackService = require('./playback'),
   ratingsService = require('./ratings'),
-  recommendationsService = require('./recommendations');
+  recommendationsService = require('./recommendations'),
+  settingsService = require('./settings');
 
 /**
  * @param {import('../data/contracts').Repositories} repositories
- * @param {{ catalog: object, now?: function(): Date }} options
+ * @param {{ catalog: object, now?: function(): Date, publish?: function(string, object) }} options
  *   catalog: { recommendations({ mediaType, tmdbId }) → Promise<candidate[]> } (lib/tmdb.js)
  *   now: clock, for tests
+ *   publish: events.publish (lib/events.js), for `settings.changed`
  */
 function createServices(repositories, options) {
   options = options || {};
@@ -26,7 +28,8 @@ function createServices(repositories, options) {
     watchlist: watchlistService(repositories, shared),
     playback: playbackService(repositories, shared),
     ratings: ratingsService(repositories, shared),
-    recommendations: recommendationsService(repositories, Object.assign({ catalog: options.catalog }, shared))
+    recommendations: recommendationsService(repositories, Object.assign({ catalog: options.catalog }, shared)),
+    settings: settingsService(repositories, Object.assign({ publish: options.publish }, shared))
   };
 }
 

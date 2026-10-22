@@ -1,0 +1,18 @@
+@use 'px' as *;
+
+:host {
+  display: block;
+  height: var(--px-progress-height, #{dp(3)});
+  background: var(--px-color-progress-track);
+  overflow: hidden;
+}
+
+:host(.line) {
+  background: none;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--px-color-progress);
+}

@@ -47,6 +47,12 @@
  *
  * @typedef {MediaRef & { profileId: string, title: string|null, genreIds: number[],
  *   value: -1|1, ratedAt: Date }} Rating
+ *
+ * @typedef {{ kind: 'profile'|'device', id: string }} SettingsOwner
+ *   A profile id, or the client device id a client sends (X-Playpex-Device)
+ *
+ * @typedef {{ key: string, value: *, updatedAt: Date }} SettingEntry
+ *   value is any JSON value (never null: a missing row is the default)
  */
 
 /**
@@ -84,12 +90,21 @@
  * @property {function(string, {value?: -1|1, limit?: number}=): Promise<Rating[]>} list    newest first
  * @property {function(string, MediaRef): Promise<boolean>} remove
  *
+ * @typedef {object} SettingsRepository
+ * @property {function(SettingsOwner): Promise<SettingEntry[]>} list                       by key
+ * @property {function(SettingsOwner, string): Promise<SettingEntry|null>} get
+ * @property {function(SettingsOwner, string, *, Date): Promise<void>} set                   upsert; null value deletes the row
+ * @property {function(SettingsOwner, Object<string, *>, Date): Promise<void>} setMany       same, all keys at once (atomic)
+ * @property {function(SettingsOwner, string): Promise<boolean>} remove
+ * @property {function(SettingsOwner): Promise<number>} removeAll                          rows deleted
+ *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles
  * @property {WatchlistRepository} watchlist
  * @property {ProgressRepository} progress
  * @property {HistoryRepository} history
  * @property {RatingsRepository} ratings
+ * @property {SettingsRepository} settings
  */
 
 module.exports = {};

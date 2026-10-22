@@ -1,0 +1,118 @@
+@use 'px' as *;
+
+// the button is the container's item
+:host {
+  display: block;
+}
+
+.px-slider {
+  display: block;
+  width: 100%;
+  padding: dp(12) dp(16) dp(16);
+  border: none;
+  border-radius: var(--px-radius-m);
+  background: none;
+  color: var(--px-color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--px-dur-fast);
+
+  &:disabled {
+    opacity: .4;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: dp(14);
+
+  .label {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-label);
+    color: var(--px-color-text-soft);
+  }
+
+  .value {
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    font-variant-numeric: tabular-nums;
+    color: var(--px-color-text-muted);
+  }
+}
+
+.track {
+  position: relative;
+  display: block;
+  height: dp(6);
+  border-radius: var(--px-radius-pill);
+  background: var(--px-timeline-track);
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--px-radius-pill);
+  background: var(--px-color-text-secondary);
+  transition: left var(--px-dur-fast), width var(--px-dur-fast);
+}
+
+.originMark {
+  position: absolute;
+  top: dp(-5);
+  bottom: dp(-5);
+  width: dp(2);
+  margin-left: dp(-1);
+  background: var(--px-color-text-dim);
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: dp(16);
+  height: dp(16);
+  border-radius: 50%;
+  background: var(--px-color-text-secondary);
+  transform: translate(-50%, -50%);
+  transition: left var(--px-dur-fast), transform var(--px-dur-fast);
+}
+
+.stops {
+  position: relative;
+  display: block;
+  height: dp(20);
+  margin-top: dp(10);
+
+  span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-small);
+    color: var(--px-color-text-dim);
+
+    &:first-child { transform: none; }
+    &:last-child { transform: translateX(-100%); }
+
+    &.current {
+      color: var(--px-color-text);
+    }
+  }
+}
+
+// focused: a soft plate, the thumb white and larger (Left / Right change it)
+.px-slider.focused {
+  background: var(--px-surface-1);
+
+  .label { color: var(--px-color-text); }
+  .value { color: var(--px-color-text); }
+  .fill { background: var(--px-color-focus); }
+
+  .thumb {
+    background: var(--px-color-focus);
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: var(--px-shadow-capsule);
+  }
+}

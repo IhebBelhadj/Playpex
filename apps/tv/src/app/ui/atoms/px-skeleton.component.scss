@@ -1,0 +1,33 @@
+@use 'px' as *;
+
+:host {
+  display: block;
+  flex: none;
+  border-radius: dp(5);
+  background: var(--px-surface-1);
+  opacity: 0;
+  transition: opacity var(--px-dur-slow);
+  background-image: var(--px-gradient-shimmer);
+  background-size: 300% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+:host(.shown) {
+  opacity: 1;
+}
+
+:host(.v-poster) { width: dp(180); height: dp(270); }
+:host(.v-compact) { width: dp(150); height: dp(230); }
+:host(.v-still) { width: dp(300); height: dp(169); }
+:host(.v-portrait) { width: dp(130); height: dp(130); border-radius: 50%; }
+:host(.v-line) { width: 100%; height: dp(18); border-radius: dp(4); }
+:host(.v-block) { width: 100%; height: dp(120); }
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host { animation: none; }
+}

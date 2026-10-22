@@ -1,0 +1,14 @@
+@use 'px' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: var(--px-screen-h);
+  min-width: 0;
+  box-sizing: border-box;
+  padding-left: var(--px-page-gutter);
+  overflow-x: hidden;
+  // a row is scrolled fully into view, 40 from the edges
+  scroll-padding-block: dp(40);
+}

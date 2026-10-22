@@ -66,7 +66,7 @@ function install(session, current, clientHeader) {
       }
     });
     headers['Access-Control-Allow-Origin'] = ['*'];
-    headers['Access-Control-Allow-Methods'] = ['OPTIONS, HEAD, GET, POST, PUT, DELETE'];
+    headers['Access-Control-Allow-Methods'] = ['OPTIONS, HEAD, GET, POST, PUT, PATCH, DELETE'];
     headers['Access-Control-Allow-Headers'] = [ALLOW_HEADERS];
     headers['Access-Control-Expose-Headers'] = ['Content-Length, Content-Range, Accept-Ranges, WWW-Authenticate'];
     const result = { responseHeaders: headers };

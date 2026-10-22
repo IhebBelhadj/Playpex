@@ -434,16 +434,21 @@ function renameDevice(id, name) {
 }
 
 // Deletes the device's session (and with it its row): its token stops working
-// at once. true if there was one.
+// at once. Its settings (device_settings, keyed by the id it sent, else its
+// own id: lib/routes/settings.js) go too. true if there was one.
 function revokeDevice(id) {
   return ready().then(function (s) {
-    return s.db.select({ sessionId: schema.devices.sessionId }).from(schema.devices)
+    return s.db.select({ sessionId: schema.devices.sessionId, clientDeviceId: schema.devices.clientDeviceId })
+      .from(schema.devices)
       .where(orm.eq(schema.devices.id, id)).limit(1)
       .then(function (rows) {
         if (!rows.length) {
           return false;
         }
-        return s.db.delete(schema.authSession).where(orm.eq(schema.authSession.id, rows[0].sessionId))
+        return s.db.batch([
+          s.db.delete(schema.authSession).where(orm.eq(schema.authSession.id, rows[0].sessionId)),
+          s.db.delete(schema.deviceSettings).where(orm.eq(schema.deviceSettings.deviceId, rows[0].clientDeviceId || id))
+        ])
           .then(function () {
             log.info('device revoked: ' + id);
             events.publish('device.revoked', { id: id }, { admin: true });
