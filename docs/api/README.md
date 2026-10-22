@@ -12,7 +12,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 |---|---|
 | [Finding a server](discovery.md) | mDNS, the UDP fallback, manual entry, recognising a server by its `id` |
 | [Pairing and auth](auth.md) | the RFC 8628 device flow, tokens, clients on the server machine, re-pairing |
-| [Playing a torrent](playback.md) | catalog sources, adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases |
+| [Playing a torrent](playback.md) | catalog sources, adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
 | [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |
@@ -71,11 +71,12 @@ The Playpex TV app (`apps/tv`, Angular + Electron) is the reference client; its 
 
 ## Status of the protocol
 
-API version **1**. What exists today and what is planned (`docs/server-separation-plan.md`):
+API version **1**. What exists today and what is planned (`docs/server-separation-plan.md`, `docs/media-server-plan.md`):
 
 | Part | Status |
 |---|---|
 | Discovery, pairing, tokens, events, leases, streaming, audio transcoding, subtitles, profiles, library | **Done**, described here |
+| Downloads (`/downloads`: the server keeps torrents, pauses them when players leave, downloads without a player) | **Done** (`docs/media-server-plan.md` step 1); per-device permission to add downloads is planned (decision D: today every client may) |
 | Per-device playback decision (`GET …/files/{path}/playback`, from the `capabilities` a device declares) | **Planned** (plan §6.5, "3b"). Until then the client decides from `/probe` ([playback](playback.md#choosing-direct-play-or-the-transcoded-stream)) |
 | Catalog through the server (`/api/v1/catalog/*`, TMDB key on the server) | **Planned** (plan §12 G). Until then clients call TMDB with their own key |
 | HTTPS with a pinned certificate on the LAN | **Proposed** (plan §12 K). Today the LAN traffic is plain HTTP ([security notes](errors-and-versions.md#security-notes)) |
@@ -93,6 +94,6 @@ The TV app in this repository (`apps/tv`, an Electron shell around an Angular UI
 | Store tokens: `client.json` in the app's own data folder, tokens encrypted with Electron `safeStorage`; without a keyring (Linux) stored as plain text and the picker says so | `apps/tv/electron/clientConfig.js` | [auth](auth.md#storing-tokens) |
 | Send the token: the UI never sees it. The shell's network layer adds `Authorization`, `X-Playpex-Client: playpex-tv/<version>; api=1` and `X-Playpex-Device` to every request to the current server, `<video>` and `<track>` included, so media URLs carry no `access_token` | `apps/tv/electron/auth.js` | [auth](auth.md#making-requests) |
 | Errors: `401 PAIRING_REQUIRED` → forget the token, back to the picker ("This device was removed from …"); `426` → "Update Playpex TV" / "Update the server" screens; 3 network failures in a row → "Lost connection" with Retry (rediscovers by `id`) / Choose server | `apps/tv/src/app/server-errors.interceptor.ts`, `connection.service.ts` | [errors and versions](errors-and-versions.md) |
-| Leases: `?device=<deviceId>` on media URLs, keepalive every 60 s while the player is open, `DELETE …?device=` on leaving | `apps/tv/src/app/player-page/`, `torrent.service.ts` | [playback](playback.md) |
+| Leases: `?device=<deviceId>` on media URLs, keepalive every 60 s while the player is open (with the TMDB `media`), `DELETE …?device=` on leaving | `apps/tv/src/app/player-page/`, `torrent.service.ts` | [playback](playback.md) |
 
 On the server machine it connects over loopback without pairing, and starts an installed but stopped Playpex Media Server (whose install location the desktop app records in `<config dir>/desktop-app.json`, `@playpex/protocol/local`).

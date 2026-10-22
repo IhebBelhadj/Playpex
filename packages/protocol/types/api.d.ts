@@ -419,6 +419,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/engines/{id}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download and install an optional torrent engine (its pinned release, SHA-256 checked) */
+        post: operations["installEngine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/engines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an installed optional engine (409 while it runs) */
+        delete: operations["uninstallEngine"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/logs": {
         parameters: {
             query?: never;
@@ -479,7 +517,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Delete every entry of the download directory that no running torrent uses */
+        /** Delete every entry of the download directory that no running torrent uses (their downloads are forgotten) */
         post: operations["clearStorage"];
         delete?: never;
         options?: never;
@@ -535,7 +573,8 @@ export interface paths {
          * WebSocket of server events (an `Upgrade` to websocket)
          * @description Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
          *     `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
-         *     `session.ended`. Admin session only: `log`, `device.paired`, `device.revoked`,
+         *     `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
+         *     at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
          *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. `?topics=session,torrent.stats` keeps
          *     topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
          *     from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
@@ -556,9 +595,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** The torrents running now (streams and downloads); GET /downloads lists every one the server keeps */
         get: operations["listTorrents"];
         put?: never;
-        /** Add a torrent (idempotent per info hash) and hold it for the calling device. Its metadata arrives later; poll GET /torrents/{infoHash}. */
+        /**
+         * Add a torrent to play (idempotent per info hash) and hold it for the calling device. Its metadata arrives later; poll GET /torrents/{infoHash}.
+         * @description The torrent becomes a download with intent `stream`. A torrent the server already keeps is
+         *     reused: a paused one starts again, a completed one plays from disk. Past `streaming.maxTorrents`
+         *     running torrents, room is made (streams nobody holds stop, downloads nobody watches go back to
+         *     the queue), else 503 `BUSY`. `link`: a magnet, a bare info hash or an http(s) .torrent URL.
+         */
         post: operations["addTorrent"];
         delete?: never;
         options?: never;
@@ -575,7 +621,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a torrent from an uploaded .torrent file */
+        /** Add a torrent to play from an uploaded .torrent file (like POST /torrents) */
         post: operations["uploadTorrent"];
         delete?: never;
         options?: never;
@@ -599,14 +645,15 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** The torrent; only `infoHash` until its metadata has arrived */
+        /** A torrent the server keeps (running or not); only `infoHash` until its metadata has arrived */
         get: operations["getTorrent"];
         put?: never;
         post?: never;
         /**
-         * Release the calling device's lease
-         * @description The torrent stops 30 s after its last lease is released (another device may still be
-         *     watching it, or come back), and its data is deleted unless the server keeps downloads.
+         * Release the calling device's lease (never deletes anything)
+         * @description 30 s after its last lease is released (another device may still be watching it, or come
+         *     back), a `stream` download pauses (no traffic, data kept; `completed` when its files are done)
+         *     and a `download` keeps going. Only DELETE /downloads/{infoHash} deletes data.
          */
         delete: operations["deleteTorrent"];
         options?: never;
@@ -649,7 +696,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Swarm statistics; safe before the metadata has arrived */
+        /** Swarm statistics; safe before the metadata has arrived (zeros while the torrent is stopped) */
         get: operations["getTorrentStats"];
         put?: never;
         post?: never;
@@ -731,6 +778,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Stop the torrent's traffic (state `paused`, kept across restarts; data kept) */
         post: operations["pauseTorrent"];
         delete?: never;
         options?: never;
@@ -749,6 +797,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Run a paused torrent again (its intent unchanged) */
         post: operations["resumeTorrent"];
         delete?: never;
         options?: never;
@@ -775,9 +824,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Stream a file (HTTP byte ranges). Only this file of the torrent is downloaded from then on.
+         * Stream a file (HTTP byte ranges). Only this file of a `stream` torrent is downloaded from then on.
          * @description Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
-         *     fetched early, where MKV keeps its index. Media elements can use the URL directly.
+         *     fetched early, where MKV keeps its index. Media elements can use the URL directly. A stopped
+         *     torrent starts again (503 `BUSY` past the limit), unless the file is finished on disk: then it
+         *     is read from disk.
          */
         get: operations["streamFile"];
         put?: never;
@@ -868,6 +919,109 @@ export interface paths {
          */
         get: operations["transcodeFile"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every torrent the server keeps, running or not (oldest first) */
+        get: operations["listDownloads"];
+        put?: never;
+        /**
+         * Add a torrent to download to the end without a client (intent `download`)
+         * @description Queued past `downloads.maxActive` running downloads. A torrent the server already keeps becomes a
+         *     download (a paused one is queued again). JSON `{ link, files? }`, or a .torrent as multipart `file`.
+         */
+        post: operations["addDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** A download with its files (`files` null until the metadata has arrived) */
+        get: operations["getDownload"];
+        put?: never;
+        post?: never;
+        /**
+         * Forget a download, keeping or deleting its data (the only way data is deleted). Admin only.
+         * @description Its sessions end (open streams are closed).
+         */
+        delete: operations["removeDownload"];
+        options?: never;
+        head?: never;
+        /** Its rules */
+        patch: operations["updateDownload"];
+        trace?: never;
+    };
+    "/downloads/{infoHash}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download it to the end without a client (intent `download`; queued when downloads.maxActive run) */
+        post: operations["startDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop its traffic (state `paused` until started again; data kept) */
+        post: operations["pauseDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Which files to download */
+        put: operations["selectDownloadFiles"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1618,11 +1772,14 @@ export interface components {
             name?: string;
             /** @description Bytes */
             length?: number;
+            state?: components["schemas"]["DownloadState"];
+            /** @description Running and still downloading */
             interested?: boolean;
+            /** @description Files can be streamed now (running and checked, or completed on disk) */
             ready?: boolean;
             files?: components["schemas"]["TorrentFile"][];
-            /** @description Downloaded piece runs */
-            progress?: number[][];
+            /** @description Piece runs in percent, alternating downloaded / missing, starting with downloaded */
+            progress?: number[];
         };
         /** @description What the player plays, all optional (shown in the server's Activity) */
         KeepaliveRequest: {
@@ -1635,6 +1792,13 @@ export interface components {
             profileId?: string;
             /** @description Path of the file in the torrent */
             file?: string;
+            /** @description Which title it is (TMDB): kept with the download, so the server knows what it holds */
+            media?: {
+                mediaType: components["schemas"]["MediaType"];
+                tmdbId: number;
+                season?: number;
+                episode?: number;
+            };
         };
         Session: {
             id: string;
@@ -1682,6 +1846,84 @@ export interface components {
                 length: number | null;
             } | null;
         };
+        /**
+         * @description Running: `downloading`, `seeding`, `checking` (the engine verifies data already on disk). Stopped
+         *     (no traffic, data kept): `queued` (waits for room), `paused`, `completed` (every selected file is
+         *     done), `error`.
+         * @enum {string}
+         */
+        DownloadState: "queued" | "downloading" | "seeding" | "checking" | "paused" | "completed" | "error";
+        /** @description A torrent the server keeps (docs/media-server-plan.md §4) */
+        Download: {
+            infoHash: string;
+            /** @description null until the metadata has arrived */
+            name: string | null;
+            state: components["schemas"]["DownloadState"];
+            /**
+             * @description `stream`: a client plays it, it pauses when the last one leaves; `download`: it runs to the end without clients
+             * @enum {string}
+             */
+            intent: "stream" | "download";
+            error: string | null;
+            /** @description Of the selected files; null until the metadata has arrived */
+            sizeBytes: number | null;
+            doneBytes: number;
+            /** @description 0 to 1 */
+            progress: number | null;
+            /** @description Since it was added */
+            uploadedBytes: number;
+            /** @description uploadedBytes / sizeBytes */
+            ratio: number | null;
+            /** @description Bytes per second */
+            downloadSpeed: number;
+            uploadSpeed: number;
+            peers: number;
+            seeds: number;
+            /** @description Seconds */
+            eta: number | null;
+            /** @description Progress (0 to 1) of the check of the data on disk */
+            checking: number | null;
+            fileCount: number | null;
+            /** @description null = every file */
+            selectedFiles: string[] | null;
+            /** @description The title a player said it is (keepalive `media`) */
+            title: {
+                mediaType?: components["schemas"]["MediaType"];
+                tmdbId?: number;
+                season?: number;
+                episode?: number;
+                title?: string;
+            } | null;
+            /** @description A device id, or `admin` */
+            addedBy: string | null;
+            profileId: string | null;
+            removeWhenWatched: boolean;
+            /** Format: date-time */
+            addedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            lastActiveAt: string | null;
+        };
+        DownloadDetail: components["schemas"]["Download"] & {
+            files: {
+                name: string;
+                path: string;
+                size: number;
+                offset: number;
+                selected: boolean;
+            }[] | null;
+        };
+        AddDownloadRequest: {
+            /** @description Magnet link, a bare 40-character info hash, or an http(s) .torrent URL */
+            link: string;
+            /** @description Paths to download (default: every file) */
+            files?: string[];
+        };
+        /** @description `data` of `download.removed` */
+        DownloadRemovedEvent: {
+            infoHash?: string;
+        };
         TorrentFile: {
             name: string;
             path: string;
@@ -1710,7 +1952,9 @@ export interface components {
             /** @description Seconds; null until known */
             eta: number | null;
             queue?: number;
+            /** @description Not running (paused, queued, completed or error) */
             paused?: boolean;
+            state?: components["schemas"]["DownloadState"];
         };
         ProbeResult: {
             /** @description Seconds */
@@ -2246,9 +2490,23 @@ export interface components {
                 uploaded: number;
             };
             activity: {
+                /** @description Running torrents */
                 torrents: number;
                 sessions: number;
                 eventClients: number;
+            };
+            /** @description The torrent engine and the downloads */
+            downloads: {
+                /** @description The engine running (null: none could start) */
+                engine: string | null;
+                /** @description downloads.engine; differs from engine when it failed and the default runs */
+                requestedEngine: string | null;
+                engineError: string | null;
+                total: number;
+                active: number;
+                queued: number;
+                /** @description downloads.paused ("Pause all downloads") */
+                paused: boolean;
             };
             disks: {
                 /** @enum {string} */
@@ -2324,12 +2582,30 @@ export interface components {
             storage: {
                 /** @description Empty = the default (<cache>/torrent_data) */
                 downloadDir: string;
-                deleteAfterWatching: boolean;
             };
             streaming: {
+                /** @description Running torrents at once (streams and downloads) */
                 maxTorrents: number;
                 maxTranscodes: number;
                 idleTimeoutMinutes: number;
+            };
+            downloads: {
+                /** @description The torrent engine (`SettingsView.engines`: torrent-stream, rqbit); applied after a restart */
+                engine: string;
+                /** @description BitTorrent port (taken → a free one); applied after a restart */
+                peerPort: number;
+                /** @description Ask the router to forward peerPort (UPnP), where the engine can (rqbit); applied after a restart */
+                portForwarding: boolean;
+                /** @description Downloads (not streams) running at once; the others are queued */
+                maxActive: number;
+                /** @description A finished download seeds until this ratio (0 = no ratio limit) */
+                seedRatio: number;
+                /** @description …or this long (0 = no time limit); both 0 = no seeding */
+                seedMinutes: number;
+                /** @description Peers uploaded to at once per torrent; 0 = never upload */
+                uploadSlots: number;
+                /** @description "Pause all downloads": downloads wait, streams still play */
+                paused: boolean;
             };
             providers: {
                 tmdbApiKey: string;
@@ -2361,6 +2637,10 @@ export interface components {
             /** @description Path of settings.json */
             file: string;
             logLevels: string[];
+            /** @description The torrent engines `downloads.engine` can name, with what each is good at */
+            engines: components["schemas"]["Engine"][];
+            /** @description The engine running now (it differs from downloads.engine until a restart, or when that one failed to start) */
+            engine: string | null;
         };
         SettingsUpdate: {
             settings: components["schemas"]["SettingsView"];
@@ -2370,6 +2650,31 @@ export interface components {
             restartRequired: string[];
             /** @description Saved, but an environment variable still wins */
             lockedByEnv: string[];
+        };
+        /** @description A torrent engine. Built in (torrent-stream), or an optional program the admin installs (never bundled) */
+        Engine: {
+            id: string;
+            name: string;
+            /** @description What it is good and bad at */
+            summary: string;
+            /** @description It can run on this server now */
+            available: boolean;
+            /** @description Why not, when unavailable */
+            detail: string | null;
+            /** @description An optional download with a build for this platform */
+            installable: boolean;
+            /**
+             * @description builtin; installed (by the server); env / path (found elsewhere); null: not installed
+             * @enum {string|null}
+             */
+            installed: "builtin" | "installed" | "env" | "path" | null;
+            /** @description Installed version */
+            version: string | null;
+            /** @description The version this server installs */
+            latest: string | null;
+        };
+        EngineList: {
+            engines: components["schemas"]["Engine"][];
         };
         PortCheck: {
             port: number;
@@ -2399,7 +2704,6 @@ export interface components {
                 total: number;
             } | null;
             totalBytes: number;
-            deleteAfterWatching: boolean;
             items: {
                 name: string;
                 /** @description On disk (files are sparse until downloaded) */
@@ -2409,6 +2713,12 @@ export interface components {
                 /** @description The running torrent using it (then it cannot be deleted) */
                 infoHash: string | null;
                 torrentName: string | null;
+                /** @description The download it belongs to; deleting the entry of a stopped one forgets that download */
+                download?: {
+                    infoHash: string;
+                    name: string;
+                    active: boolean;
+                } | null;
             }[];
         };
         DirCheck: {
@@ -2450,6 +2760,7 @@ export interface components {
         /** @description `data` of `server.status` */
         ServerStatusEvent: {
             uptimeS?: number;
+            /** @description Running torrents */
             torrents?: number;
             sessions?: number;
             eventClients?: number;
@@ -2472,7 +2783,7 @@ export interface components {
             infoHash?: string;
         };
         Event: {
-            /** @description server.status, torrent.stats, session.*, log, device.*, pairing.*, host.updated */
+            /** @description server.status, torrent.stats, session.*, download.*, settings.changed, log, device.*, pairing.*, host.updated */
             topic: string;
             /** Format: date-time */
             time: string;
@@ -3306,6 +3617,59 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
         };
     };
+    installEngine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The engines after the install */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngineList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            501: components["responses"]["Error"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    uninstallEngine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The engines after the removal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngineList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
     getLogs: {
         parameters: {
             query?: {
@@ -3487,7 +3851,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Torrents the server holds */
+            /** @description Running torrents */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3737,6 +4101,7 @@ export interface operations {
         responses: {
             200: components["responses"]["Ok"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["Busy"];
         };
     };
     streamFile: {
@@ -3764,6 +4129,7 @@ export interface operations {
             200: components["responses"]["Media"];
             206: components["responses"]["Media"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["Busy"];
         };
     };
     headFile: {
@@ -3914,6 +4280,205 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    listDownloads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Downloads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"][];
+                };
+            };
+        };
+    };
+    addDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDownloadRequest"];
+                "multipart/form-data": {
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            503: components["responses"]["Busy"];
+        };
+    };
+    getDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    removeDownload: {
+        parameters: {
+            query: {
+                data: "keep" | "delete";
+            };
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Delete it and its data once a player watched it to the end (90 %) */
+                    removeWhenWatched: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    pauseDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    selectDownloadFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Paths inside the torrent; null = every file */
+                    files: string[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
         };
     };
     listSessions: {

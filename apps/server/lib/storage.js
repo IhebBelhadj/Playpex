@@ -3,19 +3,20 @@
 // The dashboard's Storage page (docs/server-separation-plan.md §7): what the
 // download directory holds, and cleaning it up.
 //
-// torrent-stream writes every file at <downloadDir>/<file path>, and a
-// torrent's file paths start with its name (multi-file: a folder, single
-// file: the file), so each top-level entry of the directory is one torrent's
-// data. An entry a running torrent writes to is "active" and can't be deleted.
+// Engines write every file at <downloadDir>/<file path>, and a torrent's file
+// paths start with its name (multi-file: a folder, single file: the file), so
+// each top-level entry of the directory is one torrent's data. An entry a
+// running torrent writes to is "active" and can't be deleted; deleting the
+// entry of a stopped download also forgets that download (lib/torrents).
 //
-//   storage.list()        → Promise<{ dir, disk, totalBytes, items: [{ name, bytes, modifiedAt, infoHash, torrentName }] }>
+//   storage.list()        → Promise<{ dir, disk, totalBytes, items: [{ name, bytes, modifiedAt, infoHash, torrentName, download }] }>
 //   storage.remove(name)  → Promise<{ ok }>        (NOT_FOUND / CONFLICT when active)
-//   storage.clear()       → Promise<{ removed, freedBytes }>   every entry no torrent uses
+//   storage.clear()       → Promise<{ removed, freedBytes }>   every entry no running torrent uses
 //   storage.checkDir(dir) → Promise<{ path, exists, writable, free, total }>  for the download dir setting
 
 var fs = require('fs'),
   path = require('path'),
-  store = require('./store'),
+  torrents = require('./torrents/client'),
   system = require('./system'),
   log = require('./logger').child('torrent');
 
@@ -44,19 +45,13 @@ function sizeOf(file) {
   });
 }
 
-// top-level entry name → { infoHash, torrentName } of the running torrents
-function activeEntries() {
-  return store.list().reduce(function (all, torrent) {
-    (torrent.files || []).forEach(function (f) {
-      var top = f.path.split(/[\\/]/)[0];
-      all[top] = { infoHash: torrent.infoHash, torrentName: torrent.torrent ? torrent.torrent.name : null };
-    });
-    return all;
-  }, {});
+// A stopped download's entry is gone: forget the download too
+function forget(owner) {
+  return owner ? torrents.remove(owner.infoHash, { deleteData: false }).catch(function () {}) : Promise.resolve();
 }
 
 function list() {
-  var dir = system.downloadDir(), active = activeEntries();
+  var dir = system.downloadDir(), owners = torrents.owners(dir);
   return fs.promises.readdir(dir).catch(function (err) {
     if (err.code === 'ENOENT') {
       return [];
@@ -65,13 +60,14 @@ function list() {
   }).then(function (names) {
     return Promise.all(names.map(function (name) {
       return sizeOf(path.join(dir, name)).then(function (s) {
-        var a = active[name] || null;
+        var o = owners[name] || null;
         return {
           name: name,
           bytes: s.bytes,
           modifiedAt: s.mtime ? new Date(s.mtime).toISOString() : null,
-          infoHash: a ? a.infoHash : null,
-          torrentName: a ? a.torrentName : null
+          infoHash: o && o.active ? o.infoHash : null,
+          torrentName: o && o.active ? o.name : null,
+          download: o ? { infoHash: o.infoHash, name: o.name, active: o.active } : null
         };
       });
     }));
@@ -98,9 +94,9 @@ function entryPath(name) {
 
 function remove(name) {
   return Promise.resolve().then(function () {
-    var file = entryPath(name);
-    if (activeEntries()[name]) {
-      throw failure('CONFLICT', 'A running torrent uses it; stop its sessions first');
+    var file = entryPath(name), owner = torrents.owners(system.downloadDir())[name];
+    if (owner && owner.active) {
+      throw failure('CONFLICT', 'A running torrent uses it; pause it or stop its sessions first');
     }
     return fs.promises.lstat(file).catch(function () {
       throw failure('NOT_FOUND', 'No such entry: ' + name);
@@ -108,6 +104,8 @@ function remove(name) {
       return fs.promises.rm(file, { recursive: true, force: true });
     }).then(function () {
       log.info('deleted from the download dir: ' + name);
+      return forget(owner);
+    }).then(function () {
       return { ok: true };
     });
   });
@@ -118,6 +116,7 @@ function clear() {
     var idle = result.items.filter(function (i) { return !i.infoHash; });
     return Promise.all(idle.map(function (i) {
       return fs.promises.rm(path.join(result.dir, i.name), { recursive: true, force: true })
+        .then(function () { return forget(i.download); })
         .then(function () { return i.bytes; }, function (err) {
           log.warn('cannot delete ' + i.name + ': ' + err.message);
           return null;

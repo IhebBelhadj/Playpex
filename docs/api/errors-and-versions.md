@@ -55,14 +55,15 @@ Rate limits answer `429`: profile PINs with `{error, code: 'TOO_MANY_ATTEMPTS'}`
 
 | Limit | Default | Answer past it |
 |---|---|---|
-| torrents running at once | 4 | `503 BUSY` on `POST /torrents` |
+| torrents running at once (streams and downloads) | 4 | a download nobody watches goes back to the queue to make room, else `503 BUSY` on `POST /torrents` / a stream request |
+| downloads running at once | 3 | the others wait (`queued`), no error |
 | transcodes at once | 2 | `503 BUSY` on `/transcode` (a new one from the same device and file replaces the previous) |
 | idle lease | 10 min without a request or keepalive | the lease is dropped |
-| grace after the last lease | 30 s | the torrent stops; its data is deleted unless the server keeps downloads |
+| grace after the last lease | 30 s | the torrent pauses (its data stays) |
 | pairing request | 10 min | `expired_token` |
 | profiles | 8 | `409 CONFLICT` |
 
-The admin can change the first three (Settings › Streaming).
+The admin can change the first four (Settings › Streaming and Downloads).
 
 ## Security notes
 

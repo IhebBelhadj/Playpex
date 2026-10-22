@@ -2,7 +2,8 @@
 
 // What the dashboard's Overview shows (docs/server-separation-plan.md §7):
 // the running server, its process (CPU, memory), the machine, BitTorrent
-// traffic, free disk space and ffmpeg / provider health.
+// traffic, the torrent engine and downloads, free disk space and ffmpeg /
+// provider health.
 //
 //   system.start(info) / system.stop()   from index.js (info = start()'s answer)
 //   system.overview() → Promise<Overview> (GET /admin/overview)
@@ -17,7 +18,7 @@ var fs = require('fs'),
   path = require('path'),
   settings = require('./settings'),
   paths = require('./paths'),
-  store = require('./store'),
+  torrents = require('./torrents/client'),
   sessions = require('./sessions'),
   events = require('./events'),
   ffmpeg = require('./ffmpeg'),
@@ -40,18 +41,14 @@ function sample() {
   cpu.last = usage;
   cpu.at = now;
 
-  var seen = {};
-  store.list().forEach(function (torrent) {
-    var hash = torrent.infoHash, swarm = torrent.swarm,
-      before = traffic.seen[hash] || { down: 0, up: 0 };
-    if (!swarm) {
-      return;
-    }
-    traffic.downloaded += Math.max(0, swarm.downloaded - before.down);
-    traffic.uploaded += Math.max(0, swarm.uploaded - before.up);
-    seen[hash] = { down: swarm.downloaded, up: swarm.uploaded };
+  // the engine's counters per torrent restart at 0 when a torrent starts again
+  var counters = torrents.totals().counters;
+  Object.keys(counters).forEach(function (hash) {
+    var now = counters[hash], before = traffic.seen[hash] || { down: 0, up: 0 };
+    traffic.downloaded += now.down >= before.down ? now.down - before.down : now.down;
+    traffic.uploaded += now.up >= before.up ? now.up - before.up : now.up;
   });
-  traffic.seen = seen;
+  traffic.seen = counters;
 }
 
 function start(runningInfo) {
@@ -87,20 +84,10 @@ function downloadDir() {
   return settings.get('storage.downloadDir') || paths.downloads;
 }
 
-function speeds() {
-  return store.list().reduce(function (sum, torrent) {
-    if (torrent.swarm) {
-      sum.downloadSpeed += torrent.swarm.downloadSpeed();
-      sum.uploadSpeed += torrent.swarm.uploadSpeed();
-      sum.peers += torrent.swarm.wires.length;
-    }
-    return sum;
-  }, { downloadSpeed: 0, uploadSpeed: 0, peers: 0 });
-}
-
 function overview() {
   var mem = process.memoryUsage(),
-    net = speeds(),
+    net = torrents.totals(),
+    downloads = torrents.info(),
     dirs = [
       { id: 'downloads', path: downloadDir() },
       { id: 'config', path: paths.config },
@@ -155,9 +142,18 @@ function overview() {
         uploaded: traffic.uploaded
       },
       activity: {
-        torrents: store.list().length,
+        torrents: downloads.active,
         sessions: sessions.count(),
         eventClients: events.clientCount()
+      },
+      downloads: {
+        engine: downloads.engine,
+        requestedEngine: downloads.requestedEngine,
+        engineError: downloads.engineError,
+        total: downloads.total,
+        active: downloads.active,
+        queued: downloads.queued,
+        paused: downloads.paused
       },
       disks: results[1],
       ffmpeg: {

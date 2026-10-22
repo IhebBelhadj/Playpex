@@ -6,9 +6,7 @@ import { Confirm, Empty, Loading, Mono, PageHeader, QueryError, Stat } from '@/c
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
-import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api, errorMessage, unwrap } from '@/lib/api'
 import { ago, bytes } from '@/lib/format'
@@ -40,16 +38,6 @@ export function StoragePage() {
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
-  const keep = useMutation({
-    mutationFn: (deleteAfterWatching: boolean) =>
-      unwrap(api.PUT('/admin/settings', { body: { storage: { deleteAfterWatching } } })),
-    onSuccess: () => {
-      refresh()
-      client.invalidateQueries({ queryKey: ['settings'] })
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  })
-
   if (storage.isPending) return <Loading />
   if (storage.error) return <QueryError error={storage.error} />
   const s = storage.data
@@ -65,7 +53,7 @@ export function StoragePage() {
         actions={
           <Confirm
             title="Delete everything not in use?"
-            description={`${idle.length} entries (${bytes(idleBytes)}) that no running torrent uses are deleted from the download directory. Resuming them later downloads them again.`}
+            description={`${idle.length} entries (${bytes(idleBytes)}) that no running torrent uses are deleted from the download directory, and the downloads they belong to are forgotten. Playing them later downloads them again.`}
             action="Delete"
             onConfirm={() => clear.mutate()}
             trigger={
@@ -90,17 +78,6 @@ export function StoragePage() {
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardContent className="flex items-start justify-between gap-4">
-          <div>
-            <Label htmlFor="delete-after">Delete after watching</Label>
-            <p className="mt-1 text-sm text-muted-foreground">
-              On: a torrent's files are deleted once no device holds it any more. Off: they stay here until you delete them.
-            </p>
-          </div>
-          <Switch id="delete-after" checked={s.deleteAfterWatching} disabled={keep.isPending} onCheckedChange={(v) => keep.mutate(v)} />
-        </CardContent>
-      </Card>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -143,7 +120,7 @@ export function StoragePage() {
                     <TableCell>
                       <Confirm
                         title="Delete this download?"
-                        description={item.name}
+                        description={item.download ? `${item.name}: its files, and the server forgets the download.` : item.name}
                         action="Delete"
                         onConfirm={() => remove.mutate(item.name)}
                         trigger={

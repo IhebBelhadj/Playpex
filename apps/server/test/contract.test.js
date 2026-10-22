@@ -556,6 +556,15 @@ test('host: headless, then a (fake) desktop supervisor over parentPort', functio
     return ask('torrents.pauseAll');
   }).then(function (reply) {
     assert.equal(reply.ok, true);
+    // kept as a setting (survives restarts)
+    assert.equal(server.settings.get('downloads.paused'), true);
+    return ask('status');
+  }).then(function (reply) {
+    assert.equal(reply.result.downloadsPaused, true);
+    return ask('torrents.resumeAll');
+  }).then(function (reply) {
+    assert.equal(reply.ok, true);
+    assert.equal(server.settings.get('downloads.paused'), false);
     return ask('pairing.approve', { code: 'NOPE-NOPE' });
   }).then(function (reply) {
     assert.equal(reply.ok, false);
@@ -749,6 +758,9 @@ test('leases: shared torrents, grace period, limits, keepalive, sessions', funct
   function wait(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
+  function stateOf(hash) {
+    return call('GET', '/downloads/' + hash, undefined, { expect: 200 }).then(function (res) { return res.body.state; });
+  }
   function leasesOf(hash) {
     return call('GET', '/sessions', undefined, { expect: 200, admin: true }).then(function (res) {
       return res.body.filter(function (s) { return s.infoHash === hash; });
@@ -778,17 +790,21 @@ test('leases: shared torrents, grace period, limits, keepalive, sessions', funct
     .then(function () { return call('DELETE', '/torrents/' + H[0], undefined, as(A, 200)); })
     .then(function () { return wait(400); })
     .then(function () { return call('GET', '/torrents/' + H[0], undefined, { expect: 200 }); })
-    // the last one: stopped after the grace period
+    // the last one: paused after the grace period (kept, data kept)
     .then(function () { return call('DELETE', '/torrents/' + H[0], undefined, as(B, 200)); })
-    .then(function () { return call('GET', '/torrents/' + H[0], undefined, { expect: 200 }); })
+    .then(function () { return stateOf(H[0]); })
+    .then(function (state) { assert.equal(state, 'downloading'); })
     .then(function () { return wait(400); })
-    .then(function () { return call('GET', '/torrents/' + H[0], undefined, { expect: 404 }); })
+    .then(function () { return stateOf(H[0]); })
+    .then(function (state) { assert.equal(state, 'paused'); })
+    .then(function () { return call('GET', '/torrents/' + H[0], undefined, { expect: 200 }); })
     // coming back within the grace period keeps it
     .then(function () { return call('POST', '/torrents', { link: H[1] }, as(A, 200)); })
     .then(function () { return call('DELETE', '/torrents/' + H[1], undefined, as(A, 200)); })
     .then(function () { return call('POST', '/torrents/' + H[1] + '/keepalive', {}, as(A, 200)); })
     .then(function () { return wait(400); })
-    .then(function () { return call('GET', '/torrents/' + H[1], undefined, { expect: 200 }); })
+    .then(function () { return stateOf(H[1]); })
+    .then(function (state) { assert.equal(state, 'downloading'); })
     // maxTorrents: 2 → a third is BUSY; one waiting out its grace period makes room
     .then(function () { return call('POST', '/torrents', { link: H[2] }, as(A, 200)); })
     .then(function () { return call('POST', '/torrents', { link: H[3] }, as(A, 503)); })
@@ -797,7 +813,10 @@ test('leases: shared torrents, grace period, limits, keepalive, sessions', funct
     .then(function () { return call('DELETE', '/torrents/' + H[2], undefined, as(A, 200)); })
     .then(function () { return call('DELETE', '/torrents/' + H[2], undefined, as(B, 200)); })
     .then(function () { return call('POST', '/torrents', { link: H[3] }, as(A, 200)); })
-    .then(function () { return call('GET', '/torrents/' + H[2], undefined, { expect: 404 }); })
+    .then(function () { return stateOf(H[2]); })
+    .then(function (state) { assert.equal(state, 'paused'); })
+    // playing a paused one again: past the limit, BUSY (both running ones are held)
+    .then(function () { return call('POST', '/torrents', { link: H[0] }, as(A, 503)); })
     // stopping a session from the dashboard
     .then(function () { return leasesOf(H[1]); })
     .then(function (leases) {
@@ -815,10 +834,64 @@ test('leases: shared torrents, grace period, limits, keepalive, sessions', funct
     .then(function () { return wait(400); })
     .then(function () { return call('GET', '/torrents', undefined, { expect: 200 }); })
     .then(function (res) { assert.equal(res.body.length, 0); })
+    .then(function () { return Promise.all(H.map(function (h) { return call('DELETE', '/downloads/' + h + '?data=delete', undefined, { admin: true, expect: 200 }); })); })
     .finally(function () {
       sessions.configure({ graceMs: 30000, idleMs: 0 });
       server.settings.update({ streaming: { maxTorrents: 4 } });
     });
+});
+
+test('downloads: add, files, rules, pause, start, remove', function () {
+  var H = '5555555555555555555555555555555555555555';
+  return call('GET', '/downloads', undefined, { expect: 200 })
+    .then(function () { return call('POST', '/downloads', { link: 'not a torrent' }, { expect: 400 }); })
+    .then(function () { return call('POST', '/downloads', { link: H, files: 'a' }, { expect: 400 }); })
+    .then(function () { return call('POST', '/downloads', { link: H }, { expect: 200, headers: { 'X-Playpex-Device': 'device-c' } }); })
+    .then(function (res) {
+      assert.equal(res.body.intent, 'download');
+      assert.equal(res.body.addedBy, 'device-c');
+      assert.ok(['queued', 'downloading'].indexOf(res.body.state) !== -1);
+      return call('GET', '/downloads/' + H, undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.equal(res.body.files, null);   // no metadata offline
+      return call('PATCH', '/downloads/' + H, { removeWhenWatched: 'yes' }, { expect: 400 });
+    })
+    .then(function () { return call('PATCH', '/downloads/' + H, { removeWhenWatched: true }, { expect: 200 }); })
+    .then(function (res) {
+      assert.equal(res.body.removeWhenWatched, true);
+      return call('PUT', '/downloads/' + H + '/files', {}, { expect: 400 });
+    })
+    .then(function () { return call('PUT', '/downloads/' + H + '/files', { files: null }, { expect: 200 }); })
+    .then(function () { return call('POST', '/downloads/' + H + '/pause', undefined, { expect: 200 }); })
+    .then(function (res) {
+      assert.equal(res.body.state, 'paused');
+      return call('POST', '/downloads/' + H + '/start', undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.ok(['queued', 'downloading'].indexOf(res.body.state) !== -1);
+      return call('GET', '/downloads/' + '6'.repeat(40), undefined, { expect: 404 });
+    })
+    // removing is the admin's: data keep / delete, nothing else
+    .then(function () { return call('DELETE', '/downloads/' + H + '?data=keep', undefined, { expect: 401 }); })
+    .then(function () { return call('DELETE', '/downloads/' + H, undefined, { admin: true, expect: 400 }); })
+    .then(function () { return call('DELETE', '/downloads/' + H + '?data=keep', undefined, { admin: true, expect: 200 }); })
+    .then(function () { return call('GET', '/downloads/' + H, undefined, { expect: 404 }); });
+});
+
+test('torrent engines: the choices, install / remove routes', function () {
+  return call('GET', '/admin/settings', undefined, { admin: true, expect: 200 }).then(function (res) {
+    var ids = res.body.engines.map(function (e) { return e.id; });
+    assert.ok(ids.indexOf('torrent-stream') !== -1 && ids.indexOf('rqbit') !== -1 && ids.indexOf('torrentd') !== -1);
+    assert.equal(res.body.engines.filter(function (e) { return e.id === 'torrent-stream'; })[0].installed, 'builtin');
+    return call('POST', '/admin/engines/torrent-stream/install', undefined, { admin: true, expect: 400 });
+  })
+    .then(function () { return call('POST', '/admin/engines/nope/install', undefined, { admin: true, expect: 404 }); })
+    .then(function () { return call('DELETE', '/admin/engines/nope', undefined, { admin: true, expect: 404 }); })
+    .then(function () { return call('DELETE', '/admin/engines/rqbit', undefined, { expect: 401 }); })
+    // the running engine can't be removed
+    .then(function () { return call('DELETE', '/admin/engines/' + require('../lib/torrents/client').info().engine, undefined, { admin: true }); })
+    .then(function (res) { assert.ok(res.status === 409 || res.status === 400, 'running engine: ' + res.status); });
 });
 
 test('provider lists and parameter checks', function () {

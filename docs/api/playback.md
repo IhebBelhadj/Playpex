@@ -94,7 +94,7 @@ Subtitles embedded in the file (MKV) are not extracted by the server.
 
 ## Leases, keepalive and releasing
 
-The server keeps a torrent while at least one device holds a **lease** on it; that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever.
+The server keeps a torrent running while at least one device holds a **lease** on it; that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever. Every torrent is also a **download** the server keeps afterwards ([below](#downloads)): leases decide whether it runs, never whether it is deleted.
 
 | Request | Lease |
 |---|---|
@@ -106,14 +106,31 @@ The server keeps a torrent while at least one device holds a **lease** on it; th
 - **While the player is open, paused or not, send a keepalive every 60 s.** A paused player makes no requests, and a lease idle for the server's timeout (10 min by default) is dropped. The body (all optional) is what the admin sees in Activity:
   ```json
   { "positionS": 1201, "durationS": 2732, "paused": false,
-    "title": "Breaking Bad · S02E05", "profileId": "…", "file": "Season 2/Breaking.Bad.S02E05.mkv" }
+    "title": "Breaking Bad · S02E05", "profileId": "…", "file": "Season 2/Breaking.Bad.S02E05.mkv",
+    "media": { "mediaType": "tv", "tmdbId": 1396, "season": 2, "episode": 5 } }
   ```
-- **A keepalive after the lease was dropped** (idle, or the admin stopped the session) takes a new one, as long as the torrent still exists. **`404` on a keepalive** = the torrent is gone from the server (its last lease ended more than 30 s ago, or the server restarted): stop the player, or add the torrent again and reopen the stream.
-- **When the player closes** (back, error, end): `DELETE /torrents/{infoHash}`, also when playback never started. `404` means the torrent is already gone: nothing to do. 30 s after the last lease is released, the server stops the torrent and deletes its data (unless the admin keeps downloads). Coming back within those 30 s finds it still running.
+  Send `media` (the TMDB title) when you know it: the server keeps it with the download, so the admin (and later the library) knows what it holds.
+- **A keepalive after the lease was dropped** (idle, or the admin stopped the session) takes a new one. **`404` on a keepalive** = the server no longer has the torrent (the admin removed it): stop the player, or add the torrent again and reopen the stream.
+- **When the player closes** (back, error, end): `DELETE /torrents/{infoHash}`, also when playback never started. `404` means the torrent is already gone: nothing to do. 30 s after the last lease is released, the server **pauses** the torrent (no traffic; its data stays). Coming back within those 30 s finds it still running; later, `POST /torrents` (or a stream request) runs it again, and a completed one plays straight from disk. Nothing you do as a player deletes data.
 - The admin can stop your session from the dashboard: your stream is cut (the player sees a network error) and your lease released.
 - **Torrent-wide routes**: `POST /torrents/{infoHash}/start|stop/{index}`, `…/deselect`, `…/pause`, `…/resume` act on the torrent for every device watching it, not on your lease. Players don't need them (streaming selects the file); leave them to admin tools.
-- Other `Torrent` fields: `progress` = a progress bar as run lengths in percent of the pieces, alternating downloaded / missing and starting with downloaded (`[0, 40, 10, 50]` = nothing, 40 % missing, 10 % downloaded, 50 % missing), `ready` = metadata arrived, `interested` = the engine wants pieces.
+- Other `Torrent` fields: `state` (the download's, [below](#downloads)), `progress` = a progress bar as run lengths in percent of the pieces, alternating downloaded / missing and starting with downloaded (`[0, 40, 10, 50]` = nothing, 40 % missing, 10 % downloaded, 50 % missing), `ready` = its files can be streamed now (running and checked, or completed on disk), `interested` = running and still downloading. `GET /torrents` lists only the running ones.
+- **Starting again after a pause** may take a moment: depending on the server's engine, it first checks the data already on disk (`state: checking`); stream requests wait for it.
 - Season packs: two devices playing two different episodes of the same pack currently undo each other's file selection (plan §14.2): avoid it in tests.
+
+## Downloads
+
+The server keeps every torrent it has played or been asked to download, like a torrent client: `GET /downloads` (all, with `state`, `intent`, progress, speeds, the `title` a player named), `GET /downloads/{infoHash}` (+ `files`). Events `download.added` / `download.updated` / `download.removed` ([events](events.md)) keep a list live.
+
+| `state` | |
+|---|---|
+| `downloading`, `seeding`, `checking` | running (`checking`: the engine verifies data on disk) |
+| `queued` | waits for room (the server runs `downloads.maxActive` downloads at once, or they are paused by the admin) |
+| `paused` | stopped, data kept (a player left, or someone paused it) |
+| `completed` | every selected file is done; playing it reads the file from disk |
+| `error` | `error` says why; start it again |
+
+`intent`: `stream` (a player; it pauses when the last one leaves) or `download` (runs to the end without a player: `POST /downloads {link}`, or `POST /downloads/{infoHash}/start` on a known one). A client may add downloads (`POST /downloads` `{link, files?}` or a multipart `.torrent`), start / pause them, choose files (`PUT /downloads/{infoHash}/files {files: [paths] | null}`) and set "remove when watched" (`PATCH /downloads/{infoHash} {removeWhenWatched}`: deleted with its data once a player reached 90 %); only the admin removes one (`DELETE /downloads/{infoHash}?data=keep|delete`). A "Download" button in a client is `POST /downloads`, then the `download.updated` events for its progress.
 
 ## Progress and resume
 

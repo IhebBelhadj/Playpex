@@ -59,9 +59,9 @@ function fail(code, message) {
 
 /**
  * What the tray shows: { state: 'starting' | 'running' | 'recovery', version,
- * port, dashboardUrl, urls, recovery, streams, devicesOnline, torrents,
- * pausedTorrents, setupNeeded, pairing: [{ userCode, client, address, expiresAt }],
- * downloadDir, logsDir }
+ * port, dashboardUrl, urls, recovery, streams, devicesOnline, torrents (active),
+ * pausedTorrents (0, or all of them while downloads are paused), downloadsPaused,
+ * setupNeeded, pairing: [{ userCode, client, address, expiresAt }], downloadDir, logsDir }
  */
 function status() {
   var core = require('../index'),
@@ -69,10 +69,9 @@ function status() {
     auth = require('./auth'),
     events = require('./events'),
     sessions = require('./sessions'),
-    store = require('./store'),
+    downloads = require('./torrents/client').info(),
     settings = require('./settings'),
-    paths = require('./paths'),
-    torrents = store.list();
+    paths = require('./paths');
   if (!info) {
     return Promise.resolve({ state: 'starting', version: require('../package.json').version });
   }
@@ -92,8 +91,9 @@ function status() {
       recovery: info.recovery,
       streams: sessions.count(),
       devicesOnline: events.markOnline(r[2]).filter(function (d) { return d.online; }).length,
-      torrents: torrents.length,
-      pausedTorrents: torrents.filter(function (t) { return t.swarm && t.swarm.paused; }).length,
+      torrents: downloads.active,
+      pausedTorrents: downloads.paused ? downloads.active : 0,
+      downloadsPaused: downloads.paused,
       setupNeeded: r[0],
       pairing: r[1].map(function (p) {
         return { userCode: p.userCode, client: p.client, clientId: p.clientId, address: p.address, expiresAt: p.expiresAt };
@@ -119,16 +119,6 @@ function pushStatus() {
 
 // ── actions the supervisor can ask for ─────────────────────────────────────
 
-function eachTorrent(fn) {
-  var count = 0;
-  require('./store').list().forEach(function (t) {
-    if (t.swarm && fn(t)) {
-      count++;
-    }
-  });
-  pushStatus();
-  return { ok: true, count: count };
-}
 
 var ACTIONS = {
   status: function () {
@@ -140,25 +130,18 @@ var ACTIONS = {
   'pairing.deny': function (args) {
     return require('./auth').deny(args.code);
   },
-  // Pauses every running torrent's swarm (no new peer connections or
-  // requests); torrents added afterwards aren't affected
+  // Pauses the downloads (setting downloads.paused, kept across restarts):
+  // running ones go back to the queue, none starts until resumeAll; streams
+  // still play. count = downloads paused / queued ones that may start now.
   'torrents.pauseAll': function () {
-    return eachTorrent(function (t) {
-      if (t.swarm.paused) {
-        return false;
-      }
-      t.swarm.pause();
-      return true;
-    });
+    var count = require('./torrents/client').pauseAll();
+    pushStatus();
+    return { ok: true, count: count };
   },
   'torrents.resumeAll': function () {
-    return eachTorrent(function (t) {
-      if (!t.swarm.paused) {
-        return false;
-      }
-      t.swarm.resume();
-      return true;
-    });
+    var count = require('./torrents/client').resumeAll();
+    pushStatus();
+    return { ok: true, count: count };
   }
 };
 

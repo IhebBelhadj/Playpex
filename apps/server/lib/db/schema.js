@@ -165,6 +165,41 @@ var deviceSettings = sqliteTable('device_settings', {
   ];
 });
 
+// ── downloads (lib/torrents, docs/media-server-plan.md §4.2) ─────────────────
+// Every torrent the server knows, running or not. Our record, whatever the
+// engine: with the cached .torrent (<config>/torrents/<hash>.torrent) it is
+// enough to add the torrent to any engine again.
+
+var DOWNLOAD_STATES = ['queued', 'downloading', 'seeding', 'paused', 'completed', 'checking', 'error'],
+  DOWNLOAD_INTENTS = ['stream', 'download'];
+
+var downloads = sqliteTable('downloads', {
+  infoHash: text('info_hash').primaryKey(),       // lowercase hex
+  name: text('name'),                              // null until the metadata arrived
+  magnet: text('magnet'),
+  torrentFile: text('torrent_file'),               // path of the cached .torrent
+  state: text('state', { enum: DOWNLOAD_STATES }).notNull(),
+  intent: text('intent', { enum: DOWNLOAD_INTENTS }).notNull(),
+  error: text('error'),
+  saveDir: text('save_dir').notNull(),             // the download dir when it was added
+  selectedFiles: text('selected_files', { mode: 'json' }),   // file paths; null = every file
+  sizeBytes: integer('size_bytes'),                // of the selected files
+  doneBytes: integer('done_bytes').notNull().default(0),
+  uploadedBytes: integer('uploaded_bytes').notNull().default(0),
+  addedBy: text('added_by'),                       // a device id, or 'admin'
+  profileId: text('profile_id'),                   // no FK: a download outlives a profile
+  titleRef: text('title_ref', { mode: 'json' }),   // { mediaType, tmdbId, season, episode, title }
+  removeWhenWatched: integer('remove_when_watched', { mode: 'boolean' }).notNull().default(false),
+  addedAt: timestamp('added_at').notNull(),
+  completedAt: timestamp('completed_at'),
+  lastActiveAt: timestamp('last_active_at')
+}, function (table) {
+  return [
+    check('downloads_state_check', sql`${table.state} IN ('queued', 'downloading', 'seeding', 'paused', 'completed', 'checking', 'error')`),
+    check('downloads_intent_check', sql`${table.intent} IN ('stream', 'download')`)
+  ];
+});
+
 // ── auth (Better Auth, lib/auth) ─────────────────────────────────────────────
 // Tables of Better Auth's core and device-authorization plugin, in its field
 // names (the JS keys must match them; lib/auth maps its models onto these).
@@ -280,6 +315,8 @@ var devices = sqliteTable('devices', {
 
 module.exports = {
   MEDIA_TYPES: MEDIA_TYPES,
+  DOWNLOAD_STATES: DOWNLOAD_STATES,
+  DOWNLOAD_INTENTS: DOWNLOAD_INTENTS,
   profiles: profiles,
   watchlist: watchlist,
   progress: progress,
@@ -287,6 +324,7 @@ module.exports = {
   ratings: ratings,
   profileSettings: profileSettings,
   deviceSettings: deviceSettings,
+  downloads: downloads,
   authUser: authUser,
   authSession: authSession,
   authAccount: authAccount,

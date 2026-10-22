@@ -15,6 +15,7 @@ var express = require('express'),
   logger = require('../logger'),
   system = require('../system'),
   storage = require('../storage'),
+  torrents = require('../torrents/client'),
   host = require('../host'),
   discovery = require('../discovery'),
   paths = require('../paths'),
@@ -177,7 +178,13 @@ router.post('/host/update/install', function (req, res) {
 // ── settings ───────────────────────────────────────────────────────────────
 
 function settingsView() {
-  return Object.assign(settings.publicView(), { file: settings.FILE, logLevels: settings.LOG_LEVELS });
+  return Object.assign(settings.publicView(), {
+    file: settings.FILE,
+    logLevels: settings.LOG_LEVELS,
+    // the torrent engines to choose from (downloads.engine), and the one running
+    engines: require('../torrents/engines').describe(),
+    engine: torrents.info().engine
+  });
 }
 
 router.get('/settings', function (req, res) {
@@ -203,8 +210,39 @@ router.put('/settings', function (req, res) {
   if (result.changed.indexOf('general.serverName') !== -1 || result.changed.indexOf('network.discovery') !== -1) {
     discovery.refresh();
   }
+  // limits, seeding rules, "pause all": the torrent client applies them now
+  torrents.settingsChanged(result.changed);
   log.info('settings changed: ' + result.changed.join(', '));
   res.json(Object.assign({}, result, { settings: settingsView() }));
+});
+
+// ── torrent engines (optional downloads: lib/torrents/engines/sidecar.js) ────
+
+// Installs a sidecar engine's pinned release → the engines (as in the settings view)
+router.post('/engines/:id/install', function (req, res) {
+  var engines = require('../torrents/engines');
+  answer(res, engines.install(req.params.id, { log: logger.child('torrent') }).then(function () {
+    return { engines: engines.describe() };
+  }, function (err) {
+    if (!err.code || err.code === 'NOT_SUPPORTED' || err.code === 'INVALID' || err.code === 'NOT_FOUND') {
+      throw err;
+    }
+    // a download or checksum failure
+    var e = new Error('Could not install ' + req.params.id + ': ' + err.message);
+    e.code = 'UPSTREAM';
+    throw e;
+  }));
+});
+
+// Removes an installed engine (not the one running)
+router.delete('/engines/:id', function (req, res) {
+  var engines = require('../torrents/engines');
+  if (torrents.info().engine === req.params.id) {
+    return errors.fail(res, 'CONFLICT', req.params.id + ' is running: choose another engine and restart first');
+  }
+  answer(res, engines.uninstall(req.params.id).then(function () {
+    return { engines: engines.describe() };
+  }));
 });
 
 // body: { port }. Whether the server could listen on it right now (its own
@@ -269,9 +307,7 @@ router.get('/logs/download', function (req, res) {
 // ── storage ────────────────────────────────────────────────────────────────
 
 router.get('/storage', function (req, res) {
-  answer(res, storage.list().then(function (result) {
-    return Object.assign(result, { deleteAfterWatching: settings.get('storage.deleteAfterWatching') });
-  }));
+  answer(res, storage.list());
 });
 
 // Every entry no running torrent uses

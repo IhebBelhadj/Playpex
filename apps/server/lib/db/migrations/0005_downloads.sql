@@ -1,0 +1,23 @@
+CREATE TABLE `downloads` (
+	`info_hash` text PRIMARY KEY NOT NULL,
+	`name` text,
+	`magnet` text,
+	`torrent_file` text,
+	`state` text NOT NULL,
+	`intent` text NOT NULL,
+	`error` text,
+	`save_dir` text NOT NULL,
+	`selected_files` text,
+	`size_bytes` integer,
+	`done_bytes` integer DEFAULT 0 NOT NULL,
+	`uploaded_bytes` integer DEFAULT 0 NOT NULL,
+	`added_by` text,
+	`profile_id` text,
+	`title_ref` text,
+	`remove_when_watched` integer DEFAULT false NOT NULL,
+	`added_at` integer NOT NULL,
+	`completed_at` integer,
+	`last_active_at` integer,
+	CONSTRAINT "downloads_state_check" CHECK("downloads"."state" IN ('queued', 'downloading', 'seeding', 'paused', 'completed', 'checking', 'error')),
+	CONSTRAINT "downloads_intent_check" CHECK("downloads"."intent" IN ('stream', 'download'))
+);

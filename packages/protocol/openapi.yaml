@@ -85,7 +85,9 @@ tags:
   - name: events
     description: Real-time events (WebSocket)
   - name: torrents
-    description: Torrent engine and byte-range streaming
+    description: The player's torrents and byte-range streaming
+  - name: downloads
+    description: Every torrent the server keeps (running or not), managed like a torrent client
   - name: sessions
     description: What every device is playing (leases on torrents)
   - name: catalog
@@ -609,6 +611,45 @@ paths:
               schema: { $ref: '#/components/schemas/PortCheck' }
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/engines/{id}/install:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [admin]
+      operationId: installEngine
+      summary: Download and install an optional torrent engine (its pinned release, SHA-256 checked)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The engines after the install
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngineList' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /admin/engines/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [admin]
+      operationId: uninstallEngine
+      summary: Remove an installed optional engine (409 while it runs)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The engines after the removal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngineList' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
   /admin/logs:
     get:
       tags: [admin]
@@ -666,7 +707,7 @@ paths:
     post:
       tags: [admin]
       operationId: clearStorage
-      summary: Delete every entry of the download directory that no running torrent uses
+      summary: Delete every entry of the download directory that no running torrent uses (their downloads are forgotten)
       security:
         - adminSession: []
       responses:
@@ -726,7 +767,8 @@ paths:
       description: |
         Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
         `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
-        `session.ended`. Admin session only: `log`, `device.paired`, `device.revoked`,
+        `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
+        at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
         `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. `?topics=session,torrent.stats` keeps
         topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
         from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
@@ -743,16 +785,22 @@ paths:
     get:
       tags: [torrents]
       operationId: listTorrents
+      summary: The torrents running now (streams and downloads); GET /downloads lists every one the server keeps
       responses:
         '200':
-          description: Torrents the server holds
+          description: Running torrents
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Torrent' } }
     post:
       tags: [torrents]
       operationId: addTorrent
-      summary: Add a torrent (idempotent per info hash) and hold it for the calling device. Its metadata arrives later; poll GET /torrents/{infoHash}.
+      summary: Add a torrent to play (idempotent per info hash) and hold it for the calling device. Its metadata arrives later; poll GET /torrents/{infoHash}.
+      description: |
+        The torrent becomes a download with intent `stream`. A torrent the server already keeps is
+        reused: a paused one starts again, a completed one plays from disk. Past `streaming.maxTorrents`
+        running torrents, room is made (streams nobody holds stop, downloads nobody watches go back to
+        the queue), else 503 `BUSY`. `link`: a magnet, a bare info hash or an http(s) .torrent URL.
       parameters:
         - $ref: '#/components/parameters/Device'
       requestBody:
@@ -772,7 +820,7 @@ paths:
     post:
       tags: [torrents]
       operationId: uploadTorrent
-      summary: Add a torrent from an uploaded .torrent file
+      summary: Add a torrent to play from an uploaded .torrent file (like POST /torrents)
       requestBody:
         required: true
         content:
@@ -797,7 +845,7 @@ paths:
     get:
       tags: [torrents]
       operationId: getTorrent
-      summary: The torrent; only `infoHash` until its metadata has arrived
+      summary: A torrent the server keeps (running or not); only `infoHash` until its metadata has arrived
       responses:
         '200':
           description: The torrent
@@ -808,10 +856,11 @@ paths:
     delete:
       tags: [torrents]
       operationId: deleteTorrent
-      summary: Release the calling device's lease
+      summary: Release the calling device's lease (never deletes anything)
       description: |
-        The torrent stops 30 s after its last lease is released (another device may still be
-        watching it, or come back), and its data is deleted unless the server keeps downloads.
+        30 s after its last lease is released (another device may still be watching it, or come
+        back), a `stream` download pauses (no traffic, data kept; `completed` when its files are done)
+        and a `download` keeps going. Only DELETE /downloads/{infoHash} deletes data.
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -837,7 +886,7 @@ paths:
     get:
       tags: [torrents]
       operationId: getTorrentStats
-      summary: Swarm statistics; safe before the metadata has arrived
+      summary: Swarm statistics; safe before the metadata has arrived (zeros while the torrent is stopped)
       responses:
         '200':
           description: Stats
@@ -883,6 +932,7 @@ paths:
     post:
       tags: [torrents]
       operationId: pauseTorrent
+      summary: Stop the torrent's traffic (state `paused`, kept across restarts; data kept)
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -892,7 +942,9 @@ paths:
     post:
       tags: [torrents]
       operationId: resumeTorrent
+      summary: Run a paused torrent again (its intent unchanged)
       responses:
+        '503': { $ref: '#/components/responses/Busy' }
         '200': { $ref: '#/components/responses/Ok' }
         '404': { $ref: '#/components/responses/NotFound' }
   /torrents/{infoHash}/files/{path}:
@@ -903,16 +955,19 @@ paths:
     get:
       tags: [torrents]
       operationId: streamFile
-      summary: Stream a file (HTTP byte ranges). Only this file of the torrent is downloaded from then on.
+      summary: Stream a file (HTTP byte ranges). Only this file of a `stream` torrent is downloaded from then on.
       description: |
         Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
-        fetched early, where MKV keeps its index. Media elements can use the URL directly.
+        fetched early, where MKV keeps its index. Media elements can use the URL directly. A stopped
+        torrent starts again (503 `BUSY` past the limit), unless the file is finished on disk: then it
+        is read from disk.
       parameters:
         - { name: Range, in: header, required: false, schema: { type: string } }
       responses:
         '200': { $ref: '#/components/responses/Media' }
         '206': { $ref: '#/components/responses/Media' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Busy' }
     head:
       tags: [torrents]
       operationId: headFile
@@ -984,6 +1039,149 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+
+  # ── downloads ───────────────────────────────────────────────────────────────
+  /downloads:
+    get:
+      tags: [downloads]
+      operationId: listDownloads
+      summary: Every torrent the server keeps, running or not (oldest first)
+      responses:
+        '200':
+          description: Downloads
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Download' } }
+    post:
+      tags: [downloads]
+      operationId: addDownload
+      summary: Add a torrent to download to the end without a client (intent `download`)
+      description: |
+        Queued past `downloads.maxActive` running downloads. A torrent the server already keeps becomes a
+        download (a paused one is queued again). JSON `{ link, files? }`, or a .torrent as multipart `file`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddDownloadRequest' }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, contentMediaType: application/x-bittorrent }
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '503': { $ref: '#/components/responses/Busy' }
+  /downloads/{infoHash}:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: getDownload
+      summary: A download with its files (`files` null until the metadata has arrived)
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [downloads]
+      operationId: updateDownload
+      summary: Its rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [removeWhenWatched]
+              properties:
+                removeWhenWatched: { type: boolean, description: 'Delete it and its data once a player watched it to the end (90 %)' }
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [downloads]
+      operationId: removeDownload
+      summary: Forget a download, keeping or deleting its data (the only way data is deleted). Admin only.
+      description: Its sessions end (open streams are closed).
+      security:
+        - adminSession: []
+      parameters:
+        - { name: data, in: query, required: true, schema: { type: string, enum: [keep, delete] } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/{infoHash}/start:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [downloads]
+      operationId: startDownload
+      summary: Download it to the end without a client (intent `download`; queued when downloads.maxActive run)
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/{infoHash}/pause:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [downloads]
+      operationId: pauseDownload
+      summary: Stop its traffic (state `paused` until started again; data kept)
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/{infoHash}/files:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    put:
+      tags: [downloads]
+      operationId: selectDownloadFiles
+      summary: Which files to download
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: [array, 'null']
+                  items: { type: string }
+                  description: 'Paths inside the torrent; null = every file'
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # ── sessions ────────────────────────────────────────────────────────────────
   /sessions:
@@ -1999,10 +2197,11 @@ components:
         infoHash: { type: string }
         name: { type: string }
         length: { type: number, description: 'Bytes' }
-        interested: { type: boolean }
-        ready: { type: boolean }
+        state: { $ref: '#/components/schemas/DownloadState' }
+        interested: { type: boolean, description: 'Running and still downloading' }
+        ready: { type: boolean, description: 'Files can be streamed now (running and checked, or completed on disk)' }
         files: { type: array, items: { $ref: '#/components/schemas/TorrentFile' } }
-        progress: { type: array, items: { type: array, items: { type: number } }, description: 'Downloaded piece runs' }
+        progress: { type: array, items: { type: number }, description: 'Piece runs in percent, alternating downloaded / missing, starting with downloaded' }
     KeepaliveRequest:
       type: object
       description: What the player plays, all optional (shown in the server's Activity)
@@ -2013,6 +2212,15 @@ components:
         title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
         profileId: { type: string }
         file: { type: string, description: 'Path of the file in the torrent' }
+        media:
+          type: object
+          description: 'Which title it is (TMDB): kept with the download, so the server knows what it holds'
+          required: [mediaType, tmdbId]
+          properties:
+            mediaType: { $ref: '#/components/schemas/MediaType' }
+            tmdbId: { type: integer, minimum: 1 }
+            season: { type: integer, minimum: 0 }
+            episode: { type: integer, minimum: 0 }
     Session:
       type: object
       required: [id, deviceId, deviceName, paired, client, address, infoHash, torrentName, file, method, streaming, since, lastActivity, playback, torrent]
@@ -2051,6 +2259,84 @@ components:
             uploadSpeed: { type: number }
             downloaded: { type: number, description: 'Bytes' }
             length: { type: [number, 'null'], description: 'Bytes; null until the metadata has arrived' }
+    DownloadState:
+      type: string
+      enum: [queued, downloading, seeding, checking, paused, completed, error]
+      description: |
+        Running: `downloading`, `seeding`, `checking` (the engine verifies data already on disk). Stopped
+        (no traffic, data kept): `queued` (waits for room), `paused`, `completed` (every selected file is
+        done), `error`.
+    Download:
+      type: object
+      description: A torrent the server keeps (docs/media-server-plan.md §4)
+      required: [infoHash, name, state, intent, error, sizeBytes, doneBytes, progress, uploadedBytes, ratio,
+        downloadSpeed, uploadSpeed, peers, seeds, eta, checking, fileCount, selectedFiles, title, addedBy,
+        profileId, removeWhenWatched, addedAt, completedAt, lastActiveAt]
+      properties:
+        infoHash: { type: string }
+        name: { type: [string, 'null'], description: 'null until the metadata has arrived' }
+        state: { $ref: '#/components/schemas/DownloadState' }
+        intent:
+          type: string
+          enum: [stream, download]
+          description: '`stream`: a client plays it, it pauses when the last one leaves; `download`: it runs to the end without clients'
+        error: { type: [string, 'null'] }
+        sizeBytes: { type: [number, 'null'], description: 'Of the selected files; null until the metadata has arrived' }
+        doneBytes: { type: number }
+        progress: { type: [number, 'null'], description: '0 to 1' }
+        uploadedBytes: { type: number, description: 'Since it was added' }
+        ratio: { type: [number, 'null'], description: 'uploadedBytes / sizeBytes' }
+        downloadSpeed: { type: number, description: 'Bytes per second' }
+        uploadSpeed: { type: number }
+        peers: { type: integer }
+        seeds: { type: integer }
+        eta: { type: [integer, 'null'], description: 'Seconds' }
+        checking: { type: [number, 'null'], description: 'Progress (0 to 1) of the check of the data on disk' }
+        fileCount: { type: [integer, 'null'] }
+        selectedFiles: { type: [array, 'null'], items: { type: string }, description: 'null = every file' }
+        title:
+          type: [object, 'null']
+          description: 'The title a player said it is (keepalive `media`)'
+          properties:
+            mediaType: { $ref: '#/components/schemas/MediaType' }
+            tmdbId: { type: integer }
+            season: { type: integer }
+            episode: { type: integer }
+            title: { type: string }
+        addedBy: { type: [string, 'null'], description: 'A device id, or `admin`' }
+        profileId: { type: [string, 'null'] }
+        removeWhenWatched: { type: boolean }
+        addedAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        lastActiveAt: { type: [string, 'null'], format: date-time }
+    DownloadDetail:
+      allOf:
+        - $ref: '#/components/schemas/Download'
+        - type: object
+          required: [files]
+          properties:
+            files:
+              type: [array, 'null']
+              items:
+                type: object
+                required: [name, path, size, offset, selected]
+                properties:
+                  name: { type: string }
+                  path: { type: string }
+                  size: { type: number }
+                  offset: { type: number }
+                  selected: { type: boolean }
+    AddDownloadRequest:
+      type: object
+      required: [link]
+      properties:
+        link: { type: string, description: 'Magnet link, a bare 40-character info hash, or an http(s) .torrent URL' }
+        files: { type: array, items: { type: string }, description: 'Paths to download (default: every file)' }
+    DownloadRemovedEvent:
+      type: object
+      description: '`data` of `download.removed`'
+      properties:
+        infoHash: { type: string }
     TorrentFile:
       type: object
       required: [name, path, link, length, offset, selected]
@@ -2083,7 +2369,8 @@ components:
             up: { type: number }
         eta: { type: [integer, 'null'], description: 'Seconds; null until known' }
         queue: { type: number }
-        paused: { type: boolean }
+        paused: { type: boolean, description: 'Not running (paused, queued, completed or error)' }
+        state: { $ref: '#/components/schemas/DownloadState' }
     ProbeResult:
       type: object
       required: [duration, video, audio, transcode]
@@ -2626,7 +2913,7 @@ components:
         password: { type: string, minLength: 8, maxLength: 128 }
     Overview:
       type: object
-      required: [server, process, system, network, activity, disks, ffmpeg, providers]
+      required: [server, process, system, network, activity, downloads, disks, ffmpeg, providers]
       properties:
         server:
           type: object
@@ -2690,9 +2977,21 @@ components:
           type: object
           required: [torrents, sessions, eventClients]
           properties:
-            torrents: { type: integer }
+            torrents: { type: integer, description: 'Running torrents' }
             sessions: { type: integer }
             eventClients: { type: integer }
+        downloads:
+          type: object
+          description: The torrent engine and the downloads
+          required: [engine, requestedEngine, engineError, total, active, queued, paused]
+          properties:
+            engine: { type: [string, 'null'], description: 'The engine running (null: none could start)' }
+            requestedEngine: { type: [string, 'null'], description: 'downloads.engine; differs from engine when it failed and the default runs' }
+            engineError: { type: [string, 'null'] }
+            total: { type: integer }
+            active: { type: integer }
+            queued: { type: integer }
+            paused: { type: boolean, description: 'downloads.paused ("Pause all downloads")' }
         disks:
           type: array
           items:
@@ -2752,7 +3051,7 @@ components:
     Settings:
       type: object
       description: Every server setting (plan §5.3); secrets (`providers.*ApiKey`) masked as `••••<last 4>`
-      required: [general, network, security, storage, streaming, providers, transcoding]
+      required: [general, network, security, storage, streaming, downloads, providers, transcoding]
       properties:
         general:
           type: object
@@ -2777,17 +3076,28 @@ components:
             pairingRequestMinutes: { type: integer, minimum: 1 }
         storage:
           type: object
-          required: [downloadDir, deleteAfterWatching]
+          required: [downloadDir]
           properties:
             downloadDir: { type: string, description: 'Empty = the default (<cache>/torrent_data)' }
-            deleteAfterWatching: { type: boolean }
         streaming:
           type: object
           required: [maxTorrents, maxTranscodes, idleTimeoutMinutes]
           properties:
-            maxTorrents: { type: integer, minimum: 1 }
+            maxTorrents: { type: integer, minimum: 1, description: 'Running torrents at once (streams and downloads)' }
             maxTranscodes: { type: integer, minimum: 1 }
             idleTimeoutMinutes: { type: integer, minimum: 1 }
+        downloads:
+          type: object
+          required: [engine, peerPort, portForwarding, maxActive, seedRatio, seedMinutes, uploadSlots, paused]
+          properties:
+            engine: { type: string, description: 'The torrent engine (`SettingsView.engines`: torrent-stream, rqbit); applied after a restart' }
+            peerPort: { type: integer, minimum: 1024, maximum: 65535, description: 'BitTorrent port (taken → a free one); applied after a restart' }
+            portForwarding: { type: boolean, description: 'Ask the router to forward peerPort (UPnP), where the engine can (rqbit); applied after a restart' }
+            maxActive: { type: integer, minimum: 1, description: 'Downloads (not streams) running at once; the others are queued' }
+            seedRatio: { type: number, minimum: 0, description: 'A finished download seeds until this ratio (0 = no ratio limit)' }
+            seedMinutes: { type: integer, minimum: 0, description: '…or this long (0 = no time limit); both 0 = no seeding' }
+            uploadSlots: { type: integer, minimum: 0, description: 'Peers uploaded to at once per torrent; 0 = never upload' }
+            paused: { type: boolean, description: '"Pause all downloads": downloads wait, streams still play' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]
@@ -2808,7 +3118,7 @@ components:
       additionalProperties: { type: object, additionalProperties: true }
     SettingsView:
       type: object
-      required: [settings, sources, env, file, logLevels]
+      required: [settings, sources, env, file, logLevels, engines, engine]
       properties:
         settings: { $ref: '#/components/schemas/Settings' }
         sources:
@@ -2821,6 +3131,11 @@ components:
           additionalProperties: { type: string }
         file: { type: string, description: 'Path of settings.json' }
         logLevels: { type: array, items: { type: string } }
+        engines:
+          type: array
+          description: 'The torrent engines `downloads.engine` can name, with what each is good at'
+          items: { $ref: '#/components/schemas/Engine' }
+        engine: { type: [string, 'null'], description: 'The engine running now (it differs from downloads.engine until a restart, or when that one failed to start)' }
     SettingsUpdate:
       type: object
       required: [settings, changed, restartRequired, lockedByEnv]
@@ -2829,6 +3144,25 @@ components:
         changed: { type: array, items: { type: string }, description: 'Keys saved' }
         restartRequired: { type: array, items: { type: string }, description: 'Changed keys applied on the next start' }
         lockedByEnv: { type: array, items: { type: string }, description: 'Saved, but an environment variable still wins' }
+    Engine:
+      type: object
+      description: 'A torrent engine. Built in (torrent-stream), or an optional program the admin installs (never bundled)'
+      required: [id, name, summary, available, detail, installable, installed, version, latest]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        summary: { type: string, description: 'What it is good and bad at' }
+        available: { type: boolean, description: 'It can run on this server now' }
+        detail: { type: [string, 'null'], description: 'Why not, when unavailable' }
+        installable: { type: boolean, description: 'An optional download with a build for this platform' }
+        installed: { type: [string, 'null'], enum: [builtin, installed, env, path, null], description: 'builtin; installed (by the server); env / path (found elsewhere); null: not installed' }
+        version: { type: [string, 'null'], description: 'Installed version' }
+        latest: { type: [string, 'null'], description: 'The version this server installs' }
+    EngineList:
+      type: object
+      required: [engines]
+      properties:
+        engines: { type: array, items: { $ref: '#/components/schemas/Engine' } }
     PortCheck:
       type: object
       required: [port, free, current, owner]
@@ -2853,7 +3187,7 @@ components:
       additionalProperties: true
     Storage:
       type: object
-      required: [dir, disk, totalBytes, items, deleteAfterWatching]
+      required: [dir, disk, totalBytes, items]
       properties:
         dir: { type: string }
         disk:
@@ -2863,7 +3197,6 @@ components:
             free: { type: number }
             total: { type: number }
         totalBytes: { type: number }
-        deleteAfterWatching: { type: boolean }
         items:
           type: array
           items:
@@ -2875,6 +3208,14 @@ components:
               modifiedAt: { type: [string, 'null'], format: date-time }
               infoHash: { type: [string, 'null'], description: 'The running torrent using it (then it cannot be deleted)' }
               torrentName: { type: [string, 'null'] }
+              download:
+                type: [object, 'null']
+                description: 'The download it belongs to; deleting the entry of a stopped one forgets that download'
+                required: [infoHash, name, active]
+                properties:
+                  infoHash: { type: string }
+                  name: { type: string }
+                  active: { type: boolean }
     DirCheck:
       type: object
       required: [path, exists, writable, free, total]
@@ -2919,7 +3260,7 @@ components:
       description: '`data` of `server.status`'
       properties:
         uptimeS: { type: integer }
-        torrents: { type: integer }
+        torrents: { type: integer, description: 'Running torrents' }
         sessions: { type: integer }
         eventClients: { type: integer }
     TorrentStatsEvent:
@@ -2944,6 +3285,6 @@ components:
       type: object
       required: [topic, time, data]
       properties:
-        topic: { type: string, description: 'server.status, torrent.stats, session.*, log, device.*, pairing.*, host.updated' }
+        topic: { type: string, description: 'server.status, torrent.stats, session.*, download.*, settings.changed, log, device.*, pairing.*, host.updated' }
         time: { type: string, format: date-time }
         data: {}

@@ -506,10 +506,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       let player = this.moviePlayer;
       let duration = this.playerReady ? this.mediaDuration() : NaN;
       let code = this.playback.season ? this.playback.subtitle?.split(' ')[0] : '';
+      let p = this.playback;
       let state = {
-        title: [this.playback.title, code].filter(Boolean).join(' · '),
+        title: [p.title, code].filter(Boolean).join(' · '),
         profileId: this.profiles.current.value?.id,
         file: this.filePath,
+        // which title the server's download is (not for 18+ titles)
+        ...(p.tmdbId && p.mediaType && !p.adult ? {
+          media: { mediaType: p.mediaType, tmdbId: p.tmdbId, ...(p.season ? { season: p.season, episode: p.episode } : {}) },
+        } : {}),
         ...(this.playerReady && player ? { positionS: this.position(), paused: player.paused } : {}),
         ...(isFinite(duration) && duration > 0 ? { durationS: duration } : {}),
       };
@@ -522,7 +527,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.navigator.back();
   }
 
-  // The server drops the torrent (and its data) once no other device holds it
+  // Lets go of the torrent: the server pauses it 30 s after the last device
+  // let go (its data stays, a later Play resumes it)
   private releaseTorrent() {
     if (!this.torrentHash) return;
     let hash = this.torrentHash;

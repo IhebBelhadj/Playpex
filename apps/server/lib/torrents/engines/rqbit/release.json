@@ -1,0 +1,37 @@
+{
+  "comment": "The pinned rqbit release (docs/media-server-plan.md §4.6): its headless CLI per platform, with the SHA-256 GitHub publishes for each asset. scripts/install-rqbit.js downloads it (headless installs: <cache>/bin; the desktop installers: vendor/rqbit/<platform>-<arch>). To upgrade: pick a release with the CLI assets (not only rqbit-desktop), copy names and digests, run the conformance suite (test/engines.test.js) against it, review the diff.",
+  "version": "9.0.1",
+  "tag": "v9.0.1",
+  "source": "https://github.com/ikatson/rqbit/tree/v9.0.1",
+  "licence": "Apache-2.0",
+  "licenceFile": {
+    "url": "https://raw.githubusercontent.com/ikatson/rqbit/v9.0.1/LICENSE",
+    "sha256": "6e6c6641a80b24c933a77886da6091f617131f925a24e593fcc1ccc47fb0a8a5"
+  },
+  "builds": {
+    "linux-x64": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-linux-amd64",
+      "sha256": "82ed2c23f4c7b91bb2c92eaab92e4a850d386cdf337bcdf9e0971c8ce3da4335"
+    },
+    "linux-arm64": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-linux-arm64",
+      "sha256": "9ac50a7d1917cd458111265a12346a924b4f7cea7520327782ed5bd6f423b561"
+    },
+    "linux-arm": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-linux-arm-v7",
+      "sha256": "576817c66361ce70159cd18ec7d2bf329c94816b72a12d6da821428f93ba0230"
+    },
+    "darwin-x64": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-osx-universal",
+      "sha256": "de8b957b2927dc5bf911506bf3c24c8e77e24a6d21ecd80f6fcffd2db30eb672"
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit-osx-universal",
+      "sha256": "de8b957b2927dc5bf911506bf3c24c8e77e24a6d21ecd80f6fcffd2db30eb672"
+    },
+    "win32-x64": {
+      "url": "https://github.com/ikatson/rqbit/releases/download/v9.0.1/rqbit.exe",
+      "sha256": "2ed683203beca628e0c45f62f99feeef4242cecc3444c8422dfe5b1b6aa38cea"
+    }
+  }
+}

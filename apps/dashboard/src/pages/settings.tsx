@@ -22,7 +22,7 @@ import { restartServer } from '@/lib/restart'
 // Every server setting (apps/server/lib/settings.js, plan §5.3), grouped in
 // tabs. Values locked by an environment variable are shown read-only.
 
-type Kind = 'text' | 'number' | 'switch' | 'list' | 'secret' | 'level' | 'port' | 'dir'
+type Kind = 'text' | 'number' | 'switch' | 'list' | 'secret' | 'level' | 'port' | 'dir' | 'engine'
 
 interface Field {
   key: string
@@ -30,6 +30,8 @@ interface Field {
   help?: ReactNode
   kind: Kind
   placeholder?: string
+  min?: number
+  step?: number
 }
 
 const GROUPS: { id: string; title: string; description: string; fields: Field[] }[] = [
@@ -69,7 +71,6 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     description: 'Where torrents are downloaded.',
     fields: [
       { key: 'storage.downloadDir', label: 'Download directory', kind: 'dir', help: 'Empty = the default. Applied after a restart; what is in the old directory stays there.' },
-      { key: 'storage.deleteAfterWatching', label: 'Delete after watching', kind: 'switch', help: 'Delete a torrent’s files once no device holds it.' },
     ],
   },
   {
@@ -77,9 +78,24 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     title: 'Streaming',
     description: 'Limits that keep the server responsive.',
     fields: [
-      { key: 'streaming.maxTorrents', label: 'Torrents at once', kind: 'number', help: 'More are refused (clients show “server busy”).' },
+      { key: 'streaming.maxTorrents', label: 'Torrents at once', kind: 'number', help: 'Running torrents, streams and downloads together. A new stream past it pauses a download nobody watches, else it is refused (clients show “server busy”).' },
       { key: 'streaming.maxTranscodes', label: 'Audio transcodes at once', kind: 'number', help: 'Each one runs ffmpeg.' },
       { key: 'streaming.idleTimeoutMinutes', label: 'Idle timeout (minutes)', kind: 'number', help: 'A device silent this long (crashed, offline) loses its torrents.' },
+    ],
+  },
+  {
+    id: 'downloads',
+    title: 'Downloads',
+    description: 'Torrents are kept: leaving the player pauses them, nothing is deleted unless you remove it.',
+    fields: [
+      { key: 'downloads.engine', label: 'Torrent engine', kind: 'engine', help: 'Applied after a restart; downloads, their files and progress carry over. If it can’t start, torrent-stream runs instead.' },
+      { key: 'downloads.maxActive', label: 'Downloads at once', kind: 'number', help: 'Torrents downloading without a player. The others wait in the queue.' },
+      { key: 'downloads.seedRatio', label: 'Seed up to ratio', kind: 'number', min: 0, step: 0.1, help: 'A finished download keeps uploading until it sent this many times its size. 0 = no ratio limit.' },
+      { key: 'downloads.seedMinutes', label: 'Seed for (minutes)', kind: 'number', min: 0, help: '…or this long, whichever comes first. 0 = no time limit; both 0 = no seeding.' },
+      { key: 'downloads.uploadSlots', label: 'Upload slots per torrent', kind: 'number', min: 0, help: 'Peers uploaded to at once. 0 = never upload. Applies to torrents started from now on.' },
+      { key: 'downloads.peerPort', label: 'Peer port', kind: 'number', min: 1024, help: 'Where other BitTorrent clients reach this server. Taken: another free port is used. Applied after a restart.' },
+      { key: 'downloads.portForwarding', label: 'Forward the peer port (UPnP)', kind: 'switch', help: 'Ask the router to open the peer port: more peers, faster downloads. rqbit only. Applied after a restart.' },
+      { key: 'downloads.paused', label: 'Pause all downloads', kind: 'switch', help: 'Downloads wait in the queue (streams still play). Kept across restarts; the tray icon toggles it too.' },
     ],
   },
   {
@@ -192,6 +208,103 @@ function DirField({ value, onChange, disabled, fallback }: { value: string; onCh
   )
 }
 
+// The torrent engine: a choice among the installed ones, with what each is
+// good at; optional engines (sidecar programs) are installed / removed here,
+// never bundled with the server
+function EngineField({
+  value,
+  onChange,
+  disabled,
+  view,
+}: {
+  value: string
+  onChange: (v: unknown) => void
+  disabled: boolean
+  view: SettingsView
+}) {
+  const client = useQueryClient()
+  const change = useMutation({
+    mutationFn: ({ id, remove }: { id: string; remove: boolean }) =>
+      remove
+        ? unwrap(api.DELETE('/admin/engines/{id}', { params: { path: { id } } }))
+        : unwrap(api.POST('/admin/engines/{id}/install', { params: { path: { id } } })),
+    onSuccess: (_, { id, remove }) => {
+      toast.success(remove ? `${id} removed` : `${id} installed`)
+      client.invalidateQueries({ queryKey: ['settings'] })
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  const chosen = view.engines.find((e) => e.id === value)
+  return (
+    <div className="space-y-3">
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="w-48">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {view.engines.map((e) => (
+            <SelectItem key={e.id} value={e.id} disabled={!e.available && e.id !== value}>
+              {e.name}
+              {!e.available && ' (not installed)'}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {chosen && !chosen.available && <p className="text-xs text-destructive">{chosen.detail}</p>}
+      {view.engine && view.engine !== value && (
+        <p className="text-xs text-muted-foreground">
+          Running now: <span className="font-mono">{view.engine}</span>
+        </p>
+      )}
+      <div className="divide-y rounded-md border">
+        {view.engines.map((e) => (
+          <div key={e.id} className="flex items-start justify-between gap-4 p-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                {e.name}
+                {e.installed === 'builtin' ? (
+                  <Badge variant="secondary">built in</Badge>
+                ) : e.installed ? (
+                  <Badge variant="secondary">{e.version ? `v${e.version}` : e.installed}</Badge>
+                ) : (
+                  <Badge variant="outline">not installed</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{e.summary}</p>
+            </div>
+            {e.installed !== 'builtin' && e.installed !== 'env' && e.installed !== 'path' && (
+              <div className="shrink-0">
+                {e.installed ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={change.isPending || view.engine === e.id}
+                    onClick={() => change.mutate({ id: e.id, remove: true })}
+                  >
+                    Remove
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={change.isPending || !e.installable}
+                    title={e.installable ? `Download ${e.name} ${e.latest ?? ''}` : 'No build for this platform'}
+                    onClick={() => change.mutate({ id: e.id, remove: false })}
+                  >
+                    {change.isPending && change.variables?.id === e.id ? <Spinner /> : null}
+                    Install
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function FieldRow({
   field,
   view,
@@ -215,7 +328,7 @@ function FieldRow({
       break
     case 'number':
       control = (
-        <Input id={id} type="number" min={1} className="w-32 font-mono" value={Number.isFinite(value) ? (value as number) : ''} disabled={locked} onChange={(e) => onChange(e.target.valueAsNumber)} />
+        <Input id={id} type="number" min={field.min ?? 1} step={field.step ?? 1} className="w-32 font-mono" value={Number.isFinite(value) ? (value as number) : ''} disabled={locked} onChange={(e) => onChange(e.target.valueAsNumber)} />
       )
       break
     case 'port':
@@ -223,6 +336,9 @@ function FieldRow({
       break
     case 'dir':
       control = <DirField value={value as string} onChange={onChange} disabled={locked} fallback={fallbackDir} />
+      break
+    case 'engine':
+      control = <EngineField value={value as string} onChange={onChange} disabled={locked} view={view} />
       break
     case 'level':
       control = (

@@ -7,7 +7,7 @@
 //
 //   start(options) → Promise<{ port, host, urls, id, name }>
 //     rejects with err.code 'PORT_IN_USE' / 'PORT_NOT_ALLOWED' (+ err.port)
-//   stop() → Promise   destroys the torrent engines (data stays), closes HTTP and the DB
+//   stop() → Promise   stops the torrent engine (data stays), closes HTTP and the DB
 //   startOrRecover(options) → like start(), but when the port belongs to another
 //     program, starts in recovery mode instead (plan §5.9): dashboard only, on
 //     a free loopback port, so the admin can choose another port
@@ -40,7 +40,7 @@ var http = require('http'),
   health = require('./lib/health'),
   system = require('./lib/system'),
   portOwner = require('./lib/portOwner'),
-  store = require('./lib/store'),
+  torrents = require('./lib/torrents/client'),
   sessions = require('./lib/sessions'),
   userData = require('./lib/userData'),
   auth = require('./lib/auth'),
@@ -81,11 +81,13 @@ function listen(server, port, host) {
 }
 
 /**
- * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number, recovery?: object }} [options]
+ * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number,
+ *   recovery?: object, torrents?: object }} [options]
  *   port / host: override the settings for this run (tests);
  *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg;
  *   discoveryPort: UDP port of the discovery responder (tests; default 28471);
- *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback
+ *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback;
+ *   torrents: torrent client options for this run (tests: { engine: 'fake', engineOptions, discovery: false })
  */
 function start(options) {
   options = options || {};
@@ -105,7 +107,6 @@ function start(options) {
     ffmpeg.setBundledDir(options.ffmpegDir);
   }
   identity.load();
-  store.init({ downloads: settings.get('storage.downloadDir') || paths.downloads });
 
   health.install();
 
@@ -121,7 +122,16 @@ function start(options) {
     socket.on('close', function () { sockets.delete(socket); });
   });
 
-  return listen(server, port, host).then(function (bound) {
+  // The downloads and the torrent engine (not in recovery mode: nothing runs then)
+  var torrentsReady = recovery ? Promise.resolve() : torrents.init(Object.assign({
+    dataDir: settings.get('storage.downloadDir') || paths.downloads,
+    stateDir: paths.cache,
+    configDir: paths.config
+  }, options.torrents));
+
+  return torrentsReady.then(function () {
+    return listen(server, port, host);
+  }).then(function (bound) {
     var info = Object.assign(identity.info(), {
       startedAt: Date.now(),
       port: bound,
@@ -138,7 +148,7 @@ function start(options) {
       status: function () {
         return {
           uptimeS: Math.round((Date.now() - info.startedAt) / 1000),
-          torrents: store.list().length,
+          torrents: torrents.info().active,
           sessions: sessions.count(),
           eventClients: events.clientCount()
         };
@@ -194,9 +204,7 @@ function stop() {
   sessions.stop();
   events.detach();
   return discovery.stop().then(function () {
-    return new Promise(function (resolve) {
-      store.destroyAll(resolve);
-    });
+    return torrents.close();
   }).then(function () {
     return new Promise(function (resolve) {
       current.server.close(function () { resolve(); });

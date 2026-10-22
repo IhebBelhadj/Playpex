@@ -5,12 +5,13 @@
 //
 // A lease = one device holding one torrent: { infoHash, deviceId, lastActivity }.
 // Adding a torrent, streaming one of its files and the player's keepalive
-// acquire or refresh it; DELETE /torrents/:hash releases the caller's. The
-// engine stops only when no lease is left, after GRACE_MS (another client may
-// still be about to start), and its data is deleted when
-// storage.deleteAfterWatching is on. The reaper drops leases idle for longer
-// than streaming.idleTimeoutMinutes (a client that crashed or lost the
-// network), except while one of their streams is still open.
+// acquire or refresh it; DELETE /torrents/:hash releases the caller's. When no
+// lease is left, after GRACE_MS (another client may still be about to start),
+// the torrent client is told (lib/torrents/client.js#released): a stream
+// pauses (data kept), a download keeps going; nothing is deleted here. The
+// reaper drops leases idle for longer than streaming.idleTimeoutMinutes (a
+// client that crashed or lost the network), except while one of their
+// streams is still open.
 //
 // Sessions (GET /sessions, the dashboard's Activity) are the leases, with
 // what the device plays: file, play method, position and title from the
@@ -27,8 +28,7 @@
 var crypto = require('crypto'),
   _ = require('lodash'),
   protocol = require('@playpex/protocol'),
-  store = require('./store'),
-  stats = require('./stats'),
+  torrents = require('./torrents/client'),
   events = require('./events'),
   settings = require('./settings'),
   log = require('./logger').child('torrent');
@@ -37,7 +37,7 @@ var GRACE_MS = 30 * 1000,
   REAP_EVERY_MS = 60 * 1000,
   DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/;
 
-var torrents = {},     // infoHash → { leases: { deviceId → lease }, timer }
+var held = {},         // infoHash → { leases: { deviceId → lease }, timer, watched }
   transcodes = [],     // { deviceId, infoHash, path, res }
   reaper = null,
   options = { graceMs: GRACE_MS };
@@ -66,7 +66,7 @@ function device(req) {
 // ── leases ─────────────────────────────────────────────────────────────────
 
 function entry(infoHash) {
-  return torrents[infoHash] || (torrents[infoHash] = { leases: {}, timer: null });
+  return held[infoHash] || (held[infoHash] = { leases: {}, timer: null, watched: false });
 }
 
 // Acquires (or refreshes) the lease of the request's device on a torrent
@@ -111,12 +111,17 @@ function acquire(infoHash, req) {
 
 // Releases the request's (or `deviceId`'s) lease; true if it had one
 function release(infoHash, deviceId) {
-  var t = torrents[infoHash],
+  var t = held[infoHash],
     lease = t && t.leases[deviceId];
   if (!lease) {
     return false;
   }
   delete t.leases[deviceId];
+  // the player got to the end ("remove when watched", lib/torrents)
+  var p = lease.playback;
+  if (p && p.durationS > 0 && p.positionS >= p.durationS * 0.9) {
+    t.watched = true;
+  }
   log.info('released ' + infoHash + ' by ' + deviceId, { leases: Object.keys(t.leases).length });
   events.publish('session.ended', { id: lease.id, deviceId: deviceId, infoHash: infoHash });
   if (!Object.keys(t.leases).length) {
@@ -141,24 +146,16 @@ function scheduleEnd(infoHash) {
 }
 
 function end(infoHash) {
-  var t = torrents[infoHash];
+  var t = held[infoHash], watched = false;
   if (t) {
     if (Object.keys(t.leases).length) {
       return;
     }
     clearTimeout(t.timer);
-    delete torrents[infoHash];
+    watched = t.watched;
+    delete held[infoHash];
   }
-  if (!store.get(infoHash)) {
-    return;
-  }
-  if (settings.get('storage.deleteAfterWatching')) {
-    log.info('no client left: removing ' + infoHash + ' and its data');
-    store.remove(infoHash);
-  } else {
-    log.info('no client left: stopping ' + infoHash + ' (data kept)');
-    store.close(infoHash);
-  }
+  torrents.released(infoHash, { watched: watched });
 }
 
 // ── streams ────────────────────────────────────────────────────────────────
@@ -203,19 +200,29 @@ function takeTranscodeSlot(lease, file, res) {
 
 // ── limits ─────────────────────────────────────────────────────────────────
 
-// store.add's beforeAdd: a new torrent past streaming.maxTorrents is refused,
-// after ending the torrents nobody holds any more (waiting out their grace)
-function canAdd() {
+// The torrent client's admission (asked before a stream starts a torrent):
+// past streaming.maxTorrents active torrents, room is made by stopping the
+// streams nobody holds any more (waiting out their grace), then by sending a
+// download nobody watches back to the queue; else BUSY.
+function canAdd(infoHash) {
   var max = settings.get('streaming.maxTorrents');
-  if (store.list().length >= max) {
-    store.list().forEach(function (torrent) {
-      var t = torrents[torrent.infoHash];
-      if (!t || !Object.keys(t.leases).length) {
-        end(torrent.infoHash);
-      }
+  function others() {
+    return torrents.active().filter(function (a) { return a.infoHash !== infoHash; });
+  }
+  function unheld(a) {
+    var t = held[a.infoHash];
+    return !t || !Object.keys(t.leases).length;
+  }
+  if (others().length >= max) {
+    others().filter(function (a) { return a.intent === 'stream' && unheld(a); }).forEach(function (a) {
+      end(a.infoHash);
     });
   }
-  if (store.list().length >= max) {
+  var downloads = others().filter(function (a) { return a.intent === 'download' && unheld(a); });
+  while (others().length >= max && downloads.length) {
+    torrents.requeue(downloads.pop().infoHash);
+  }
+  if (others().length >= max) {
     var err = new Error('This server already streams ' + max + ' torrents; stop one or try again later');
     err.code = 'BUSY';
     return err;
@@ -229,9 +236,24 @@ var PLAYBACK_FIELDS = {
   positionS: 'number', durationS: 'number', paused: 'boolean', title: 'string', profileId: 'string', file: 'string'
 };
 
+// `media` of a keepalive: { mediaType: 'movie' | 'tv', tmdbId, season?, episode? }, or null
+function mediaRef(media) {
+  if (!media || typeof media !== 'object' || ['movie', 'tv'].indexOf(media.mediaType) === -1 ||
+    !(Number.isInteger(media.tmdbId) && media.tmdbId > 0)) {
+    return null;
+  }
+  var ref = { mediaType: media.mediaType, tmdbId: media.tmdbId };
+  ['season', 'episode'].forEach(function (k) {
+    if (Number.isInteger(media[k]) && media[k] >= 0) {
+      ref[k] = media[k];
+    }
+  });
+  return ref;
+}
+
 // What the player reports with its keepalive (all optional)
 function report(lease, body) {
-  var state = {};
+  var state = {}, media = mediaRef(body && body.media);
   Object.keys(PLAYBACK_FIELDS).forEach(function (k) {
     var v = body && body[k];
     if (typeof v === PLAYBACK_FIELDS[k] && (typeof v !== 'number' || isFinite(v)) &&
@@ -239,6 +261,13 @@ function report(lease, body) {
       state[k] = v;
     }
   });
+  // which title the download is ("Inception (2010), started on Living room TV")
+  if (media || state.profileId) {
+    torrents.describe(lease.infoHash, {
+      titleRef: media ? Object.assign(media, state.title ? { title: state.title } : {}) : null,
+      profileId: state.profileId
+    });
+  }
   if (Object.keys(state).length) {
     lease.playback = _.extend({}, lease.playback, state, { updatedAt: Date.now() });
     if (state.file) {
@@ -253,8 +282,8 @@ function report(lease, body) {
 function reap() {
   var idle = options.idleMs || settings.get('streaming.idleTimeoutMinutes') * 60 * 1000,
     now = Date.now();
-  Object.keys(torrents).forEach(function (infoHash) {
-    var t = torrents[infoHash];
+  Object.keys(held).forEach(function (infoHash) {
+    var t = held[infoHash];
     _.values(t.leases).forEach(function (lease) {
       if (!lease.streams.size && now - lease.lastActivity > idle) {
         log.info('lease of ' + lease.deviceId + ' on ' + infoHash + ' idle for ' +
@@ -263,10 +292,10 @@ function reap() {
       }
     });
   });
-  // torrents no lease ever covered (e.g. added before a restart of this module)
-  store.list().forEach(function (torrent) {
-    if (!torrents[torrent.infoHash]) {
-      scheduleEnd(torrent.infoHash);
+  // running streams no lease covers (e.g. started before a restart of this module)
+  torrents.active().forEach(function (a) {
+    if (a.intent === 'stream' && !held[a.infoHash]) {
+      scheduleEnd(a.infoHash);
     }
   });
 }
@@ -274,10 +303,8 @@ function reap() {
 // ── sessions ───────────────────────────────────────────────────────────────
 
 function present(lease) {
-  var torrent = store.get(lease.infoHash),
-    s = torrent ? stats(torrent) : null,
-    name = torrent && torrent.torrent ? torrent.torrent.name : null,
-    length = torrent && torrent.torrent ? torrent.torrent.length : null;
+  var d = torrents.get(lease.infoHash),
+    s = d && torrents.isActive(lease.infoHash) ? d : null;
   return {
     id: lease.id,
     deviceId: lease.deviceId,
@@ -286,7 +313,7 @@ function present(lease) {
     client: lease.client,
     address: lease.address,
     infoHash: lease.infoHash,
-    torrentName: name,
+    torrentName: d ? d.name : null,
     file: lease.file,
     method: lease.method,
     streaming: lease.streams.size > 0,
@@ -295,24 +322,24 @@ function present(lease) {
     playback: lease.playback ? _.extend({}, _.omit(lease.playback, 'updatedAt'),
       { updatedAt: new Date(lease.playback.updatedAt).toISOString() }) : null,
     torrent: s ? {
-      peers: s.peers.total,
-      downloadSpeed: s.speed.down,
-      uploadSpeed: s.speed.up,
-      downloaded: s.traffic.down,
-      length: length
+      peers: s.peers,
+      downloadSpeed: s.downloadSpeed,
+      uploadSpeed: s.uploadSpeed,
+      downloaded: s.doneBytes,
+      length: s.sizeBytes
     } : null
   };
 }
 
 function list() {
-  return _.flatten(_.values(torrents).map(function (t) { return _.values(t.leases); }))
+  return _.flatten(_.values(held).map(function (t) { return _.values(t.leases); }))
     .sort(function (a, b) { return a.since - b.since; })
     .map(present);
 }
 
 function find(id) {
   var found = null;
-  _.values(torrents).forEach(function (t) {
+  _.values(held).forEach(function (t) {
     _.values(t.leases).forEach(function (lease) {
       if (lease.id === id) {
         found = lease;
@@ -336,7 +363,7 @@ function stopSession(id) {
 
 // A revoked device: its streams are closed and its leases released
 function dropDevice(deviceId) {
-  _.values(torrents).forEach(function (t) {
+  _.values(held).forEach(function (t) {
     var lease = t.leases[deviceId];
     if (lease) {
       lease.streams.forEach(function (res) { res.destroy(); });
@@ -346,14 +373,30 @@ function dropDevice(deviceId) {
   transcodes.filter(function (t) { return t.deviceId === deviceId; }).forEach(function (t) { t.res.destroy(); });
 }
 
+// A torrent the admin removes: its sessions end (streams closed, leases
+// released without telling the torrent client: it forgets the torrent itself)
+function dropTorrent(infoHash) {
+  var t = held[infoHash];
+  if (!t) {
+    return;
+  }
+  clearTimeout(t.timer);
+  delete held[infoHash];
+  _.values(t.leases).forEach(function (lease) {
+    lease.streams.forEach(function (res) { res.destroy(); });
+    events.publish('session.ended', { id: lease.id, deviceId: lease.deviceId, infoHash: infoHash });
+  });
+  transcodes.filter(function (x) { return x.infoHash === infoHash; }).forEach(function (x) { x.res.destroy(); });
+}
+
 // Torrents with at least one lease, for the events' torrent.stats
 function activeStats() {
-  return Object.keys(torrents).map(function (infoHash) {
-    var torrent = store.get(infoHash);
-    if (!torrent || !Object.keys(torrents[infoHash].leases).length) {
+  return Object.keys(held).map(function (infoHash) {
+    var d = torrents.get(infoHash);
+    if (!d || !torrents.isActive(infoHash) || !Object.keys(held[infoHash].leases).length) {
       return null;
     }
-    var st = stats(torrent);
+    var st = torrents.torrentStats(infoHash);
     return {
       infoHash: infoHash,
       peers: st.peers.total,
@@ -364,21 +407,28 @@ function activeStats() {
   }).filter(Boolean);
 }
 
+// Whether a device holds the torrent (removing it from the dashboard: ask first)
+function holders(infoHash) {
+  var t = held[infoHash];
+  return t ? Object.keys(t.leases).length : 0;
+}
+
 // ── lifecycle ──────────────────────────────────────────────────────────────
 
 function start() {
+  torrents.setAdmission(canAdd);
   if (!reaper) {
     reaper = setInterval(reap, REAP_EVERY_MS);
     reaper.unref();
   }
 }
 
-// For stop(): forgets every lease (store.destroyAll stops the engines)
+// For stop(): forgets every lease (the torrent client stops the engine)
 function stop() {
   clearInterval(reaper);
   reaper = null;
-  _.values(torrents).forEach(function (t) { clearTimeout(t.timer); });
-  torrents = {};
+  _.values(held).forEach(function (t) { clearTimeout(t.timer); });
+  held = {};
   transcodes = [];
 }
 
@@ -394,6 +444,8 @@ module.exports = {
   list: list,
   stopSession: stopSession,
   dropDevice: dropDevice,
+  dropTorrent: dropTorrent,
+  holders: holders,
   activeStats: activeStats,
   count: function () { return list().length; },
   start: start,

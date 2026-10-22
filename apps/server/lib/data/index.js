@@ -8,7 +8,8 @@ var profiles = require('./drizzle/profiles'),
   progress = require('./drizzle/progress'),
   history = require('./drizzle/history'),
   ratings = require('./drizzle/ratings'),
-  settings = require('./drizzle/settings');
+  settings = require('./drizzle/settings'),
+  downloads = require('./drizzle/downloads');
 
 /**
  * @param {object} db a Drizzle database (lib/db open().db)
@@ -21,7 +22,8 @@ function createRepositories(db) {
     progress: progress(db),
     history: history(db),
     ratings: ratings(db),
-    settings: settings(db)
+    settings: settings(db),
+    downloads: downloads(db)
   };
 }
 

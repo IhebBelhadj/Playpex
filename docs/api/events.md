@@ -21,9 +21,12 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `session.started` | a device takes a lease on a torrent | a `Session` (see below) |
 | `session.updated` | a keepalive with a playback state arrives | a `Session` |
 | `session.ended` | the lease is released, reaped, or stopped by the admin | `{ id, deviceId, infoHash }` |
+| `download.added` | the server keeps a new torrent ([downloads](playback.md#downloads)) | a `Download` |
+| `download.updated` | a download's state changed (at once), or its progress (at most every 2 s) | a `Download` |
+| `download.removed` | the admin removed it (or "remove when watched") | `{ infoHash }` |
 | `settings.changed` | a device's or a profile's settings were written or reset ([settings](settings.md)) | `{ scope: 'device' \| 'profile', ownerId, keys }` |
 
-Payload schemas: `ServerStatusEvent`, `TorrentStatsEvent`, `Session`, `SessionEndedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).
+Payload schemas: `ServerStatusEvent` (`torrents` = running ones), `TorrentStatsEvent`, `Session`, `SessionEndedEvent`, `Download`, `DownloadRemovedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).
 
 `Session` (schema in the spec): `{ id, deviceId, deviceName, paired, client, address, infoHash, torrentName, file, method ('direct' | 'audio-transcode'), streaming, since, lastActivity, playback (your last keepalive body), torrent: {peers, downloadSpeed, uploadSpeed, downloaded, length} }`.
 

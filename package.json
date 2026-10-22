@@ -17,6 +17,8 @@
     "electron": "npm run electron -w apps/tv",
     "electron:last": "npm run electron:last -w apps/tv",
     "server": "npm start -w apps/server",
+    "install:engine": "npm run install:engine -w apps/server --",
+    "build:torrentd": "node engines/torrentd/build.js",
     "test:server": "npm test -w apps/server",
     "db:generate": "npm run db:generate -w apps/server",
     "dist:tv": "npm run dist -w apps/tv",

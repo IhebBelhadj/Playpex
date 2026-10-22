@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import type { Schema } from '@playpex/protocol';
 import { ServerService } from './server.service';
 
 @Injectable({
@@ -19,8 +20,9 @@ export class TorrentService {
   }
 
   // Every minute while the player is open (a paused video makes no
-  // requests), with what it plays: shown in the server's Activity
-  keepTorrent(hash:string , state:{ positionS?:number, durationS?:number, paused?:boolean, title?:string, profileId?:string, file?:string }){
+  // requests), with what it plays: shown in the server's Activity, and
+  // `media` (which TMDB title) kept with the server's download
+  keepTorrent(hash:string , state:Schema<'KeepaliveRequest'>){
     return this.http.post(`${this.server.api}/torrents/${hash}/keepalive` , state , { params : this.server.deviceParams() })
   }
 

@@ -99,14 +99,15 @@ function menuTemplate(model, actions) {
       });
     });
   }
-  const paused = s && s.torrents > 0 && s.pausedTorrents === s.torrents;
+  // the server's downloads.paused (kept across restarts); streams still play
+  const paused = !!s && !!s.downloadsPaused;
   items.push(
     { type: 'separator' },
     { label: 'Open downloads folder', click: actions.openDownloads },
     { label: 'Open logs folder', click: actions.openLogs },
     paused ?
       { label: 'Resume downloads', click: actions.resumeAll, enabled: live } :
-      { label: 'Pause all downloads', click: actions.pauseAll, enabled: live && !!s && s.torrents > s.pausedTorrents },
+      { label: 'Pause all downloads', click: actions.pauseAll, enabled: live && !!s },
     { label: 'Restart server', click: actions.restart, enabled: server.state !== 'stopping' },
     { type: 'separator' },
     { label: 'Start at login', type: 'checkbox', checked: !!model.openAtLogin, click: item => actions.setOpenAtLogin(item.checked) },

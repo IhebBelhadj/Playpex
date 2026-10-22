@@ -1,0 +1,7 @@
+{
+  "comment": "The pinned playpex-torrentd release (engines/torrentd, built on anacrolix/torrent): per platform, the URL of the binary published on the Playpex GitHub releases and its SHA-256 (written by `node engines/torrentd/build.js --pin` after the release workflow published tag torrentd-v<version>). Empty until the first release: until then `npm run build:torrentd` builds it from source into <cache>/engines/torrentd (Go 1.26+).",
+  "version": "0.1.0",
+  "source": "https://github.com/IhebBelhadj/Playpex/tree/main/engines/torrentd",
+  "licence": "MPL-2.0 (anacrolix/torrent); Playpex's own code: see licence.md",
+  "builds": {}
+}

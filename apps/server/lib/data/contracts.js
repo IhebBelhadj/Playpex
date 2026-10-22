@@ -53,6 +53,28 @@
  *
  * @typedef {{ key: string, value: *, updatedAt: Date }} SettingEntry
  *   value is any JSON value (never null: a missing row is the default)
+ *
+ * @typedef {object} Download
+ *   A torrent the server knows (lib/torrents/client.js), running or not
+ * @property {string} infoHash          lowercase hex, 40 characters
+ * @property {string|null} name         null until the metadata arrived
+ * @property {string|null} magnet
+ * @property {string|null} torrentFile  path of the cached .torrent
+ * @property {'queued'|'downloading'|'seeding'|'paused'|'completed'|'checking'|'error'} state
+ * @property {'stream'|'download'} intent
+ * @property {string|null} error
+ * @property {string} saveDir
+ * @property {string[]|null} selectedFiles   paths inside the torrent; null = every file
+ * @property {number|null} sizeBytes    of the selected files
+ * @property {number} doneBytes
+ * @property {number} uploadedBytes
+ * @property {string|null} addedBy      a device id, or 'admin'
+ * @property {string|null} profileId
+ * @property {object|null} titleRef     { mediaType, tmdbId, season?, episode?, title? }
+ * @property {boolean} removeWhenWatched
+ * @property {Date} addedAt
+ * @property {Date|null} completedAt
+ * @property {Date|null} lastActiveAt
  */
 
 /**
@@ -98,6 +120,13 @@
  * @property {function(SettingsOwner, string): Promise<boolean>} remove
  * @property {function(SettingsOwner): Promise<number>} removeAll                          rows deleted
  *
+ * @typedef {object} DownloadsRepository
+ * @property {function(): Promise<Download[]>} list                                      oldest first
+ * @property {function(string): Promise<Download|null>} find
+ * @property {function(Download): Promise<Download|null>} insert                        null if the hash exists
+ * @property {function(string, Partial<Download>): Promise<Download|null>} update
+ * @property {function(string): Promise<boolean>} remove
+ *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles
  * @property {WatchlistRepository} watchlist
@@ -105,6 +134,7 @@
  * @property {HistoryRepository} history
  * @property {RatingsRepository} ratings
  * @property {SettingsRepository} settings
+ * @property {DownloadsRepository} downloads
  */
 
 module.exports = {};

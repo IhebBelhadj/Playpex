@@ -1,0 +1,45 @@
+# Releases playpex-torrentd (engines/torrentd), the optional Go torrent engine
+# the server installs on demand (Settings › Downloads › Install).
+#
+# Push a tag torrentd-v<version> (the version of
+# apps/server/lib/torrents/engines/torrentd/release.json): every platform is
+# built (static, no cgo) and attached to a GitHub release of that tag. Then,
+# locally, `node engines/torrentd/build.js --pin` downloads them, hashes them
+# and writes their URL + SHA-256 into release.json (the server trusts only
+# those), and that commit ships with the next server version.
+name: torrentd release
+
+on:
+  push:
+    tags: ['torrentd-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engines/torrentd/go.mod
+          cache-dependency-path: engines/torrentd/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The tag names release.json's version
+        run: |
+          version=$(node -p "require('./apps/server/lib/torrents/engines/torrentd/release.json').version")
+          test "${GITHUB_REF_NAME}" = "torrentd-v${version}" || { echo "tag ${GITHUB_REF_NAME} ≠ torrentd-v${version}"; exit 1; }
+      - name: Build every platform
+        run: node engines/torrentd/build.js --all
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd engines/torrentd/dist
+          sha256sum playpex-torrentd-* > SHA256SUMS
+          gh release create "${GITHUB_REF_NAME}" playpex-torrentd-* SHA256SUMS \
+            --title "playpex-torrentd ${GITHUB_REF_NAME#torrentd-v}" \
+            --notes "Optional torrent engine of Playpex Media Server (anacrolix/torrent). Installed by the server on demand; not meant to be run by hand."

@@ -24,7 +24,13 @@ var LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 
 // Whole numbers ≥ 1 (counts, minutes)
 var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'streaming.idleTimeoutMinutes',
-  'security.pairingRequestMinutes'];
+  'security.pairingRequestMinutes', 'downloads.maxActive'];
+// Whole numbers ≥ 0 (0 = off)
+var NON_NEGATIVE_INTEGERS = ['downloads.seedMinutes', 'downloads.uploadSlots'];
+// Ports (1024–65535) other than the HTTP one
+var PORTS = ['downloads.peerPort'];
+// Numbers ≥ 0
+var NON_NEGATIVE = ['downloads.seedRatio'];
 
 function defaults() {
   return {
@@ -50,15 +56,25 @@ function defaults() {
       pairingRequestMinutes: 10
     },
     storage: {
-      downloadDir: '',    // '' = <cache>/torrent_data (lib/paths.js)
-      // true: a torrent's data is deleted once no client holds it any more;
-      // false: only its engine stops, the files stay in the download dir
-      deleteAfterWatching: true
+      downloadDir: ''     // '' = <cache>/torrent_data (lib/paths.js)
     },
     streaming: {
-      maxTorrents: 4,         // torrents at once; past it POST /torrents → 503 BUSY
+      maxTorrents: 4,         // active torrents at once (streams + downloads); past it a new stream → 503 BUSY
       maxTranscodes: 2,       // ffmpeg audio transcodes at once (one per device and file)
       idleTimeoutMinutes: 10  // a client lease with no request / keepalive for this long is dropped
+    },
+    downloads: {
+      // the torrent engine (lib/torrents/engines); applied after a restart
+      engine: require('./torrents/engines').DEFAULT,
+      peerPort: 6881,     // BitTorrent port (TCP / uTP); taken → a free one; applied after a restart
+      portForwarding: false,   // ask the router to forward peerPort (UPnP), when the engine can
+      maxActive: 3,       // downloads (not streams) running at once; the others wait, queued
+      // a finished download seeds until either is reached (0 = no limit of
+      // that kind); both 0 = it doesn't seed
+      seedRatio: 1,
+      seedMinutes: 0,
+      uploadSlots: 10,    // peers uploaded to at once per torrent; 0 = never upload
+      paused: false       // "Pause all downloads" (the tray): downloads wait, streams still play
     },
     providers: {
       tmdbApiKey: '',
@@ -80,6 +96,7 @@ var ENV = {
   'network.lanSharing': ['PLAYPEX_LAN_SHARING'],
   'network.discovery': ['PLAYPEX_DISCOVERY'],
   'storage.downloadDir': ['PLAYPEX_DOWNLOAD_DIR'],
+  'downloads.engine': ['PLAYPEX_TORRENT_ENGINE'],
   'providers.tmdbApiKey': ['TMDB_API_KEY'],
   'providers.openSubtitlesApiKey': ['OPENSUBTITLES_API_KEY'],
   'providers.wyzieApiKey': ['WYZIE_API_KEY'],
@@ -89,7 +106,8 @@ var ENV = {
 };
 
 // Applied on the next start only
-var RESTART = ['general.port', 'network.lanSharing', 'security.pairingRequestMinutes', 'storage.downloadDir'];
+var RESTART = ['general.port', 'network.lanSharing', 'security.pairingRequestMinutes', 'storage.downloadDir',
+  'downloads.engine', 'downloads.peerPort', 'downloads.portForwarding'];
 
 // Never returned in full by publicView()
 var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey',
@@ -132,8 +150,17 @@ function coerce(key, value, fromEnv) {
       var err = validatePort(value);
       return err ? { error: err } : { value: n };
     }
+    if (PORTS.indexOf(key) !== -1) {
+      return validatePort(value) ? { error: key.split('.')[1] + ': ' + validatePort(value) } : { value: n };
+    }
     if (POSITIVE_INTEGERS.indexOf(key) !== -1) {
       return Number.isInteger(n) && n >= 1 ? { value: n } : { error: key + ' must be a whole number of at least 1' };
+    }
+    if (NON_NEGATIVE_INTEGERS.indexOf(key) !== -1) {
+      return Number.isInteger(n) && n >= 0 ? { value: n } : { error: key + ' must be a whole number of at least 0' };
+    }
+    if (NON_NEGATIVE.indexOf(key) !== -1) {
+      return Number.isFinite(n) && n >= 0 ? { value: n } : { error: key + ' must be a number of at least 0' };
     }
     return Number.isFinite(n) ? { value: n } : { error: key + ' must be a number' };
   }
@@ -169,6 +196,9 @@ function coerce(key, value, fromEnv) {
   }
   if (key === 'storage.downloadDir' && value.trim() && !path.isAbsolute(value.trim())) {
     return { error: 'downloadDir must be an absolute path' };
+  }
+  if (key === 'downloads.engine' && require('./torrents/engines').choices().indexOf(value.trim()) === -1) {
+    return { error: 'engine must be one of ' + require('./torrents/engines').choices().join(', ') };
   }
   return { value: value.trim() };
 }
