@@ -285,7 +285,7 @@ function sourceKind(lease) {
 
 // playback.* for the plugins' event bus (docs/plugins-plan.md §4.4; internal
 // events, lib/plugins/bus.js): only a title the player named (`media`: never
-// an 18+ title, the TV doesn't name those) and a profile
+// with tracking none, the TV doesn't name those) and a profile
 function playbackEvent(name, lease) {
   var p = lease.playback || {};
   if (!lease.media || !p.profileId) {

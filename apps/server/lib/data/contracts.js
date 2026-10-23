@@ -227,6 +227,7 @@
  * @property {function(string): Promise<object|null>} repositoryGet
  * @property {function(object): Promise<void>} repositorySave                                   upsert by id (addedAt kept)
  * @property {function(string): Promise<void>} repositoryRemove
+ * @property {function(): Promise<object[]>} owners                                            plugin ids with kept rows (counts)
  * @property {function(string, string, Date): Promise<number>} settingsCopy                     a plugin's settings rows to another
  * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings, grants (and `hidden` rows)
  *

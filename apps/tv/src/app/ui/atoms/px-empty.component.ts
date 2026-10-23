@@ -19,7 +19,7 @@ export class PxEmptyComponent {
   @Input() actionKey = 'empty';
   @Input() actionVariant:'outline' | 'primary' = 'outline';
   @Input() busy = false;
-  // 'hero': where a page's title block would be (watch list, 18+ posters)
+  // 'hero': where a page's title block would be (watch list, a plugin's catalog)
   @Input() size:'m' | 'hero' = 'm';
   @Output() act = new EventEmitter<void>();
 }

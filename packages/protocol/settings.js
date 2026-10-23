@@ -10,7 +10,6 @@
 //   - `client.<clientId>.<name>`: a client's private value, free JSON of at
 //     most CLIENT_VALUE_MAX bytes, stored in the scope of the route it is sent to
 //   - anything else is refused (INVALID)
-//   - `adult: true` keys are refused for kids profiles (FORBIDDEN)
 //   - null as a value resets the key (its row is deleted, the default applies)
 // Adding a key is a protocol change (openapi.yaml + this file), not an API
 // version bump: clients ignore keys they don't know.
@@ -23,9 +22,7 @@ var SETTINGS = {
   'subtitles.size': { scope: 'device', type: 'string', enum: ['small', 'medium', 'large', 'largest'], default: 'medium' },
   'subtitles.provider': { scope: 'profile', type: 'string', nullable: true, default: null },
   'player.autoplayNext': { scope: 'profile', type: 'boolean', default: true },
-  'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true },
-  'adult.layout': { scope: 'profile', type: 'string', enum: ['posters', 'compact'], default: 'posters', adult: true },
-  'adult.metadataProvider': { scope: 'profile', type: 'string', nullable: true, default: null, adult: true }
+  'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true }
 };
 
 var SCOPES = ['device', 'profile'];

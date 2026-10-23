@@ -1,6 +1,6 @@
 # Settings
 
-A client's user settings (the UI size, volume, subtitle size, subtitle provider, 18+ layout…) live on the server, in its database, so they survive a reinstall and follow the profile to every client. The registry of keys is **`@playpex/protocol` `settings.js`** (JS clients import it; the others read it from `GET /api/v1/settings?definitions=1`). Request and answer shapes: the OpenAPI spec, tag `settings`.
+A client's user settings (the UI size, volume, subtitle size, subtitle provider…) live on the server, in its database, so they survive a reinstall and follow the profile to every client. The registry of keys is **`@playpex/protocol` `settings.js`** (JS clients import it; the others read it from `GET /api/v1/settings?definitions=1`). Request and answer shapes: the OpenAPI spec, tag `settings`.
 
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live.
 
@@ -9,7 +9,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | Scope | Owner | Keys | Why |
 |---|---|---|---|
 | `device` | the calling device | `display.uiScale`, `display.safeArea`, `player.volume`, `subtitles.size` | depend on the screen, its distance, its speakers |
-| `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.layout`, `adult.metadataProvider` | depend on the person |
+| `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles` | depend on the person |
 
 **Which device**: a paired client is the device its token names, keyed by the `deviceId` it sent with `PUT /devices/me` (send it right after pairing; an `X-Playpex-Device` header is ignored for paired clients, so one device can't write another's settings). A client on the server machine (no token) is its `X-Playpex-Device` header or `?device=` (letters, digits and `._:-`, up to 64). Without one, the settings routes answer `400 DEVICE_REQUIRED`. Revoking a device deletes its settings.
 
@@ -24,10 +24,8 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | `subtitles.provider` | profile | string or null | a subtitle provider id (`GET /subtitles/providers`) | null (the server's first enabled one) |
 | `player.autoplayNext` | profile | boolean | | true |
 | `player.preferLocalFiles` | profile | boolean | files on the server first in `POST /play/sources`, a lone one plays at once | true |
-| `adult.layout` | profile, 18+ | string | posters, compact | posters |
-| `adult.metadataProvider` | profile, 18+ | string or null | an 18+ metadata provider id | null (the server's default) |
 
-18+ keys are refused for kids profiles (`403 FORBIDDEN`) and left out of their answers. Adding a key is a protocol change, not a new API version: **ignore keys you don't know.**
+Adding a key is a protocol change, not a new API version: **ignore keys you don't know.**
 
 ## Reading
 
@@ -51,4 +49,4 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 
 ## Before settings existed
 
-`Profile.preferences` (`{ adult: { layout, metadataProvider } }`) is **deprecated**: still answered, built from the profile's `adult.*` settings, and `PUT /profiles/{id}` with `preferences.adult` still writes them, for one release. Use the settings routes.
+`Profile.preferences` is **deprecated**: answered `{}`, ignored on `PUT /profiles/{id}`. Use the settings routes. (The `adult.*` keys left with the 18+ section, now a plugin: its options are the plugin's, set on the dashboard.)

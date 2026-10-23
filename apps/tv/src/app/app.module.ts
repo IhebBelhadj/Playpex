@@ -39,8 +39,6 @@ import { LibraryPageComponent } from './library-page/library-page.component';
 import { LibraryFolderComponent } from './library-folder/library-folder.component';
 import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
 import { ReleasesPageComponent } from './releases-page/releases-page.component';
-import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
-import { AdultTitleComponent } from './adult-title/adult-title.component';
 import { BackButtonComponent } from './back-button/back-button.component';
 import { MOVEMENT_DIRECTIVES } from './movement/movement';
 import { NAV_DIRECTIVES } from './nav/public-api';
@@ -85,8 +83,6 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     LibraryFolderComponent,
     TextKeyboardComponent,
     ReleasesPageComponent,
-    AdultBrowseComponent,
-    AdultTitleComponent,
     BackButtonComponent,
     ConnectPageComponent,
     ConnectionLostComponent,

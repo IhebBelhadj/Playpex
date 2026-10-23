@@ -6,7 +6,6 @@
 var crypto = require('crypto'),
   errors = require('./errors'),
   validate = require('./validate'),
-  registry = require('@playpex/protocol/settings'),
   dataErrors = require('../data/errors');
 
 var MAX_PROFILES = 8,
@@ -25,29 +24,25 @@ function pinMatches(profile, pin) {
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
-// Deprecated `preferences` (settings plan §6): a read-only view of the
-// profile's adult.* settings, { adult: { layout, metadataProvider } }, kept
-// for one release; writes of preferences.adult go to the settings.
-var ADULT_PREFERENCES = { layout: 'adult.layout', metadataProvider: 'adult.metadataProvider' };
-
-function preferencesFrom(entries) {
-  var adult = {};
-  Object.keys(ADULT_PREFERENCES).forEach(function (field) {
-    var entry = entries.filter(function (e) { return e.key === ADULT_PREFERENCES[field]; })[0];
-    adult[field] = entry ? entry.value : registry.SETTINGS[ADULT_PREFERENCES[field]].default;
-  });
-  return { adult: adult };
+// Deprecated `preferences` (settings plan §6): always {} now (the settings
+// it was a view of left with the 18+ section, docs/plugins-plan.md P5);
+// writes are checked to be an object and ignored, so older clients still work
+function preferences(value) {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    throw errors.invalid('preferences must be an object');
+  }
+  return value;
 }
 
 /** What leaves the service: never the PIN hash or salt */
-function toPublic(profile, entries) {
+function toPublic(profile) {
   return {
     id: profile.id,
     name: profile.name,
     avatar: profile.avatar,
     isKid: profile.isKid,
     hasPin: !!profile.pinHash,
-    preferences: profile.isKid ? {} : preferencesFrom(entries || []),
+    preferences: {},
     createdAt: profile.createdAt,
     lastUsedAt: profile.lastUsedAt
   };
@@ -75,41 +70,12 @@ function pinFields(pin) {
   return { pinHash: hashPin(String(pin), salt), pinSalt: salt };
 }
 
-function preferences(value) {
-  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-    throw errors.invalid('preferences must be an object');
-  }
-  return value;
-}
-
-// preferences.adult → { 'adult.layout': …, 'adult.metadataProvider': … } (validated)
-function adultSettings(value) {
-  var adult = preferences(value).adult, patch = {};
-  if (adult == null) {
-    return patch;
-  }
-  if (typeof adult !== 'object' || Array.isArray(adult)) {
-    throw errors.invalid('preferences.adult must be an object');
-  }
-  Object.keys(ADULT_PREFERENCES).forEach(function (field) {
-    if (adult[field] !== undefined) {
-      var problem = registry.validate(ADULT_PREFERENCES[field], adult[field], 'profile');
-      if (problem) {
-        throw errors.invalid(problem);
-      }
-      patch[ADULT_PREFERENCES[field]] = adult[field];
-    }
-  });
-  return patch;
-}
-
 /**
  * @param {import('../data/contracts').Repositories} repositories
  * @param {{ now?: function(): Date }} [options]
  */
 module.exports = function profilesService(repositories, options) {
   var repo = repositories.profiles,
-    settings = repositories.settings,
     now = (options && options.now) || function () { return new Date(); },
     failures = new Map();   // profileId → { count, lockedUntil }
 
@@ -126,21 +92,10 @@ module.exports = function profilesService(repositories, options) {
     if (!profile) {
       return profile;
     }
-    return settings.list({ kind: 'profile', id: profile.id }).then(function (entries) {
-      return toPublic(profile, entries);
-    });
+    return Promise.resolve(toPublic(profile));
   }
 
-  function writePreferences(profile, value) {
-    var patch = adultSettings(value);
-    if (!Object.keys(patch).length) {
-      return Promise.resolve(profile);
-    }
-    if (profile.isKid) {
-      throw errors.forbidden('Kids profiles have no 18+ settings');
-    }
-    return settings.setMany({ kind: 'profile', id: profile.id }, patch, now()).then(function () { return profile; });
-  }
+
 
   function onDuplicate(err) {
     throw dataErrors.isDuplicate(err) ? errors.conflict('A profile with this name already exists') : err;
@@ -186,7 +141,6 @@ module.exports = function profilesService(repositories, options) {
     /** @param {{ name: string, avatar?: string, isKid?: boolean, pin?: string, preferences?: object }} input */
     create: function (input) {
       input = input || {};
-      var prefs;
       return Promise.resolve().then(function () {
         var profile = Object.assign({
           id: crypto.randomUUID(),
@@ -197,9 +151,8 @@ module.exports = function profilesService(repositories, options) {
           createdAt: now(),
           lastUsedAt: null
         }, pinFields(input.pin));
-        prefs = input.preferences == null ? null : input.preferences;
-        if (prefs) {
-          adultSettings(prefs);   // validate before inserting
+        if (input.preferences != null) {
+          preferences(input.preferences);
         }
         return repo.count().then(function (count) {
           if (count >= MAX_PROFILES) {
@@ -207,12 +160,10 @@ module.exports = function profilesService(repositories, options) {
           }
           return repo.insert(profile);
         });
-      }).then(function (profile) {
-        return prefs && !profile.isKid ? writePreferences(profile, prefs) : profile;
-      }, onDuplicate).then(present);
+      }).then(present, onDuplicate);
     },
 
-    /** @param {{ name?: string, avatar?: string|null, isKid?: boolean, preferences?: object }} patch preferences.adult (deprecated) is written to the settings */
+    /** @param {{ name?: string, avatar?: string|null, isKid?: boolean, preferences?: object }} patch preferences (deprecated) is ignored */
     update: function (id, patch) {
       patch = patch || {};
       return requireProfile(id).then(function (profile) {
@@ -226,17 +177,13 @@ module.exports = function profilesService(repositories, options) {
         if (patch.isKid !== undefined) {
           changes.isKid = !!patch.isKid;
         }
-        var write = patch.preferences !== undefined ? function (p) {
-          return writePreferences(Object.assign({}, p, { isKid: changes.isKid !== undefined ? changes.isKid : p.isKid }),
-            patch.preferences).then(function () { return p; });
-        } : function (p) { return p; };
         if (patch.preferences !== undefined) {
-          adultSettings(patch.preferences);   // validate before writing anything
+          preferences(patch.preferences);
         }
         if (!Object.keys(changes).length) {
-          return write(profile);
+          return profile;
         }
-        return repo.update(id, changes).then(write);
+        return repo.update(id, changes);
       }).then(present, onDuplicate);
     },
 

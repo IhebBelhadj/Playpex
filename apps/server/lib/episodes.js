@@ -134,7 +134,7 @@ function findEpisodeTorrents(imdbId, title, season, episode) {
 
 module.exports = {
   findEpisodeTorrents: findEpisodeTorrents,
-  // shared with adult.js and lib/play
+  // shared with lib/play and lib/releases.js
   describe: describe,
   compare: compare,
   normalizeTitle: normalizeTitle,

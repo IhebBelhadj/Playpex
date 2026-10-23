@@ -48,7 +48,7 @@ Let the user type `host`, `host:port` or a full URL. No port means **28470**. Pr
   "apiVersion": 1,
   "minApiVersion": 1,
   "auth": "pairing",
-  "features": { "transcode": true, "subtitles": ["opensubtitles-stremio", "yify"], "adult": true }
+  "features": { "transcode": true, "subtitles": ["opensubtitles-stremio", "yify"] }
 }
 ```
 

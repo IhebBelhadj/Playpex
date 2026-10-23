@@ -491,6 +491,26 @@ test('clear data: what it kept is gone, it runs again', function () {
   });
 });
 
+test('data kept for a plugin that isn\'t installed: listed, then forgotten', function () {
+  return userData.services().then(function (s) {
+    return Promise.all([s.plugins.store.set('ghost', 'k', 1, 4096), s.plugins.settings.set('ghost', 'server', null, 'mode', 'x')]);
+  }).then(function () {
+    return call('GET', '/admin/plugins');
+  }).then(function (r) {
+    conforms('AdminPlugins', r.json);
+    var ghost = r.json.kept.filter(function (k) { return k.id === 'ghost'; })[0];
+    assert.deepEqual(ghost, { id: 'ghost', settings: 1, store: 1, secrets: 0, grants: 0 });
+    assert.ok(!r.json.kept.some(function (k) { return k.id === 'greeter'; }), 'not an installed plugin\'s');
+    return Promise.all([call('DELETE', '/admin/plugins/kept/ghost'), call('DELETE', '/admin/plugins/kept/greeter')]);
+  }).then(function (r) {
+    assert.equal(r[0].status, 200, r[0].text);
+    assert.equal(r[1].status, 404, 'an installed plugin\'s data: its page\'s Clear data');
+    return call('GET', '/admin/plugins');
+  }).then(function (r) {
+    assert.ok(!r.json.kept.some(function (k) { return k.id === 'ghost'; }));
+  });
+});
+
 test('removed: files, row and data gone', function () {
   var dir = path.join(process.env.PLAYPEX_CONFIG_DIR, 'plugins', 'greeter');
   return userData.services().then(function (s) {

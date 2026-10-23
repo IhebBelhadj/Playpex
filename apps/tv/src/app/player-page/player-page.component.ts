@@ -237,7 +237,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.resumeAt = this.playback.startAt || null;
       this.resumeDecided = true;
     }
-    else if (this.playback.tmdbId && !this.playback.adult) {
+    else if (this.playback.tmdbId && this.playback.tracking != 'none') {
       this.stateSub = this.library.state(this.libraryKey()).subscribe({
         next: state => {
           this.resumeAt = state.resume ? state.resume.positionS : null;
@@ -568,8 +568,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   saveProgress() {
     let player = this.moviePlayer;
-    // 18+ titles stay out of the library (Continue watching, Watched)
-    if (!this.playback?.tmdbId || this.playback.adult || this.playback.devSrc || !player || !this.playerReady || !this.resumeDecided) return;
+    // tracking none stays out of the library (Continue watching, Watched)
+    if (!this.playback?.tmdbId || this.playback.tracking == 'none' || this.playback.devSrc || !player || !this.playerReady || !this.resumeDecided) return;
     // don't overwrite the saved position with 0:00 before jumping to it
     if (this.resumeAt && !this.resumeApplied) return;
     let duration = this.mediaDuration();
@@ -601,8 +601,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         title: [p.title, code].filter(Boolean).join(' · '),
         profileId: this.profiles.current.value?.id,
         file: this.filePath,
-        // which title the server's download is (not for 18+ titles)
-        ...(p.tmdbId && p.mediaType && !p.adult ? {
+        // which title the server's download is (not with tracking none)
+        ...(p.tmdbId && p.mediaType && p.tracking != 'none' ? {
           media: { mediaType: p.mediaType, tmdbId: p.tmdbId, ...(p.season ? { season: p.season, episode: p.episode } : {}) },
         } : {}),
         ...(this.playerReady && player ? { positionS: this.position(), paused: player.paused } : {}),
@@ -1096,10 +1096,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // ── markers ───────────────────────────────────────────────────────────────
 
   // Once the length is known: what the server's plugins mark in this title
-  // (not for 18+ titles or videos without a TMDB title)
+  // (not with tracking none, nor videos without a TMDB title)
   private askMarkers() {
     let p = this.playback, duration = this.mediaDuration();
-    if (this.markersAsked || this.destroyed || p.adult || !p.tmdbId || !p.mediaType || !(duration > 0)) return;
+    if (this.markersAsked || this.destroyed || p.tracking == 'none' || !p.tmdbId || !p.mediaType || !(duration > 0)) return;
     this.markersAsked = true;
     let episode = p.mediaType == 'tv' && p.season != null && !!p.episode;
     let fileName = (this.filePath || '').split('/').pop();
@@ -1120,7 +1120,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Episodes: the one after this, from TMDB (its release is looked up later)
   findNextEpisode() {
     let p = this.playback;
-    if (!p.season || !p.episode || !p.tmdbId || p.adult) return;
+    if (!p.season || !p.episode || !p.tmdbId || p.tracking == 'none') return;
     this.nextSub = this.episodes.next(p.tmdbId, p.season, p.episode, p.imdbId).subscribe(next => this.upNext = next);
   }
 

@@ -627,6 +627,10 @@
               "number"
             ]
           }
+        },
+        "replace": {
+          "description": "Open it in place of the current screen (switching a section's layout): Back skips the one it replaces",
+          "type": "boolean"
         }
       }
     },

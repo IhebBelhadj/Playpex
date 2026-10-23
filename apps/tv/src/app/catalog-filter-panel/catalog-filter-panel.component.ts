@@ -5,7 +5,7 @@ import { CatalogFilters, Genre, LANGUAGES, NO_FILTERS, PERIODS, RATINGS } from '
 // Full-screen filter panel of the movies / TV list page: genre, release
 // period, minimum TMDB score and original language, one choice per group,
 // applied together ("Show movies") or reset. On the <px-panel> frame with
-// <px-chip>s (ui/overlay), like the 18+ filter panel: while open it owns its
+// <px-chip>s (ui/overlay), like a plugin catalog's filter panel: while open it owns its
 // keys (the trapping section `catalogFilters`; groups are pxGrids of a
 // pxStack, src/app/movement) and is a layer of the nav system (src/app/nav):
 // Enter picks a chip, back cancels, the host gets no select / back meanwhile.

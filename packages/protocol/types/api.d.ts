@@ -845,6 +845,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plugins/kept/{keptId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget what is kept for a plugin that isn't installed */
+        delete: operations["forgetKeptPluginData"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/plugins/{pluginId}": {
         parameters: {
             query?: never;
@@ -2454,189 +2471,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/adult/torrents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Torrents of one adult film, matched by title (+ year), best first */
-        get: operations["findAdultTorrents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Same as /releases/providers?kind=adult */
-        get: operations["listAdultReleaseProviders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/browse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Same as /releases/browse?kind=adult */
-        get: operations["browseAdultReleases"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listAdultMetaProviders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/home": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        get: operations["getAdultHome"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/rows/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-                key: string;
-            };
-            cookie?: never;
-        };
-        get: operations["getAdultRow"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/discover": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        get: operations["discoverAdult"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        get: operations["searchAdult"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/studios": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        get: operations["listAdultStudios"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/adult/meta/{provider}/titles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-                id: string;
-            };
-            cookie?: never;
-        };
-        get: operations["getAdultTitle"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/profiles": {
         parameters: {
             query?: never;
@@ -2663,7 +2497,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getProfile"];
-        /** Update; `preferences.adult` (deprecated) is written to the profile's settings */
+        /** Update (`preferences`, deprecated, is ignored) */
         put: operations["updateProfile"];
         post?: never;
         /** Delete the profile and all its data */
@@ -2727,10 +2561,9 @@ export interface paths {
         head?: never;
         /**
          * Change some of the profile's settings
-         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.*`, or
+         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, or
          *     `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
-         *     refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
-         *     profiles (`FORBIDDEN`). Publishes `settings.changed`.
+         *     refuses the whole patch (`INVALID`, with `errors`). Publishes `settings.changed`.
          */
         patch: operations["updateProfileSettings"];
         trace?: never;
@@ -3009,7 +2842,6 @@ export interface components {
                 transcode: boolean;
                 /** @description Enabled subtitle provider ids */
                 subtitles: string[];
-                adult: boolean;
             };
         };
         AddTorrentRequest: {
@@ -3821,6 +3653,17 @@ export interface components {
         };
         AdminPlugins: {
             plugins: components["schemas"]["AdminPlugin"][];
+            /**
+             * @description Data kept for plugins that aren't installed (a removal that kept its data, or settings a migration moved out of
+             *     the core for a plugin to come): installing the plugin uses it; DELETE /admin/plugins/kept/{id} forgets it
+             */
+            kept: {
+                id: string;
+                settings: number;
+                store: number;
+                secrets: number;
+                grants: number;
+            }[];
             /** @description Setting plugins.developerMode: unsigned packages install; plugins-dev folders load (restart) */
             developerMode: boolean;
             /** @description Setting plugins.publisherKeys */
@@ -4166,10 +4009,6 @@ export interface components {
             added?: number;
             title?: string | null;
             year?: number | null;
-            /** @description 18+ only */
-            studio?: string | null;
-            /** @description 18+ split scenes */
-            scenes?: boolean;
             /** @description kind tv */
             season?: number | null;
             /** @description kind tv */
@@ -4209,57 +4048,6 @@ export interface components {
             /** @description The provider doesn't cover this kind of title */
             unsupported?: boolean;
         };
-        AdultMetaProvider: {
-            id: string;
-            name: string;
-            description?: string;
-            enabled: boolean;
-            default: boolean;
-            periods?: {
-                id?: string;
-                label?: string;
-            }[];
-            sorts?: ("popular" | "newest" | "rated")[];
-        };
-        AdultHome: {
-            provider: string;
-            rows: {
-                key: string;
-                title: string;
-            }[];
-        };
-        Studio: {
-            id: string | number;
-            name: string;
-        };
-        AdultItem: {
-            id: string | number;
-            title: string;
-            year?: number | null;
-            releaseDate?: string | null;
-            overview?: string | null;
-            /** @description Full image URL */
-            poster?: string | null;
-            backdrop?: string | null;
-            /** @description 0–10 */
-            rating?: number | null;
-            studio?: components["schemas"]["Studio"] | null;
-        };
-        AdultTitle: components["schemas"]["AdultItem"] & {
-            /** @description Minutes */
-            runtime?: number | null;
-            performers?: {
-                name?: string;
-                photo?: string | null;
-            }[];
-            director?: string | null;
-            studios?: components["schemas"]["Studio"][];
-        };
-        AdultPage: {
-            items: components["schemas"]["AdultItem"][];
-            page: number;
-            totalPages: number;
-        };
         Profile: {
             id: string;
             name: string;
@@ -4268,7 +4056,7 @@ export interface components {
             hasPin: boolean;
             /**
              * @deprecated
-             * @description Read-only view of the profile's `adult.*` settings, `{ adult: { layout, metadataProvider } }`, kept for one release; use GET /settings?profile=
+             * @description Always `{}` (what it showed moved to a plugin); use GET /settings?profile=
              */
             preferences: Record<string, never>;
             /** Format: date-time */
@@ -4294,7 +4082,7 @@ export interface components {
             isKid?: boolean;
             /**
              * @deprecated
-             * @description Only `{ adult: { layout?, metadataProvider? } }` is read (written to the profile's settings); use PATCH /profiles/{profileId}/settings
+             * @description Ignored; use PATCH /profiles/{profileId}/settings
              */
             preferences?: Record<string, never>;
         };
@@ -4317,8 +4105,6 @@ export interface components {
             max?: number;
             step?: number;
             nullable?: boolean;
-            /** @description Refused for kids profiles */
-            adult?: boolean;
         };
         UserSettings: {
             device: components["schemas"]["UserSettingValues"];
@@ -4756,7 +4542,6 @@ export interface components {
                 tmdbApiKey: string;
                 openSubtitlesApiKey: string;
                 wyzieApiKey: string;
-                thePornDbApiKey: string;
             };
             transcoding: {
                 ffmpegPath: string;
@@ -5155,14 +4940,12 @@ export interface components {
         Season: number;
         /** @description Episodes only */
         Episode: number;
-        ReleaseKind: "movie" | "tv" | "adult";
+        ReleaseKind: "movie" | "tv";
         /** @description SD also keeps 480p */
         Quality: "2160p" | "1080p" | "720p" | "SD";
         /** @description 1 / true: only releases the TV app can play (video and audio) */
         Playable: "1" | "true" | "0" | "false";
         Page: number;
-        /** @description A provider id, or `default` */
-        AdultMetaProvider: string;
     };
     requestBodies: never;
     headers: never;
@@ -6493,6 +6276,32 @@ export interface operations {
                 };
             };
             401: components["responses"]["AdminRequired"];
+        };
+    };
+    forgetKeptPluginData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keptId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
         };
     };
     getAdminPlugin: {
@@ -8901,270 +8710,6 @@ export interface operations {
                 };
             };
             502: components["responses"]["Upstream"];
-        };
-    };
-    findAdultTorrents: {
-        parameters: {
-            query: {
-                title: string;
-                year?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Ranked torrents */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RankedTorrents"];
-                };
-            };
-            400: components["responses"]["Invalid"];
-            502: components["responses"]["Upstream"];
-        };
-    };
-    listAdultReleaseProviders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Sources */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseProvider"][];
-                };
-            };
-        };
-    };
-    browseAdultReleases: {
-        parameters: {
-            query?: {
-                provider?: string;
-                q?: string;
-                /** @description SD also keeps 480p */
-                quality?: components["parameters"]["Quality"];
-                /** @description 1 / true: only releases the TV app can play (video and audio) */
-                playable?: components["parameters"]["Playable"];
-                page?: components["parameters"]["Page"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of releases */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleasePage"];
-                };
-            };
-            502: components["responses"]["Upstream"];
-        };
-    };
-    listAdultMetaProviders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Metadata providers (`enabled` false without their API key) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultMetaProvider"][];
-                };
-            };
-        };
-    };
-    getAdultHome: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Rows of the home page */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultHome"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
-        };
-    };
-    getAdultRow: {
-        parameters: {
-            query?: {
-                page?: components["parameters"]["Page"];
-            };
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of titles */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultPage"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
-        };
-    };
-    discoverAdult: {
-        parameters: {
-            query?: {
-                studio?: string;
-                /** @description An id from the provider's `periods` */
-                period?: string;
-                sort?: "popular" | "newest" | "rated";
-                page?: components["parameters"]["Page"];
-            };
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of titles */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultPage"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
-        };
-    };
-    searchAdult: {
-        parameters: {
-            query: {
-                q: string;
-                period?: string;
-                page?: components["parameters"]["Page"];
-            };
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of titles */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultPage"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
-        };
-    };
-    listAdultStudios: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Studios */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Studio"][];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
-        };
-    };
-    getAdultTitle: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A provider id, or `default` */
-                provider: components["parameters"]["AdultMetaProvider"];
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A title */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdultTitle"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            502: components["responses"]["Upstream"];
-            503: components["responses"]["Error"];
         };
     };
     listProfiles: {

@@ -99,6 +99,13 @@
       "when": 1792778998079,
       "tag": "0013_plugin_repositories",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792782172107,
+      "tag": "0014_adult_settings_to_plugin",
+      "breakpoints": true
     }
   ]
 }

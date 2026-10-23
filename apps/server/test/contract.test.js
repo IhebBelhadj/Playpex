@@ -69,7 +69,7 @@ var operations = Object.keys(spec.paths).reduce(function (all, template) {
 
 function findOperation(method, urlPath) {
   var matches = operations.filter(function (o) { return o.method === method && o.regex.test(urlPath); });
-  // the most specific template (fewest parameters) wins: /adult/meta/providers over /adult/meta/{provider}/…
+  // the most specific template (fewest parameters) wins: /admin/plugins/repositories over /admin/plugins/{pluginId}
   matches.sort(function (a, b) { return (a.template.match(/\{/g) || []).length - (b.template.match(/\{/g) || []).length; });
   return matches[0];
 }
@@ -617,7 +617,9 @@ test('profiles', function () {
     .then(function () { return call('GET', '/profiles', undefined, { expect: 200 }); })
     .then(function () { return call('GET', '/profiles/' + id, undefined, { expect: 200 }); })
     .then(function () { return call('GET', '/profiles/nope', undefined, { expect: 404 }); })
-    .then(function () { return call('PUT', '/profiles/' + id, { preferences: { adult: { layout: 'posters' } } }, { expect: 200 }); })
+    .then(function () { return call('PUT', '/profiles/' + id, { preferences: { anything: true } }, { expect: 200 }); })
+    .then(function (res) { assert.deepEqual(res.body.preferences, {}, 'deprecated: ignored, always {}'); })
+    .then(function () { return call('PUT', '/profiles/' + id, { preferences: 'x' }, { expect: 400 }); })
     .then(function () { return call('PUT', '/profiles/' + id + '/pin', { pin: '1234' }, { expect: 200 }); })
     .then(function () { return call('PUT', '/profiles/' + id + '/pin', { pin: '12' }, { expect: 400 }); })
     .then(function () { return call('POST', '/profiles/' + id + '/unlock', { pin: '0000' }, { expect: 403 }); })
@@ -699,7 +701,8 @@ test('settings: device and profile, defaults, reset, rules', function () {
     .then(function () { return call('PATCH', '/settings/device', { 'player.volume': 101 }, opts(400)); })
     .then(function () { return call('PATCH', '/settings/device', { 'player.volume': 42 }, opts(400)); })      // step 5
     .then(function () { return call('PATCH', '/settings/device', { 'display.uiScale': 0.75 }, opts(400)); })  // not a size
-    .then(function () { return call('PATCH', '/settings/device', { 'adult.layout': 'compact' }, opts(400)); }) // a profile key
+    .then(function () { return call('PATCH', '/settings/device', { 'player.autoplayNext': false }, opts(400)); }) // a profile key
+    .then(function () { return call('PATCH', '/settings/device', { 'adult.layout': 'compact' }, opts(400)); }) // gone with the 18+ section
     .then(function () { return call('PATCH', '/settings/device', { 'client.playpex-tv.big': 'x'.repeat(5000) }, opts(400)); })
     .then(function () { return call('PATCH', '/settings/device', {}, opts(400)); })
     .then(function () { return call('GET', '/settings', undefined, opts(200)); })
@@ -715,11 +718,11 @@ test('settings: device and profile, defaults, reset, rules', function () {
       return call('DELETE', '/settings/device', undefined, opts(200));
     })
     .then(function (res) { assert.deepEqual(res.body, protocolSettings.defaults('device')); })
-    // profiles: adult keys refused for kids (and not shown), the deprecated preferences answered from the settings
-    .then(function () { return call('POST', '/profiles', { name: 'Settings adult' }, { expect: 201 }); })
+    // profiles' settings; the 18+ keys are gone (the plugin has its own)
+    .then(function () { return call('POST', '/profiles', { name: 'Settings grown-up' }, { expect: 201 }); })
     .then(function (res) {
       adult = res.body.id;
-      assert.deepEqual(res.body.preferences, { adult: { layout: 'posters', metadataProvider: null } });
+      assert.deepEqual(res.body.preferences, {});
       return call('POST', '/profiles', { name: 'Settings kid', isKid: true }, { expect: 201 });
     })
     .then(function (res) { kid = res.body.id; })
@@ -727,24 +730,13 @@ test('settings: device and profile, defaults, reset, rules', function () {
     .then(function (res) { assert.deepEqual(res.body.profile, protocolSettings.defaults('profile')); })
     .then(function () { return call('GET', '/settings?profile=nope', undefined, opts(404)); })
     .then(function () {
-      return call('PATCH', '/profiles/' + adult + '/settings', { 'adult.layout': 'compact', 'subtitles.provider': 'yify',
-        'player.autoplayNext': false }, { expect: 200 });
+      return call('PATCH', '/profiles/' + adult + '/settings', { 'subtitles.provider': 'yify', 'player.autoplayNext': false }, { expect: 200 });
     })
-    .then(function (res) {
-      assert.equal(res.body['adult.layout'], 'compact');
-      assert.equal(res.body['player.autoplayNext'], false);
-      return call('GET', '/profiles/' + adult, undefined, { expect: 200 });
-    })
-    .then(function (res) { assert.equal(res.body.preferences.adult.layout, 'compact'); })
-    .then(function () { return call('PUT', '/profiles/' + adult, { preferences: { adult: { metadataProvider: 'tmdb' } } }, { expect: 200 }); })
-    .then(function (res) { assert.deepEqual(res.body.preferences.adult, { layout: 'compact', metadataProvider: 'tmdb' }); })
-    .then(function () { return call('PUT', '/profiles/' + adult, { preferences: { adult: { layout: 'grid' } } }, { expect: 400 }); })
+    .then(function (res) { assert.equal(res.body['player.autoplayNext'], false); })
+    .then(function () { return call('PATCH', '/profiles/' + adult + '/settings', { 'adult.layout': 'compact' }, { expect: 400 }); })
     .then(function () { return call('PATCH', '/profiles/' + adult + '/settings', { 'player.volume': 10 }, { expect: 400 }); })
     .then(function () { return call('PATCH', '/profiles/nope/settings', { 'player.autoplayNext': true }, { expect: 404 }); })
-    .then(function () { return call('PATCH', '/profiles/' + kid + '/settings', { 'adult.layout': 'compact' }, { expect: 403 }); })
     .then(function () { return call('PATCH', '/profiles/' + kid + '/settings', { 'player.autoplayNext': false }, { expect: 200 }); })
-    .then(function (res) { assert.equal(res.body['adult.layout'], undefined); })
-    .then(function () { return call('PUT', '/profiles/' + kid, { preferences: { adult: { layout: 'compact' } } }, { expect: 403 }); })
     // deleting a profile deletes its settings
     .then(function () { return call('DELETE', '/profiles/' + adult, undefined, { expect: 200 }); })
     .then(function () {
@@ -1067,14 +1059,11 @@ test('provider lists and parameter checks', function () {
     call('GET', '/releases/providers?kind=tv', undefined, { expect: 200 }),
     call('GET', '/releases/providers?kind=nope', undefined, { expect: 400 }),
     call('GET', '/releases/browse?kind=nope', undefined, { expect: 400 }),
-    call('GET', '/adult/providers', undefined, { expect: 200 }),
-    call('GET', '/adult/meta/providers', undefined, { expect: 200 }),
-    call('GET', '/adult/meta/nope/home', undefined, { expect: 404 }),
+    call('GET', '/releases/providers?kind=adult', undefined, { expect: 400 }),
     call('GET', '/subtitles/providers', undefined, { expect: 200 }),
     call('GET', '/subtitles/search', undefined, { expect: 400 }),
     call('GET', '/imdb/xyz', undefined, { expect: 400 }),
-    call('GET', '/shows/tt0903747/torrents?title=Breaking%20Bad', undefined, { expect: 400 }),
-    call('GET', '/adult/torrents', undefined, { expect: 400 })
+    call('GET', '/shows/tt0903747/torrents?title=Breaking%20Bad', undefined, { expect: 400 })
   ]);
 });
 
@@ -1096,9 +1085,6 @@ test('provider-backed routes', { skip: !NETWORK && 'set PLAYPEX_TEST_NETWORK=1' 
     either('GET', '/releases/browse?kind=movie&provider=yts'),
     either('GET', '/releases/browse?kind=tv&provider=eztv&imdb=tt0903747'),
     either('GET', '/releases/browse?kind=movie&provider=therarbg&quality=1080p'),
-    either('GET', '/subtitles/search?imdb_id=tt0133093&languages=en'),
-    call('GET', '/adult/meta/default/home').then(function (res) {
-      assert.ok([200, 502, 503].indexOf(res.status) !== -1, 'adult home → ' + res.status);
-    })
+    either('GET', '/subtitles/search?imdb_id=tt0133093&languages=en')
   ]);
 });

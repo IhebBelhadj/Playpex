@@ -11,8 +11,6 @@ export interface SettingValues {
   'subtitles.provider': string | null;
   'player.autoplayNext': boolean;
   'player.preferLocalFiles': boolean;
-  'adult.layout': 'posters' | 'compact';
-  'adult.metadataProvider': string | null;
 }
 
 export type SettingKey = keyof SettingValues;
@@ -28,8 +26,6 @@ export interface SettingDefinition {
   max?: number;
   step?: number;
   nullable?: boolean;
-  /** refused for kids profiles */
-  adult?: boolean;
 }
 
 export declare const SETTINGS: { readonly [K in SettingKey]: SettingDefinition };

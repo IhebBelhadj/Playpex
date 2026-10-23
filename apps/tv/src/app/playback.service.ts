@@ -33,9 +33,11 @@ export interface PlaybackRequest {
   // Where to start, in seconds: the saved position ("Resume") or 0 ("Play from
   // the beginning"). Unset: the player resumes from the saved position, if any.
   startAt?: number;
-  // 18+ title: played without touching the profile's library (no saved
-  // position, no Continue watching / Watched entry)
-  adult?: boolean;
+  // none: played without touching the profile's library: no resume point,
+  // progress, history, Up next or markers, no title on the keepalive (so the
+  // download isn't named and no playback event names it). Set for an
+  // `audience: adults` plugin's plays, and any plugin may ask for it
+  tracking?: 'full' | 'none';
   // Development builds only: a video URL played directly, no torrent (the
   // player's screenshots and scenarios: window.playpexDev.player())
   devSrc?: string;
@@ -57,7 +59,7 @@ export class PlaybackService {
 
   constructor(private navigator:Navigator) { }
 
-  // A movie torrent's magnet: its own (18+ results), else built from the YTS hash
+  // A movie torrent's magnet: its own, else built from the YTS hash
   static movieMagnet(movie, torrent):string {
     let magnet = torrent.magnet;
     if (!magnet) {
@@ -86,7 +88,6 @@ export class PlaybackService {
   // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;
   // `torrent` is one of them (defaults to the first)
   // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash.
-  // 18+ movies get server results (lib/adult.js) that carry their own `magnet`
   playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
     this.playMovieFrom(movie, { magnet: PlaybackService.movieMagnet(movie, torrent) }, startAt);
   }
@@ -103,7 +104,6 @@ export class PlaybackService {
       tmdbId: movie['id'],
       artwork: LibraryService.artworkOf(movie),
       startAt,
-      adult: !!movie['adult'],
     });
   }
 }

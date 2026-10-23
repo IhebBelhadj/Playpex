@@ -40,7 +40,7 @@ export class MenuComponent implements OnInit , OnDestroy {
 
   ngOnInit(): void {
     this.subscriptions.push(
-      // Who's watching: shown at the bottom of the menu; some sections depend on it (18+)
+      // Who's watching: shown at the bottom of the menu; some sections depend on it (an adults plugin's)
       // … and on the server's plugins (their sections come and go: plugins/remote.ts)
       combineLatest([this.profiles.current, this.navigator.registry.changes$.pipe(startWith(null))]).subscribe(([profile]) => {
         this.profile = profile;

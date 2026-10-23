@@ -28,7 +28,7 @@ const LEGACY:{ storage:string, key:SettingKey, parse:(raw:string) => unknown }[]
 
 // The user's settings (docs/settings-plan.md, docs/api/settings.md): stored on
 // the server, per device (UI size, screen edges, volume, subtitle size) or per
-// profile (subtitle source, autoplay, 18+ layout). Every key always has a
+// profile (subtitle source, autoplay). Every key always has a
 // value: the registry's default (@playpex/protocol/settings) until the server
 // answers, then the server's effective value. Read again when the profile
 // changes and when another client changes them (`settings.changed`).

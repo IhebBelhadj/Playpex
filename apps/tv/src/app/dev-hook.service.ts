@@ -22,7 +22,7 @@ export type DevOverlay = 'torrents' | 'playChoice' | 'error' | 'connectionLost';
 export interface PlaypexDev {
   open(intent:Intent):Promise<boolean>;
   reset(intent:Intent):Promise<boolean>;
-  // enters a profile without a PIN (the one named, else the first adult one)
+  // enters a profile without a PIN (the one named, else the first that isn't a kids one)
   profile(name?:string):Promise<string>;
   releases(kind:ReleasesKind, query:string, label:string, imdb?:string):void;
   // the screen on top of the history

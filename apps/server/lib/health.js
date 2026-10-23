@@ -21,8 +21,7 @@ var SERVICES = [
   { id: 'stremio-opensubtitles', name: 'OpenSubtitles (Stremio)', hosts: ['opensubtitles-v3.strem.io'] },
   { id: 'opensubtitles', name: 'OpenSubtitles.com', hosts: ['api.opensubtitles.com'] },
   { id: 'yify', name: 'YIFY Subtitles', hosts: ['yts-subs.com'] },
-  { id: 'wyzie', name: 'Wyzie Subs', hosts: ['sub.wyzie.io'] },
-  { id: 'theporndb', name: 'ThePornDB', hosts: ['api.theporndb.net'] }
+  { id: 'wyzie', name: 'Wyzie Subs', hosts: ['sub.wyzie.io'] }
 ];
 
 var state = {},   // id → { lastSuccess, lastFailure, lastError, failures (in a row) }

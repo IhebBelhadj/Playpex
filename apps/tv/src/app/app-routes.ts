@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AdultGuard, ProfileGuard } from './profile.guard';
+import { AdultsGuard, ProfileGuard } from './profile.guard';
 import { DisplayGuard } from './display.guard';
 import { ServerGuard } from './server.guard';
 import { SCREENS } from './nav/screen-registry';
@@ -11,7 +11,7 @@ import './nav/screens';
 // Nothing navigates with the router directly: the Navigator does (src/app/nav).
 export function appRoutes():Routes {
   return SCREENS.buildRoutes(
-    { display: DisplayGuard, server: ServerGuard, profile: ProfileGuard, adult: AdultGuard },
+    { display: DisplayGuard, server: ServerGuard, profile: ProfileGuard, adults: AdultsGuard },
     [{ path: '', redirectTo: '/profiles', pathMatch: 'full' }],
   );
 }

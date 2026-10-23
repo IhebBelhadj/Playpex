@@ -82,7 +82,7 @@ export class FocusEngine {
     return host ? this.containers.get(host as HTMLElement) : undefined;
   }
 
-  // 'stack:adult-browse' → that container
+  // 'stack:watchlist' → that container
   find(ref:string):PxContainer | undefined {
     let match = /^(stack|row|grid):(.+)$/.exec(ref);
     if (!match) return undefined;

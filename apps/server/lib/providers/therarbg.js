@@ -13,7 +13,7 @@ function pad(n) {
   return n < 10 ? '0' + n : String(n);
 }
 
-// category: only that category ('XXX'); the plain keywords search mixes them
+// category: only that category; the plain keywords search mixes them
 function query(keywords, category) {
   var mirrors = MIRRORS.slice();
   var path = category
@@ -66,29 +66,7 @@ function search(title, season, episode) {
   });
 }
 
-// 18+ movies (category XXX) whose release name mentions `title`;
-// adult.js does the matching and ranking
-function searchAdult(title) {
-  var name = title.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  return query(name, 'XXX').then(function (results) {
-    return results
-      .filter(function (r) {
-        return r.h && r.c === 'XXX';
-      })
-      .map(function (r) {
-        return {
-          provider: 'TheRARBG',
-          name: r.n,
-          hash: r.h.toLowerCase(),
-          magnet: trackers.build(r.h.toLowerCase(), r.n),
-          seeds: Number(r.se) || 0,
-          size: Number(r.s) || 0
-        };
-      });
-  });
-}
-
-// A release list (releases.js): one category ('XXX', 'Movies', 'TV' — the
+// A release list (releases.js): one category ('Movies', 'TV': the
 // site's `c` values), most seeded first, 50 per page.
 // keywords: optional search words (never the resolution: the site then ranks
 // by name, not by seeders)
@@ -141,15 +119,8 @@ function browse(keywords, category, page) {
   return attempt();
 }
 
-// The 18+ section's list: category XXX
-function browseAdult(keywords, page) {
-  return browse(keywords, 'XXX', page);
-}
-
 module.exports = {
   name: 'TheRARBG',
   search: search,
-  searchAdult: searchAdult,
-  browse: browse,
-  browseAdult: browseAdult
+  browse: browse
 };

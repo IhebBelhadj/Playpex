@@ -16,7 +16,7 @@ interface RowState {
 }
 
 // The `title` template (docs/plugins/templates.md): one title of a plugin,
-// laid out like the movie page and the 18+ title page (px-detail-layout:
+// laid out like the movie page (px-detail-layout:
 // the title info, the action tiles, rows under them). Its handler gets
 // { params }; an action opens its intent or calls the plugin and performs
 // what it answers. Back: the navigator's.

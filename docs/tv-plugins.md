@@ -99,7 +99,7 @@ Context types: `MovieContext`, `ShowContext`, `EpisodeContext`, `SectionContext`
 Rules (checked when defined, or the contribution shows nothing):
 - ids `plugin.<pluginId>.<name>`; at most 3 contributions per plugin and slot; one kind, the slot's.
 - **keys** of your actions and rows start with `<pluginId>:` (`hello:party`): position memory and the action bar can't collide with the core's.
-- `adult: true` on a contribution with adult content: it's never offered to kids profiles. (Packaged plugins don't set it: their manifest's `audience` decides for every contribution, `docs/plugins-plan.md` §5.3.)
+- `adults: true` on a contribution of an adults plugin: it's never offered to kids profiles. (Packaged plugins don't set it: their manifest's `audience` decides for every contribution, `docs/plugins-plan.md` §5.3.)
 - a contribution that throws, or an Observable that errors, shows nothing (logged); it never takes the screen down.
 
 ### View models

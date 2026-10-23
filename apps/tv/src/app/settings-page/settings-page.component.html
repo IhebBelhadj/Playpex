@@ -64,30 +64,6 @@
         </section>
       </ng-container>
 
-      <ng-container *ngIf="group == 'adult'">
-        <section class="setting" pxStackItem>
-          <header class="head"><h2 class="label">Layout</h2><span class="scope">For {{ profileName }}</span></header>
-          <p class="help">Posters: a catalog with artwork, like the movies. List: torrent releases, most seeded first.</p>
-          <div class="chips" pxGrid="adultLayout" enter="selected">
-            <px-chip key="layout:posters" label="Posters" [selected]="settings.value('adult.layout') == 'posters'"
-              (pxSelect)="settings.set('adult.layout', 'posters')"></px-chip>
-            <px-chip key="layout:compact" label="List" [selected]="settings.value('adult.layout') == 'compact'"
-              (pxSelect)="settings.set('adult.layout', 'compact')"></px-chip>
-          </div>
-        </section>
-
-        <section class="setting" pxStackItem *ngIf="metaProviders.length">
-          <header class="head"><h2 class="label">Catalog source</h2><span class="scope">For {{ profileName }}</span></header>
-          <p class="help">Where the poster layout's titles, artwork and performers come from.</p>
-          <div class="chips" pxGrid="adultSource" enter="selected">
-            <px-chip key="meta:default" label="Server default" [selected]="!settings.value('adult.metadataProvider')"
-              (pxSelect)="settings.set('adult.metadataProvider', null)"></px-chip>
-            <px-chip *ngFor="let p of metaProviders" [key]="'meta:' + p.id" [label]="p.name"
-              [selected]="p.id == settings.value('adult.metadataProvider')"
-              (pxSelect)="settings.set('adult.metadataProvider', p.id)"></px-chip>
-          </div>
-        </section>
-      </ng-container>
     </div>
   </div>
 </px-rail-layout>

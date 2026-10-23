@@ -232,7 +232,6 @@ export class EpisodePlaybackService {
       tmdbId: target.show['id'],
       artwork: LibraryService.artworkOf(target.show),
       startAt,
-      adult: !!target.show['adult'],
     }, { replace });
   }
 }

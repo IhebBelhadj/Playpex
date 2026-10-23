@@ -65,7 +65,7 @@ export interface SearchContext {
 export interface SlotDef {
   kind:SlotKind;
   // contributions to it are refused for kids profiles
-  adult?:boolean;
+  adults?:boolean;
   description:string;
 }
 

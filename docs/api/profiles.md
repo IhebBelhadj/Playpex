@@ -10,7 +10,7 @@ GET /api/v1/profiles
 
 ```json
 { "profiles": [ { "id": "…", "name": "Sam", "avatar": "avatar-03", "isKid": false, "hasPin": true,
-                  "preferences": { "adult": { "layout": "posters", "metadataProvider": null } }, "createdAt": "…", "lastUsedAt": "…" } ],
+                  "preferences": {}, "createdAt": "…", "lastUsedAt": "…" } ],
   "lastUsedId": "…", "maxProfiles": 8 }
 ```
 
@@ -19,9 +19,9 @@ GET /api/v1/profiles
 - Keep the chosen profile **in memory** for the session: the TV app asks again at every start.
 - `avatar` is an id, `avatar-01` … `avatar-12` (the server accepts any string up to 200 characters; stick to those ids so every client can draw it). The TV app's images are `apps/tv/src/assets/avatars/avatar-NN.svg`; a client may ship its own set under the same ids.
 
-**PINs and kids profiles are enforced by the client.** The server checks the PIN on `unlock`, but once paired, a device can read any profile's data and call every route (plan §14.2). Respect `hasPin` and `isKid` in your UI: hide the 18+ section for kids profiles, don't open a locked profile without its PIN.
+**PINs and kids profiles are enforced by the client.** The server checks the PIN on `unlock`, but once paired, a device can read any profile's data and call every route (plan §14.2). Respect `hasPin` and `isKid` in your UI (the server already keeps adults plugins and adults-only library folders from kids profiles), don't open a locked profile without its PIN.
 
-Managing profiles: `POST /profiles` `{name, avatar?, isKid?, pin?}` (409 on a duplicate name or past 8), `PUT /profiles/{id}` `{name?, avatar?, isKid?, preferences?}` (`preferences` is **deprecated**: only `preferences.adult` is read, and written to the profile's settings; a profile's settings are in [Settings](settings.md)), `PUT /profiles/{id}/pin` `{pin}` or `{pin: null}` (4–6 digits), `DELETE /profiles/{id}` (deletes all its data).
+Managing profiles: `POST /profiles` `{name, avatar?, isKid?, pin?}` (409 on a duplicate name or past 8), `PUT /profiles/{id}` `{name?, avatar?, isKid?, preferences?}` (`preferences` is **deprecated**: ignored, answered `{}`; a profile's settings are in [Settings](settings.md)), `PUT /profiles/{id}/pin` `{pin}` or `{pin: null}` (4–6 digits), `DELETE /profiles/{id}` (deletes all its data).
 
 ## The library
 

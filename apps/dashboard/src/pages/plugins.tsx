@@ -3,7 +3,7 @@ import { AlertTriangle, BadgeCheck, ChevronRight, Download, Link as LinkIcon, Pl
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
+import { Confirm, Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
 import {
   ORIGIN,
   PackagePreview,
@@ -78,8 +78,9 @@ export function PluginsPage() {
           <TabsTrigger value="repositories">Repositories</TabsTrigger>
           <TabsTrigger value="developer">Developer</TabsTrigger>
         </TabsList>
-        <TabsContent value="installed">
+        <TabsContent value="installed" className="space-y-6">
           <InstalledCard view={view} />
+          {view.kept.length > 0 && <KeptCard kept={view.kept} />}
         </TabsContent>
         <TabsContent value="browse">
           <BrowseTab developerMode={view.developerMode} onRepositories={() => setTab('repositories')} />
@@ -202,6 +203,62 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
         </Button>
       </div>
     </div>
+  )
+}
+
+// What is kept for plugins that aren't installed: installing one uses its data
+function KeptCard({ kept }: { kept: Schemas['AdminPlugins']['kept'] }) {
+  const refresh = useRefreshPlugins()
+  const forget = useMutation({
+    mutationFn: (id: string) => unwrap(api.DELETE('/admin/plugins/kept/{keptId}', { params: { path: { keptId: id } } })),
+    onSuccess: (_r, id) => {
+      toast.success(`What was kept for ${id} is forgotten`)
+      refresh()
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  const words = (k: Schemas['AdminPlugins']['kept'][number]) =>
+    [
+      k.settings && `${k.settings} setting${k.settings > 1 ? 's' : ''}`,
+      k.store && `${k.store} stored value${k.store > 1 ? 's' : ''}`,
+      k.secrets && `${k.secrets} secret${k.secrets > 1 ? 's' : ''} or account${k.secrets > 1 ? 's' : ''}`,
+      k.grants && `${k.grants} profile choice${k.grants > 1 ? 's' : ''}`,
+    ]
+      .filter(Boolean)
+      .join(', ')
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Kept for plugins that aren&apos;t installed</CardTitle>
+        <CardDescription>
+          Left by a plugin removed with its data kept, or moved out of Playpex for a plugin to come (the 18+ section&apos;s settings, for
+          the 18+ plugin). Installing the plugin picks them up.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {kept.map((k) => (
+            <div key={k.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <Mono className="text-sm">{k.id}</Mono>
+                <p className="text-xs text-muted-foreground">{words(k)}</p>
+              </div>
+              <Confirm
+                title={`Forget what is kept for ${k.id}?`}
+                description="Its settings, stored values, secrets and accounts are deleted. Installing the plugin later starts from nothing."
+                action="Forget"
+                onConfirm={() => forget.mutate(k.id)}
+                trigger={
+                  <Button variant="ghost" size="sm" disabled={forget.isPending}>
+                    <Trash2 /> Forget
+                  </Button>
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

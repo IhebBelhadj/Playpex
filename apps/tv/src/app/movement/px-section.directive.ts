@@ -8,8 +8,8 @@ import { Direction } from './moves';
 // when `leaveFor` changes. Its items are the `.focusable` and `pxItem`
 // elements inside the host, minus those of a nested pxSection.
 //
-//   <div class="toolbar" pxSection="adultToolbar"
-//        [leaveFor]="{ left: '@menu', down: ['stack:adult-browse', '@adultPosters'] }">
+//   <div class="toolbar" pxSection="sectionToolbar"
+//        [leaveFor]="{ left: '@menu', down: ['stack:catalog:movie', '@slider'] }">
 //
 // `leaveFor` values: '@<section>', a CSS selector, 'stack:<id>' / 'row:<id>' /
 // 'grid:<id>' (entered at the remembered item), or an array tried in order.

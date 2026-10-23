@@ -113,10 +113,9 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     title: 'Providers',
     description: 'API keys of optional services. Stored on the server, never shown in full.',
     fields: [
-      { key: 'providers.tmdbApiKey', label: 'TMDB', kind: 'secret', help: 'Recommendations and the 18+ catalog. themoviedb.org/settings/api' },
+      { key: 'providers.tmdbApiKey', label: 'TMDB', kind: 'secret', help: 'Recommendations. themoviedb.org/settings/api' },
       { key: 'providers.openSubtitlesApiKey', label: 'OpenSubtitles.com', kind: 'secret', help: 'opensubtitles.com/en/consumers' },
       { key: 'providers.wyzieApiKey', label: 'Wyzie Subs', kind: 'secret', help: 'store.wyzie.io/redeem' },
-      { key: 'providers.thePornDbApiKey', label: 'ThePornDB', kind: 'secret', help: 'Metadata of the 18+ section.' },
     ],
   },
   {

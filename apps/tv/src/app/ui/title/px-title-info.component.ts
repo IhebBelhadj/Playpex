@@ -4,7 +4,7 @@ import { dp } from '../units';
 
 // The title block (docs/ui-system-plan.md §5.3): one component for what five
 // pages drew themselves. Regions, top to bottom: eyebrow (the show above an
-// episode), title, meta line (<px-meta>: year, chips, scores, the 18+ seal),
+// episode), title, meta line (<px-meta>: year, chips, scores, a seal),
 // genres, notes (performers, "Directed by …"), the profile's status with its
 // amber line (the watch list), overview (clamped), credits (label / names).
 //

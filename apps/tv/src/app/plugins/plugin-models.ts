@@ -10,6 +10,7 @@ export type PluginScreenDecl = ClientPlugin['screens'][number];
 export interface PluginIntent {
   screen:string;
   params?:Record<string, string | number>;
+  replace?:boolean;
 }
 
 export interface PluginCall {

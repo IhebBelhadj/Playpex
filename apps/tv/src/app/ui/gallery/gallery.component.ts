@@ -59,7 +59,7 @@ export class GalleryComponent {
   tab = 'subtitles';
   readonly meta:MetaItem[] = [
     { kind: 'text', text: '1995' }, { kind: 'chip', text: '1080p' }, { kind: 'chip', text: '2160p' },
-    { kind: 'score', source: 'imdb', value: 8.3 }, { kind: 'score', source: 'tmdb', value: 7.9 }, { kind: 'seal', text: '18+' },
+    { kind: 'score', source: 'imdb', value: 8.3 }, { kind: 'score', source: 'tmdb', value: 7.9 }, { kind: 'seal', text: 'NEW' },
   ];
 
   // cards: every variant, with and without artwork, every badge / state

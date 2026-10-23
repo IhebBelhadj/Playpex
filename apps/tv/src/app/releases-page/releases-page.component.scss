@@ -1,8 +1,7 @@
-// Release lists (18+, movies, TV). Same materials as the rest of the app
-// (Netflix Sans, white focus, translucent black keys/chips); the seed count is
-// the headline of every release: the list is ranked by it. The 18+ list adds a
-// darker, wine tinted backdrop (no TMDB artwork there); movies and shows keep
-// the shell's backdrop (the title's).
+// Release lists (movies, TV). Same materials as the rest of the app (Netflix
+// Sans, white focus, translucent black keys/chips); the seed count is the
+// headline of every release: the list is ranked by it. They keep the shell's
+// backdrop (the title's).
 @use 'px' as *;
 
 $rowH: dp(92);
@@ -12,19 +11,6 @@ $rowH: dp(92);
   display: block;
   flex: 1;
   min-width: 0;
-}
-
-// 18+: covers the shell's blurred backdrop (the last movie's): inside the
-// .masterContainer stacking context, under the menu and the page
-:host(.kindAdult) {
-  &::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: var(--px-z-behind);
-    pointer-events: none;
-    background: var(--px-gradient-adult-backdrop);
-  }
 }
 
 .releasesPage {
@@ -43,23 +29,10 @@ $rowH: dp(92);
   padding-top: dp(48);
 }
 
-// The seal, or (opened from a title's "Find releases") the way back to it
+// Opened from a title's "Find releases": the way back to it
 .railHead {
   width: 100%;
   margin-bottom: dp(40);
-}
-
-.seal {
-  display: grid;
-  place-items: center;
-  width: dp(58);
-  height: dp(58);
-  border: dp(2) solid var(--px-color-accent);
-  border-radius: dp(12);
-  color: var(--px-color-accent);
-  font-family: var(--px-font-bold);
-  font-size: var(--px-text-body);
-  letter-spacing: dp(-.5);
 }
 
 .groupTitle {
@@ -85,13 +58,6 @@ $rowH: dp(92);
 
 .playableToggle {
   margin-top: dp(38);
-  --px-switch-on: var(--px-wine);
-}
-
-// back to the poster layout: quiet, at the bottom of the rail
-.layoutSwitch {
-  margin-top: auto;
-  margin-bottom: dp(44);
 }
 
 // ── releases ────────────────────────────────────────────────────────────────

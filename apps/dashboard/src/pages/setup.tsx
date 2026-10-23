@@ -168,7 +168,7 @@ function ServerStep() {
         <Label htmlFor="tmdb">TMDB API key (optional)</Label>
         <Input id="tmdb" placeholder={s.providers.tmdbApiKey || 'not set'} value={tmdb} disabled={locked('providers.tmdbApiKey')} onChange={(e) => setTmdb(e.target.value)} />
         <p className="text-xs text-muted-foreground">
-          For recommendations and the 18+ catalog. Free key at{' '}
+          For recommendations. Free key at{' '}
           <a className="underline underline-offset-2" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
             themoviedb.org
           </a>

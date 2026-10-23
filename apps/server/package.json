@@ -11,6 +11,7 @@
     "test": "node scripts/check-engines.js && node --test 'test/**/*.test.js'",
     "install:engine": "node scripts/install-engine.js",
     "pack:plugin": "node scripts/pack-plugin.js",
+    "pack:repository": "node scripts/pack-repository.js",
     "build:torrentd": "node ../../engines/torrentd/build.js"
   },
   "dependencies": {

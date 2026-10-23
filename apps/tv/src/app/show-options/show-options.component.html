@@ -6,8 +6,7 @@
     <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="playTrailer()"></px-action>
     <!-- every source's releases of this show: episodes and season packs -->
     <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
-    <!-- 18+ titles never go in the profile's library -->
-    <px-action *ngIf="!isAdult" key="watchlist" icon="bookmark" onIcon="tick" [on]="inWatchlist"
+    <px-action key="watchlist" icon="bookmark" onIcon="tick" [on]="inWatchlist"
       [label]="inWatchlist ? 'In your watch list' : 'Add to watch list'" (pxSelect)="toggleWatchlist()"></px-action>
     <!-- plugins' actions (ui/slots) -->
     <px-slot name="core.show.actions" [context]="slotContext"></px-slot>

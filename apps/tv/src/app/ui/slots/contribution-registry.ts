@@ -14,8 +14,8 @@ export interface ContributionDef<N extends SlotName = SlotName> {
   slot:N;
   // core contributions use 10, 20, 30…; ties are broken by id
   order?:number;
-  // adult content: never offered to kids profiles
-  adult?:boolean;
+  // an `audience: adults` plugin's: never offered to kids profiles
+  adults?:boolean;
   actions?:(ctx:SlotContexts[N]) => Out<ActionModel>;
   rows?:(ctx:SlotContexts[N]) => Out<RowModel>;
   meta?:(ctx:SlotContexts[N]) => Out<MetaItem>;
@@ -58,11 +58,11 @@ export class ContributionRegistry {
     this.bySlot.forEach((list, slot) => this.bySlot.set(slot, list.filter(c => c.id != id)));
   }
 
-  /** The contributions shown for this context: kids never get adult ones */
+  /** The contributions shown for this context: kids never get an adults plugin's */
   for<N extends SlotName>(slot:N, ctx:SlotContexts[N]):ContributionDef<N>[] {
     let kids = !!(ctx as any)?.profile?.kids;
-    if (kids && SLOTS[slot].adult) return [];
-    return (this.bySlot.get(slot) || []).filter(c => !(kids && c.adult)) as ContributionDef<N>[];
+    if (kids && SLOTS[slot].adults) return [];
+    return (this.bySlot.get(slot) || []).filter(c => !(kids && c.adults)) as ContributionDef<N>[];
   }
 
   /**

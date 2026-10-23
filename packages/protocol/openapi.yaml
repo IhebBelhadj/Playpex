@@ -105,8 +105,6 @@ tags:
   - name: releases
     description: Torrent search and release lists (EZTV, TheRARBG, The Pirate Bay, YTS)
   - name: subtitles
-  - name: adult
-    description: 18+ section (releases and pluggable metadata providers)
   - name: profiles
   - name: library
     description: One profile's watch list, playback progress and history
@@ -1140,6 +1138,23 @@ paths:
                       required: [id, version, installed]
                       properties: { id: { type: string }, version: { type: string }, installed: { type: boolean }, reason: { type: string } }
         '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/kept/{keptId}:
+    delete:
+      tags: [plugins]
+      operationId: forgetKeptPluginData
+      summary: Forget what is kept for a plugin that isn't installed
+      security:
+        - adminSession: []
+      parameters:
+        - { name: keptId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Done
+          content:
+            application/json:
+              schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /admin/plugins/{pluginId}:
     parameters:
       - { name: pluginId, in: path, required: true, schema: { type: string } }
@@ -2889,166 +2904,6 @@ paths:
             text/vtt: { schema: { type: string } }
         '502': { $ref: '#/components/responses/Upstream' }
 
-  # ── 18+ ─────────────────────────────────────────────────────────────────────
-  /adult/torrents:
-    get:
-      tags: [adult]
-      operationId: findAdultTorrents
-      summary: Torrents of one adult film, matched by title (+ year), best first
-      parameters:
-        - { name: title, in: query, required: true, schema: { type: string } }
-        - { name: year, in: query, schema: { type: integer } }
-      responses:
-        '200':
-          description: Ranked torrents
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RankedTorrents' }
-        '400': { $ref: '#/components/responses/Invalid' }
-        '502': { $ref: '#/components/responses/Upstream' }
-  /adult/providers:
-    get:
-      tags: [adult]
-      operationId: listAdultReleaseProviders
-      summary: Same as /releases/providers?kind=adult
-      responses:
-        '200':
-          description: Sources
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/ReleaseProvider' } }
-  /adult/browse:
-    get:
-      tags: [adult]
-      operationId: browseAdultReleases
-      summary: Same as /releases/browse?kind=adult
-      parameters:
-        - { name: provider, in: query, schema: { type: string } }
-        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
-        - $ref: '#/components/parameters/Quality'
-        - $ref: '#/components/parameters/Playable'
-        - $ref: '#/components/parameters/Page'
-      responses:
-        '200':
-          description: A page of releases
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ReleasePage' }
-        '502': { $ref: '#/components/responses/Upstream' }
-  /adult/meta/providers:
-    get:
-      tags: [adult]
-      operationId: listAdultMetaProviders
-      responses:
-        '200':
-          description: Metadata providers (`enabled` false without their API key)
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/AdultMetaProvider' } }
-  /adult/meta/{provider}/home:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-    get:
-      tags: [adult]
-      operationId: getAdultHome
-      responses:
-        '200':
-          description: Rows of the home page
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdultHome' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-  /adult/meta/{provider}/rows/{key}:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-      - { name: key, in: path, required: true, schema: { type: string } }
-    get:
-      tags: [adult]
-      operationId: getAdultRow
-      parameters:
-        - $ref: '#/components/parameters/Page'
-      responses:
-        '200':
-          description: A page of titles
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdultPage' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-  /adult/meta/{provider}/discover:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-    get:
-      tags: [adult]
-      operationId: discoverAdult
-      parameters:
-        - { name: studio, in: query, schema: { type: string } }
-        - { name: period, in: query, description: 'An id from the provider''s `periods`', schema: { type: string } }
-        - { name: sort, in: query, schema: { type: string, enum: [popular, newest, rated], default: popular } }
-        - $ref: '#/components/parameters/Page'
-      responses:
-        '200':
-          description: A page of titles
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdultPage' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-  /adult/meta/{provider}/search:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-    get:
-      tags: [adult]
-      operationId: searchAdult
-      parameters:
-        - { name: q, in: query, required: true, schema: { type: string, maxLength: 100 } }
-        - { name: period, in: query, schema: { type: string } }
-        - $ref: '#/components/parameters/Page'
-      responses:
-        '200':
-          description: A page of titles
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdultPage' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-  /adult/meta/{provider}/studios:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-    get:
-      tags: [adult]
-      operationId: listAdultStudios
-      responses:
-        '200':
-          description: Studios
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/Studio' } }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-  /adult/meta/{provider}/titles/{id}:
-    parameters:
-      - $ref: '#/components/parameters/AdultMetaProvider'
-      - { name: id, in: path, required: true, schema: { type: string } }
-    get:
-      tags: [adult]
-      operationId: getAdultTitle
-      responses:
-        '200':
-          description: A title
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdultTitle' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '502': { $ref: '#/components/responses/Upstream' }
-        '503': { $ref: '#/components/responses/Error' }
-
   # ── profiles ────────────────────────────────────────────────────────────────
   /profiles:
     get:
@@ -3092,7 +2947,7 @@ paths:
     put:
       tags: [profiles]
       operationId: updateProfile
-      summary: Update; `preferences.adult` (deprecated) is written to the profile's settings
+      summary: Update (`preferences`, deprecated, is ignored)
       requestBody:
         required: true
         content:
@@ -3170,10 +3025,9 @@ paths:
       operationId: updateProfileSettings
       summary: Change some of the profile's settings
       description: |
-        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.*`, or
+        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, or
         `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
-        refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
-        profiles (`FORBIDDEN`). Publishes `settings.changed`.
+        refuses the whole patch (`INVALID`, with `errors`). Publishes `settings.changed`.
       requestBody:
         required: true
         content:
@@ -3547,7 +3401,7 @@ components:
       name: kind
       in: query
       required: true
-      schema: { type: string, enum: [movie, tv, adult] }
+      schema: { type: string, enum: [movie, tv] }
     Quality:
       name: quality
       in: query
@@ -3562,12 +3416,6 @@ components:
       name: page
       in: query
       schema: { type: integer, minimum: 1, default: 1 }
-    AdultMetaProvider:
-      name: provider
-      in: path
-      required: true
-      description: A provider id, or `default`
-      schema: { type: string }
 
   securitySchemes:
     deviceToken:
@@ -3709,7 +3557,7 @@ components:
         chrome:
           oneOf:
             - { type: 'null' }
-            - { type: object, properties: { accent: { type: string, enum: [adult] } } }
+            - { type: object, properties: { accent: { type: string, enum: [adult] } } }   # plugins-check: allow (the accent token's name)
     Error:
       type: object
       required: [error, code]
@@ -3753,11 +3601,10 @@ components:
         auth: { type: string, enum: [none, pairing] }
         features:
           type: object
-          required: [transcode, subtitles, adult]
+          required: [transcode, subtitles]
           properties:
             transcode: { type: boolean, description: 'ffmpeg available (audio transcoding)' }
             subtitles: { type: array, items: { type: string }, description: 'Enabled subtitle provider ids' }
-            adult: { type: boolean }
 
     # ── torrents
     AddTorrentRequest:
@@ -4552,9 +4399,23 @@ components:
         at: { type: string, format: date-time }
     AdminPlugins:
       type: object
-      required: [plugins, developerMode, publisherKeys, devDir, pluginsDir]
+      required: [plugins, kept, developerMode, publisherKeys, devDir, pluginsDir]
       properties:
         plugins: { type: array, items: { $ref: '#/components/schemas/AdminPlugin' } }
+        kept:
+          type: array
+          description: |
+            Data kept for plugins that aren't installed (a removal that kept its data, or settings a migration moved out of
+            the core for a plugin to come): installing the plugin uses it; DELETE /admin/plugins/kept/{id} forgets it
+          items:
+            type: object
+            required: [id, settings, store, secrets, grants]
+            properties:
+              id: { type: string }
+              settings: { type: integer }
+              store: { type: integer }
+              secrets: { type: integer }
+              grants: { type: integer }
         developerMode: { type: boolean, description: 'Setting plugins.developerMode: unsigned packages install; plugins-dev folders load (restart)' }
         publisherKeys:
           type: array
@@ -4868,8 +4729,6 @@ components:
             added: { type: number, description: 'Unix seconds, 0 if unknown' }
             title: { type: [string, 'null'] }
             year: { type: [integer, 'null'] }
-            studio: { type: [string, 'null'], description: '18+ only' }
-            scenes: { type: boolean, description: '18+ split scenes' }
             season: { type: [integer, 'null'], description: 'kind tv' }
             episode: { type: [integer, 'null'], description: 'kind tv' }
             pack: { type: boolean, description: 'kind tv' }
@@ -4914,82 +4773,6 @@ components:
               name: { type: [string, 'null'] }
         unsupported: { type: boolean, description: 'The provider doesn''t cover this kind of title' }
 
-    # ── 18+ metadata
-    AdultMetaProvider:
-      type: object
-      required: [id, name, enabled, default]
-      properties:
-        id: { type: string }
-        name: { type: string }
-        description: { type: string }
-        enabled: { type: boolean }
-        default: { type: boolean }
-        periods:
-          type: array
-          items:
-            type: object
-            properties:
-              id: { type: string }
-              label: { type: string }
-        sorts: { type: array, items: { type: string, enum: [popular, newest, rated] } }
-    AdultHome:
-      type: object
-      required: [provider, rows]
-      properties:
-        provider: { type: string }
-        rows:
-          type: array
-          items:
-            type: object
-            required: [key, title]
-            properties:
-              key: { type: string }
-              title: { type: string }
-    Studio:
-      type: object
-      required: [id, name]
-      properties:
-        id: { type: [string, integer] }
-        name: { type: string }
-    AdultItem:
-      type: object
-      required: [id, title]
-      properties:
-        id: { type: [string, integer] }
-        title: { type: string }
-        year: { type: [integer, 'null'] }
-        releaseDate: { type: [string, 'null'] }
-        overview: { type: [string, 'null'] }
-        poster: { type: [string, 'null'], description: 'Full image URL' }
-        backdrop: { type: [string, 'null'] }
-        rating: { type: [number, 'null'], description: '0–10' }
-        studio:
-          oneOf:
-            - $ref: '#/components/schemas/Studio'
-            - type: 'null'
-    AdultTitle:
-      allOf:
-        - $ref: '#/components/schemas/AdultItem'
-        - type: object
-          properties:
-            runtime: { type: [integer, 'null'], description: 'Minutes' }
-            performers:
-              type: array
-              items:
-                type: object
-                properties:
-                  name: { type: string }
-                  photo: { type: [string, 'null'] }
-            director: { type: [string, 'null'] }
-            studios: { type: array, items: { $ref: '#/components/schemas/Studio' } }
-    AdultPage:
-      type: object
-      required: [items, page, totalPages]
-      properties:
-        items: { type: array, items: { $ref: '#/components/schemas/AdultItem' } }
-        page: { type: integer }
-        totalPages: { type: integer }
-
     # ── profiles
     Profile:
       type: object
@@ -5003,7 +4786,7 @@ components:
         preferences:
           type: object
           deprecated: true
-          description: 'Read-only view of the profile''s `adult.*` settings, `{ adult: { layout, metadataProvider } }`, kept for one release; use GET /settings?profile='
+          description: 'Always `{}` (what it showed moved to a plugin); use GET /settings?profile='
         createdAt: { type: string, format: date-time }
         lastUsedAt: { type: [string, 'null'], format: date-time }
     ProfileList:
@@ -5030,7 +4813,7 @@ components:
         preferences:
           type: object
           deprecated: true
-          description: 'Only `{ adult: { layout?, metadataProvider? } }` is read (written to the profile''s settings); use PATCH /profiles/{profileId}/settings'
+          description: 'Ignored; use PATCH /profiles/{profileId}/settings'
 
     UserSettingValues:
       type: object
@@ -5052,7 +4835,6 @@ components:
         max: { type: number }
         step: { type: number }
         nullable: { type: boolean }
-        adult: { type: boolean, description: 'Refused for kids profiles' }
     UserSettings:
       type: object
       required: [device, profile]
@@ -5503,12 +5285,11 @@ components:
             updates: { type: string, enum: [auto, notify, never], description: 'Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn''t look; a plugin may override it' }
         providers:
           type: object
-          required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]
+          required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey]
           properties:
             tmdbApiKey: { type: string }
             openSubtitlesApiKey: { type: string }
             wyzieApiKey: { type: string }
-            thePornDbApiKey: { type: string }
         transcoding:
           type: object
           required: [ffmpegPath, ffprobePath]

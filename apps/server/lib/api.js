@@ -7,7 +7,6 @@ var _ = require('lodash'),
   multipart = require('connect-multiparty'),
   youtube = require('./youtube'),
   episodes = require('./episodes'),
-  adult = require('./adult'),
   releases = require('./releases'),
   imdb = require('./imdb'),
   yts = require('./providers/yts'),
@@ -399,52 +398,9 @@ function imdbRoute(read) {
 v1.get('/imdb/:id', imdbRoute(imdb.title));
 v1.get('/imdb/:id/episodes', imdbRoute(imdb.episodes));
 
-//18+ movie torrents (TheRARBG XXX + The Pirate Bay), best match first.
-// ?title=&year= — these movies are matched by name, YTS has none of them
-
-v1.get('/adult/torrents', function (req, res) {
-  var title = String(req.query.title || '').trim();
-  if (!title) {
-    return fail(res, 'INVALID', 'title is required');
-  }
-
-  adult.findAdultTorrents(title, parseInt(req.query.year, 10))
-    .then(function (result) {
-      res.json(result);
-    })
-    .catch(function (error) {
-      log.warn('adult torrents: ' + error.message);
-      fail(res, 'UPSTREAM', error.message);
-    });
-});
-
-//18+ section: one provider's list, most seeded first (lib/adult.js#browse)
-// ?provider=piratebay|therarbg&q=&quality=2160p|1080p|720p|SD&playable=1&page=
-
-v1.get('/adult/providers', function (req, res) {
-  res.json(adult.browseProviders());
-});
-
-v1.get('/adult/browse', function (req, res) {
-  adult.browse({
-    provider: String(req.query.provider || ''),
-    q: String(req.query.q || '').slice(0, 100),
-    quality: String(req.query.quality || ''),
-    playable: req.query.playable === '1' || req.query.playable === 'true',
-    page: parseInt(req.query.page, 10) || 1
-  })
-    .then(function (result) {
-      res.json(result);
-    })
-    .catch(function (error) {
-      log.warn('adult browse: ' + error.message);
-      fail(res, 'UPSTREAM', error.message, { torrents: [] });
-    });
-});
-
-//"Find releases" lists for movies, TV shows and the 18+ section: one source's
-// releases, most seeded first (lib/releases.js)
-// GET /api/releases/providers?kind=movie|tv|adult → [{ id, name, paged, default }]
+//"Find releases" lists for movies and TV shows: one source's releases, most
+// seeded first (lib/releases.js)
+// GET /api/releases/providers?kind=movie|tv → [{ id, name, paged, default }]
 // GET /api/releases/browse?kind=&provider=&q=&quality=2160p|1080p|720p|SD&playable=1&page=&imdb=tt…
 //   → { provider, page, hasMore, torrents }; `imdb` is optional context (EZTV lists that show)
 
@@ -533,9 +489,6 @@ v1.all('/youtube/:videoId/', function (req, res) {
 });
 
 // Per-profile user data (lib/services via lib/userData.js)
-// 18+ section catalog (lib/adultMeta: TMDB, ThePornDB, …)
-v1.use('/adult/meta', require('./routes/adultMeta'));
-
 // User settings, per device and per profile (docs/settings-plan.md)
 v1.use(require('./routes/settings'));
 v1.use('/profiles', require('./routes/profiles'));

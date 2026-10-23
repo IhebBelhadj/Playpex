@@ -1,8 +1,10 @@
 'use strict';
 
-// Migration test (docs/settings-plan.md §6): a database made by the migrations
-// up to 0002 (before settings) with profiles holding preferences.adult, then
-// opened by lib/db (every migration) → the values are in profile_settings.
+// Migration tests: a database made by the migrations up to some point, then
+// opened by lib/db (every migration).
+//   0004 (docs/settings-plan.md §6): profiles' preferences.adult → profile_settings
+//   0014 (docs/plugins-plan.md P5): those settings → the 18+ plugin's (its
+//        profile setting metadataProvider, its store's layout:<profile>)
 //
 //   npm test -w apps/server
 
@@ -31,7 +33,7 @@ function migrationsUpTo(dir, lastTag) {
   return dir;
 }
 
-test('0004 moves profiles.preferences.adult into profile_settings', function () {
+test('0004 then 0014: profiles.preferences.adult → profile_settings → the 18+ plugin', function () {
   var tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'playpex-migrations-')),
     file = path.join(tmp, 'playpex.db'),
     old = driver.open(file, database.schema);
@@ -49,14 +51,19 @@ test('0004 moves profiles.preferences.adult into profile_settings', function () 
   }).then(function (connection) {
     connection.close();
     var raw = new DatabaseSync(file),
-      rows = raw.prepare('SELECT profile_id, key, value, updated_at FROM profile_settings ORDER BY profile_id, key').all();
+      core = raw.prepare('SELECT profile_id, key FROM profile_settings').all(),
+      settings = raw.prepare('SELECT plugin_id, scope, owner_id, key, value, updated_at FROM plugin_settings ORDER BY owner_id').all(),
+      store = raw.prepare('SELECT plugin_id, key, value, size FROM plugin_store ORDER BY key').all();
     raw.close();
-    assert.deepEqual(rows.map(function (r) { return [r.profile_id, r.key, JSON.parse(r.value)]; }), [
-      ['p-both', 'adult.layout', 'compact'],
-      ['p-both', 'adult.metadataProvider', 'theporndb'],
-      ['p-layout', 'adult.layout', 'posters']
+    assert.deepEqual(core, [], 'no 18+ key left in the core');
+    assert.deepEqual(settings.map(function (r) { return [r.plugin_id, r.scope, r.owner_id, r.key, JSON.parse(r.value)]; }), [
+      ['adult', 'profile', 'p-both', 'metadataProvider', 'theporndb']
     ]);
-    rows.forEach(function (r) { assert.ok(Math.abs(r.updated_at - Date.now()) < 60 * 1000, 'updated_at is epoch ms'); });
+    assert.ok(Math.abs(settings[0].updated_at - Date.now()) < 60 * 1000, 'updated_at is epoch ms');
+    assert.deepEqual(store.map(function (r) { return [r.plugin_id, r.key, JSON.parse(r.value), r.size]; }), [
+      ['adult', 'layout:p-both', 'list', Buffer.byteLength('"list"') + Buffer.byteLength('layout:p-both')],
+      ['adult', 'layout:p-layout', 'posters', Buffer.byteLength('"posters"') + Buffer.byteLength('layout:p-layout')]
+    ]);
   }).finally(function () {
     fs.rmSync(tmp, { recursive: true, force: true });
   });

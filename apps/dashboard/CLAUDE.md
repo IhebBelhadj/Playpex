@@ -38,7 +38,9 @@ src/components/common.tsx  PageHeader, Stat, Empty, QueryError, Loading, Spinner
 src/components/ui/      shadcn components (generated: `npx shadcn@latest add <name>` from apps/dashboard)
 src/pages/*.tsx         one file per page
 src/pages/plugins.tsx   Plugins (docs/plugins-plan.md §6.3), tabs in `?tab=`: Installed (icon, state, origin or repository, signed / unsigned,
-                        update / held / deprecated, the error, `EnableSwitch`, Open → its page), Browse / Updates / Repositories
+                        update / held / deprecated, the error, `EnableSwitch`, Open → its page; then "Kept for plugins that aren't
+                        installed": `AdminPlugins.kept`, e.g. the 18+ section's settings moved for the plugin `adult`, Forget →
+                        DELETE /admin/plugins/kept/{id}), Browse / Updates / Repositories
                         (components/plugin-repositories.tsx), Developer (developer mode, trusted publisher keys: PUT /admin/settings
                         {plugins}); "Install from a file or link" (a dialog: upload a .ppx / .zip or a link → POST /admin/plugins/packages →
                         the preview → install by token). Library › Edit folder has the "Information provider" select (GET /admin/library `matchers`)

@@ -15,7 +15,7 @@ export type StackAlign = 'row-top' | Align;
 // an entry's block at the top (CSS scroll snapping; the Scroller pauses it
 // while it glides).
 //
-//   <div class="rows" pxStack="adult-browse" align="row-top">
+//   <div class="rows" pxStack="watchlist" align="row-top">
 //     <section *ngFor="let row of rows" pxStackItem>
 //       <h3>…</h3>
 //       <div [pxRow]="row.key">…</div>

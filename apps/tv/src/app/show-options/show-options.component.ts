@@ -217,11 +217,6 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     return this.episodePlayback.isResolving(this.show , this.selectedSeason , ep.episode_number);
   }
 
-  // 18+ show (TMDB `adult`): never enters the profile's library
-  get isAdult():boolean {
-    return !!this.show?.['adult'];
-  }
-
   loadLibraryState(){
     this.inWatchlist = false;
     this.episodeProgress.clear();
@@ -229,7 +224,6 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.onServerSub = this.serverLibrary.live('tv' , Number(this.show['id'])).subscribe(title => {
       this.onServer = ServerLibraryService.episodesOf(title);
     });
-    if (this.isAdult) return;
     let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
     this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
     this.library.episodesProgress(ref).subscribe({
@@ -296,9 +290,9 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   findReleases(){
     if (!this.show) return;
     let title = this.show['name'];
-    this.releases.open(this.isAdult ? 'adult' : 'tv', title, {
+    this.releases.open('tv', title, {
       label: title,
-      context: this.isAdult ? undefined : {
+      context: {
         mediaType: 'tv',
         tmdbId: Number(this.show['id']),
         imdbId: this.imdbId,
@@ -306,7 +300,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
         year: (this.show['first_air_date'] || '').slice(0, 4),
         artwork: LibraryService.artworkOf(this.show),
       },
-    }, this.isAdult ? null : this.imdbId || null);
+    }, this.imdbId || null);
   }
 
   // what plugins' actions and rows on this page get (ui/slots)

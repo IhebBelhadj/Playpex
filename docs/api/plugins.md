@@ -10,7 +10,7 @@ Status: all of this exists (plugins plan steps P1–P4): the sandbox and these r
 
 | Field | Use |
 |---|---|
-| `id`, `name`, `version`, `audience` | `audience: adults`: show it like the core's adult content (the `adult` accent); `name` and menu labels come translated for the request's `Accept-Language` |
+| `id`, `name`, `version`, `audience` | `audience: adults`: never listed for a kids profile; its screens may use the `adult` accent (`chrome`); `name` and menu labels come translated for the request's `Accept-Language` |
 | `play` | it may hand play requests to the core: its `releases` screens play the release selected (else say it can't) |
 | `sections` | menu entries: `{ screen, menu: { label, icon, order } }` opening one of its screens |
 | `screens` | `{ name, template, data, title?, params? }`: screen `plugin.<id>.<name>`; draw it with your `catalog` / `title` / `releases` / `list` template, filled by its `data` handler |

@@ -621,3 +621,49 @@ test('a replacement (migratesFrom) takes the settings of the plugin it replaces'
     assert.equal(ok(r).server.greeting, 'hello there');
   });
 });
+
+// ── repositories built by npm run pack:repository ──────────────────────────
+
+function packRepository(folders, out, pair, id, name, host) {
+  var keyFile = path.join(tmp, id + '-key.json');
+  fs.writeFileSync(keyFile, JSON.stringify(pair));
+  var r = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'pack-repository.js')].concat(folders)
+    .concat(['--out', out, '--key', keyFile, '--id', id, '--name', name, '--base-url', url(host, id + '/')]), { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  fs.readdirSync(out).forEach(function (f) { served['/' + id + '/' + f] = fs.readFileSync(path.join(out, f)); });
+  return url(host, id + '/index.json');
+}
+
+test('the 18+ plugin: refused by the official repository, installed from its own', { skip: skip() }, function () {
+  var ADULT = path.join(__dirname, '..', '..', '..', 'plugins', 'adult'),
+    HELLO = path.join(__dirname, '..', '..', '..', 'plugins', 'hello'),
+    grownUp, kid;
+  // the official index rebuilt by the tool with both plugins in it
+  packRepository([HELLO, ADULT], path.join(tmp, 'built-official'), keys.official, 'playpex', 'Playpex', HOSTS[0]);
+  var adultIndex = packRepository([ADULT], path.join(tmp, 'built-adult'), keys.third, 'playpex-adult', 'Playpex 18+', HOSTS[1]);
+  return refresh('playpex').then(function () {
+    return repository('playpex');
+  }).then(function (official) {
+    assert.equal(official.error, null);
+    assert.deepEqual(official.refused.map(function (x) { return x.id; }), ['adult'], 'left out of the official repository');
+    return call('POST', '/admin/plugins/catalog/install', { repository: 'playpex', id: 'adult' });
+  }).then(function (r) {
+    assert.equal(r.status, 404);
+    return call('POST', '/admin/plugins/repositories', { url: adultIndex, key: keys.third.publicKey });
+  }).then(function (r) {
+    assert.equal(ok(r).plugins, 1);
+    return installFrom('playpex-adult', 'adult');
+  }).then(function (p) {
+    assert.equal(p.origin, 'repository');
+    assert.equal(p.repository.id, 'playpex-adult');
+    assert.equal(p.audience, 'adults');
+    return Promise.all([call('POST', '/profiles', { name: 'Grown' }), call('POST', '/profiles', { name: 'Child', isKid: true })]);
+  }).then(function (r) {
+    grownUp = r[0].json.id;
+    kid = r[1].json.id;
+    return Promise.all([call('GET', '/plugins?profile=' + grownUp), call('GET', '/plugins?profile=' + kid)]);
+  }).then(function (r) {
+    assert.ok(r[0].json.plugins.some(function (p) { return p.id === 'adult'; }), 'an adult profile has its section');
+    assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'adult'; }), 'a kids profile never');
+  });
+});

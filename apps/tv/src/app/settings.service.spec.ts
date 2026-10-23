@@ -18,7 +18,7 @@ describe('SettingsService', () => {
   let toasts:jasmine.SpyObj<Toasts>;
 
   const deviceAnswer = (over:any = {}) => ({ 'display.uiScale': 0.8, 'display.safeArea': 0, 'player.volume': 100, 'subtitles.size': 'medium', ...over });
-  const profileAnswer = (over:any = {}) => ({ 'subtitles.provider': null, 'player.autoplayNext': true, 'adult.layout': 'posters', 'adult.metadataProvider': null, ...over });
+  const profileAnswer = (over:any = {}) => ({ 'subtitles.provider': null, 'player.autoplayNext': true, ...over });
 
   function answerLoad(profileId:string | null, device:any = {}, profile:any = {}) {
     let req = http.expectOne(r => r.url == `${API}/settings` && (r.params.get('profile') || null) == profileId);
@@ -123,11 +123,11 @@ describe('SettingsService', () => {
     current.next({ id: 'p1' });
     answerLoad('p1');
     events.next({ topic: 'settings.changed', data: { scope: 'device', ownerId: 'other', keys: ['player.volume'] } });
-    events.next({ topic: 'settings.changed', data: { scope: 'profile', ownerId: 'p2', keys: ['adult.layout'] } });
+    events.next({ topic: 'settings.changed', data: { scope: 'profile', ownerId: 'p2', keys: ['player.autoplayNext'] } });
     http.expectNone(`${API}/settings`);
-    events.next({ topic: 'settings.changed', data: { scope: 'profile', ownerId: 'p1', keys: ['adult.layout'] } });
-    answerLoad('p1', {}, { 'adult.layout': 'compact' });
-    expect(settings.value('adult.layout')).toBe('compact');
+    events.next({ topic: 'settings.changed', data: { scope: 'profile', ownerId: 'p1', keys: ['player.autoplayNext'] } });
+    answerLoad('p1', {}, { 'player.autoplayNext': false });
+    expect(settings.value('player.autoplayNext')).toBe(false);
   });
 
   it('moves values kept in localStorage to the server once', () => {

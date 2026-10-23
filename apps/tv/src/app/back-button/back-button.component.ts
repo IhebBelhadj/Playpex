@@ -6,7 +6,7 @@ import { InputDispatcher, Navigator } from '../nav/public-api';
 // is (`body.pointer-hidden` hides it), on pages there is a "back" from: titles,
 // the player, search (it has no menu), the power menu. Not on the picker, the server picker (/connect) and
 // the profile editor (full-screen layers with their own Cancel), nor on the
-// sections the menu shows next to (movies / TV lists, watch list, 18+): there
+// sections the menu shows next to (movies / TV lists, watch list, plugins' sections): there
 // the menu is the way around. A plain (click)
 // element outside any nav section, like the row paddles: hovering it doesn't
 // move the focus.

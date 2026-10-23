@@ -47,8 +47,8 @@ var profiles = sqliteTable('profiles', {
   // Optional PIN (scrypt). Both null = profile is not locked.
   pinHash: text('pin_hash'),
   pinSalt: text('pin_salt'),
-  // Deprecated (settings plan §6): its `adult` part was moved to
-  // profile_settings by migration 0004; dropped in a later release
+  // Deprecated (settings plan §6): unused since migration 0004 copied what it
+  // held to profile_settings (answered as {}); dropped in a later release
   preferences: text('preferences', { mode: 'json' }).notNull().$defaultFn(function () { return {}; }),
   createdAt: timestamp('created_at').notNull(),
   lastUsedAt: timestamp('last_used_at')
@@ -142,7 +142,7 @@ var ratings = sqliteTable('ratings', {
 // User settings, one row per key (keys and defaults: @playpex/protocol
 // settings.js). A missing row = the key's default. Values are JSON.
 
-// Per-profile settings ('subtitles.provider', 'adult.layout', …); deleted with the profile.
+// Per-profile settings ('subtitles.provider', 'player.autoplayNext', …); deleted with the profile.
 var profileSettings = sqliteTable('profile_settings', {
   profileId: profileId(),
   key: text('key').notNull(),

@@ -917,6 +917,35 @@ function view(id, options) {
   });
 }
 
+/**
+ * What is kept for plugins that aren't installed (nor running as a developer
+ * copy): data left by a removal with "keep its data", or rows a migration
+ * prepared for a plugin to come (e.g. settings that left the core). Installing
+ * the plugin uses them; forget() drops them.
+ */
+function kept() {
+  return services().then(function (s) {
+    return Promise.all([s.plugins.owners(), s.plugins.installed.list()]);
+  }).then(function (r) {
+    var installed = r[1].map(function (x) { return x.id; });
+    return r[0].filter(function (o) { return installed.indexOf(o.pluginId) === -1 && !plugins.get(o.pluginId); }).map(function (o) {
+      return { id: o.pluginId, settings: o.settings, store: o.store, secrets: o.secrets, grants: o.grants };
+    });
+  });
+}
+
+function forget(id) {
+  return kept().then(function (list) {
+    if (!list.some(function (k) { return k.id === id; })) {
+      throw failure('NOT_FOUND', 'Nothing is kept for ' + id + ' (or it is installed: clear its data on its page)');
+    }
+    return services().then(function (s) { return s.plugins.removeAll(id); });
+  }).then(function () {
+    log.info('data kept for plugin ' + id + ' forgotten', { plugin: id });
+    return { ok: true };
+  });
+}
+
 /** Installed plugins (by id) and the developer copies that run */
 function list() {
   return services().then(function (s) { return s.plugins.installed.list(); }).then(function (rows) {
@@ -1009,6 +1038,8 @@ module.exports = {
   reload: reload,
   loadInstalled: loadInstalled,
   list: list,
+  kept: kept,
+  forget: forget,
   view: view,
   dirOf: dirOf,
   // tests

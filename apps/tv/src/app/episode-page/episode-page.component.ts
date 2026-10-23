@@ -172,12 +172,12 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     return badges.length ? badges : null;
   }
 
-  // The server's download of this episode, live (not for 18+ shows)
+  // The server's download of this episode, live
   private watchDownload() {
     this.downloadSub?.unsubscribe();
     this.download = null;
     this.downloadTile = DownloadsService.tile(null);
-    if (this.isAdult || !this.show || !this.episode) return;
+    if (!this.show || !this.episode) return;
     this.downloadSub = this.downloads.forTitle(this.downloadRef()).subscribe(d => {
       this.download = d;
       this.downloadTile = DownloadsService.tile(d);
@@ -339,17 +339,12 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
   // ── the profile's state ───────────────────────────────────────────────────
 
-  get isAdult():boolean {
-    return !!this.show?.['adult'];
-  }
-
   private key():EpisodeKey {
     return { mediaType: 'tv', tmdbId: Number(this.show['id']), season: this.seasonNumber, episode: this.episode.episode_number };
   }
 
   loadSeasonProgress() {
     this.episodeProgress.clear();
-    if (this.isAdult) return;
     this.library.episodesProgress({ mediaType: 'tv', tmdbId: Number(this.show['id']) }).subscribe({
       next: list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}`, p)),
       error: () => {},
@@ -360,7 +355,6 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     this.watched = false;
     this.resumeLabel = '';
     this.resumeRatio = 0;
-    if (this.isAdult) return;
     let episode = this.episode;
     this.library.state(this.key()).subscribe({
       next: (state:PlaybackState) => {
@@ -428,9 +422,9 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     if (!this.episode) return;
     let title = this.show['name'];
     let query = `${title} ${this.code}`;
-    this.releases.open(this.isAdult ? 'adult' : 'tv', query, {
+    this.releases.open('tv', query, {
       label: `${title} ${this.code}`,
-      context: this.isAdult ? undefined : {
+      context: {
         mediaType: 'tv',
         tmdbId: Number(this.show['id']),
         imdbId: this.imdbId,
@@ -438,7 +432,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
         year: (this.show['first_air_date'] || '').slice(0, 4),
         artwork: LibraryService.artworkOf(this.show),
       },
-    }, this.isAdult ? null : this.imdbId || null);
+    }, this.imdbId || null);
   }
 
   // Another episode of the season, in place of this one (Back: the show)

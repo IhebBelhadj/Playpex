@@ -17,8 +17,7 @@ router.get('/', function (req, res) {
       auth: 'pairing',   // LAN clients pair (RFC 8628, lib/auth); loopback ones needn't
       features: {
         transcode: ff.available,
-        subtitles: subtitles.list().filter(function (p) { return p.enabled; }).map(function (p) { return p.id; }),
-        adult: true
+        subtitles: subtitles.list().filter(function (p) { return p.enabled; }).map(function (p) { return p.id; })
       }
     }));
   });

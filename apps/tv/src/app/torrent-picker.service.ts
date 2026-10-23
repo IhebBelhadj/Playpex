@@ -75,8 +75,7 @@ export class TorrentPickerService {
     };
   }
 
-  // Server episode torrent (lib/episodes.js): {name, quality, codec, audio, playable, pack, seeds, size, magnet};
-  // 18+ movie torrents (lib/adult.js) have the same shape, plus `scenes`
+  // Server episode torrent (lib/episodes.js): {name, quality, codec, audio, playable, pack, seeds, size, magnet}
   static fromEpisode(torrent , index:number): TorrentOption {
     let warnings = [];
     if (!torrent['playable']) warnings.push('May not play (x265 / 10-bit / 4K)');

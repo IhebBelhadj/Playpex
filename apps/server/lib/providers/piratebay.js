@@ -1,8 +1,7 @@
 'use strict';
 
 // The Pirate Bay, through its JSON API (apibay.org, what thepiratebay.org's own
-// page calls). 18+ movie search (category 500 "Porn") and the release lists
-// of lib/releases.js (porn, movie and TV subcategories).
+// page calls): the release lists of lib/releases.js (movie and TV subcategories).
 // Result fields: name, info_hash, seeders, leechers, size (bytes), category.
 // No match answers one fake row with an all-zero info hash.
 
@@ -10,10 +9,6 @@ var axios = require('axios').default;
 var trackers = require('../trackers');
 
 var MIRRORS = ['https://apibay.org'];
-
-// Porn subcategories that hold films: 501 Movies, 505 HD - Movies,
-// 506 Movie clips, 507 UHD/4k - Movies (not DVDR images, pictures, games)
-var ADULT_MOVIE_CATEGORIES = ['501', '505', '506', '507'];
 
 var NO_HASH = /^0+$/;
 
@@ -51,29 +46,6 @@ function get(path, params) {
 
 function query(keywords, category) {
   return get('/q.php', { q: keywords, cat: category });
-}
-
-// 18+ movies whose release name mentions `title`; adult.js does the matching
-function searchAdult(title) {
-  var name = title.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  return query(name, '500').then(function (results) {
-    return results
-      .filter(function (r) {
-        return r.info_hash && !NO_HASH.test(r.info_hash) &&
-          ADULT_MOVIE_CATEGORIES.indexOf(String(r.category)) !== -1;
-      })
-      .map(function (r) {
-        var hash = r.info_hash.toLowerCase();
-        return {
-          provider: 'The Pirate Bay',
-          name: unescape(r.name),
-          hash: hash,
-          magnet: trackers.build(hash, unescape(r.name)),
-          seeds: Number(r.seeders) || 0,
-          size: Number(r.size) || 0
-        };
-      });
-  });
 }
 
 function toRelease(r) {
@@ -124,15 +96,7 @@ function browse(keywords, options) {
   });
 }
 
-// The 18+ section's list. category: '500' (all porn) or one of ADULT_MOVIE_CATEGORIES
-function browseAdult(keywords, category) {
-  return browse(keywords, { lists: [category], searchCategory: category, categories: ADULT_MOVIE_CATEGORIES });
-}
-
 module.exports = {
   name: 'The Pirate Bay',
-  searchAdult: searchAdult,
-  browse: browse,
-  browseAdult: browseAdult,
-  ADULT_MOVIE_CATEGORIES: ADULT_MOVIE_CATEGORIES
+  browse: browse
 };

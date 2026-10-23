@@ -31,7 +31,7 @@ import { PluginTitleComponent } from './templates/plugin-title.component';
 // A plugin that's gone (removed, disabled, another profile) is undefined: its
 // contributions removed, its screens dropped from the registry and the
 // router's table rebuilt; a history holding one of its screens starts over on
-// Movies. Adults plugins: their screens need the `adult` requirement, their
+// Movies. Adults plugins: their screens need the `adults` requirement, their
 // menu entries and contributions are never offered to kids profiles.
 const TEMPLATES:Record<string, Type<unknown>> = {
   catalog: PluginCatalogComponent,
@@ -159,7 +159,7 @@ export class RemotePlugins {
         kind: section ? 'section' : 'detail',
         // its other screens keep the plugin's menu entry highlighted
         section: section ? undefined : home,
-        requires: scope.adults ? ['adult'] : ['profile'],
+        requires: scope.adults ? ['adults'] : ['profile'],
         chrome: plugin.chrome?.accent ? { accent: plugin.chrome.accent } : undefined,
         data: { [PLUGIN_SCOPE]: scope, [PLUGIN_SCREEN]: screen },
         menu: section ? {
@@ -182,7 +182,7 @@ export class RemotePlugins {
         id,
         slot: slot.slot as SlotName,
         order: slot.order ?? 100,
-        adult: scope.adults,
+        adults: scope.adults,
         [kind]: (ctx:any) => this.slotModels(scope, slot.slot, slot.data, kind, ctx),
       });
       defined.contributions.push(id);

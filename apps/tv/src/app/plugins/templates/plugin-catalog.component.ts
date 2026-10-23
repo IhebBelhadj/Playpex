@@ -28,7 +28,7 @@ interface CatalogState {
 const LOAD_AHEAD = 6;
 
 // The `catalog` template (docs/plugins/templates.md): a plugin's section or
-// browse screen, laid out like the 18+ poster layout it was extracted from
+// browse screen, laid out like the watch list (rows of posters under the focused title)
 // (plugins/templates/catalog.scss): a toolbar (its title, search when the
 // plugin offers it, a filters panel of its filter groups), the focused card's
 // title info (the card's `info`, else its title), rows of cards (paged rows

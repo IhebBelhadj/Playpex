@@ -149,6 +149,23 @@ module.exports = function pluginsRepository(db) {
       });
     },
 
+    /** Every plugin id something is kept for: [{ pluginId, settings, store, secrets, grants }] (row counts) */
+    owners: function () {
+      var count = function (table) {
+        return db.select({ pluginId: table.pluginId, n: orm.sql`count(*)` }).from(table).groupBy(table.pluginId);
+      };
+      return Promise.all([count(settings), count(store), count(secrets), count(grants)]).then(function (r) {
+        var byId = {};
+        ['settings', 'store', 'secrets', 'grants'].forEach(function (kind, i) {
+          r[i].forEach(function (row) {
+            var o = byId[row.pluginId] = byId[row.pluginId] || { pluginId: row.pluginId, settings: 0, store: 0, secrets: 0, grants: 0 };
+            o[kind] = Number(row.n);
+          });
+        });
+        return Object.keys(byId).sort().map(function (k) { return byId[k]; });
+      });
+    },
+
     removeAll: function (pluginId) {
       return db.batch([
         db.delete(store).where(orm.eq(store.pluginId, pluginId)),

@@ -25,7 +25,7 @@ function toCandidate(mediaType, r) {
     genreIds: r.genre_ids || [],
     voteAverage: r.vote_average || 0,
     releaseDate: r.release_date || r.first_air_date || null,
-    adult: !!r.adult
+    adult: !!r.adult   // plugins-check: allow (recommendations leave adult titles out)
   };
 }
 

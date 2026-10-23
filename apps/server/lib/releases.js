@@ -2,9 +2,8 @@
 
 // "Find releases" lists: one torrent source's releases for a kind of media,
 // most seeded first, with a quality filter, a "playable" filter, keywords and
-// paging for paged sources. Kinds: 'adult' (the 18+ section), 'movie', 'tv'.
-// Routes: /api/releases/{providers,browse} (and /api/adult/{providers,browse}
-// = kind 'adult', see adult.js). Plugins with `releases.providers` are more
+// paging for paged sources. Kinds: 'movie', 'tv'.
+// Routes: /api/releases/{providers,browse}. Plugins with `releases.providers` are more
 // sources of the kinds movie and tv (`plugin:<id>`, after the core's; hook
 // kinds `movie` / `show`); never `audience: adults` ones (no profile here).
 
@@ -41,27 +40,6 @@ var tvLists = pirateBayLists(['205', '208', '212'], '205', '208', '212');
 // list(context) → Promise<{ results: [release], hasMore }>
 // context: { q, quality ('' or one of QUALITIES), page, imdb }
 var PROVIDERS = {
-  adult: [
-    {
-      id: 'piratebay',
-      name: 'The Pirate Bay',
-      paged: false,
-      list: function (c) {
-        // its own subcategories narrow the top-100 lists by resolution
-        var category = c.quality === '2160p' ? '507' : (c.quality === '1080p' || c.quality === '720p') ? '505' : '500';
-        return piratebay.browseAdult(c.q, category);
-      }
-    },
-    {
-      id: 'therarbg',
-      name: 'TheRARBG',
-      paged: true,
-      // (a resolution in the keywords would rank by name, not by seeders)
-      list: function (c) {
-        return therarbg.browseAdult(c.q, c.page);
-      }
-    }
-  ],
   movie: [
     {
       id: 'piratebay',
@@ -194,23 +172,20 @@ function providers(kind) {
 // release → what the list shows (fields the provider set itself, like YTS's
 // title/year, win over the parsed ones)
 function decorate(kind, torrent) {
-  var presented = kind === 'adult' ? present.adult(torrent.name) : present.release(torrent.name, kind);
+  var presented = present.release(torrent.name, kind);
   var own = {};
-  ['title', 'year', 'studio'].forEach(function (key) {
+  ['title', 'year'].forEach(function (key) {
     if (torrent[key] !== undefined && torrent[key] !== null && torrent[key] !== '') {
       own[key] = torrent[key];
     }
   });
-  return Object.assign(torrent, describe(torrent.name), presented, own, {
-    // one file per scene, not the whole film (18+ only)
-    scenes: kind === 'adult' && /\bsplit.?scenes?\b/i.test(torrent.name)
-  });
+  return Object.assign(torrent, describe(torrent.name), presented, own);
 }
 
 // options: { kind, provider, q, quality, playable, page, imdb }
 // → { provider, page, hasMore, torrents }
 function browse(options) {
-  var kind = options.kind || 'adult';
+  var kind = options.kind || 'movie';
   if (!isKind(kind)) {
     return Promise.reject(new Error('unknown kind: ' + kind));
   }

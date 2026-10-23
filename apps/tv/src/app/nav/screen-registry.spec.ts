@@ -9,9 +9,9 @@ class FrameComponent { }
 
 class ServerGuard { }
 class ProfileGuard { }
-class AdultGuard { }
+class AdultsGuard { }
 class DisplayGuard { }
-const GUARDS = { display: DisplayGuard, server: ServerGuard, profile: ProfileGuard, adult: AdultGuard };
+const GUARDS = { display: DisplayGuard, server: ServerGuard, profile: ProfileGuard, adults: AdultsGuard };
 
 describe('nav ScreenRegistry', () => {
 

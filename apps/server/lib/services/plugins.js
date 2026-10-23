@@ -243,6 +243,11 @@ module.exports = function pluginsService(repositories, options) {
       return repo.settingsCopy(fromId, toId, now());
     },
 
+    /** Plugin ids something is kept for, with row counts per table */
+    owners: function () {
+      return repo.owners();
+    },
+
     /** Everything a plugin kept (removal, plan §6.4) */
     removeAll: function (pluginId) {
       return repo.removeAll(pluginId);

@@ -100,7 +100,11 @@ export class PluginClient {
     }
   }
 
-  /** A plugin's intent: its own screens, or the core's title / search screens the server allowed */
+  /**
+   * A plugin's intent: its own screens, or the core's title / search screens
+   * the server allowed; `replace`: in place of the current entry (a section
+   * switching its layout)
+   */
   open(scope:PluginScope, intent:PluginIntent) {
     if (!this.navigator.registry.has(intent.screen)) {
       this.toasts.show({ text: `${scope.name} can't show that here`, tone: 'error', key: `plugin:${scope.id}` });
@@ -108,20 +112,21 @@ export class PluginClient {
     }
     let params:Record<string, string> = {};
     Object.entries(intent.params || {}).forEach(([k, v]) => params[k] = String(v));
-    this.navigator.open({ screen: intent.screen, params });
+    if (intent.replace) this.navigator.replace({ screen: intent.screen, params });
+    else this.navigator.open({ screen: intent.screen, params });
   }
 
   /**
    * The core player for a play effect (or a release of a releases screen):
    * one source plays at once, several open the source picker. Adults
    * plugins and `tracking: 'none'` play without touching the profile's
-   * library (no resume point, history, Continue watching)
+   * library (PlaybackRequest.tracking: no resume point, history, Continue watching)
    */
   play(scope:PluginScope, request:PluginPlayRequest) {
     let base:PlaybackRequest = { title: request.title, subtitle: request.subtitle };
     let untracked = scope.adults || request.tracking == 'none';
     let ref = request.ref;
-    if (untracked) base.adult = true;
+    if (untracked) base.tracking = 'none';
     else if (ref?.tmdbId && ref.kind != 'video') {
       base.mediaType = ref.kind == 'movie' ? 'movie' : 'tv';
       base.tmdbId = ref.tmdbId;

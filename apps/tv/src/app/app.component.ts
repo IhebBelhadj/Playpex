@@ -145,7 +145,7 @@ export class AppComponent implements AfterViewInit , OnInit{
       gsap.set(this.newImgElement, { clearProps: true });
       gsap.set(this.previousImgElement, { clearProps: true });
 
-      // a TMDB path, or a full URL (18+ catalog providers)
+      // a TMDB path, or a full URL (plugins' catalogs)
       let url = /^https?:/.test(data.img_url) ? data.img_url : this.imgBaseUrl + data.img_url;
       if(!this.previousImg) {
         this.previousImg = url;

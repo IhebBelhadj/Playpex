@@ -1,6 +1,3 @@
-import { AdultBrowseComponent } from '../adult-browse/adult-browse.component';
-import { AdultTitleComponent } from '../adult-title/adult-title.component';
-import { AdultService } from '../adult.service';
 import { ConnectPageComponent } from '../connect-page/connect-page.component';
 import { DisplaySetupComponent } from '../display-setup/display-setup.component';
 import { EpisodePageComponent } from '../episode-page/episode-page.component';
@@ -31,7 +28,6 @@ import { defineScreen } from './screen-registry';
 const MOVIES_FRAME = { path: 'movies', component: MoviesPageComponent, data: { media: 'movie' } };
 const SHOWS_FRAME = { path: 'shows', component: MoviesPageComponent, data: { media: 'tv' } };
 const FULL_SCREEN = { menu: 'hidden' as const };
-const ADULT = { accent: 'adult' as const };
 
 // ── roots ────────────────────────────────────────────────────────────────────
 
@@ -185,47 +181,8 @@ defineScreen({
   menu: { label: 'Watch list', icon: 'list', order: 40 },
 });
 
-// 18+: not for kids profiles. Two layouts of one section, the profile's
-// preference opens one (the menu entry resolves it)
-defineScreen({
-  id: 'core.adult.browse',
-  path: 'adult/browse',
-  component: AdultBrowseComponent,
-  kind: 'section',
-  requires: ['adult'],
-  chrome: ADULT,
-  menu: {
-    label: '18+',
-    icon: 'adult',
-    order: 50,
-    visible: ({ profile }) => !!profile && !profile.isKid,
-    resolve: injector => ({ screen: injector.get(AdultService).layoutScreen() }),
-  },
-});
-
-defineScreen({
-  id: 'core.adult.releases',
-  path: 'adult/releases',
-  component: ReleasesPageComponent,
-  data: { kind: 'adult' },
-  kind: 'section',
-  section: 'core.adult.browse',
-  requires: ['adult'],
-  chrome: ADULT,
-});
-
-// Params { provider, id }; payload: the title (renders before the details arrive)
-defineScreen({
-  id: 'core.adult.title',
-  path: 'adult/title/:provider/:id',
-  component: AdultTitleComponent,
-  kind: 'detail',
-  requires: ['adult'],
-  chrome: ADULT,
-});
-
 // Settings: this device's (size, screen edges, volume, subtitle size) and the
-// profile's (subtitle source, autoplay, 18+), SettingsService
+// profile's (subtitle source, autoplay), SettingsService
 defineScreen({
   id: 'core.settings',
   path: 'settings',

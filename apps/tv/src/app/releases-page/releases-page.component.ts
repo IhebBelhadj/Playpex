@@ -1,10 +1,9 @@
-import { AfterViewInit, Component, HostBinding, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, map, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { PlaybackRequest, PlaybackService } from '../playback.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
-import { AdultService } from '../adult.service';
 import {
   Release, ReleaseProvider, ReleaseQuality, ReleasesKind, ReleasesOrigin, ReleasesService, ReleasesState,
 } from '../releases.service';
@@ -24,19 +23,17 @@ const LOAD_MORE_AHEAD = 8;        // ask for the next page this many rows before
 
 // Per kind: what the search asks for
 const SEARCH_HINT: Record<ReleasesKind, string> = {
-  adult: 'Studio, performer or title',
   movie: 'Movie title, year, quality…',
   tv: 'Show title, SxxEyy, quality…',
 };
 
-// A release list (route data `kind`): /adult/releases (the 18+ section's
-// compact layout, never for kids profiles, see AdultGuard), /releases/movies
-// and /releases/shows ("Find releases" on a movie / show page).
+// A release list (route data `kind`): /releases/movies and /releases/shows
+// ("Find releases" on a movie / show page).
 // Left: search (on-screen keyboard), source and filters. Right: that source's
 // releases, most seeded first. Enter on a release plays it: as the title the
 // list was opened for when there is one (ReleasesOrigin.context: subtitles,
-// saved progress), never saved for 18+ (PlaybackRequest.adult).
-// Screens core.adult.releases (a section) and core.releases.movies / .shows
+// saved progress), else as the release, saved nowhere.
+// Screens core.releases.movies / .shows
 // (src/app/nav): the payload is the ReleasesOrigin of a "Find releases".
 const SEARCH_FIELD = '.releasesPage [data-px-key="search"]';
 
@@ -57,7 +54,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     { id: 'SD', label: 'SD' },
   ];
 
-  kind:ReleasesKind = 'adult';
+  kind:ReleasesKind = 'movie';
   listId = '';                      // the list's pxGrid (its position is kept under this id)
   providers:ReleaseProvider[] = [];
   state:ReleasesState;
@@ -70,16 +67,12 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly loadAhead = LOAD_MORE_AHEAD;
 
-  // the 18+ list's own backdrop (scss)
-  @HostBinding('class.kindAdult') get adultKind() { return this.kind == 'adult'; }
-
   private requests = new Subject<Request>();
   private requestSub:Subscription;
   private screen = useScreen<{}, ReleasesOrigin>();
 
   constructor(
     private releases:ReleasesService,
-    private adult:AdultService,
     private navigation:NavigationService,
     public navigator:Navigator,
     private playback:PlaybackService,
@@ -119,7 +112,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.kind = this.route.snapshot.data['kind'] || 'adult';
+    this.kind = this.route.snapshot.data['kind'] || 'movie';
     this.listId = `releases:${this.kind}`;
     this.state = this.releases.states[this.kind];
     // the title it was opened from (kept in the history entry: also there
@@ -198,24 +191,14 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (data['hash']) this.play(this.state.releases.find(r => r.hash == data['hash']));
   }
 
-  // In-page steps: list → rail → (the 18+ section's own list) the menu; then
-  // out: the title it was opened from, or the power menu (the nav system)
+  // In-page steps: list → rail; then out: the title it was opened from (the nav system)
   private back(active:HTMLElement):boolean {
     if (!active || active.classList.contains('menuItem')) return false;
     if (active.closest('.releases')) {
       this.navigation.updateNavigation('focus', { sectionId: 'releasesFilters' });
       return true;
     }
-    if (this.origin || this.kind != 'adult') return false;
-    this.focusSelector('.menuItem.active');
-    return true;
-  }
-
-  // 18+ poster layout (saved to the profile; Settings will offer it too):
-  // the section's other screen, in place of this one
-  switchLayout() {
-    let go = () => this.navigator.reset({ screen: this.adult.layoutScreen('posters') });
-    this.adult.setPreferences({ layout: 'posters' }).subscribe({ next: go, error: go });
+    return false;
   }
 
   onSearchDone(query:string) {
@@ -279,11 +262,10 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     let context = this.origin?.context;
     let plain:PlaybackRequest = {
       title: r.title,
-      subtitle: [r.studio, r.year, details].filter(Boolean).join('  ·  '),
+      subtitle: [r.year, details].filter(Boolean).join('  ·  '),
       magnet: r.magnet,
-      adult: this.kind == 'adult' || undefined,
     };
-    if (this.kind == 'adult' || !context) return plain;
+    if (!context) return plain;
 
     let title = { title: context.title, magnet: r.magnet, imdbId: context.imdbId, tmdbId: context.tmdbId, artwork: context.artwork };
     if (this.kind == 'movie') {

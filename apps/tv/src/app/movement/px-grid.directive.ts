@@ -3,7 +3,7 @@ import { columnLines, Direction, gridLines, gridStep } from './moves';
 import { PxContainer } from './px-container';
 import { Align, Axis } from './scroller';
 
-// A 2D (or one-column) list: chip grids, on-screen keyboards, the 18+ release
+// A 2D (or one-column) list: chip grids, on-screen keyboards, the release
 // list. Sideways moves stay on the visual line; up / down go to the nearest
 // entry of the neighbour line (`columns="auto"` reads the lines from the
 // layout, a number chunks the items). Scrolls natively on whichever axis

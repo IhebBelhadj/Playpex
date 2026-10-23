@@ -6,7 +6,8 @@ import type { Injector } from '@angular/core';
 // declarations only need these.
 
 export type ScreenKind = 'section' | 'detail' | 'fullscreen' | 'system' | 'root';
-export type Requirement = 'display' | 'server' | 'profile' | 'adult';
+// adults: a screen of an `audience: adults` plugin, never on a kids profile
+export type Requirement = 'display' | 'server' | 'profile' | 'adults';
 
 // "Open screen X with params P and payload D", as data: what code hands to the
 // Navigator, what a menu entry or a plugin's link holds
@@ -28,8 +29,9 @@ export interface Chrome {
   menu?: 'shown' | 'hidden';        // default shown
   backButton?: boolean;             // default: not on sections and roots
   // a theme of the UI system (src/styles/_tokens.scss, data-px-accent on the
-  // shell): 'adult' = the 18+ wine instead of white for --px-color-accent
-  accent?: 'adult';
+  // shell): the wine instead of white for --px-color-accent (a plugin's
+  // chrome.accent; adults plugins use it)
+  accent?: 'adult';   // plugins-check: allow (the accent token's name)
 }
 
 export interface MenuEntry {
@@ -38,7 +40,7 @@ export interface MenuEntry {
   order: number;
   // shown to this profile (default: always)
   visible?: (ctx:{ profile:any | null }) => boolean;
-  // the screen the entry opens, when not the section's own (18+: the profile's layout)
+  // the screen the entry opens, when not the section's own
   resolve?: (injector:Injector) => Intent;
   // opened over the current screen instead of starting the history over:
   // Back returns to where it was opened from (search)
@@ -62,8 +64,8 @@ export interface ScreenDef<P = any, D = any> {
   frame?: { path: string; component: Type<unknown>; data?: Record<string, any> };
   data?: Record<string, any>;       // Angular route data (e.g. { media: 'movie' })
   kind: ScreenKind;
-  // the menu section this screen belongs to (sections: their own id; the
-  // two 18+ layouts share 'core.adult')
+  // the menu section this screen belongs to (sections: their own id; a
+  // section's other screens name it)
   section?: string;
   requires?: Requirement[];
   chrome?: Chrome;

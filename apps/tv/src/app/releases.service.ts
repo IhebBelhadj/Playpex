@@ -7,10 +7,10 @@ import { ProfilesService } from './profiles.service';
 import { Artwork } from './library.service';
 
 // Release lists ("Find releases"): one torrent source's releases, most seeded
-// first, for 18+ titles, movies or TV shows (server lib/releases.js,
+// first, for movies or TV shows (server lib/releases.js,
 // /api/releases/*). One list state per kind, kept while visiting the player.
 
-export type ReleasesKind = 'adult' | 'movie' | 'tv';
+export type ReleasesKind = 'movie' | 'tv';
 
 export interface ReleaseProvider {
   id: string;
@@ -23,8 +23,7 @@ export interface ReleaseProvider {
 export interface Release {
   provider: string;
   name: string;         // raw release name
-  title: string;        // cleaned: no studio tag, resolution, encoder…
-  studio: string | null;
+  title: string;        // cleaned: no resolution, encoder…
   year: number | null;
   hash: string;
   magnet: string;
@@ -36,7 +35,6 @@ export interface Release {
   codec: string;
   audio: 'supported' | 'unknown' | 'unsupported';
   playable: boolean;
-  scenes: boolean;      // 18+ split scenes: one file per scene
   // TV: what the release holds (an episode, or a season / complete pack)
   season?: number | null;
   episode?: number | null;
@@ -92,7 +90,6 @@ export const EMPTY_RELEASES_STATE: ReleasesState = {
 
 // src/app/nav/screens.ts
 const SCREENS: Record<ReleasesKind, string> = {
-  adult: 'core.adult.releases',
   movie: 'core.releases.movies',
   tv: 'core.releases.shows',
 };
@@ -148,6 +145,6 @@ export class ReleasesService {
   }
 
   private emptyStates():Record<ReleasesKind, ReleasesState> {
-    return { adult: { ...EMPTY_RELEASES_STATE }, movie: { ...EMPTY_RELEASES_STATE }, tv: { ...EMPTY_RELEASES_STATE } };
+    return { movie: { ...EMPTY_RELEASES_STATE }, tv: { ...EMPTY_RELEASES_STATE } };
   }
 }

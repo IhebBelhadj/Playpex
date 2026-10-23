@@ -102,7 +102,7 @@ Plain data: the core reads it without running your code. `data` names a handler 
   "sections": [{ "screen": "browse", "menu": { "label": "18+", "icon": "assets/seal.svg", "order": 50 } }],
   "screens": [
     { "name": "browse", "template": "catalog", "data": "browse", "title": "18+" },
-    { "name": "title", "template": "title", "data": "title", "params": ["id"] }      // p/adult/title/:id
+    { "name": "title", "template": "title", "data": "title", "params": ["provider", "id"] }   // p/adult/title/:provider/:id
   ],
   "slots": [{ "slot": "core.movies.rows", "data": "movieRows", "order": 60 }],
   "settings": [ … ],

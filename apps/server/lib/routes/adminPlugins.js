@@ -6,7 +6,8 @@
 // link or a GitHub repository / release) is staged and previewed, then
 // installed by its token. Mounted by lib/routes/admin.js after requireAdmin.
 //
-//   GET    /admin/plugins                       { plugins, developerMode, publisherKeys: [{ key, fingerprint }], devDir, pluginsDir }
+//   GET    /admin/plugins                       { plugins, kept (data of plugins not installed), developerMode,
+//                                               publisherKeys: [{ key, fingerprint }], devDir, pluginsDir }
 //   POST   /admin/plugins/packages              multipart `file` (.ppx / .zip) or { url } → the preview (lib/plugins/install.js#stage)
 //   POST   /admin/plugins/packages/:token/install   { accept? } → the installed plugin (`accept`: the
 //                                               preview's `added` permissions, else 409 when it has any)
@@ -22,6 +23,7 @@
 //   POST   /admin/plugins/catalog/install       { repository, id, version? } → a preview (with its dependencies)
 //   GET    /admin/plugins/updates               { updates, policy } updates from each plugin's origin repository
 //   POST   /admin/plugins/updates/apply         "Update all": those asking for no new permissions → { results }
+//   DELETE /admin/plugins/kept/:id              forget what is kept for a plugin that isn't installed (GET's `kept`)
 //   GET    /admin/plugins/:id                   one plugin, with its listing, requires, exports, changelog
 //   PATCH  /admin/plugins/:id                   { enabled?, updatePolicy? } (an installed plugin)
 //   POST   /admin/plugins/:id/rollback          the version kept by the last update → a preview, installed by its token
@@ -90,9 +92,11 @@ function keys() {
 
 router.get('/plugins', function (req, res) {
   answer(res, function () {
-    return install.list().then(function (list) {
+    return Promise.all([install.list(), install.kept()]).then(function (r) {
+      var list = r[0];
       return {
         plugins: list,
+        kept: r[1],
         developerMode: !!settings.get('plugins.developerMode'),
         publisherKeys: keys(),
         devDir: plugins.devDir(),
@@ -212,6 +216,10 @@ router.post('/plugins/updates/apply', function (req, res) {
 });
 
 // ── one plugin ──────────────────────────────────────────────────────────────
+
+router.delete('/plugins/kept/:keptId', function (req, res) {
+  answer(res, function () { return install.forget(req.params.keptId); });
+});
 
 router.get('/plugins/:id', function (req, res) {
   answer(res, function () { return install.view(req.params.id, { detail: true }); });

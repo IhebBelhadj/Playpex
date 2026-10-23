@@ -42,8 +42,6 @@ const SHOTS = [
   { name: 'watchlist', run: "reset({ screen: 'core.watchlist' })" },
   { name: 'search', run: "open({ screen: 'core.search' })" },
   { name: 'releases', run: "releases('movie', 'Heat 1995', 'Heat', 'tt0113277')", settle: 6000 },
-  { name: 'adult-browse', run: "reset({ screen: 'core.adult.browse' })", settle: 6000 },
-  { name: 'adult-releases', run: "reset({ screen: 'core.adult.releases' })", settle: 6000 },
   { name: 'settings', run: "reset({ screen: 'core.settings' })", settle: 1500 },
   { name: 'power', run: "open({ screen: 'core.power' })", settle: 1500 },
   { name: 'display', run: "reset({ screen: 'core.display' })", settle: 1500 },

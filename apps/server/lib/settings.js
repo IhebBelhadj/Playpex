@@ -99,8 +99,7 @@ function defaults() {
     providers: {
       tmdbApiKey: '',
       openSubtitlesApiKey: '',
-      wyzieApiKey: '',
-      thePornDbApiKey: ''
+      wyzieApiKey: ''
     },
     transcoding: {
       ffmpegPath: '',     // '' = bundled copy, else the PATH (lib/ffmpeg.js)
@@ -121,7 +120,6 @@ var ENV = {
   'providers.tmdbApiKey': ['TMDB_API_KEY'],
   'providers.openSubtitlesApiKey': ['OPENSUBTITLES_API_KEY'],
   'providers.wyzieApiKey': ['WYZIE_API_KEY'],
-  'providers.thePornDbApiKey': ['THEPORNDB_API_KEY'],
   'transcoding.ffmpegPath': ['FFMPEG_PATH'],
   'transcoding.ffprobePath': ['FFPROBE_PATH']
 };
@@ -131,8 +129,7 @@ var RESTART = ['general.port', 'network.lanSharing', 'security.pairingRequestMin
   'downloads.engine', 'downloads.peerPort', 'downloads.portForwarding', 'plugins.developerMode'];
 
 // Never returned in full by publicView()
-var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey',
-  'providers.thePornDbApiKey'];
+var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey'];
 
 var stored = null,      // what settings.json holds (validated)
   effective = null,     // stored + environment

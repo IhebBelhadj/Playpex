@@ -31,21 +31,13 @@ module.exports = function settingsService(repositories, options) {
     return { kind: 'device', id: deviceId };
   }
 
-  // Kids profiles never see or write adult keys
-  function visible(key, kid) {
-    var def = registry.definition(key);
-    return !(kid && def && def.adult);
-  }
-
-  function effective(scope, entries, kid) {
+  function effective(scope, entries) {
     var values = {};
     registry.keys(scope).forEach(function (key) {
-      if (visible(key, kid)) {
-        values[key] = registry.SETTINGS[key].default;
-      }
+      values[key] = registry.SETTINGS[key].default;
     });
     entries.forEach(function (entry) {
-      if (registry.definition(entry.key) ? visible(entry.key, kid) && registry.SETTINGS[entry.key].scope === scope :
+      if (registry.definition(entry.key) ? registry.SETTINGS[entry.key].scope === scope :
           registry.isClientKey(entry.key)) {
         values[entry.key] = entry.value;
       }
@@ -54,7 +46,7 @@ module.exports = function settingsService(repositories, options) {
   }
 
   // Validates a whole patch (all or nothing) → { key: value | null }
-  function checkPatch(scope, patch, kid) {
+  function checkPatch(scope, patch) {
     if (patch == null || typeof patch !== 'object' || Array.isArray(patch)) {
       throw errors.invalid('The body must be an object of { key: value | null }');
     }
@@ -75,10 +67,6 @@ module.exports = function settingsService(repositories, options) {
       err.errors = problems;
       throw err;
     }
-    var adult = keys.filter(function (key) { return !visible(key, kid); });
-    if (adult.length) {
-      throw errors.forbidden('Kids profiles have no 18+ settings (' + adult.join(', ') + ')');
-    }
     return keys.reduce(function (all, key) {
       all[key] = patch[key] === undefined ? null : patch[key];
       return all;
@@ -87,13 +75,13 @@ module.exports = function settingsService(repositories, options) {
 
   function readDevice(deviceId) {
     var owner = deviceOwner(deviceId);
-    return repo.list(owner).then(function (entries) { return effective('device', entries, false); });
+    return repo.list(owner).then(function (entries) { return effective('device', entries); });
   }
 
   function readProfile(profileId) {
     return profiles.requireProfile(profileId).then(function (profile) {
       return repo.list({ kind: 'profile', id: profile.id }).then(function (entries) {
-        return effective('profile', entries, profile.isKid);
+        return effective('profile', entries);
       });
     });
   }
@@ -131,7 +119,7 @@ module.exports = function settingsService(repositories, options) {
     updateDevice: function (deviceId, patch) {
       return Promise.resolve().then(function () {
         var owner = deviceOwner(deviceId),
-          values = checkPatch('device', patch, false);
+          values = checkPatch('device', patch);
         return repo.setMany(owner, values, now()).then(function () {
           changed(owner, Object.keys(values));
           return readDevice(deviceId);
@@ -143,7 +131,7 @@ module.exports = function settingsService(repositories, options) {
     updateProfile: function (profileId, patch) {
       return profiles.requireProfile(profileId).then(function (profile) {
         var owner = { kind: 'profile', id: profile.id },
-          values = checkPatch('profile', patch, profile.isKid);
+          values = checkPatch('profile', patch);
         return repo.setMany(owner, values, now()).then(function () {
           changed(owner, Object.keys(values));
           return readProfile(profileId);

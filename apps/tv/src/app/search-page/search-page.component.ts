@@ -30,8 +30,6 @@ interface PluginRow {
 }
 
 const MIN_QUERY = 3;
-const ADULT_WINDOW = 4;     // 18+ filter: TMDB pages read from where adult results start
-const TMDB_MAX_PAGES = 500;
 const STACK = 'search';       // the page's pxStack: positions are kept under this id
 
 @Component({
@@ -47,7 +45,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     { id : 'tv' ,     label : 'TV shows' },
     { id : 'anime' ,  label : 'Anime' },
     { id : 'person' , label : 'People' },
-    { id : 'adult' ,  label : '18+' },        // never offered to kids profiles
   ];
 
   imgBase = tmdbImageBase('poster', 150);
@@ -73,13 +70,8 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     private remotePlugins:RemotePlugins,
   ) { }
 
-  get isKid():boolean {
-    return !!this.profiles.current.value?.isKid;
-  }
-
   get visibleFilters():Filter[] {
-    let core = this.isKid ? this.filters.filter(f => f.id != 'adult') : this.filters;
-    return [...core, ...this.pluginFilters.map(f => f.chip)];
+    return [...this.filters, ...this.pluginFilters.map(f => f.chip)];
   }
 
   get pluginFilter():PluginFilter | null {
@@ -88,8 +80,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   ngOnInit(): void {
     this.state = this.moviesService.searchData.value;
-    // left over from another profile
-    if (this.isKid && this.state.filter == 'adult') this.state = EMPTY_SEARCH;
     this.loadPluginChips();
 
     // Latest query/filter wins; typing on the on-screen keyboard is debounced
@@ -153,9 +143,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       let what = this.filters.find(f => f.id == this.state.filter);
       return this.state.filter == 'all'
         ? `Nothing matches “${this.state.query.trim()}”. Check the spelling or try fewer words.`
-        : this.state.filter == 'adult'
-          ? `No 18+ titles match “${this.state.query.trim()}”. Very common words match too many regular titles: add another word.`
-          : `No ${what.label.toLowerCase()} match “${this.state.query.trim()}”. Try All to search everything.`;
+        : `No ${what.label.toLowerCase()} match “${this.state.query.trim()}”. Try All to search everything.`;
     }
     return '';
   }
@@ -272,13 +260,6 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
         return this.searchKind('tv' , q).pipe(map(r => [this.row('shows' , 'TV shows' , r , 'tv')]));
       case 'person':
         return this.searchKind('person' , q).pipe(map(r => [this.row('people' , 'People' , r , 'person')]));
-      case 'adult':
-        // only what TMDB flags as adult (the other filters never include it)
-        if (this.isKid) return of([]);
-        return forkJoin([this.searchAdult('movie' , q) , this.searchAdult('tv' , q)]).pipe(map(([movies , tv]) => [
-          this.row('adultMovies' , 'Adult movies' , movies , 'movie'),
-          this.row('adultShows' , 'Adult TV shows' , tv , 'tv'),
-        ]));
       case 'anime':
         // TMDB has no anime type: Japanese animation (genre 16)
         let isAnime = r => (r['genre_ids'] || []).includes(16) && r['original_language'] == 'ja';
@@ -295,37 +276,8 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     }
   }
 
-  private searchKind(kind:SearchKind , query:string , includeAdult = false):Observable<object[]> {
-    return this.moviesService.search(kind , query , includeAdult).pipe(map(data => data['results'] || []));
-  }
-
-  // TMDB ranks every regular result before the adult ones, so with
-  // include_adult the adult titles start around page (regular count / 20) + 1:
-  // the first pages hold none of them for most queries. Read the page that
-  // count points to and a few after it, plus the last pages (the rest of the
-  // adult titles) and the first one (queries that mostly match adult titles).
-  // TMDB serves 500 pages at most: past 10,000 regular matches they're out of reach.
-  private searchAdult(kind:SearchKind , query:string):Observable<object[]> {
-    let page = (n:number , adult:boolean) => this.moviesService.search(kind , query , adult , n).pipe(catchError(() => of({})));
-
-    return forkJoin([page(1 , false) , page(1 , true)]).pipe(
-      switchMap(([regular , withAdult]) => {
-        let lastPage = Math.min(TMDB_MAX_PAGES , withAdult['total_pages'] || 1);
-        let start = Math.floor((regular['total_results'] || 0) / 20) + 1;
-        let pages = new Set<number>();
-        for (let n = start - 1; n < start + ADULT_WINDOW; n++) pages.add(n);
-        pages.add(lastPage - 1);
-        pages.add(lastPage);
-        let wanted = [...pages].filter(n => n > 1 && n <= lastPage).sort((a , b) => a - b);
-
-        return forkJoin([of(withAdult) , ...wanted.map(n => page(n , true))]);
-      }),
-      map(responses => {
-        let seen = new Set<number>();
-        return [].concat(...responses.map(r => r['results'] || []))
-          .filter(r => r['adult'] === true && !seen.has(r['id']) && seen.add(r['id']));
-      }),
-    );
+  private searchKind(kind:SearchKind , query:string):Observable<object[]> {
+    return this.moviesService.search(kind , query).pipe(map(data => data['results'] || []));
   }
 
   private row(key:string , title:string , results:object[] , kind:SearchItem['kind']):SearchRow {

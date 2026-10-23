@@ -59,14 +59,6 @@ export class TorrentService {
     })
   }
 
-  // 18+ movie torrents (TheRARBG XXX + The Pirate Bay), matched by title and
-  // year, best streaming candidate first; same shape as the episode results
-  findAdultTorrents(title:string , year?:string){
-    return this.http.get<{torrents:any[], providerErrors:number}>(`${this.server.api}/adult/torrents` , {
-      params : year ? { title, year } : { title }
-    })
-  }
-
   // Releases this device's lease: the server stops the torrent (and deletes
   // its data) once no device holds it any more
   removeTorrent(hash){

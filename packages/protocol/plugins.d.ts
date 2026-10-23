@@ -91,7 +91,7 @@ export interface PluginContributes {
   screens?: { name: string; template: TemplateName; data?: string; title?: string; params?: string[] }[];
   slots?: { slot: PluginSlot; data: string; order?: number }[];
   settings?: PluginSetting[];
-  chrome?: { accent?: 'adult' };
+  chrome?: { accent?: 'adult' };   // plugins-check: allow (the accent token's name)
 }
 
 export interface PluginListing {
@@ -236,6 +236,8 @@ export type PluginMetaItem =
 export interface PluginIntent {
   screen: string;
   params?: Record<string, string | number>;
+  /** In place of the current screen (a section switching its layout) */
+  replace?: boolean;
 }
 
 /** A data handler of the same plugin */

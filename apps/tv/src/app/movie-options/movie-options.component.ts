@@ -13,7 +13,6 @@ import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
 import { TorrentPickerService } from '../torrent-picker.service';
 import { Download, DownloadTile, DownloadsService } from '../downloads.service';
-import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
 import { PlaySource, PlaySourcesService, SourcesQuery } from '../play-sources.service';
@@ -49,7 +48,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   trailer;
   playingTrailer = false;
   canPlay = false;
-  findingTorrents = false;    // Play is looking up sources (18+: torrents)
+  findingTorrents = false;    // Play is looking up sources
   selectedMovie;
   // what plugins' actions and rows on this page get (ui/slots)
   slotContext:MovieContext | null = null;
@@ -75,7 +74,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private menu:MenuServiceService,
     private playback:PlaybackService,
     private torrentPicker:TorrentPickerService,
-    private torrentService:TorrentService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
     private releases:ReleasesService,
@@ -105,12 +103,12 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.loadMovie(this.screen.payload);
   }
 
-  // The server's download of this movie, live (18+ titles aren't downloaded from here)
+  // The server's download of this movie, live
   private watchDownload() {
     this.downloadSub?.unsubscribe();
     this.download = null;
     this.downloadTile = DownloadsService.tile(null);
-    if (this.isAdult || !this.selectedMovie?.['id']) return;
+    if (!this.selectedMovie?.['id']) return;
     this.downloadSub = this.downloads.forTitle({ mediaType: 'movie', tmdbId: Number(this.selectedMovie['id']) }).subscribe(d => {
       this.download = d;
       this.downloadTile = DownloadsService.tile(d);
@@ -171,7 +169,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.loadLibraryState();
       this.watchDownload();
     };
-    if (movie?.['imdb_id'] || movie?.['adult']) {
+    if (movie?.['imdb_id']) {
       ready(movie);
       return;
     }
@@ -222,9 +220,9 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     if (!movie) return;
     let title = movie['original_title'] || movie['title'];
     let year = (movie['release_date'] || '').slice(0, 4);
-    this.releases.open(this.isAdult ? 'adult' : 'movie', [title, year].filter(Boolean).join(' '), {
+    this.releases.open('movie', [title, year].filter(Boolean).join(' '), {
       label: movie['title'] || title,
-      context: this.isAdult ? undefined : {
+      context: {
         mediaType: 'movie',
         tmdbId: movie['id'],
         imdbId: movie['imdb_id'],
@@ -235,12 +233,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     });
   }
 
-  // 18+ title (TMDB `adult`): torrents come from the server's adult providers
-  // when Play is pressed, and the title never enters the profile's library
-  get isAdult():boolean {
-    return !!this.selectedMovie?.['adult'];
-  }
-
   // back to a cast member / similar title: once its row is there
   private restoreInRows(){
     if (!this.screen.returning || !this.casts || !this.similar) return;
@@ -248,13 +240,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   getPlayData(){
-
-    // YTS has no 18+ movies
-    if (this.isAdult) {
-      this.canPlay = true;
-      return;
-    }
-
     this.moviesService
       .getYTSMovieDetails(this.selectedMovie['imdb_id'])
       .subscribe(yts_data=>{
@@ -280,7 +265,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.watched = false;
     this.resumeLabel = '';
     this.resume = null;
-    if (!this.selectedMovie || this.isAdult) return;
+    if (!this.selectedMovie) return;
     let ref = this.movieRef();
     this.library.inWatchlist(ref).subscribe({ next: r => this.inWatchlist = r.inWatchlist, error: () => {} });
     this.library.state(ref).subscribe({
@@ -360,10 +345,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   // file on the server plays at once, else the source picker
   chooseSourceAndPlay(startAt?:number, prefer?:(source:PlaySource) => boolean){
     let movie = this.selectedMovie;
-    if (this.isAdult) {
-      this.chooseAdultTorrentAndPlay();
-      return;
-    }
     if (this.findingTorrents) return;
     this.findingTorrents = true;
     let query:SourcesQuery = {
@@ -375,30 +356,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     };
     this.sources.choose(query, movie['original_title'], { prefer, looked: () => this.findingTorrents = false })
       .subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
-  }
-
-  chooseAdultTorrentAndPlay(){
-    if (this.findingTorrents) return;
-    let movie = this.selectedMovie;
-    let title = movie['title'] || movie['original_title'];
-    this.findingTorrents = true;
-    this.torrentService.findAdultTorrents(title , (movie['release_date'] || '').slice(0, 4))
-      .subscribe({
-        next: result => {
-          this.findingTorrents = false;
-          if (!result.torrents.length) {
-            let reason = result.providerErrors ? " (some providers are unreachable)" : "";
-            this.notificationService.sendNotification('error' , `No torrents found for ${title}${reason}`);
-            return;
-          }
-          let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent , i));
-          this.torrentPicker.choose(title , options).subscribe(choice => this.startPlayer(choice.torrent));
-        },
-        error: () => {
-          this.findingTorrents = false;
-          this.notificationService.sendNotification('error' , "Couldn't reach the torrent providers. Try again later");
-        },
-      });
   }
 
   startPlayer(torrent , startAt?:number){

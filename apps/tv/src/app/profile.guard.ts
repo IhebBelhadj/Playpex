@@ -15,11 +15,11 @@ export class ProfileGuard implements CanActivate {
   }
 }
 
-// The 18+ section: someone watching, and not on a kids profile
+// The screens of an `audience: adults` plugin: someone watching, and not a kids profile
 @Injectable({
   providedIn: 'root'
 })
-export class AdultGuard implements CanActivate {
+export class AdultsGuard implements CanActivate {
 
   constructor(private profiles:ProfilesService, private router:Router) { }
 

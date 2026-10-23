@@ -54,8 +54,8 @@ describe('ContributionRegistry', () => {
     expect(() => registry.define({ id: 'plugin.x.rows2', slot: 'core.search.filters', rows: () => [] } as any)).toThrowError(/takes searchFilter/);
   });
 
-  it('never gives a kids profile adult contributions', () => {
-    registry.define({ id: 'plugin.x.adult', slot: 'core.movie.actions', adult: true, actions: () => [] });
+  it('never gives a kids profile an adults plugin\'s contributions', () => {
+    registry.define({ id: 'plugin.x.grownup', slot: 'core.movie.actions', adults: true, actions: () => [] });
     registry.define({ id: 'plugin.x.family', slot: 'core.movie.actions', actions: () => [] });
     expect(registry.for('core.movie.actions', movie(true)).map(c => c.id)).toEqual(['plugin.x.family']);
     expect(registry.for('core.movie.actions', movie(false)).length).toBe(2);

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { iconUrl, MetaItem } from '../models';
 
 // The meta line under a title: plain text (the year), small chips (qualities,
-// "Movie", "2 seasons"), scores (<px-score>) and the 18+ seal, in order.
+// "Movie", "2 seasons"), scores (<px-score>) and seals (a plugin's: "NEW"), in order.
 //
 //   <px-meta [items]="[{kind:'text', text:'1995'}, {kind:'chip', text:'1080p'}, {kind:'score', source:'imdb', value:8.3}]"></px-meta>
 @Component({

@@ -28,7 +28,7 @@
   --px-black: #000;
   --px-ink: #141414;                  // the app's near-black: page ground, text on white
   --px-amber: #ffc107;
-  --px-wine: #c2405f;                 // 18+
+  --px-wine: #c2405f;                 // the `adult` accent (a plugin's chrome)
   --px-wine-light: #e88aa1;
   --px-wine-dark: #8a1c38;
   --px-green: #46d369;
@@ -164,9 +164,6 @@
   --px-gradient-panel-end: linear-gradient(270deg, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 60%);   // a panel docked at the right edge
   --px-gradient-player-controls: linear-gradient(0deg, var(--px-black) 0%, rgba(0, 0, 0, .6) 49%, rgba(0, 0, 0, 0) 65%);
   --px-gradient-trailer: linear-gradient(39deg, var(--px-black) 0%, rgba(0, 0, 0, .94) 55%, rgba(0, 0, 0, .76) 78%, rgba(0, 0, 0, .48) 89%);
-  --px-gradient-adult-backdrop:
-    radial-gradient(ellipse 70% 60% at 85% 0%, rgba(120, 32, 58, .28) 0%, rgba(120, 32, 58, 0) 70%),
-    linear-gradient(38deg, var(--px-black) 0%, #0e0b0c 45%, #23161b 100%);
 
   // ── shadows, rings, icon filters ───────────────────────────────────────────
   --px-shadow-text: #{dp(1)} #{dp(1)} #{dp(2)} rgba(0, 0, 0, .34);
@@ -269,7 +266,8 @@
 
 // ── themes ───────────────────────────────────────────────────────────────────
 // Set on .masterContainer from the shown screen's chrome (nav/screen.ts
-// Chrome.accent): the 18+ screens
+// Chrome.accent): a plugin's screens whose manifest asks for it (chrome.accent,
+// adults plugins)
 [data-px-accent="adult"] {
   --px-color-accent: var(--px-wine);
 }

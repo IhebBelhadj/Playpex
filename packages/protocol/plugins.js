@@ -295,8 +295,8 @@ function checkManifest(manifest, options) {
       }
     });
   }
-  if (c.chrome && c.chrome.accent === 'adult' && m.audience !== 'adults') {
-    problem('/contributes/chrome/accent', 'the adult accent is for audience adults');
+  if (c.chrome && c.chrome.accent === 'adult' && m.audience !== 'adults') {   // plugins-check: allow (the accent token's name)
+    problem('/contributes/chrome/accent', 'the adult accent is for audience adults');   // plugins-check: allow
   }
 
   // Links: declared both ways, their secrets and hosts too
@@ -470,7 +470,7 @@ function describePermissions(manifest) {
   }
 
   if (m.audience === 'adults') {
-    add('audience', 'Adult content: hidden from kids profiles');
+    add('audience', 'Adult content: hidden from kids profiles');   // plugins-check: allow (the audience rule)
   }
   if (p.network && p.network.length) {
     add('network', 'Talks to ' + p.network.join(', '));

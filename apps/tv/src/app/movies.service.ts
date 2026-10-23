@@ -109,9 +109,9 @@ export class MoviesService {
     })
   }
 
-  // includeAdult: also 18+ titles (the search page's 18+ filter only)
-  search(kind:SearchKind , query:string , includeAdult = false , page = 1){
-    return this.http.get(`https://api.themoviedb.org/3/search/${kind}?api_key=${this.tmdb_key}&language=en-US&query=${encodeURIComponent(query)}&include_adult=${includeAdult}&page=${page}`)
+  // regular titles only (include_adult=false)
+  search(kind:SearchKind , query:string , page = 1){
+    return this.http.get(`https://api.themoviedb.org/3/search/${kind}?api_key=${this.tmdb_key}&language=en-US&query=${encodeURIComponent(query)}&include_adult=false&page=${page}`)
   }
 
   // Movies and shows a person played in or worked on

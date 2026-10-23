@@ -1,7 +1,6 @@
 import { AfterViewInit, Component, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import type { SettingValues } from '@playpex/protocol/settings';
-import { AdultService, MetaProvider } from '../adult.service';
 import { FocusEngine } from '../movement/movement';
 import { NavigationService } from '../navigation.service';
 import { useScreen } from '../nav/public-api';
@@ -10,7 +9,7 @@ import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
 import { TabModel } from '../ui/public-api';
 
-type Group = 'display' | 'playback' | 'adult';
+type Group = 'display' | 'playback';
 
 const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
   { key: 'small', label: 'Small' }, { key: 'medium', label: 'Medium' }, { key: 'large', label: 'Large' }, { key: 'largest', label: 'Largest' },
@@ -19,8 +18,8 @@ const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
 // Settings (core.settings, docs/settings-plan.md §7), a section beside the
 // menu on the rail layout: the groups on the left (moving onto one shows it),
 // its settings on the right. Display (size, screen edges) and the volume /
-// subtitle size are this device's; the subtitle source, autoplay and the 18+
-// section are the profile's (18+ not shown for kids). Every change is saved
+// subtitle size are this device's; the subtitle source and autoplay are the
+// profile's. Plugins' options are set on the server's dashboard. Every change is saved
 // at once (SettingsService; sliders once they stop).
 // Back: settings → groups → the menu, then out (the section's back policy).
 @Component({
@@ -37,7 +36,6 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   profileName = '';
   edgesOpen = false;
   subtitleProviders:SubtitleProvider[] = [];
-  metaProviders:MetaProvider[] = [];
   readonly subtitleSizes = SUBTITLE_SIZES;
   readonly volumeText = (v:number) => v + ' %';
   readonly edgesText = (f:number) => f ? (Math.round(f * 1000) / 10) + ' %' : 'None';
@@ -50,17 +48,14 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     public settings:SettingsService,
     profiles:ProfilesService,
     subtitles:SubtitlesService,
-    adult:AdultService,
   ) {
     let profile = profiles.current.value;
     this.profileName = profile?.name || 'this profile';
     this.groups = [
       { key: 'display', label: 'Display' },
       { key: 'playback', label: 'Playback' },
-      ...(profile && !profile.isKid ? [{ key: 'adult', label: '18+' }] : []),
     ];
     this.subs.push(subtitles.getProviders().subscribe({ next: list => this.subtitleProviders = list.filter(p => p.enabled), error: () => { } }));
-    if (profile && !profile.isKid) this.subs.push(adult.metaProviders().subscribe(list => this.metaProviders = list.filter(p => p.enabled)));
   }
 
   // Sections `settingsRail` and `settings` are pxSections in the template

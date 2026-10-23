@@ -2,7 +2,7 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "adult",
   "name": "18+",
-  "description": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders.",
+  "description": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders. Never in the official repository.",
   "version": "1.0.0",
   "publisher": {
     "name": "Playpex"
@@ -27,25 +27,18 @@
     "network": [
       "apibay.org",
       "therarbg.to",
+      "therarbg.com",
       "api.theporndb.net",
-      "api.themoviedb.org",
-      "image.tmdb.org",
-      "*.metadataapi.net"
+      "api.themoviedb.org"
     ],
-    "storage": "10MB",
+    "storage": "1MB",
     "secrets": [
+      "tmdbApiKey",
       "theporndbApiKey"
     ],
     "play": true,
     "sources": [
       "magnet"
-    ],
-    "hooks": [
-      "play.collect",
-      "releases.providers"
-    ],
-    "write": [
-      "downloads"
     ]
   },
   "contributes": {
@@ -71,6 +64,7 @@
         "template": "title",
         "data": "title",
         "params": [
+          "provider",
           "id"
         ]
       },
@@ -79,6 +73,14 @@
         "template": "releases",
         "data": "releases",
         "title": "18+"
+      },
+      {
+        "name": "find",
+        "template": "releases",
+        "data": "releases",
+        "params": [
+          "q"
+        ]
       }
     ],
     "slots": [
@@ -93,6 +95,8 @@
         "scope": "profile",
         "type": "choice",
         "label": "Catalog from",
+        "group": "Catalog",
+        "description": "Where the posters, studios and performers come from (the other one is used when this one has no key).",
         "options": [
           [
             "tmdb",
@@ -106,11 +110,20 @@
         "default": "tmdb"
       },
       {
+        "key": "tmdbApiKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "TMDB API key",
+        "group": "Catalog",
+        "description": "For the TMDB catalog (adult films through their studios): a free key from themoviedb.org."
+      },
+      {
         "key": "theporndbApiKey",
         "scope": "server",
         "type": "secret",
         "label": "ThePornDB API key",
-        "description": "Needed for the ThePornDB catalog (theporndb.net, free account)"
+        "group": "Catalog",
+        "description": "For the ThePornDB catalog (theporndb.net, free account)."
       }
     ],
     "chrome": {

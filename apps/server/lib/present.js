@@ -1,41 +1,7 @@
 'use strict';
 
-// Release name → what a release list shows (title, year, …). Two presenters:
-// `adult` (porn naming: "[Studio YYYY]" tags, scene dates) and `release`
-// (regular movie / TV naming: "Title.Year.1080p.WEB-DL…", "Show S01E02 …").
-
-// ── 18+ ─────────────────────────────────────────────────────────────────────
-
-// "Heatwave Vol. 2 [Vixen 2026] XXX WEB-DL 1080p SPLIT SCENES MP4-P2P [XC]" →
-// title "Heatwave Vol. 2", studio "Vixen", year 2026. Scene names keep their
-// date: "Vixen 26 08 20 Gal Ritchie …".
-var ADULT_JUNK = /\b(xxx|2160p|1080p|720p|480p|4k|uhd|web.?dl|webrip|hdrip|bluray|dvdrip|split.?scenes?|mp4|mkv|wmv|x26[45]|h\.?26[45]|hevc|p2p|[-.](xc|trb|ktr|gush|wrb|nbq|xleech))\b/i;
-
-function adult(name) {
-  var text = String(name)
-    .replace(/\.(mp4|mkv|avi|wmv)$/i, '')
-    .replace(/[._]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  var studio = null, year = null;
-  var bracket = text.match(/\[([^\]]+?)\s+((19|20)\d\d)\]/);
-  if (bracket) {
-    studio = bracket[1].trim();
-    year = Number(bracket[2]);
-  }
-
-  var title = text.replace(/\[[^\]]*\]/g, ' ');
-  var junk = title.search(ADULT_JUNK);
-  if (junk > 0) {
-    title = title.slice(0, junk);
-  }
-  title = title.replace(/[\s\-–(]+$/, '').replace(/\s+/g, ' ').trim();
-  if (title.length < 3) {
-    title = text;
-  }
-  return { title: title, studio: studio, year: year };
-}
+// Release name → what a release list shows (title, year, …): `release`
+// (movie / TV naming: "Title.Year.1080p.WEB-DL…", "Show S01E02 …").
 
 // ── movies / TV ─────────────────────────────────────────────────────────────
 
@@ -143,7 +109,7 @@ function release(name, kind) {
     title = flat || String(name);
   }
 
-  var presented = { title: title, year: year, studio: null };
+  var presented = { title: title, year: year };
   if (kind === 'tv') {
     var ep = episodeOf(flat.slice(Math.max(0, titleEnd)));
     presented.season = ep.season;
@@ -154,7 +120,6 @@ function release(name, kind) {
 }
 
 module.exports = {
-  adult: adult,
   release: release,
   episodeOf: episodeOf
 };

@@ -287,6 +287,18 @@ test.after(function () {
 
 // ── tests ───────────────────────────────────────────────────────────────────
 
+test('public addresses are reachable, special-purpose ones never', function () {
+  var isPublic = require('../lib/plugins/http').isPublic;
+  ['3.175.86.67', '8.8.8.8', '104.16.1.1', '::ffff:8.8.8.8', '2600:9000:2921:4600:c:174a:c400:93a1'].forEach(function (a) {
+    assert.equal(isPublic(a), true, a);
+  });
+  ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.1.1', '100.64.0.1', '0.0.0.0', '224.0.0.1',
+    '::1', '::', '::ffff:127.0.0.1', '::ffff:192.168.1.1', '64:ff9b::10.0.0.1', 'fe80::1', 'fc00::1', 'ff02::1', 'not an address'
+  ].forEach(function (a) {
+    assert.equal(isPublic(a), false, a);
+  });
+});
+
 test('what loaded, what didn\'t', function () {
   var states = {};
   plugins.list().forEach(function (p) { states[p.id] = p.state; });

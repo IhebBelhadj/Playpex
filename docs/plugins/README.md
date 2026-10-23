@@ -72,7 +72,7 @@ What it can't: read files, start processes, reach this machine or the LAN, see t
 | Repository index | `packages/protocol/repository.schema.json`; signatures `packages/protocol/signing.js` |
 | Constants (`SERVER_PLUGIN_API`, hooks, events, limits), `checkManifest`, `describePermissions`, `hostAllowed`, `satisfiesVersion` | `packages/protocol/plugins.js` (types `plugins.d.ts`) |
 | Tests | `apps/server/test/plugins.contract.test.js` |
-| Reference manifests | `plugins/adult/playpex-plugin.json` (18+), `plugins/trakt/playpex-plugin.json` (Trakt) |
+| Reference plugins | `plugins/hello` (every template, slot, effect and setting), `plugins/adult` (the 18+ section: two catalogs, two torrent sources, Play; in its own repository), `plugins/trakt/playpex-plugin.json` (Trakt, the manifest so far) |
 
 A manifest is valid when it passes the schema **and** `checkManifest` (the rules between fields: a hook needs its permission, an `http` source a declared host, a link its secrets…). The server runs both at install.
 

@@ -33,15 +33,17 @@ var LIMITS = protocol.LIMITS.http,
 
 var testing = { lookup: null, ports: [], ca: null, allowAddresses: [], maxWaitMs: null };
 
-// Ranges a plugin may never reach (IANA special-purpose registries)
-var blocked = new net.BlockList();
+// Ranges a plugin may never reach (IANA special-purpose registries). Two
+// lists: a BlockList also matches IPv4 addresses against IPv6 rules
+// (::ffff:0:0/96 would cover every IPv4 address)
+var blocked4 = new net.BlockList(), blocked6 = new net.BlockList();
 [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
   ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.88.99.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15],
   ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4]
-].forEach(function (r) { blocked.addSubnet(r[0], r[1], 'ipv4'); });
+].forEach(function (r) { blocked4.addSubnet(r[0], r[1], 'ipv4'); });
 [['::', 128], ['::1', 128], ['::ffff:0:0', 96], ['64:ff9b:1::', 48], ['100::', 64], ['2001::', 23], ['2001:db8::', 32],
   ['2002::', 16], ['fc00::', 7], ['fe80::', 10], ['fec0::', 10], ['ff00::', 8]
-].forEach(function (r) { blocked.addSubnet(r[0], r[1], 'ipv6'); });
+].forEach(function (r) { blocked6.addSubnet(r[0], r[1], 'ipv6'); });
 
 function failure(code, message) {
   var err = new Error(message);
@@ -63,9 +65,9 @@ function isPublic(address) {
     if (mapped) {
       return isPublic(mapped[1]);   // an IPv4 address in IPv6 clothing is judged as itself
     }
-    return !blocked.check(address, 'ipv6');
+    return !blocked6.check(address, 'ipv6');
   }
-  return !blocked.check(address, 'ipv4');
+  return !blocked4.check(address, 'ipv4');
 }
 
 /** Resolves a host name to one checked address (all of its addresses must be public) */

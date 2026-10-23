@@ -141,7 +141,7 @@ module.exports = function recommendationsService(repositories, options) {
               var seed = built.seeds[i], list = result.value || [];
               list.forEach(function (c, rank) {
                 var k = key(c);
-                if (excluded.has(k) || c.adult || (mediaType && c.mediaType !== mediaType)) {
+                if (excluded.has(k) || c.adult || (mediaType && c.mediaType !== mediaType)) {   // plugins-check: allow (a filter keeping adult titles out)
                   return;
                 }
                 if (profile.isKid && !(c.genreIds || []).some(function (g) { return KID_GENRES.indexOf(g) !== -1; })) {

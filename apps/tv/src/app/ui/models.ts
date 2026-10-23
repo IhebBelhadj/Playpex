@@ -77,7 +77,7 @@ export type MetaItem =
   | { kind:'text', text:string, small?:boolean }
   // `icon`: assets/icons/<icon>.svg before the text (a tick on "Watched")
   | { kind:'chip', text:string, icon?:string }
-  // `label`: a provider's name before its score (18+ catalogs)
+  // `label`: a provider's name before its score (plugins' catalogs)
   | { kind:'score', source:ScoreSource, value:number, votes?:number | string | null, label?:string }
   | { kind:'seal', text:string };
 
