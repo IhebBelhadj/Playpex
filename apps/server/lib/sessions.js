@@ -1,14 +1,16 @@
 'use strict';
 
-// Torrent leases, the reaper, limits and live sessions
+// Leases, the reaper, limits and live sessions
 // (docs/server-separation-plan.md §5.6).
 //
-// A lease = one device holding one torrent: { infoHash, deviceId, lastActivity }.
-// Adding a torrent, streaming one of its files and the player's keepalive
-// acquire or refresh it; DELETE /torrents/:hash releases the caller's. When no
-// lease is left, after GRACE_MS (another client may still be about to start),
-// the torrent client is told (lib/torrents/client.js#released): a stream
-// pauses (data kept), a download keeps going; nothing is deleted here. The
+// A lease = one device holding one media: { key, deviceId, lastActivity }.
+// The key is a torrent's info hash (every file of a torrent, every route), or
+// the media ref of a disk file (lib/media). Adding a torrent, streaming a
+// file and the player's keepalive acquire or refresh it; DELETE
+// /torrents/:hash and DELETE /media/:ref release the caller's. When no lease
+// on a torrent is left, after GRACE_MS (another client may still be about to
+// start), the torrent client is told (lib/torrents/client.js#released): a
+// stream pauses (data kept), a download keeps going; nothing is deleted here. The
 // reaper drops leases idle for longer than streaming.idleTimeoutMinutes (a
 // client that crashed or lost the network), except while one of their
 // streams is still open.
@@ -35,10 +37,11 @@ var crypto = require('crypto'),
 
 var GRACE_MS = 30 * 1000,
   REAP_EVERY_MS = 60 * 1000,
-  DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/;
+  DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/,
+  INFO_HASH = /^[0-9a-f]{40}$/;
 
-var held = {},         // infoHash → { leases: { deviceId → lease }, timer, watched }
-  transcodes = [],     // { deviceId, infoHash, path, res }
+var held = {},         // key (info hash / disk ref) → { leases: { deviceId → lease }, timer, watched }
+  transcodes = [],     // { deviceId, key, path, res }
   reaper = null,
   options = { graceMs: GRACE_MS };
 
@@ -65,25 +68,35 @@ function device(req) {
 
 // ── leases ─────────────────────────────────────────────────────────────────
 
-function entry(infoHash) {
-  return held[infoHash] || (held[infoHash] = { leases: {}, timer: null, watched: false });
+function entry(key) {
+  return held[key] || (held[key] = { leases: {}, timer: null, watched: false });
 }
 
-// Acquires (or refreshes) the lease of the request's device on a torrent
-function acquire(infoHash, req) {
-  var dev = device(req),
-    t = entry(infoHash),
+// The request's device's lease on `key`, if it has one (nothing acquired)
+function current(key, req) {
+  var t = held[key];
+  return t && t.leases[device(req).id] || null;
+}
+
+// Acquires (or refreshes) the lease of the request's device on a torrent (its
+// info hash) or a disk file (its media ref)
+function acquire(key, req) {
+  var infoHash = INFO_HASH.test(key) ? key : null,
+    dev = device(req),
+    t = entry(key),
     lease = t.leases[dev.id],
     now = Date.now();
   if (t.timer) {
     clearTimeout(t.timer);
     t.timer = null;
-    log.debug('kept ' + infoHash + ': ' + dev.id + ' came back');
+    log.debug('kept ' + key + ': ' + dev.id + ' came back');
   }
   if (!lease) {
     lease = t.leases[dev.id] = {
       id: crypto.randomBytes(8).toString('hex'),
-      infoHash: infoHash,
+      key: key,
+      infoHash: infoHash,   // null for a disk file
+      ref: null,            // the media ref last streamed
       deviceId: dev.id,
       deviceName: dev.name,
       paired: dev.paired,
@@ -96,7 +109,7 @@ function acquire(infoHash, req) {
       method: null,
       playback: null
     };
-    log.info('lease ' + infoHash + ' → ' + dev.id, { leases: Object.keys(t.leases).length });
+    log.info('lease ' + key + ' → ' + dev.id, { leases: Object.keys(t.leases).length });
     events.publish('session.started', present(lease));
   }
   lease.lastActivity = now;
@@ -109,9 +122,9 @@ function acquire(infoHash, req) {
   return lease;
 }
 
-// Releases the request's (or `deviceId`'s) lease; true if it had one
-function release(infoHash, deviceId) {
-  var t = held[infoHash],
+// Releases `deviceId`'s lease on `key`; true if it had one
+function release(key, deviceId) {
+  var t = held[key],
     lease = t && t.leases[deviceId];
   if (!lease) {
     return false;
@@ -122,10 +135,14 @@ function release(infoHash, deviceId) {
   if (p && p.durationS > 0 && p.positionS >= p.durationS * 0.9) {
     t.watched = true;
   }
-  log.info('released ' + infoHash + ' by ' + deviceId, { leases: Object.keys(t.leases).length });
-  events.publish('session.ended', { id: lease.id, deviceId: deviceId, infoHash: infoHash });
+  log.info('released ' + key + ' by ' + deviceId, { leases: Object.keys(t.leases).length });
+  events.publish('session.ended', { id: lease.id, deviceId: deviceId, infoHash: lease.infoHash, ref: lease.ref });
   if (!Object.keys(t.leases).length) {
-    scheduleEnd(infoHash);
+    if (lease.infoHash) {
+      scheduleEnd(key);
+    } else {
+      delete held[key];   // a disk file: nothing to stop
+    }
   }
   return true;
 }
@@ -160,13 +177,13 @@ function end(infoHash) {
 
 // ── streams ────────────────────────────────────────────────────────────────
 
-// A media response of `lease` (direct file or transcode): the lease stays
-// active while it is open
-function trackStream(lease, req, res, file, method) {
-  var path = file.path;
+// A media response of `lease` (direct file or transcode) for `media`
+// (lib/media): the lease stays active while it is open
+function trackStream(lease, req, res, media, method) {
   lease.lastActivity = Date.now();
   if (!req.query.internal) {
-    lease.file = path;
+    lease.file = media.path;
+    lease.ref = media.ref;
     lease.method = method;
   }
   lease.streams.add(res);
@@ -176,12 +193,12 @@ function trackStream(lease, req, res, file, method) {
   });
 }
 
-// Room for a transcode of `file` by `lease`'s device, or false (BUSY). The
+// Room for a transcode of `media` by `lease`'s device, or false (BUSY). The
 // device's previous transcode of the same file is the one being replaced (the
 // player restarts the stream on every seek): it is closed instead of counted.
-function takeTranscodeSlot(lease, file, res) {
+function takeTranscodeSlot(lease, media, res) {
   transcodes = transcodes.filter(function (t) {
-    if (t.deviceId === lease.deviceId && t.infoHash === lease.infoHash && t.path === file.path) {
+    if (t.deviceId === lease.deviceId && t.key === lease.key && t.path === media.path) {
       t.res.destroy();
       return false;
     }
@@ -190,7 +207,7 @@ function takeTranscodeSlot(lease, file, res) {
   if (transcodes.length >= settings.get('streaming.maxTranscodes')) {
     return false;
   }
-  var slot = { deviceId: lease.deviceId, infoHash: lease.infoHash, path: file.path, res: res };
+  var slot = { deviceId: lease.deviceId, key: lease.key, path: media.path, res: res };
   transcodes.push(slot);
   res.on('close', function () {
     transcodes = transcodes.filter(function (t) { return t !== slot; });
@@ -262,7 +279,7 @@ function report(lease, body) {
     }
   });
   // which title the download is ("Inception (2010), started on Living room TV")
-  if (media || state.profileId) {
+  if (lease.infoHash && (media || state.profileId)) {
     torrents.describe(lease.infoHash, {
       titleRef: media ? Object.assign(media, state.title ? { title: state.title } : {}) : null,
       profileId: state.profileId
@@ -282,13 +299,13 @@ function report(lease, body) {
 function reap() {
   var idle = options.idleMs || settings.get('streaming.idleTimeoutMinutes') * 60 * 1000,
     now = Date.now();
-  Object.keys(held).forEach(function (infoHash) {
-    var t = held[infoHash];
+  Object.keys(held).forEach(function (key) {
+    var t = held[key];
     _.values(t.leases).forEach(function (lease) {
       if (!lease.streams.size && now - lease.lastActivity > idle) {
-        log.info('lease of ' + lease.deviceId + ' on ' + infoHash + ' idle for ' +
+        log.info('lease of ' + lease.deviceId + ' on ' + key + ' idle for ' +
           Math.round((now - lease.lastActivity) / 1000) + ' s: dropped');
-        release(infoHash, lease.deviceId);
+        release(key, lease.deviceId);
       }
     });
   });
@@ -313,6 +330,7 @@ function present(lease) {
     client: lease.client,
     address: lease.address,
     infoHash: lease.infoHash,
+    ref: lease.ref,
     torrentName: d ? d.name : null,
     file: lease.file,
     method: lease.method,
@@ -357,7 +375,7 @@ function stopSession(id) {
   }
   log.info('session ' + id + ' of ' + lease.deviceId + ' stopped');
   lease.streams.forEach(function (res) { res.destroy(); });
-  release(lease.infoHash, lease.deviceId);
+  release(lease.key, lease.deviceId);
   return true;
 }
 
@@ -367,7 +385,7 @@ function dropDevice(deviceId) {
     var lease = t.leases[deviceId];
     if (lease) {
       lease.streams.forEach(function (res) { res.destroy(); });
-      release(lease.infoHash, deviceId);
+      release(lease.key, deviceId);
     }
   });
   transcodes.filter(function (t) { return t.deviceId === deviceId; }).forEach(function (t) { t.res.destroy(); });
@@ -384,14 +402,14 @@ function dropTorrent(infoHash) {
   delete held[infoHash];
   _.values(t.leases).forEach(function (lease) {
     lease.streams.forEach(function (res) { res.destroy(); });
-    events.publish('session.ended', { id: lease.id, deviceId: lease.deviceId, infoHash: infoHash });
+    events.publish('session.ended', { id: lease.id, deviceId: lease.deviceId, infoHash: infoHash, ref: lease.ref });
   });
-  transcodes.filter(function (x) { return x.infoHash === infoHash; }).forEach(function (x) { x.res.destroy(); });
+  transcodes.filter(function (x) { return x.key === infoHash; }).forEach(function (x) { x.res.destroy(); });
 }
 
 // Torrents with at least one lease, for the events' torrent.stats
 function activeStats() {
-  return Object.keys(held).map(function (infoHash) {
+  return Object.keys(held).filter(function (key) { return INFO_HASH.test(key); }).map(function (infoHash) {
     var d = torrents.get(infoHash);
     if (!d || !torrents.isActive(infoHash) || !Object.keys(held[infoHash].leases).length) {
       return null;
@@ -435,6 +453,7 @@ function stop() {
 module.exports = {
   device: device,
   acquire: acquire,
+  current: current,
   release: release,
   trackStream: trackStream,
   takeTranscodeSlot: takeTranscodeSlot,

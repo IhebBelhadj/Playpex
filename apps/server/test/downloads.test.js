@@ -30,7 +30,7 @@ var server = require('..'),
 
 var seedDir = path.join(tmp, 'seed'),
   downloads = path.join(tmp, 'cache', 'torrent_data'),
-  OPTIONS = { port: 0, console: false, torrents: { engine: 'fake', discovery: false } },
+  OPTIONS = { port: 0, console: false, library: false, torrents: { engine: 'fake', discovery: false } },
   seeder = engines.create('fake'),
   base = null,
   // three torrents the seeder has: a movie, a season pack, another movie

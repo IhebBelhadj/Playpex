@@ -42,7 +42,7 @@ function SessionCard({ session }: { session: Session }) {
   })
   const p = session.playback
   const t = session.torrent
-  const title = p?.title || fileName(session.file) || session.torrentName || session.infoHash
+  const title = p?.title || fileName(session.file) || session.torrentName || session.infoHash || session.ref || "Unknown"
   const position = p?.durationS ? ((p.positionS ?? 0) / p.durationS) * 100 : null
   const downloaded = t?.length ? Math.min(100, (t.downloaded / t.length) * 100) : null
   return (

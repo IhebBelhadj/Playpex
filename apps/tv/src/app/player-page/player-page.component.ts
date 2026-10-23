@@ -9,6 +9,7 @@ import { repeat, switchMap, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
 import { EMPTY, Subscription, timer } from 'rxjs';
 import { ServerService } from '../server.service';
+import { API_PREFIX } from '../server-config';
 import { actionForKey, MediaAction } from '../keymap';
 import { MediaKeys } from '../media-keys.service';
 import { EpisodeKey, LibraryService } from '../library.service';
@@ -91,7 +92,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   playerReady = false;
   controlsVisible = false;
   moviePlayer:HTMLVideoElement;
-  link:string;                // the file's stream path (TorrentFile.link); URLs: server.media()
+  link:string;                // the file's stream path: /media/{ref} (TorrentFile.ref); URLs: server.media()
+  ref:string | null = null;   // its media ref (null: a server without refs, the torrent routes)
   paused = false;
   playerSub:Subscription;
   audioWarning = false;
@@ -286,7 +288,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           return;
         }
         this.filePath = file['path'];
-        this.link = file['link'];
+        this.ref = file['ref'] || null;
+        this.link = this.ref ? `${API_PREFIX}/media/${this.ref}` : file['link'];
         this.probeFile().then(() => this.setupPlayer());
         return;
       }
@@ -427,7 +430,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Codecs first: unplayable audio switches to the transcoded stream. If the
   // probe fails (no ffprobe), play the file directly as before.
   probeFile():Promise<void> {
-    let url = this.server.media(this.link.replace('/files/' , '/probe/'));
+    let url = this.server.media(this.mediaPath('probe'));
     return fetch(url).then(r => r.ok ? r.json() : null).then(info => {
       if (!info?.transcode) return;
       this.transcoding = true;
@@ -435,8 +438,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }).catch(() => {});
   }
 
+  // /media/{ref}/<route>, or the torrent route's alias on a server without refs
+  mediaPath(route:'probe' | 'keyframe' | 'transcode'):string {
+    return this.ref ? `${this.link}/${route}` : this.link.replace('/files/' , `/${route}/`);
+  }
+
   streamUrl(start:number){
-    return this.server.media(this.link.replace('/files/' , '/transcode/') , { t: start });
+    return this.server.media(this.mediaPath('transcode') , { t: start });
   }
 
   position(){
@@ -695,7 +703,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       clearTimeout(this.seekTimer);
       this.seekTimer = setTimeout(() => {
         let target = time;
-        fetch(this.server.media(this.link.replace('/files/' , '/keyframe/') , { t: target }))
+        fetch(this.server.media(this.mediaPath('keyframe') , { t: target }))
           .then(r => r.json()).catch(() => ({time: target}))
           .then(data => this.zone.run(() => {
             if (this.pendingSeek !== target || !this.screen.active) return; // a newer seek won

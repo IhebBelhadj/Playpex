@@ -1,0 +1,309 @@
+# Filename corpus for the library parser (docs/media-server-plan.md decision F).
+# path inside a library folder <TAB> kind <TAB> title <TAB> year <TAB> season <TAB> episode
+# Titles compare lowercased, punctuation dropped, "&" = "and". Empty = no value expected.
+The.Dark.Knight.2008.1080p.BluRay.x264-REFiNED.mkv	movie	The Dark Knight	2008		
+Inception.2010.720p.BRRip.x264.AAC-ETRG.mp4	movie	Inception	2010		
+Interstellar.2014.2160p.UHD.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-SWTYBLZ.mkv	movie	Interstellar	2014		
+The.Matrix.1999.REMASTERED.1080p.BluRay.x264.DTS-SWTYBLZ.mkv	movie	The Matrix	1999		
+Pulp.Fiction.1994.1080p.BrRip.x264.YIFY.mp4	movie	Pulp Fiction	1994		
+Fight.Club.1999.10th.Anniversary.Edition.1080p.BluRay.x264-CiNEFiLE.mkv	movie	Fight Club	1999		
+Gladiator.2000.EXTENDED.1080p.BluRay.x264-FSiHD.mkv	movie	Gladiator	2000		
+The.Shawshank.Redemption.1994.720p.BluRay.x264-SiNNERS.mkv	movie	The Shawshank Redemption	1994		
+Parasite.2019.KOREAN.1080p.BluRay.x264.DTS-FGT.mkv	movie	Parasite	2019		
+Amelie.2001.FRENCH.1080p.BluRay.x264-HDEX.mkv	movie	Amelie	2001		
+Dune.Part.Two.2024.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	movie	Dune Part Two	2024		
+Oppenheimer.2023.1080p.BluRay.DDP5.1.x265.10bit-GalaxyRG265.mkv	movie	Oppenheimer	2023		
+Everything.Everywhere.All.at.Once.2022.1080p.WEBRip.x264.AAC5.1-YTS.MX.mp4	movie	Everything Everywhere All at Once	2022		
+The.Grand.Budapest.Hotel.2014.1080p.BluRay.x264.YIFY.mp4	movie	The Grand Budapest Hotel	2014		
+Mad.Max.Fury.Road.2015.1080p.BluRay.x264-SPARKS.mkv	movie	Mad Max Fury Road	2015		
+Arrival.2016.1080p.WEB-DL.DD5.1.H264-FGT.mkv	movie	Arrival	2016		
+Whiplash.2014.LIMITED.720p.BluRay.x264-GECKOS.mkv	movie	Whiplash	2014		
+Get.Out.2017.1080p.BluRay.x264-DRONES.mkv	movie	Get Out	2017		
+Her.2013.1080p.BluRay.x264-SPARKS.mkv	movie	Her	2013		
+Up.2009.1080p.BluRay.x264-METiS.mkv	movie	Up	2009		
+Coco.2017.1080p.BluRay.x264-SPARKS.mkv	movie	Coco	2017		
+Jaws.1975.REMASTERED.1080p.BluRay.x264-SADPANDA.mkv	movie	Jaws	1975		
+Alien.1979.Directors.Cut.1080p.BluRay.x264-AMIABLE.mkv	movie	Alien	1979		
+Aliens.1986.Special.Edition.720p.BluRay.x264-SiNNERS.mkv	movie	Aliens	1986		
+Heat.1995.1080p.BluRay.x264-HD4U.mkv	movie	Heat	1995		
+Casablanca.1942.1080p.BluRay.x264.AAC-YTS.MX.mp4	movie	Casablanca	1942		
+Psycho.1960.720p.BluRay.x264-CiNEFiLE.mkv	movie	Psycho	1960		
+Vertigo.1958.1080p.BluRay.x264-AMIABLE.mkv	movie	Vertigo	1958		
+The.Godfather.Part.II.1974.1080p.BluRay.x264-CtrlHD.mkv	movie	The Godfather Part II	1974		
+Back.to.the.Future.Part.III.1990.720p.BluRay.x264-SiNNERS.mkv	movie	Back to the Future Part III	1990		
+Rocky.IV.1985.1080p.BluRay.x264-HDEX.mkv	movie	Rocky IV	1985		
+Toy.Story.3.2010.1080p.BluRay.x264-REFiNED.mkv	movie	Toy Story 3	2010		
+Shrek.2.2004.1080p.BluRay.x264-HDEX.mkv	movie	Shrek 2	2004		
+Iron.Man.2.2010.720p.BluRay.x264-CROSSBOW.mkv	movie	Iron Man 2	2010		
+John.Wick.Chapter.4.2023.1080p.WEB-DL.DDP5.1.Atmos.H.264-CMRG.mkv	movie	John Wick Chapter 4	2023		
+Mission.Impossible.Dead.Reckoning.Part.One.2023.1080p.WEBRip.x264-RARBG.mp4	movie	Mission Impossible Dead Reckoning Part One	2023		
+Spider-Man.Across.the.Spider-Verse.2023.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	movie	Spider-Man Across the Spider-Verse	2023		
+Guardians.of.the.Galaxy.Vol.3.2023.1080p.WEBRip.x265-RARBG.mp4	movie	Guardians of the Galaxy Vol 3	2023		
+X-Men.Days.of.Future.Past.2014.1080p.BluRay.x264-SPARKS.mkv	movie	X-Men Days of Future Past	2014		
+WALL-E.2008.1080p.BluRay.x264-HDEX.mkv	movie	WALL-E	2008		
+Ocean's.Eleven.2001.1080p.BluRay.x264-HDEX.mkv	movie	Ocean's Eleven	2001		
+Schindler's.List.1993.720p.BluRay.x264-AMIABLE.mkv	movie	Schindler's List	1993		
+Harry.Potter.and.the.Prisoner.of.Azkaban.2004.1080p.BluRay.x264-HDEX.mkv	movie	Harry Potter and the Prisoner of Azkaban	2004		
+The.Lord.of.the.Rings.The.Fellowship.of.the.Ring.2001.EXTENDED.1080p.BluRay.x264-AMIABLE.mkv	movie	The Lord of the Rings The Fellowship of the Ring	2001		
+Star.Wars.Episode.IV.A.New.Hope.1977.1080p.BluRay.x264-HDEX.mkv	movie	Star Wars Episode IV A New Hope	1977		
+Kill.Bill.Vol.1.2003.1080p.BluRay.x264-SiNNERS.mkv	movie	Kill Bill Vol 1	2003		
+The.Social.Network.2010.PROPER.1080p.BluRay.x264-SECTOR7.mkv	movie	The Social Network	2010		
+Drive.2011.1080p.BluRay.DTS.x264-CtrlHD.mkv	movie	Drive	2011		
+Prisoners.2013.720p.WEB-DL.H264-PublicHD.mkv	movie	Prisoners	2013		
+Joker.2019.1080p.WEBRip.x264-YTS.LT.mp4	movie	Joker	2019		
+Tenet.2020.IMAX.1080p.BluRay.x264-SURCODE.mkv	movie	Tenet	2020		
+Barbie.2023.1080p.WEB.H264-NAISU.mkv	movie	Barbie	2023		
+The.Batman.2022.2160p.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX.mkv	movie	The Batman	2022		
+Nope.2022.1080p.AMZN.WEB-DL.DDP5.1.H.264-CMRG.mkv	movie	Nope	2022		
+Soul.2020.1080p.DSNP.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	movie	Soul	2020		
+Roma.2018.1080p.NF.WEB-DL.DDP5.1.x264-NTG.mkv	movie	Roma	2018		
+The.Irishman.2019.1080p.NF.WEBRip.DDP5.1.x264-NTG.mkv	movie	The Irishman	2019		
+Knives.Out.2019.HDRip.XviD.AC3-EVO.avi	movie	Knives Out	2019		
+Superbad.2007.UNRATED.DVDRip.XviD-DiAMOND.avi	movie	Superbad	2007		
+Zodiac.2007.Directors.Cut.BDRip.x264-HANDJOB.mkv	movie	Zodiac	2007		
+Old.Boy.2003.KOREAN.720p.BluRay.H264.AAC-VXT.mp4	movie	Old Boy	2003		
+Spirited.Away.2001.JAPANESE.1080p.BluRay.x264-HDEX.mkv	movie	Spirited Away	2001		
+Pan's.Labyrinth.2006.SPANISH.1080p.BluRay.x264-AMIABLE.mkv	movie	Pan's Labyrinth	2006		
+The.Intouchables.2011.FRENCH.720p.BluRay.x264-ROUGH.mkv	movie	The Intouchables	2011		
+La.La.Land.2016.1080p.BluRay.x264-SPARKS.mkv	movie	La La Land	2016		
+Blade.Runner.2049.2017.1080p.BluRay.x264-SPARKS.mkv	movie	Blade Runner 2049	2017		
+2001.A.Space.Odyssey.1968.1080p.BluRay.x264-HDEX.mkv	movie	2001 A Space Odyssey	1968		
+1917.2019.1080p.BluRay.x264-SPARKS.mkv	movie	1917	2019		
+2012.2009.720p.BluRay.x264-SiNNERS.mkv	movie	2012	2009		
+Apollo.13.1995.1080p.BluRay.x264-HDEX.mkv	movie	Apollo 13	1995		
+Se7en.1995.REMASTERED.1080p.BluRay.x264-SADPANDA.mkv	movie	Se7en	1995		
+10.Things.I.Hate.About.You.1999.720p.BluRay.x264-SiNNERS.mkv	movie	10 Things I Hate About You	1999		
+300.2006.1080p.BluRay.x264-HDEX.mkv	movie	300	2006		
+21.Jump.Street.2012.1080p.BluRay.x264-SPARKS.mkv	movie	21 Jump Street	2012		
+Fantastic.Mr.Fox.2009.1080p.BluRay.x264-HDEX.mkv	movie	Fantastic Mr Fox	2009		
+Dr.Strangelove.1964.1080p.BluRay.x264-AMIABLE.mkv	movie	Dr Strangelove	1964		
+Inception (2010)/Inception (2010).mkv	movie	Inception	2010		
+The Matrix (1999)/The Matrix (1999) - 1080p.mkv	movie	The Matrix	1999		
+Movies/Arrival (2016)/Arrival (2016) Bluray-1080p.mkv	movie	Arrival	2016		
+Amélie (2001)/Amélie (2001).mkv	movie	Amélie	2001		
+Spider-Man - No Way Home (2021)/Spider-Man - No Way Home (2021) WEBDL-2160p.mkv	movie	Spider-Man No Way Home	2021		
+Star Wars - Episode V - The Empire Strikes Back (1980)/Star Wars - Episode V - The Empire Strikes Back (1980).mkv	movie	Star Wars Episode V The Empire Strikes Back	1980		
+Avatar - The Way of Water (2022)/Avatar - The Way of Water (2022) {imdb-tt1630029}.mkv	movie	Avatar The Way of Water	2022		
+Barbie (2023) {tmdb-346698}/Barbie (2023) {tmdb-346698}.mkv	movie	Barbie	2023		
+The Thing (1982)/The Thing (1982) [Bluray-1080p][DTS 5.1][x264]-HDEX.mkv	movie	The Thing	1982		
+The Thing (2011)/The.Thing.2011.720p.BluRay.x264-SPARKS.mkv	movie	The Thing	2011		
+Heat (1995)/Heat.mkv	movie	Heat	1995		
+Alien (1979)/Alien (1979) - Director's Cut.mkv	movie	Alien	1979		
+Blade Runner (1982)/Blade Runner (1982) - The Final Cut.mkv	movie	Blade Runner	1982		
+Up (2009)/Up (2009) [1080p].mp4	movie	Up	2009		
+Jaws (1975)/Jaws (1975).mp4	movie	Jaws	1975		
+Gravity (2013)/Gravity (2013) 3D.mkv	movie	Gravity	2013		
+Dune (2021)/Dune (2021) - 2160p HDR.mkv	movie	Dune	2021		
+Dune (1984)/Dune (1984).mkv	movie	Dune	1984		
+Coco (2017).mkv	movie	Coco	2017		
+Moana (2016).mp4	movie	Moana	2016		
+The Lion King (1994).mkv	movie	The Lion King	1994		
+The Lion King (2019).mkv	movie	The Lion King	2019		
+Frozen II (2019).mkv	movie	Frozen II	2019		
+Inside Out 2 (2024).mkv	movie	Inside Out 2	2024		
+Top Gun - Maverick (2022).mkv	movie	Top Gun Maverick	2022		
+Ratatouille (2007) 1080p.mkv	movie	Ratatouille	2007		
+Finding Nemo 2003 1080p.mkv	movie	Finding Nemo	2003		
+The Prestige 2006 720p BluRay.mkv	movie	The Prestige	2006		
+Memento (2000) [1080p] [BluRay] [5.1] [YTS.MX].mp4	movie	Memento	2000		
+Snatch (2000) [1080p] [BluRay] [YTS.MX]/Snatch.2000.1080p.BluRay.x264-[YTS.AM].mp4	movie	Snatch	2000		
+Gone Girl (2014) [1080p] [BluRay] [5.1] [YTS.MX]/Gone.Girl.2014.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4	movie	Gone Girl	2014		
+Amadeus (1984) [DC] [1080p] [BluRay] [YTS.MX]/Amadeus.1984.DC.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4	movie	Amadeus	1984		
+Leon The Professional (1994) [Extended] [1080p] [YTS.AG]/Leon.The.Professional.1994.Extended.1080p.BluRay.x264-[YTS.AG].mp4	movie	Leon The Professional	1994		
+The.Truman.Show.1998.1080p.BluRay.x264-[YTS.AG]/The.Truman.Show.1998.1080p.BluRay.x264-[YTS.AG].mp4	movie	The Truman Show	1998		
+Rear.Window.1954.1080p.BluRay.x264-[YTS.AG].mp4	movie	Rear Window	1954		
+[ www.Torrenting.com ] - Avatar.2009.720p.BluRay.x264-SPARKS.mkv	movie	Avatar	2009		
+www.1TamilMV.cz - Leo (2023) Tamil HQ HDRip - 1080p - x264 - AAC.mkv	movie	Leo	2023		
+Shutter Island (2010)/shutter.island.2010.1080p.bluray.x264-sector7.mkv	movie	Shutter Island	2010		
+the.departed.2006.1080p.bluray.x264-hdex.mkv	movie	The Departed	2006		
+no.country.for.old.men.2007.720p.bluray.x264-hdex.mkv	movie	No Country for Old Men	2007		
+Children_of_Men_2006_1080p_BluRay.mkv	movie	Children of Men	2006		
+Gattaca_1997_720p.mkv	movie	Gattaca	1997		
+The Big Lebowski 1998.avi	movie	The Big Lebowski	1998		
+Fargo.1996.REMASTERED.1080p.BluRay.x264-PSYCHD/Fargo.1996.REMASTERED.1080p.BluRay.x264-PSYCHD.mkv	movie	Fargo	1996		
+Mulholland.Drive.2001.1080p.BluRay.x264-CiNEFiLE/mulholland.drive.2001.1080p.bluray.x264-cinefile.mkv	movie	Mulholland Drive	2001		
+Annihilation.2018.1080p.WEB-DL.DD5.1.H264-FGT/Annihilation.2018.1080p.WEB-DL.DD5.1.H264-FGT.mkv	movie	Annihilation	2018		
+Moonlight.2016.1080p.BluRay.x264-DRONES/drones-moonlight-1080p.mkv	movie	Moonlight	2016		
+Sicario.2015.1080p.BluRay.x264-SPARKS/sparks-sicario-1080p.mkv	movie	Sicario	2015		
+Ex.Machina.2014.1080p.BluRay.x264-SPARKS/Ex.Machina.2014.1080p.BluRay.x264-SPARKS.mkv	movie	Ex Machina	2014		
+Lost.in.Translation.2003.1080p.BluRay.x264-AMIABLE.mkv	movie	Lost in Translation	2003		
+Eternal.Sunshine.of.the.Spotless.Mind.2004.1080p.BluRay.x264-CiNEFiLE.mkv	movie	Eternal Sunshine of the Spotless Mind	2004		
+The.Lives.of.Others.2006.GERMAN.720p.BluRay.x264-HDEX.mkv	movie	The Lives of Others	2006		
+Breaking.Bad.S01E01.720p.BluRay.x264-DEMAND.mkv	episode	Breaking Bad		1	1
+Breaking.Bad.S05E14.Ozymandias.1080p.BluRay.x264-ROVERS.mkv	episode	Breaking Bad		5	14
+Game.of.Thrones.S08E03.1080p.WEB.H264-MEMENTO.mkv	episode	Game of Thrones		8	3
+The.Office.US.S02E01.The.Dundies.720p.WEB-DL.DD5.1.H.264-NTb.mkv	episode	The Office US		2	1
+The.Office.S03E10.720p.WEB-DL.mkv	episode	The Office		3	10
+Stranger.Things.S04E09.Chapter.Nine.The.Piggyback.1080p.NF.WEB-DL.DDP5.1.Atmos.HDR.HEVC-TEPES.mkv	episode	Stranger Things		4	9
+The.Mandalorian.S02E08.1080p.WEB.H264-CAKES.mkv	episode	The Mandalorian		2	8
+Severance.S02E01.Hello.Ms.Cobel.1080p.ATVP.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	episode	Severance		2	1
+The.Bear.S03E01.1080p.WEB.h264-ETHEL.mkv	episode	The Bear		3	1
+Succession.S04E10.With.Open.Eyes.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	Succession		4	10
+The.Last.of.Us.S01E03.Long.Long.Time.2160p.HMAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX.mkv	episode	The Last of Us		1	3
+House.of.the.Dragon.S02E04.720p.HEVC.x265-MeGusta.mkv	episode	House of the Dragon		2	4
+Better.Call.Saul.S06E13.Saul.Gone.1080p.AMC.WEB-DL.DDP5.1.H.264-FLUX.mkv	episode	Better Call Saul		6	13
+The.Wire.S01E01.The.Target.720p.BluRay.x264-SiNNERS.mkv	episode	The Wire		1	1
+Friends.S10E17.The.Last.One.Part.1.720p.BluRay.x264.mkv	episode	Friends		10	17
+Seinfeld.S04E11.The.Contest.DVDRip.XviD-SAiNTS.avi	episode	Seinfeld		4	11
+Sherlock.S01E01.A.Study.in.Pink.1080p.BluRay.x264-SHORTBREHD.mkv	episode	Sherlock		1	1
+Doctor.Who.2005.S01E01.Rose.720p.BluRay.x264-SHORTBREHD.mkv	episode	Doctor Who	2005	1	1
+Doctor.Who.S13E06.1080p.HDTV.H264-ORGANiC.mkv	episode	Doctor Who		13	6
+Shameless.US.S11E12.720p.WEB.x264-WOW.mkv	episode	Shameless US		11	12
+The.Flash.2014.S09E13.720p.HDTV.x264-SYNCOPY.mkv	episode	The Flash	2014	9	13
+Battlestar.Galactica.2003.S01E01.33.720p.BluRay.x264-SiNNERS.mkv	episode	Battlestar Galactica	2003	1	1
+Westworld.S01E10.The.Bicameral.Mind.1080p.BluRay.x264-ROVERS.mkv	episode	Westworld		1	10
+True.Detective.S01E05.The.Secret.Fate.of.All.Life.1080p.BluRay.x264-ROVERS.mkv	episode	True Detective		1	5
+Fargo.S01E01.The.Crocodiles.Dilemma.1080p.BluRay.x264-ROVERS.mkv	episode	Fargo		1	1
+Chernobyl.S01E05.Vichnaya.Pamyat.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	Chernobyl		1	5
+The.Crown.S05E01.1080p.WEB.H264-GLHF.mkv	episode	The Crown		5	1
+Ted.Lasso.S03E12.So.Long.Farewell.1080p.ATVP.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	Ted Lasso		3	12
+The.Boys.S04E08.1080p.WEB.H264-SuccessfulCrab.mkv	episode	The Boys		4	8
+Peaky.Blinders.S06E06.720p.HDTV.x264-ORGANiC.mkv	episode	Peaky Blinders		6	6
+Dark.S03E08.The.Paradise.1080p.NF.WEB-DL.DDP5.1.x264-NTG.mkv	episode	Dark		3	8
+Money.Heist.S05E10.SPANISH.1080p.WEBRip.x265-RARBG.mp4	episode	Money Heist		5	10
+Lupin.S01E01.FRENCH.1080p.NF.WEB-DL.DDP5.1.x264-NTG.mkv	episode	Lupin		1	1
+Squid.Game.S01E06.Gganbu.1080p.NF.WEB-DL.DDP5.1.x264-NTG.mkv	episode	Squid Game		1	6
+The.Simpsons.S35E01.720p.WEB.x265-MiNX.mkv	episode	The Simpsons		35	1
+South.Park.S26E06.Japanese.Toilet.1080p.HEVC.x265-MeGusta.mkv	episode	South Park		26	6
+Rick.and.Morty.S07E01.1080p.WEB.H264-NHTFS.mkv	episode	Rick and Morty		7	1
+BoJack.Horseman.S06E15.1080p.NF.WEB-DL.DDP5.1.x264-NTG.mkv	episode	BoJack Horseman		6	15
+Arcane.S02E09.1080p.WEB.h264-ETHEL.mkv	episode	Arcane		2	9
+Shogun.2024.S01E10.1080p.WEB.H264-SuccessfulCrab.mkv	episode	Shogun	2024	1	10
+Slow.Horses.S04E06.720p.ATVP.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	Slow Horses		4	6
+Mr.Robot.S04E13.Hello.Elliot.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	Mr Robot		4	13
+Grey's.Anatomy.S20E01.720p.HDTV.x264-SYNCOPY.mkv	episode	Grey's Anatomy		20	1
+It's.Always.Sunny.in.Philadelphia.S16E08.1080p.WEB.H264-GLHF.mkv	episode	It's Always Sunny in Philadelphia		16	8
+Law.and.Order.SVU.S25E01.720p.HDTV.x264-SYNCOPY.mkv	episode	Law and Order SVU		25	1
+9-1-1.S07E10.720p.HDTV.x264-SYNCOPY.mkv	episode	9-1-1		7	10
+24.S08E24.720p.BluRay.x264-SiNNERS.mkv	episode	24		8	24
+1923.S01E08.1080p.WEB.H264-GLHF.mkv	episode	1923		1	8
+Taskmaster.S17E01.1080p.HDTV.H264-DARKFLiX.mkv	episode	Taskmaster		17	1
+breaking.bad.s02e03.720p.bluray.x264-demand.mkv	episode	Breaking Bad		2	3
+the_sopranos_s01e01_720p.mkv	episode	The Sopranos		1	1
+Twin Peaks S03E08 1080p.mkv	episode	Twin Peaks		3	8
+Lost S01E01 Pilot Part 1.avi	episode	Lost		1	1
+The X-Files S05E12 Bad Blood.mkv	episode	The X-Files		5	12
+Band of Brothers S01E02 Day of Days.mkv	episode	Band of Brothers		1	2
+Frasier - S07E24 - Something Borrowed, Someone Blue.mkv	episode	Frasier		7	24
+Scrubs - S03E14 - My Screw Up.mkv	episode	Scrubs		3	14
+Community - 1x01 - Pilot.avi	episode	Community		1	1
+Futurama 4x18 The Devil's Hands Are Idle Playthings.avi	episode	Futurama		4	18
+Firefly.1x01.Serenity.DVDRip.XviD.avi	episode	Firefly		1	1
+Arrested.Development.3x13.Development.Arrested.DVDRip.avi	episode	Arrested Development		3	13
+The Wire/Season 1/The Wire - S01E02 - The Detail.mkv	episode	The Wire		1	2
+The Wire/Season 4/The Wire - S04E13 - Final Grades.mkv	episode	The Wire		4	13
+Breaking Bad (2008)/Season 01/Breaking Bad (2008) - S01E02 - Cat's in the Bag....mkv	episode	Breaking Bad	2008	1	2
+Breaking Bad (2008)/Season 03/Breaking Bad (2008) - S03E07 - One Minute.mkv	episode	Breaking Bad	2008	3	7
+Doctor Who (2005)/Season 04/Doctor Who (2005) - S04E10 - Midnight.mkv	episode	Doctor Who	2005	4	10
+Doctor Who (1963)/Season 01/Doctor Who (1963) - S01E01 - An Unearthly Child.mkv	episode	Doctor Who	1963	1	1
+The Office (US)/Season 05/The Office (US) - S05E14 - Stress Relief.mkv	episode	The Office US		5	14
+Avatar - The Last Airbender (2005)/Season 2/Avatar - The Last Airbender - S02E12 - The Serpent's Pass.mkv	episode	Avatar The Last Airbender	2005	2	12
+Mad Men/Season 07/Mad Men - S07E14 - Person to Person.mkv	episode	Mad Men		7	14
+Columbo/Season 01/Columbo - S01E01 - Murder by the Book.mkv	episode	Columbo		1	1
+Star Trek - The Next Generation/Season 3/Star Trek - The Next Generation - S03E26 - The Best of Both Worlds (1).mkv	episode	Star Trek The Next Generation		3	26
+Planet Earth II/Season 1/Planet Earth II - S01E01 - Islands.mkv	episode	Planet Earth II		1	1
+Cosmos - A Spacetime Odyssey/Season 1/Cosmos - A Spacetime Odyssey - S01E01.mkv	episode	Cosmos A Spacetime Odyssey		1	1
+Black Mirror/Season 3/Black Mirror - S03E04 - San Junipero.mkv	episode	Black Mirror		3	4
+Fleabag/Season 2/Fleabag - S02E01.mkv	episode	Fleabag		2	1
+Atlanta/Season 2/Atlanta - S02E06 - Teddy Perkins.mkv	episode	Atlanta		2	6
+The Expanse (2015)/Season 6/The Expanse (2015) - S06E06 - Babylon's Ashes.mkv	episode	The Expanse	2015	6	6
+Fringe/Season 1/Fringe - S01E01 - Pilot.mkv	episode	Fringe		1	1
+Deadwood/Season 3/Deadwood - S03E12 - Tell Him Something Pretty.mkv	episode	Deadwood		3	12
+Halt and Catch Fire/Season 4/Halt and Catch Fire - S04E10 - Ten of Swords.mkv	episode	Halt and Catch Fire		4	10
+The Leftovers/Season 2/The Leftovers - S02E08 - International Assassin.mkv	episode	The Leftovers		2	8
+Six Feet Under/Season 5/Six Feet Under - S05E12 - Everyone's Waiting.mkv	episode	Six Feet Under		5	12
+Bluey (2018)/Season 3/Bluey (2018) - S03E34 - Sleepytime.mp4	episode	Bluey	2018	3	34
+Peppa Pig/Season 1/Peppa Pig - S01E01 - Muddy Puddles.mp4	episode	Peppa Pig		1	1
+Shows/Twin Peaks/Season 2/Twin Peaks - S02E07.mkv	episode	Twin Peaks		2	7
+TV/Better Call Saul/Season 05/Better Call Saul - S05E09 - Bad Choice Road.mkv	episode	Better Call Saul		5	9
+The Wire/Season 2/02 - Collateral Damage.mkv	episode	The Wire		2	2
+The Wire/Season 3/05 Straight and True.mkv	episode	The Wire		3	5
+Columbo/Season 2/03.mkv	episode	Columbo		2	3
+Mad Men/Season 1/E05 - 5G.mkv	episode	Mad Men		1	5
+Seinfeld/Season 9/Episode 21.avi	episode	Seinfeld		9	21
+Fringe/Season 01/101 - Pilot.mkv	episode	Fringe		1	1
+Lost/S02/Lost.S02E05.720p.mkv	episode	Lost		2	5
+Fringe/S03/E14.mkv	episode	Fringe		3	14
+The Sopranos/Season 6/The.Sopranos.S06E21.Made.in.America.720p.BluRay.mkv	episode	The Sopranos		6	21
+Breaking.Bad.S04.1080p.BluRay.x264-ROVERS/Breaking.Bad.S04E13.Face.Off.1080p.BluRay.x264-ROVERS.mkv	episode	Breaking Bad		4	13
+Breaking.Bad.S04.1080p.BluRay.x264-ROVERS/breaking.bad.s04e01.1080p.bluray.x264-rovers.mkv	episode	Breaking Bad		4	1
+Game.of.Thrones.S01.1080p.BluRay.x264-ROVERS/Game.of.Thrones.S01E09.1080p.BluRay.x264-ROVERS.mkv	episode	Game of Thrones		1	9
+The.Office.US.S04.720p.WEB-DL/The.Office.US.S04E01.Fun.Run.720p.WEB-DL.mkv	episode	The Office US		4	1
+Sherlock Season 2 Complete 720p/Sherlock.S02E01.A.Scandal.in.Belgravia.720p.mkv	episode	Sherlock		2	1
+Friends - Complete Series/Season 3/Friends - S03E25 - The One at the Beach.mkv	episode	Friends		3	25
+Friends.Complete.Series.1080p.BluRay/Friends.S01/Friends.S01E01.The.One.Where.Monica.Gets.a.Roommate.mkv	episode	Friends		1	1
+Stranger Things S01 [1080p]/Stranger.Things.S01E08.1080p.mkv	episode	Stranger Things		1	8
+[TorrentCouch.com].Silicon.Valley.S06.Complete.720p/[TorrentCouch.com].Silicon.Valley.S06E07.Exit.Event.720p.mkv	episode	Silicon Valley		6	7
+www.UIndex.org    -    The.Penguin.S01E08.1080p.WEB.H264-SuccessfulCrab.mkv	episode	The Penguin		1	8
+The.Boys.S03E06.Herogasm.REPACK.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	The Boys		3	6
+Reacher.S02E08.PROPER.1080p.WEB.H264-NHTFS.mkv	episode	Reacher		2	8
+Fallout.S01E01.The.End.1080p.AMZN.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	episode	Fallout		1	1
+Andor.S01E10.One.Way.Out.2160p.DSNP.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX.mkv	episode	Andor		1	10
+Loki.S02E06.Glorious.Purpose.1080p.DSNP.WEB-DL.DDP5.1.H.264-FLUX.mkv	episode	Loki		2	6
+Wednesday.S01E04.Woe.What.a.Weekend.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-SMURF.mkv	episode	Wednesday		1	4
+Yellowstone.2018.S05E14.1080p.WEB.H264-SuccessfulCrab.mkv	episode	Yellowstone	2018	5	14
+Only.Murders.in.the.Building.S04E10.1080p.WEB.h264-ETHEL.mkv	episode	Only Murders in the Building		4	10
+What.We.Do.in.the.Shadows.S05E10.1080p.WEB.H264-SuccessfulCrab.mkv	episode	What We Do in the Shadows		5	10
+Abbott.Elementary.S03E13.720p.HDTV.x264-SYNCOPY.mkv	episode	Abbott Elementary		3	13
+The.White.Lotus.S02E07.Arrivederci.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv	episode	The White Lotus		2	7
+Hacks.S03E09.1080p.WEB.H264-SuccessfulCrab.mkv	episode	Hacks		3	9
+Euphoria.US.S02E08.1080p.WEB.H264-PECULATE.mkv	episode	Euphoria US		2	8
+Blue.Eye.Samurai.S01E05.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	episode	Blue Eye Samurai		1	5
+One.Piece.2023.S01E01.Romance.Dawn.1080p.NF.WEB-DL.DDP5.1.Atmos.H.264-FLUX.mkv	episode	One Piece	2023	1	1
+Avatar.The.Last.Airbender.2024.S01E01.1080p.NF.WEB-DL.mkv	episode	Avatar The Last Airbender	2024	1	1
+House.M.D.S08E22.Everybody.Dies.720p.BluRay.mkv	episode	House M D		8	22
+The.Twilight.Zone.1959.S02E06.Eye.of.the.Beholder.1080p.BluRay.mkv	episode	The Twilight Zone	1959	2	6
+Cheers.S11E26.One.for.the.Road.DVDRip.avi	episode	Cheers		11	26
+Dexter.S01E01.Dexter.720p.BluRay.x264.mkv	episode	Dexter		1	1
+Dexter.New.Blood.S01E10.Sins.of.the.Father.1080p.mkv	episode	Dexter New Blood		1	10
+The.Walking.Dead.S11E24.Rest.in.Peace.1080p.AMZN.WEB-DL.mkv	episode	The Walking Dead		11	24
+Vikings.S06E20.The.Last.Act.1080p.AMZN.WEB-DL.mkv	episode	Vikings		6	20
+Narcos.Mexico.S03E10.1080p.NF.WEB-DL.mkv	episode	Narcos Mexico		3	10
+Ozark.S04E14.A.Hard.Way.to.Go.1080p.NF.WEB-DL.mkv	episode	Ozark		4	14
+Mindhunter.S02E09.1080p.NF.WEB-DL.mkv	episode	Mindhunter		2	9
+The.Haunting.of.Hill.House.S01E06.Two.Storms.1080p.NF.WEB-DL.mkv	episode	The Haunting of Hill House		1	6
+Love.Death.and.Robots.S01E01.Sonnies.Edge.1080p.NF.WEB-DL.mkv	episode	Love Death and Robots		1	1
+Twin.Peaks.S01E01.Pilot.1080p.BluRay.x264.mkv	episode	Twin Peaks		1	1
+Twin.Peaks.S00E01.Fire.Walk.With.Me.1080p.mkv	episode	Twin Peaks		0	1
+Doctor.Who.2005.S00E01.The.Christmas.Invasion.720p.mkv	episode	Doctor Who	2005	0	1
+Sherlock/Specials/Sherlock - S00E01 - The Abominable Bride.mkv	episode	Sherlock		0	1
+The Office (US)/Season 07/The Office (US) - S07E25E26 - Search Committee.mkv	episode	The Office US		7	25
+Friends/Season 10/Friends - S10E17-E18 - The Last One.mkv	episode	Friends		10	17
+Seinfeld.S05E21-22.The.Raincoats.DVDRip.avi	episode	Seinfeld		5	21
+Bobs.Burgers.S14E01.720p.HDTV.x264-SYNCOPY.mkv	episode	Bobs Burgers		14	1
+American.Dad.S20E01.1080p.WEB.h264-ETHEL.mkv	episode	American Dad		20	1
+Bluey.S03E01.Stickbird.1080p.DSNP.WEB-DL.mkv	episode	Bluey		3	1
+Paw.Patrol.S10E01.1080p.WEB.mkv	episode	Paw Patrol		10	1
+The.Great.British.Bake.Off.S14E01.1080p.HDTV.mkv	episode	The Great British Bake Off		14	1
+Top.Gear.S22E08.720p.HDTV.x264-FTP.mkv	episode	Top Gear		22	8
+The.Grand.Tour.S03E01.1080p.AMZN.WEB-DL.mkv	episode	The Grand Tour		3	1
+Cobra.Kai.S06E15.1080p.NF.WEB-DL.mkv	episode	Cobra Kai		6	15
+The.Rings.of.Power.S02E08.1080p.AMZN.WEB-DL.mkv	episode	The Rings of Power		2	8
+Star.Trek.Strange.New.Worlds.S02E09.1080p.WEB.mkv	episode	Star Trek Strange New Worlds		2	9
+Foundation.S02E10.1080p.ATVP.WEB-DL.mkv	episode	Foundation		2	10
+Silo.S02E10.1080p.ATVP.WEB-DL.mkv	episode	Silo		2	10
+Invincible.S03E08.1080p.AMZN.WEB-DL.mkv	episode	Invincible		3	8
+Gen.V.S01E08.1080p.AMZN.WEB-DL.mkv	episode	Gen V		1	8
+The.Expanse.S01E01.Dulcinea.1080p.BluRay.mkv	episode	The Expanse		1	1
+Normal.People.S01E01.720p.HULU.WEB-DL.mkv	episode	Normal People		1	1
+Killing.Eve.S04E08.1080p.AMZN.WEB-DL.mkv	episode	Killing Eve		4	8
+Line.of.Duty.S06E07.1080p.HDTV.H264-ORGANiC.mkv	episode	Line of Duty		6	7
+Happy.Valley.S03E06.1080p.HDTV.H264-ORGANiC.mkv	episode	Happy Valley		3	6
+Broadchurch.S01E08.720p.HDTV.x264-TLA.mkv	episode	Broadchurch		1	8
+Luther.S05E04.720p.HDTV.x264-MTB.mkv	episode	Luther		5	4
+Brooklyn.Nine-Nine.S08E10.1080p.WEB.H264-GLHF.mkv	episode	Brooklyn Nine-Nine		8	10
+Parks.and.Recreation.S07E12.One.Last.Ride.720p.WEB-DL.mkv	episode	Parks and Recreation		7	12
+How.I.Met.Your.Mother.S09E24.Last.Forever.720p.WEB-DL.mkv	episode	How I Met Your Mother		9	24
+The.Big.Bang.Theory.S12E24.The.Stockholm.Syndrome.720p.HDTV.mkv	episode	The Big Bang Theory		12	24
+Modern.Family.S11E18.Finale.720p.HDTV.mkv	episode	Modern Family		11	18
+Curb.Your.Enthusiasm.S12E10.No.Lessons.Learned.1080p.AMZN.WEB-DL.mkv	episode	Curb Your Enthusiasm		12	10
+Veep.S07E07.Veep.1080p.AMZN.WEB-DL.mkv	episode	Veep		7	7
+Barry.S04E08.wow.1080p.AMZN.WEB-DL.mkv	episode	Barry		4	8
+The.Sopranos.S01E01.The.Sopranos.1080p.BluRay.mkv	episode	The Sopranos		1	1
+Oz.S06E08.Exeunt.Omnes.DVDRip.avi	episode	Oz		6	8
+Lost.S06E17.The.End.720p.BluRay.mkv	episode	Lost		6	17
+Heroes.S01E01.Genesis.720p.HDTV.mkv	episode	Heroes		1	1
+Prison.Break.S05E09.720p.HDTV.x264-FLEET.mkv	episode	Prison Break		5	9
+24.Live.Another.Day.S01E12.720p.HDTV.mkv	episode	24 Live Another Day		1	12
+Monk.S08E16.Mr.Monk.and.the.End.Part.2.DVDRip.avi	episode	Monk		8	16
+Psych.S08E10.The.Break-Up.720p.WEB-DL.mkv	episode	Psych		8	10

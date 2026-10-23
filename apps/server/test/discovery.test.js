@@ -102,7 +102,7 @@ test.before(function () {
     udpPort = port;
     server.settings.load();
     server.settings.update({ general: { serverName: NAME } });
-    return server.start({ port: 0, console: false, discoveryPort: udpPort });
+    return server.start({ port: 0, console: false, library: false, discoveryPort: udpPort });
   }).then(function (started) {
     info = started;
     var sock = mdnsSocket.create();

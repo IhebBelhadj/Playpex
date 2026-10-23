@@ -28,6 +28,21 @@ var YAML = require('yaml'),
   protocol = require('@playpex/protocol'),
   server = require('..');
 
+// The library's TMDB (lib/library/match.js's catalog), offline
+var CATALOG = {
+  search: function (kind, q) {
+    return Promise.resolve(kind === 'movie' && /inception/i.test(q) ?
+      [{ id: 27205, title: 'Inception', release_date: '2010-07-15', overview: 'Dreams.', poster_path: '/p.jpg' }] : []);
+  },
+  movie: function (id) {
+    return id === 27205 ? Promise.resolve({ id: 27205, title: 'Inception', release_date: '2010-07-15', imdb_id: 'tt1375666' }) :
+      Promise.reject(Object.assign(new Error('404'), { response: { status: 404 } }));
+  },
+  tv: function () { return Promise.reject(Object.assign(new Error('404'), { response: { status: 404 } })); },
+  season: function () { return Promise.reject(Object.assign(new Error('404'), { response: { status: 404 } })); },
+  find: function () { return Promise.resolve({ movie_results: [], tv_results: [] }); }
+};
+
 var SPEC_FILE = require.resolve('@playpex/protocol/openapi.yaml'),
   spec = YAML.parse(fs.readFileSync(SPEC_FILE, 'utf8')),
   ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false }),
@@ -133,7 +148,7 @@ function call(method, apiPath, body, options) {
 }
 
 test.before(function () {
-  return server.start({ port: 0, console: false }).then(function (info) {
+  return server.start({ port: 0, console: false, library: { catalog: CATALOG, firstScanMs: 3600000 } }).then(function (info) {
     base = 'http://127.0.0.1:' + info.port;
   });
 });
@@ -153,6 +168,7 @@ test('the spec and the protocol constants agree', function () {
   assert.equal(String(spec.info.version), String(protocol.API_VERSION));
   assert.deepEqual(spec.components.schemas.Error.properties.code.enum.slice().sort(),
     Object.keys(protocol.ERROR_CODES).sort());
+  assert.equal(spec.components.parameters.MediaRef.schema.pattern, protocol.MEDIA_REF_PATTERN);
 });
 
 test('server info', function () {
@@ -733,6 +749,64 @@ test('settings: device and profile, defaults, reset, rules', function () {
     .then(function () { return call('DELETE', '/profiles/' + kid, undefined, { expect: 200 }); });
 });
 
+test('media library (admin): folders, scan, files, matches, subtitles, folder browser', function () {
+  var dir = path.join(tmp, 'media', 'Movies'), folder, file;
+  fs.mkdirSync(path.join(dir, 'Inception (2010)'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Inception (2010)', 'Inception (2010).mkv'), Buffer.alloc(2000, 1));
+  fs.writeFileSync(path.join(dir, 'Inception (2010)', 'Inception (2010).en.srt'), '1\n00:00:01,000 --> 00:00:02,000\nHi\n');
+  fs.writeFileSync(path.join(dir, 'Unknown.Thing.2001.mkv'), Buffer.alloc(2000, 1));
+  return call('GET', '/admin/library', undefined, { expect: 401 })
+    .then(function () { return call('POST', '/admin/library/folders', { path: dir, kind: 'movies' }, { expect: 201, admin: true }); })
+    .then(function (res) {
+      folder = res.body;
+      return call('POST', '/admin/library/folders', { path: dir, kind: 'movies' }, { expect: 409, admin: true });
+    })
+    .then(function () { return call('POST', '/admin/library/folders', { path: 'x', kind: 'movies' }, { expect: 400, admin: true }); })
+    .then(function () { return call('POST', '/admin/library/scan', { folderId: folder.id }, { expect: 200, admin: true }); })
+    .then(function () { return call('POST', '/admin/library/scan', { folderId: 'nope' }, { expect: 404, admin: true }); })
+    .then(function () { return require('../lib/library').idle(); })
+    .then(function () { return call('GET', '/admin/library', undefined, { expect: 200, admin: true }); })
+    .then(function (res) {
+      assert.ok(res.body.folders.some(function (f) { return f.id === folder.id && f.counts.ok === 1 && f.counts.unmatched === 1; }));
+      return call('GET', '/admin/library/files?folder=' + folder.id + '&state=unmatched', undefined, { expect: 200, admin: true });
+    })
+    .then(function (res) {
+      file = res.body.files[0];
+      return call('GET', '/admin/library/files?state=bogus', undefined, { expect: 400, admin: true });
+    })
+    .then(function () { return call('GET', '/admin/library/files/' + file.id, undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('GET', '/admin/library/files/nope', undefined, { expect: 404, admin: true }); })
+    .then(function () { return call('PUT', '/admin/library/files/' + file.id + '/match', { kind: 'movie', tmdbId: 27205 }, { expect: 200, admin: true }); })
+    .then(function (res) {
+      assert.equal(res.body.matchedBy, 'admin');
+      return call('PUT', '/admin/library/files/' + file.id + '/match', { kind: 'movie' }, { expect: 400, admin: true });
+    })
+    .then(function () { return call('DELETE', '/admin/library/files/' + file.id + '/match', undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('PUT', '/admin/library/files/' + file.id + '/ignored', { ignored: true }, { expect: 200, admin: true }); })
+    .then(function () { return call('PUT', '/admin/library/files/' + file.id + '/ignored', {}, { expect: 400, admin: true }); })
+    .then(function () { return call('GET', '/admin/library/search?kind=movie&q=inception', undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('GET', '/admin/library/search?kind=movie', undefined, { expect: 400, admin: true }); })
+    .then(function () { return call('GET', '/admin/fs?path=' + encodeURIComponent(path.join(tmp, 'media')), undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('GET', '/admin/fs', undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('GET', '/admin/fs?path=' + encodeURIComponent(path.join(tmp, 'nope')), undefined, { expect: 404, admin: true }); })
+    .then(function () { return call('GET', '/admin/library/files?state=ok', undefined, { expect: 200, admin: true }); })
+    .then(function (res) {
+      var ref = res.body.files[0].ref;
+      return call('GET', '/media/' + ref + '/subtitles', undefined, { expect: 200 }).then(function (subs) {
+        assert.equal(subs.body.subtitles[0].language, 'en');
+        return call('GET', '/media/' + ref + '/subtitles/0', undefined, { expect: 200 });
+      }).then(function (vtt) {
+        assert.match(vtt.text, /^WEBVTT/);
+        return call('GET', '/media/' + ref + '/subtitles/3', undefined, { expect: 404 });
+      });
+    })
+    .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { audience: 'adults' }, { expect: 200, admin: true }); })
+    .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { kind: 'films' }, { expect: 400, admin: true }); })
+    .then(function () { return call('PATCH', '/admin/library/folders/nope', { dlna: true }, { expect: 404, admin: true }); })
+    .then(function () { return call('DELETE', '/admin/library/folders/' + folder.id, undefined, { expect: 200, admin: true }); })
+    .then(function () { return call('DELETE', '/admin/library/folders/' + folder.id, undefined, { expect: 404, admin: true }); });
+});
+
 test('torrents without network', function () {
   var hash = '0000000000000000000000000000000000000000';
   return Promise.all([
@@ -742,6 +816,12 @@ test('torrents without network', function () {
     call('POST', '/torrents/' + hash + '/deselect', undefined, { expect: 404 }),
     call('DELETE', '/torrents/' + hash, undefined, { expect: 404 }),
     call('GET', '/torrents/' + hash + '/files/a%2Fb.mkv', undefined, { expect: 404 }),
+    call('GET', '/media/t_' + hash + '_0123456789abcdef', undefined, { expect: 404 }),
+    call('GET', '/media/t_' + hash + '_0123456789abcdef/probe', undefined, { expect: 404 }),
+    call('GET', '/media/f_00000000-0000-0000-0000-000000000000/keyframe?t=1', undefined, { expect: 404 }),
+    call('GET', '/media/f_00000000-0000-0000-0000-000000000000/transcode', undefined, { expect: 404 }),
+    call('POST', '/media/f_00000000-0000-0000-0000-000000000000/keepalive', {}, { expect: 404 }),
+    call('DELETE', '/media/f_00000000-0000-0000-0000-000000000000', undefined, { expect: 404 }),
     call('POST', '/torrents', { link: 'not a torrent' }, { expect: 400 })
   ]);
 });

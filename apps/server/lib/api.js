@@ -2,9 +2,7 @@
 
 const path = require('path');
 
-var rangeParser = require('range-parser'),
-  pump = require('pump'),
-  _ = require('lodash'),
+var _ = require('lodash'),
   express = require('express'),
   multipart = require('connect-multiparty'),
   youtube = require('./youtube'),
@@ -16,11 +14,10 @@ var rangeParser = require('range-parser'),
   subtitles = require('./subtitles'),
   fs = require('fs'),
   torrents = require('./torrents/client'),
-  transcode = require('./transcode'),
+  media = require('./routes/media'),
   sessions = require('./sessions'),
   settings = require('./settings'),
   middleware = require('./middleware'),
-  auth = require('./auth'),
   authHttp = require('./auth/http'),
   errors = require('./errors'),
   protocol = require('@playpex/protocol'),
@@ -91,16 +88,7 @@ v1.use(authHttp.requireClient);
 v1.use('/devices', require('./routes/devices'));
 
 // Answers a torrent client failure (lib/torrents/client.js err.code)
-function failed(res, err) {
-  if (err.code === 'BUSY' || err.code === 'NOT_FOUND' || err.code === 'INVALID' || err.code === 'CONFLICT') {
-    return fail(res, err.code, err.message);
-  }
-  if (err.code === 'UNAVAILABLE') {
-    return fail(res, 'BUSY', err.message);
-  }
-  log.error('torrent: ' + err.message, { err: err });
-  fail(res, 'INTERNAL', 'Internal error');
-}
+var failed = errors.failed;
 
 function findTorrent(req, res, next) {
   var download = req.download = torrents.get(req.params.infoHash);
@@ -114,16 +102,6 @@ function findTorrent(req, res, next) {
 // The calling device holds the torrent (acquires or refreshes its lease, lib/sessions.js)
 function lease(req, res, next) {
   req.lease = sessions.acquire(req.infoHash, req);
-  next();
-}
-
-// A file of the torrent, by its path ({ name, path, size, offset, selected })
-function findFile(req, res, next) {
-  var file = (torrents.files(req.infoHash) || []).filter(function (f) { return f.path === req.params.path; })[0];
-  if (!file) {
-    return fail(res, 'NOT_FOUND', 'No such file in this torrent');
-  }
-  req.file = file;
   next();
 }
 
@@ -338,90 +316,15 @@ v1.delete('/downloads/:infoHash', authHttp.requireAdmin, findDownload, function 
   }, function (err) { failed(res, err); });
 });
 
-/*
-    --MOST CRUSIAL PART
-*/
+// The media routes of a torrent's file: aliases of /media/{ref}
+// (lib/routes/media.js), kept for API v1 clients
+v1.get('/torrents/:infoHash/probe/:path([^"]+)', media.torrent.probe);
+v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', media.torrent.keyframe);
+v1.get('/torrents/:infoHash/transcode/:path([^"]+)', media.torrent.transcode);
+v1.all('/torrents/:infoHash/files/:path([^"]+)', media.torrent.stream);
 
-// ffmpeg / ffprobe read the file through the byte-range route below, as the
-// requesting device. `internal` is a per-process secret (lib/auth): it lets
-// them in without a token, and their reads don't change the session's method.
-function localFileUrl(req, file) {
-  return 'http://127.0.0.1:' + req.socket.localPort + protocol.API_PREFIX + '/torrents/' + req.infoHash +
-    '/files/' + encodeURIComponent(file.path) + '?' + protocol.DEVICE_PARAM + '=' +
-    encodeURIComponent(req.lease.deviceId) + '&internal=' + auth.internalUrlToken();
-}
-
-// Codecs of a file: { duration, video, audio: [...], transcode }
-v1.get('/torrents/:infoHash/probe/:path([^"]+)', findTorrent, findFile, lease, function (req, res) {
-  transcode.probe(localFileUrl(req, req.file)).then(function (info) {
-    res.json(info);
-  }, function (e) {
-    fail(res, e.code === 'ENOENT' ? 'TRANSCODER_UNAVAILABLE' : 'PROBE_FAILED', e.message);
-  });
-});
-
-// Where a transcoded stream asked to start at ?t= really starts: { time }
-v1.get('/torrents/:infoHash/keyframe/:path([^"]+)', findTorrent, findFile, lease, function (req, res) {
-  var t = Math.max(0, parseFloat(req.query.t) || 0);
-  transcode.keyframe(localFileUrl(req, req.file), t).then(function (time) {
-    res.json({ time: time });
-  });
-});
-
-// The file with its audio re-encoded to AAC, from ?t=<seconds>, track ?audio=<n>
-v1.get('/torrents/:infoHash/transcode/:path([^"]+)', findTorrent, findFile, lease, function (req, res) {
-  var file = req.file;
-  if (!sessions.takeTranscodeSlot(req.lease, file, res)) {
-    return fail(res, 'BUSY', 'This server already transcodes ' + settings.get('streaming.maxTranscodes') +
-      ' videos; try again later');
-  }
-  sessions.trackStream(req.lease, req, res, file, 'audio-transcode');
-  req.socket.setTimeout(3600000);
-  transcode.stream(localFileUrl(req, file), parseFloat(req.query.t) || 0,
-    parseInt(req.query.audio, 10) || 0, req, res);
-});
-
-// The bytes of a file (HTTP ranges). A stopped torrent starts again (BUSY past
-// the limit), unless the file is finished on disk; a stream download fetches
-// only this file from then on (season packs), with its tail early.
-v1.all('/torrents/:infoHash/files/:path([^"]+)', findTorrent, findFile, lease, function (req, res) {
-  var file = req.file,
-    range = req.headers.range && rangeParser(file.size, req.headers.range)[0];
-
-  sessions.trackStream(req.lease, req, res, file, 'direct');
-  req.socket.setTimeout(3600000);
-
-  function headers() {
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.type(file.name);
-    if (!range) {
-      res.setHeader('Content-Length', file.size);
-      return;
-    }
-    res.statusCode = 206;
-    res.setHeader('Content-Length', range.end - range.start + 1);
-    res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + file.size);
-  }
-
-  if (req.method === 'HEAD') {
-    headers();
-    return res.end();
-  }
-  torrents.prepareStream(req.infoHash, file.path).then(function () {
-    torrents.prefetchTail(req.infoHash, file.path);
-    return torrents.stream(req.infoHash, file.path, range ? { start: range.start, end: range.end } : null);
-  }).then(function (body) {
-    if (res.destroyed) {
-      return body.destroy();
-    }
-    headers();
-    pump(body, res);
-  }, function (err) {
-    if (!res.headersSent && !res.destroyed) {
-      failed(res, err);
-    }
-  });
-});
+// Any file by its media ref: a torrent's, or one on disk (the library)
+v1.use('/media', media.router);
 
 
 

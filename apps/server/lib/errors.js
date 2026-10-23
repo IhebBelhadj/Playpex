@@ -18,6 +18,20 @@ function fail(res, code, message, extra) {
   res.status(ERROR_CODES[code] || 500).json(Object.assign({}, extra, { error: message || code, code: code }));
 }
 
+// Answers a failure of the torrent client or lib/media (err.code); anything
+// unexpected is logged and answered 500
+function failed(res, err) {
+  if (err.code === 'BUSY' || err.code === 'NOT_FOUND' || err.code === 'INVALID' || err.code === 'CONFLICT' ||
+    err.code === 'FORBIDDEN') {
+    return fail(res, err.code, err.message);
+  }
+  if (err.code === 'UNAVAILABLE') {
+    return fail(res, 'BUSY', err.message);
+  }
+  require('./logger').child('http').error('torrent: ' + err.message, { err: err });
+  fail(res, 'INTERNAL', 'Internal error');
+}
+
 // The code for an error that only carries an HTTP status (providers, services)
 function codeForStatus(status) {
   return BY_STATUS[status] || (status >= 500 ? 'INTERNAL' : 'INVALID');
@@ -25,5 +39,6 @@ function codeForStatus(status) {
 
 module.exports = {
   fail: fail,
+  failed: failed,
   codeForStatus: codeForStatus
 };

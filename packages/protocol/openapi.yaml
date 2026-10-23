@@ -51,10 +51,16 @@ info:
     **Events**: `GET /events` upgrades to a WebSocket of JSON messages `{ topic, time, data }`
     (see `Event`); same auth (`?access_token=` for clients that can't set headers).
 
-    **Devices and leases**: a torrent stays on the server while a device holds it. Adding it,
-    streaming its files and `POST /torrents/{infoHash}/keepalive` take or refresh the calling device's
-    lease; `DELETE /torrents/{infoHash}` releases it. The torrent stops 30 s after the last lease is
-    gone (its data is deleted unless the server keeps downloads). A lease with no request for the
+    **Media refs**: every playable file has a ref (`TorrentFile.ref`; files on disk later from the
+    play sources), and `/media/{ref}` streams, probes and transcodes it, wherever it is. Refs are
+    opaque: use the ones the server gives. The `/torrents/{infoHash}/files|probe|keyframe|transcode/{path}`
+    routes are aliases kept for API v1 clients.
+
+    **Devices and leases**: a torrent stays running while a device holds it. Adding it,
+    streaming its files (`/media/{ref}` or the torrent routes) and the keepalives take or refresh the
+    calling device's lease; `DELETE /torrents/{infoHash}` (or `DELETE /media/{ref}`) releases it. A
+    `stream` torrent pauses 30 s after the last lease is gone (its data is kept: only the admin
+    deletes downloads). A file on disk has leases too (Activity), with nothing to stop. A lease with no request for the
     server's idle timeout (10 min by default) is dropped, so players send a keepalive every minute
     while open, paused or not. A paired device is the one its token names; a local client (no token)
     names its device with the `X-Playpex-Device` header or the `device` query parameter (media URLs),
@@ -84,8 +90,10 @@ tags:
     description: The dashboard's routes (admin session)
   - name: events
     description: Real-time events (WebSocket)
+  - name: media
+    description: Any playable file by its media ref (a torrent's file or a file on disk), byte-range streaming, probe, transcode
   - name: torrents
-    description: The player's torrents and byte-range streaming
+    description: The player's torrents (and their media routes, aliases of /media)
   - name: downloads
     description: Every torrent the server keeps (running or not), managed like a torrent client
   - name: sessions
@@ -100,6 +108,8 @@ tags:
   - name: profiles
   - name: library
     description: One profile's watch list, playback progress and history
+  - name: media-library
+    description: 'The server''s media library (admin): folders of video files, scans, matches to TMDB'
   - name: settings
     description: User settings (per device and per profile), keys in @playpex/protocol settings.js
   - name: trailers
@@ -758,6 +768,276 @@ paths:
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
 
+  # ── media library (admin; docs/media-server-plan.md §5) ────────────────────
+  /admin/library:
+    get:
+      tags: [media-library]
+      operationId: getLibrary
+      summary: The library's folders (with file counts and scan state) and the scanner's queue
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Library
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryView' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/library/folders:
+    post:
+      tags: [media-library]
+      operationId: addLibraryFolder
+      summary: Add a folder of video files (its realpath is kept) and scan it
+      description: |
+        400 when it isn't a readable folder, 409 when it is in the library already, inside one of its folders or
+        around one. Nothing on disk is ever written or deleted.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddLibraryFolderRequest' }
+      responses:
+        '201':
+          description: The folder
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFolder' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/library/folders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [media-library]
+      operationId: updateLibraryFolder
+      summary: Change a folder's kind, audience or DLNA flag (a new kind rescans it, matching unmatched files again)
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind: { $ref: '#/components/schemas/LibraryFolderKind' }
+                audience: { $ref: '#/components/schemas/LibraryAudience' }
+                dlna: { type: boolean }
+      responses:
+        '200':
+          description: The folder
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFolder' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [media-library]
+      operationId: removeLibraryFolder
+      summary: Forget a folder and its files (nothing on disk is deleted); 409 for the built-in download folder
+      security:
+        - adminSession: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/library/scan:
+    post:
+      tags: [media-library]
+      operationId: scanLibrary
+      summary: Queue a scan of one folder, or of all
+      description: |
+        Unchanged files (same size and modification time) are not probed or matched again. `force` also matches
+        unmatched files again and probes files that couldn't be probed. Progress arrives as `library.scan` events.
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                folderId: { type: string, description: 'Omitted: every folder' }
+                force: { type: boolean }
+      responses:
+        '200':
+          description: The scanner's state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryScanStatus' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/library/files:
+    get:
+      tags: [media-library]
+      operationId: listLibraryFiles
+      summary: The library's files, newest first, with what each is
+      security:
+        - adminSession: []
+      parameters:
+        - { name: folder, in: query, required: false, schema: { type: string } }
+        - { name: state, in: query, required: false, schema: { $ref: '#/components/schemas/LibraryFileState' } }
+        - { name: item, in: query, required: false, schema: { type: string }, description: 'Files of one item' }
+        - { name: q, in: query, required: false, schema: { type: string }, description: 'Part of the path or of the matched title' }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: offset, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: Files
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files, total]
+                properties:
+                  files: { type: array, items: { $ref: '#/components/schemas/LibraryFile' } }
+                  total: { type: integer }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/library/files/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [media-library]
+      operationId: getLibraryFile
+      summary: One file
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFile' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/library/files/{id}/match:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [media-library]
+      operationId: matchLibraryFile
+      summary: Say what a file is (kept by rescans); 400 when TMDB has no such movie or episode
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LibraryMatch' }
+      responses:
+        '200':
+          description: The file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFile' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [media-library]
+      operationId: unmatchLibraryFile
+      summary: Forget a file's match (the next scan matches it again)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFile' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/library/files/{id}/ignored:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [media-library]
+      operationId: ignoreLibraryFile
+      summary: Ignore a file (never matched nor listed to clients) or bring it back
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ignored]
+              properties:
+                ignored: { type: boolean }
+      responses:
+        '200':
+          description: The file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LibraryFile' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/library/search:
+    get:
+      tags: [media-library]
+      operationId: searchLibraryCatalog
+      summary: Search TMDB for a movie or a show (to fix a match)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: kind, in: query, required: true, schema: { type: string, enum: [movie, tv] } }
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: year, in: query, required: false, schema: { type: integer } }
+      responses:
+        '200':
+          description: Up to 20 results, TMDB's order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [tmdbId, title, year, overview, posterPath]
+                      properties:
+                        tmdbId: { type: integer }
+                        title: { type: string }
+                        year: { type: [integer, 'null'] }
+                        overview: { type: [string, 'null'] }
+                        posterPath: { type: [string, 'null'] }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Error' }
+  /admin/fs:
+    get:
+      tags: [media-library]
+      operationId: browseFolders
+      summary: The server's folders, to pick a library folder (directories only, no hidden ones, no file names)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: path, in: query, required: false, schema: { type: string }, description: 'Absolute; omitted: only `places`' }
+      responses:
+        '200':
+          description: A folder's subfolders
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderListing' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ── events ──────────────────────────────────────────────────────────────────
   /events:
     get:
@@ -769,7 +1049,7 @@ paths:
         `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
         `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
         at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
-        `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. `?topics=session,torrent.stats` keeps
+        `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`). `?topics=session,torrent.stats` keeps
         topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
         from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
       parameters:
@@ -957,7 +1237,7 @@ paths:
       operationId: streamFile
       summary: Stream a file (HTTP byte ranges). Only this file of a `stream` torrent is downloaded from then on.
       description: |
-        Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
+        Alias of `GET /media/{ref}` (the file's `ref`) for API v1 clients. Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
         fetched early, where MKV keeps its index. Media elements can use the URL directly. A stopped
         torrent starts again (503 `BUSY` past the limit), unless the file is finished on disk: then it
         is read from disk.
@@ -983,7 +1263,7 @@ paths:
     get:
       tags: [torrents]
       operationId: probeFile
-      summary: Codecs and duration of a file (ffprobe)
+      summary: Codecs and duration of a file (ffprobe); alias of /media/{ref}/probe
       responses:
         '200':
           description: Probe result
@@ -1001,7 +1281,7 @@ paths:
     get:
       tags: [torrents]
       operationId: getKeyframe
-      summary: Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it)
+      summary: Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it); alias of /media/{ref}/keyframe
       parameters:
         - { name: t, in: query, required: true, schema: { type: number, minimum: 0 } }
       responses:
@@ -1023,7 +1303,7 @@ paths:
     get:
       tags: [torrents]
       operationId: transcodeFile
-      summary: The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
+      summary: The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`; alias of /media/{ref}/transcode
       description: Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
       parameters:
         - { name: t, in: query, required: false, schema: { type: number, minimum: 0, default: 0 } }
@@ -1039,6 +1319,171 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+
+  # ── media (any file by its media ref) ───────────────────────────────────────
+  /media/{ref}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: streamMedia
+      summary: Stream a file by its media ref (HTTP byte ranges)
+      description: |
+        A torrent's file (`TorrentFile.ref`) or a file on disk. Supports `Range` (answers 206); media
+        elements can use the URL directly. Takes or refreshes the calling device's lease (on the
+        torrent, or on the disk file). A torrent's file: as `GET /torrents/{infoHash}/files/{path}` (a
+        stopped torrent starts again, 503 `BUSY` past the limit, unless the file is finished on disk).
+        A disk file of an adults-only library folder answers 403 `FORBIDDEN` to a kids profile
+        (`profile`, else the profile of the device's last keepalive).
+      parameters:
+        - { name: Range, in: header, required: false, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Media' }
+        '206': { $ref: '#/components/responses/Media' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Busy' }
+    head:
+      tags: [media]
+      operationId: headMedia
+      responses:
+        '200': { description: 'Length and type of the file' }
+        '206': { description: 'Length of the range' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [media]
+      operationId: releaseMedia
+      summary: Release the calling device's lease (leaving the player)
+      description: For a torrent's file, the same as `DELETE /torrents/{infoHash}`. Never deletes anything.
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/probe:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: probeMedia
+      summary: Codecs and duration of a file (ffprobe)
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProbeResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /media/{ref}/keyframe:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: getMediaKeyframe
+      summary: Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it)
+      parameters:
+        - { name: t, in: query, required: true, schema: { type: number, minimum: 0 } }
+      responses:
+        '200':
+          description: Time in seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [time]
+                properties:
+                  time: { type: number }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/transcode:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: transcodeMedia
+      summary: The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
+      description: Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
+      parameters:
+        - { name: t, in: query, required: false, schema: { type: number, minimum: 0, default: 0 } }
+        - { name: audio, in: query, required: false, description: 'Audio track index (ProbeResult.audio[].index)', schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: Matroska stream
+          content:
+            video/x-matroska: {}
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503':
+          description: '`BUSY` (the server runs its maximum of transcodes; a new one from the same device and file replaces the previous) or `TRANSCODER_UNAVAILABLE`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /media/{ref}/subtitles:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: listMediaSubtitles
+      summary: Subtitle files next to a file on disk (`Movie.en.srt`, `Subs/…`); empty for a torrent's file
+      responses:
+        '200':
+          description: Sidecar subtitles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [subtitles]
+                properties:
+                  subtitles: { type: array, items: { $ref: '#/components/schemas/MediaSubtitle' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/subtitles/{index}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Profile'
+      - { name: index, in: path, required: true, schema: { type: integer, minimum: 0 } }
+    get:
+      tags: [media]
+      operationId: getMediaSubtitle
+      summary: One sidecar subtitle as WebVTT (for `<track>`)
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt:
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/keepalive:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    post:
+      tags: [media]
+      operationId: keepMedia
+      summary: Refresh the calling device's lease (every minute while a player is open), with what it plays
+      description: For a torrent's file, the same as `POST /torrents/{infoHash}/keepalive`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeepaliveRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # ── downloads ───────────────────────────────────────────────────────────────
   /downloads:
@@ -1976,6 +2421,18 @@ components:
       required: false
       description: '`<name>/<version>; api=<n>` — shown to the admin next to the pairing request'
       schema: { type: string }
+    MediaRef:
+      name: ref
+      in: path
+      required: true
+      description: A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN)
+      schema: { type: string, pattern: '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$' }
+    Profile:
+      name: profile
+      in: query
+      required: false
+      description: The profile watching (files of adults-only library folders are refused to kids profiles)
+      schema: { type: string }
     FilePath:
       name: path
       in: path
@@ -2086,6 +2543,11 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Invalid:
       description: Bad parameters or body (`INVALID`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Not allowed (`FORBIDDEN`)
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -2223,7 +2685,7 @@ components:
             episode: { type: integer, minimum: 0 }
     Session:
       type: object
-      required: [id, deviceId, deviceName, paired, client, address, infoHash, torrentName, file, method, streaming, since, lastActivity, playback, torrent]
+      required: [id, deviceId, deviceName, paired, client, address, infoHash, ref, torrentName, file, method, streaming, since, lastActivity, playback, torrent]
       properties:
         id: { type: string }
         deviceId: { type: string, description: 'A paired device''s id, else what a local client named itself (or addr:<ip>)' }
@@ -2231,9 +2693,10 @@ components:
         paired: { type: boolean }
         client: { type: [string, 'null'], description: '<name>/<version> from X-Playpex-Client' }
         address: { type: string }
-        infoHash: { type: string }
-        torrentName: { type: [string, 'null'], description: 'null until the metadata has arrived' }
-        file: { type: [string, 'null'], description: 'Path of the file being played' }
+        infoHash: { type: [string, 'null'], description: 'The torrent held; null for a file on disk' }
+        ref: { type: [string, 'null'], description: 'Media ref of the file last streamed (null before the first stream)' }
+        torrentName: { type: [string, 'null'], description: 'null until the metadata has arrived, and for a file on disk' }
+        file: { type: [string, 'null'], description: 'Path of the file being played (in the torrent, or in its library folder)' }
         method: { type: [string, 'null'], enum: [direct, audio-transcode, null] }
         streaming: { type: boolean, description: 'A media response is open right now' }
         since: { type: string, format: date-time }
@@ -2319,10 +2782,11 @@ components:
               type: [array, 'null']
               items:
                 type: object
-                required: [name, path, size, offset, selected, doneBytes]
+                required: [name, path, ref, size, offset, selected, doneBytes]
                 properties:
                   name: { type: string }
                   path: { type: string }
+                  ref: { type: string, description: 'Media ref (GET /media/{ref})' }
                   size: { type: number }
                   offset: { type: number }
                   selected: { type: boolean }
@@ -2344,6 +2808,180 @@ components:
             episode: { type: integer, minimum: 0 }
         title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
         profileId: { type: string }
+    # ── media library
+    LibraryFolderKind: { type: string, enum: [movies, shows, mixed, other], description: 'What to match its files as (other: never matched)' }
+    LibraryAudience: { type: string, enum: [everyone, adults], description: 'adults: never for kids profiles or over DLNA' }
+    LibraryFileState: { type: string, enum: [ok, missing, unmatched, ignored] }
+    AddLibraryFolderRequest:
+      type: object
+      required: [path, kind]
+      properties:
+        path: { type: string, description: 'Absolute path on the server' }
+        kind: { $ref: '#/components/schemas/LibraryFolderKind' }
+        audience: { $ref: '#/components/schemas/LibraryAudience' }
+        dlna: { type: boolean }
+    LibraryFolder:
+      type: object
+      required: [id, path, kind, audience, dlna, builtin, status, addedAt, lastScanAt, counts, scanning, queued]
+      properties:
+        id: { type: string }
+        path: { type: string }
+        kind: { $ref: '#/components/schemas/LibraryFolderKind' }
+        audience: { $ref: '#/components/schemas/LibraryAudience' }
+        dlna: { type: boolean }
+        builtin: { type: boolean, description: 'The download directory: added by the server, not removable' }
+        status: { type: string, description: 'ok · scanning · missing (unreachable: its files are kept 7 days) · error: <message>' }
+        addedAt: { type: string, format: date-time }
+        lastScanAt: { type: [string, 'null'], format: date-time }
+        counts:
+          type: object
+          required: [ok, missing, unmatched, ignored]
+          properties:
+            ok: { type: integer }
+            missing: { type: integer }
+            unmatched: { type: integer }
+            ignored: { type: integer }
+        scanning: { type: boolean }
+        queued: { type: boolean }
+    LibraryScanStatus:
+      type: object
+      required: [current, queued]
+      properties:
+        current:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/LibraryScanProgress'
+        queued: { type: array, items: { type: string }, description: 'Folder ids waiting' }
+    LibraryScanProgress:
+      type: object
+      required: [folderId]
+      properties:
+        folderId: { type: string }
+        total: { type: integer, description: 'New or changed files to probe and match' }
+        processed: { type: integer }
+        added: { type: integer }
+        changed: { type: integer }
+        missing: { type: integer }
+        matched: { type: integer }
+        unmatched: { type: integer }
+    LibraryScanEvent:
+      description: '`data` of `library.scan` (admin): a scan started, progressed (every 25 files), ended'
+      allOf:
+        - $ref: '#/components/schemas/LibraryScanProgress'
+        - type: object
+          required: [state]
+          properties:
+            state: { type: string, enum: [scanning, done, missing, error] }
+            error: { type: string }
+    LibraryView:
+      type: object
+      required: [folders, scan]
+      properties:
+        folders: { type: array, items: { $ref: '#/components/schemas/LibraryFolder' } }
+        scan: { $ref: '#/components/schemas/LibraryScanStatus' }
+    LibraryItem:
+      type: object
+      description: What a file is. For an episode, `tmdbId` is the episode's, `imdbId` the show's.
+      required: [id, kind, tmdbId, showTmdbId, season, episode, imdbId, title, episodeTitle, year, artwork]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [movie, episode] }
+        tmdbId: { type: [integer, 'null'] }
+        showTmdbId: { type: [integer, 'null'] }
+        season: { type: [integer, 'null'] }
+        episode: { type: [integer, 'null'] }
+        imdbId: { type: [string, 'null'] }
+        title: { type: [string, 'null'], description: "The movie's, or the show's" }
+        episodeTitle: { type: [string, 'null'] }
+        year: { type: [integer, 'null'] }
+        artwork:
+          type: [object, 'null']
+          properties:
+            posterPath: { type: [string, 'null'] }
+            backdropPath: { type: [string, 'null'] }
+            stillPath: { type: [string, 'null'] }
+    LibraryFile:
+      type: object
+      required: [id, ref, folderId, relPath, size, mtime, state, matchedBy, addedAt, missingSince, parse, probe, subtitles, item]
+      properties:
+        id: { type: string }
+        ref: { type: string, description: 'Media ref: GET /media/{ref} streams it' }
+        folderId: { type: string }
+        relPath: { type: string, description: 'Inside its folder, / separated' }
+        size: { type: number }
+        mtime: { type: string, format: date-time }
+        state: { $ref: '#/components/schemas/LibraryFileState' }
+        matchedBy: { type: [string, 'null'], enum: [auto, nfo, admin, null], description: 'admin: kept by rescans' }
+        addedAt: { type: string, format: date-time }
+        missingSince: { type: [string, 'null'], format: date-time }
+        parse:
+          type: [object, 'null']
+          description: What the path says (kind, title, year, season, episode, episodeEnd, resolution, source, codec, tmdbId, imdbId)
+        probe:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ProbeResult'
+        subtitles:
+          type: array
+          items:
+            type: object
+            required: [index, language, forced, sdh, relPath]
+            properties:
+              index: { type: integer }
+              language: { type: [string, 'null'] }
+              forced: { type: boolean }
+              sdh: { type: boolean }
+              relPath: { type: string }
+        item:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/LibraryItem'
+    LibraryMatch:
+      oneOf:
+        - type: object
+          required: [kind, tmdbId]
+          properties:
+            kind: { const: movie }
+            tmdbId: { type: integer, minimum: 1 }
+        - type: object
+          required: [kind, showTmdbId, season, episode]
+          properties:
+            kind: { const: episode }
+            showTmdbId: { type: integer, minimum: 1 }
+            season: { type: integer, minimum: 0 }
+            episode: { type: integer, minimum: 1 }
+    FolderListing:
+      type: object
+      required: [path, parent, dirs, places]
+      properties:
+        path: { type: [string, 'null'], description: 'The folder listed (its realpath); null without ?path=' }
+        parent: { type: [string, 'null'] }
+        dirs:
+          type: array
+          items:
+            type: object
+            required: [name, path]
+            properties:
+              name: { type: string }
+              path: { type: string }
+        places:
+          type: array
+          description: Where to start (home, the download directory, the file system's roots or drives)
+          items:
+            type: object
+            required: [name, path]
+            properties:
+              name: { type: string }
+              path: { type: string }
+    MediaSubtitle:
+      type: object
+      required: [index, language, languageName, forced, sdh]
+      properties:
+        index: { type: integer, description: 'GET /media/{ref}/subtitles/{index}' }
+        language: { type: [string, 'null'], description: 'ISO 639-1 when known' }
+        languageName: { type: [string, 'null'] }
+        forced: { type: boolean }
+        sdh: { type: boolean }
     DownloadRemovedEvent:
       type: object
       description: '`data` of `download.removed`'
@@ -2351,11 +2989,12 @@ components:
         infoHash: { type: string }
     TorrentFile:
       type: object
-      required: [name, path, link, length, offset, selected]
+      required: [name, path, ref, link, length, offset, selected]
       properties:
         name: { type: string }
         path: { type: string }
-        link: { type: string, description: 'Stream URL path (append to the server origin): /api/v1/torrents/{infoHash}/files/{path}' }
+        ref: { type: string, description: 'Media ref: GET /media/{ref} streams it (also probe / keyframe / transcode)' }
+        link: { type: string, description: 'Stream URL path (append to the server origin): /api/v1/torrents/{infoHash}/files/{path} (an alias of /media/{ref})' }
         length: { type: number }
         offset: { type: number }
         selected: { type: boolean }
@@ -2389,6 +3028,9 @@ components:
       properties:
         duration: { type: [number, 'null'], description: 'Seconds' }
         video: { type: [string, 'null'], description: 'Codec, e.g. h264, hevc' }
+        width: { type: [integer, 'null'] }
+        height: { type: [integer, 'null'] }
+        hdr: { type: boolean, description: 'PQ (HDR10, Dolby Vision) or HLG transfer' }
         audio:
           type: array
           items:
@@ -2400,6 +3042,17 @@ components:
               title: { type: [string, 'null'] }
               channels: { type: integer }
               default: { type: boolean }
+        subtitles:
+          type: array
+          description: Subtitle streams inside the file (not played by the server yet)
+          items:
+            type: object
+            properties:
+              index: { type: integer }
+              codec: { type: [string, 'null'] }
+              language: { type: [string, 'null'] }
+              title: { type: [string, 'null'] }
+              forced: { type: boolean }
         transcode: { type: boolean, description: 'The default audio track needs /transcode to be heard in Chromium' }
 
     # ── catalog
@@ -3292,7 +3945,8 @@ components:
       properties:
         id: { type: string }
         deviceId: { type: string }
-        infoHash: { type: string }
+        infoHash: { type: [string, 'null'], description: 'null for a file on disk' }
+        ref: { type: [string, 'null'], description: 'Media ref of the file last streamed' }
     Event:
       type: object
       required: [topic, time, data]

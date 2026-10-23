@@ -10,7 +10,8 @@ var profilesService = require('./profiles'),
   ratingsService = require('./ratings'),
   recommendationsService = require('./recommendations'),
   settingsService = require('./settings'),
-  downloadsService = require('./downloads');
+  downloadsService = require('./downloads'),
+  libraryService = require('./library');
 
 /**
  * @param {import('../data/contracts').Repositories} repositories
@@ -31,7 +32,8 @@ function createServices(repositories, options) {
     ratings: ratingsService(repositories, shared),
     recommendations: recommendationsService(repositories, Object.assign({ catalog: options.catalog }, shared)),
     settings: settingsService(repositories, Object.assign({ publish: options.publish }, shared)),
-    downloads: downloadsService(repositories, shared)
+    downloads: downloadsService(repositories, shared),
+    library: libraryService(repositories, shared)
   };
 }
 

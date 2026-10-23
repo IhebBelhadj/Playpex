@@ -46,7 +46,7 @@ Until the metadata arrives the answer is only `{ "infoHash": "…" }`. Then it h
 
 ## 4. Choosing the file
 
-Each entry of `files[]`: `{ name, path, link, length, offset, selected }`.
+Each entry of `files[]`: `{ name, path, ref, link, length, offset, selected }`. `ref` is the file's **media ref**: everything you do with the file goes through `/media/{ref}` ([next section](#5-streaming)).
 
 - **A movie**: the largest file with a video container you can play. The TV app prefers `mp4` > `m4v` > `mkv` > `webm`, then size.
 - **An episode**: match `SxxEyy` in `path` (also `s2e5`, `2x05`; regex used by the TV app, with `S` and `E` replaced by the season and episode numbers: `(s0*S[ ._-]*e0*E|\b0*Sx0*E)(?!\d)`, case-insensitive). Season packs hold every episode of the season; a torrent with a single video file is that episode.
@@ -54,13 +54,15 @@ Each entry of `files[]`: `{ name, path, link, length, offset, selected }`.
 
 ## 5. Streaming
 
-First decide whether to play the file as it is or the server's transcoded stream ([next section](#choosing-direct-play-or-the-transcoded-stream)); both start from the file's `link`. The file's URL is the server's origin + `link`:
+First decide whether to play the file as it is or the server's transcoded stream ([next section](#choosing-direct-play-or-the-transcoded-stream)); both start from the file's media ref. The file's URL is the server's origin + `/api/v1/media/` + `ref`:
 
 ```
-http://192.168.1.20:28470/api/v1/torrents/dd8255ec…/files/Big%20Buck%20Bunny%2FBig%20Buck%20Bunny.mp4
+http://192.168.1.20:28470/api/v1/media/t_dd8255ec…_3f2a9c0d41b7e865
 ```
 
-- **Use `link` as given** (it is already URL-encoded); don't build it from `path` yourself.
+- **Refs are opaque**: use the one the server gives (`TorrentFile.ref`; files on the server's disk will come with theirs from the play sources, plan §6). A torrent's file ref is `t_<infoHash>_<16 hex>`, a file on disk `f_<id>`; the same routes serve both.
+- `/media/{ref}` (`/probe`, `/keyframe`, `/transcode`, `/keepalive`, `DELETE`) is the API from now on. The torrent routes (`link` = `/api/v1/torrents/{infoHash}/files/{path}` and its `probe/`, `keyframe/`, `transcode/` siblings) are aliases kept for API v1 clients and servers without refs: a client that meets a `TorrentFile` without `ref` (an older server) uses `link` as given (it is already URL-encoded; don't build it from `path`).
+- A file on disk in an adults-only library folder answers `403 FORBIDDEN` to a kids profile: send `profile=<profileId>` with media requests (or a `profileId` in the keepalive).
 - Give that URL to your media player with the token: an `Authorization: Bearer` header (ExoPlayer `DefaultHttpDataSource.setDefaultRequestProperties`, AVPlayer `AVURLAssetHTTPHeaderFieldsKey`, mpv `--http-header-fields`), or `access_token=<token>` in the query when the player can't set headers (HTML `<video>`). Local clients add `device=<deviceId>` instead. (Use `?` or `&` depending on whether the URL already has a query.)
 - The route answers `Range` requests with `206` and `HEAD` with the length, like a static file. Streaming a file **selects it**: from then on the server downloads only that file of the torrent, in the order the player asks for it, and fetches the file's last 2 MB early (where MKV keeps its index).
 - Start-up depends on the swarm: a few seconds on a healthy torrent, much longer on a poor one. Show progress from `/stats` while the player buffers.
@@ -72,15 +74,15 @@ Many releases carry Dolby (AC-3, E-AC-3), DTS or TrueHD audio. If your player de
 
 **Today the client decides**; a server-side decision per device is planned (plan §6.5: `GET …/files/{path}/playback`, from your declared `capabilities`).
 
-1. **Probe** the file: `GET /api/v1/torrents/{infoHash}/probe/{path}` (same path as the file's `link`, with `/probe/` instead of `/files/`):
+1. **Probe** the file: `GET /api/v1/media/{ref}/probe`:
    ```json
    { "duration": 2732.5, "video": "h264",
      "audio": [ { "index": 0, "codec": "eac3", "language": "eng", "title": null, "channels": 6, "default": true } ],
      "transcode": true }
    ```
-   `transcode: true` means "Chromium can't play the default audio track". Decide from `audio[].codec` against what your player decodes. Probing reads the start of the file through the torrent, so it can take a few seconds. `502 PROBE_FAILED` / `503 TRANSCODER_UNAVAILABLE`: play directly.
-2. **Transcoded stream**: `GET /api/v1/torrents/{infoHash}/transcode/{path}?t=<seconds>&audio=<index>` → live Matroska (`video/x-matroska`): video copied, audio AAC stereo, starting at `t`. `audio` = the `index` of the track to hear from the probe (the one with `default: true` unless the user chose another), not its position in the list.
-   - It is **not byte-seekable**. To seek: `GET /api/v1/torrents/{infoHash}/keyframe/{path}?t=<target>` → `{ "time": 1201.4 }` (the keyframe at or before the target, where video and audio both start), then request `/transcode/…?t=1201.4` again and treat it as starting at 1201.4 s: your player's position 0 is `time` in the file. Subtitles cues (file time) must be shifted by the same offset.
+   `transcode: true` means "Chromium can't play the default audio track". Decide from `audio[].codec` against what your player decodes. Probing a torrent's file still downloading reads its start through the torrent, so it can take a few seconds; a file on disk (or a finished download) is read directly. `502 PROBE_FAILED` / `503 TRANSCODER_UNAVAILABLE`: play directly.
+2. **Transcoded stream**: `GET /api/v1/media/{ref}/transcode?t=<seconds>&audio=<index>` → live Matroska (`video/x-matroska`): video copied, audio AAC stereo, starting at `t`. `audio` = the `index` of the track to hear from the probe (the one with `default: true` unless the user chose another), not its position in the list.
+   - It is **not byte-seekable**. To seek: `GET /api/v1/media/{ref}/keyframe?t=<target>` → `{ "time": 1201.4 }` (the keyframe at or before the target, where video and audio both start), then request `/transcode?t=1201.4` again and treat it as starting at 1201.4 s: your player's position 0 is `time` in the file. Subtitles cues (file time) must be shifted by the same offset.
    - The stream has no total duration: take it from the probe.
    - The server runs at most 2 transcodes at once (setting). A new transcode from the same device and file replaces the previous one (a seek), anything else past the limit gets `503 BUSY`.
 
@@ -90,18 +92,20 @@ Many releases carry Dolby (AC-3, E-AC-3), DTS or TrueHD audio. If your player de
 2. `GET /api/v1/subtitles/search?provider=&imdb_id=tt…&season=&episode=&languages=en,fr` → `{ provider, subtitles: [{ provider, ref, language, languageName, name }] }`. Languages are ISO 639-1. `unsupported: true` = this provider doesn't cover that kind of title.
 3. `GET /api/v1/subtitles/file?provider=&ref=&lang=` → **WebVTT** (`text/vtt`), whatever the original format or code page. Load it as a side track (`<track>`, ExoPlayer `SubtitleConfiguration`, AVPlayer needs it muxed or rendered by you). Add `&access_token=` when your player fetches it without your headers.
 
-Subtitles embedded in the file (MKV) are not extracted by the server.
+**Subtitle files next to a file on disk** (a library file: `Movie.en.srt`, `Subs/French.srt`, RARBG's `Subs/<name>/2_English.srt`): `GET /api/v1/media/{ref}/subtitles` → `{ subtitles: [{ index, language, languageName, forced, sdh }] }` (empty for a torrent's file), then `GET /api/v1/media/{ref}/subtitles/{index}` → WebVTT, like the providers' files. They need no provider and no network; offer them first.
+
+Subtitles embedded in the file (MKV) are not extracted by the server (the library's probe lists them, for later).
 
 ## Leases, keepalive and releasing
 
-The server keeps a torrent running while at least one device holds a **lease** on it; that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever. Every torrent is also a **download** the server keeps afterwards ([below](#downloads)): leases decide whether it runs, never whether it is deleted.
+The server keeps a torrent running while at least one device holds a **lease** on it (a file on disk has leases too, for the admin's Activity page, with nothing to start or stop); that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever. Every torrent is also a **download** the server keeps afterwards ([below](#downloads)): leases decide whether it runs, never whether it is deleted.
 
 | Request | Lease |
 |---|---|
 | `POST /torrents` | taken |
-| any `files/`, `probe/`, `keyframe/`, `transcode/` request | taken or refreshed; an open stream keeps it alive |
-| `POST /torrents/{infoHash}/keepalive` | refreshed |
-| `DELETE /torrents/{infoHash}` | **released** (`{ok: true}` even without a lease) |
+| any `/media/{ref}` request (stream, `probe`, `keyframe`, `transcode`), or the torrent aliases | taken or refreshed (on the torrent for a torrent's file: one lease per torrent, whatever the file); an open stream keeps it alive |
+| `POST /media/{ref}/keepalive` (= `POST /torrents/{infoHash}/keepalive`) | refreshed |
+| `DELETE /media/{ref}` (= `DELETE /torrents/{infoHash}`) | **released** (`{ok: true}` even without a lease) |
 
 - **While the player is open, paused or not, send a keepalive every 60 s.** A paused player makes no requests, and a lease idle for the server's timeout (10 min by default) is dropped. The body (all optional) is what the admin sees in Activity:
   ```json

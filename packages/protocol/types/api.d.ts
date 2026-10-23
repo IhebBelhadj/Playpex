@@ -562,6 +562,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The library's folders (with file counts and scan state) and the scanner's queue */
+        get: operations["getLibrary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a folder of video files (its realpath is kept) and scan it
+         * @description 400 when it isn't a readable folder, 409 when it is in the library already, inside one of its folders or
+         *     around one. Nothing on disk is ever written or deleted.
+         */
+        post: operations["addLibraryFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/folders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget a folder and its files (nothing on disk is deleted); 409 for the built-in download folder */
+        delete: operations["removeLibraryFolder"];
+        options?: never;
+        head?: never;
+        /** Change a folder's kind, audience or DLNA flag (a new kind rescans it, matching unmatched files again) */
+        patch: operations["updateLibraryFolder"];
+        trace?: never;
+    };
+    "/admin/library/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a scan of one folder, or of all
+         * @description Unchanged files (same size and modification time) are not probed or matched again. `force` also matches
+         *     unmatched files again and probes files that couldn't be probed. Progress arrives as `library.scan` events.
+         */
+        post: operations["scanLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The library's files, newest first, with what each is */
+        get: operations["listLibraryFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** One file */
+        get: operations["getLibraryFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/files/{id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Say what a file is (kept by rescans); 400 when TMDB has no such movie or episode */
+        put: operations["matchLibraryFile"];
+        post?: never;
+        /** Forget a file's match (the next scan matches it again) */
+        delete: operations["unmatchLibraryFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/files/{id}/ignored": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Ignore a file (never matched nor listed to clients) or bring it back */
+        put: operations["ignoreLibraryFile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/library/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search TMDB for a movie or a show (to fix a match) */
+        get: operations["searchLibraryCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/fs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The server's folders, to pick a library folder (directories only, no hidden ones, no file names) */
+        get: operations["browseFolders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -575,7 +763,7 @@ export interface paths {
          *     `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
          *     `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
          *     at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
-         *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. `?topics=session,torrent.stats` keeps
+         *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`). `?topics=session,torrent.stats` keeps
          *     topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
          *     from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
          */
@@ -825,7 +1013,7 @@ export interface paths {
         };
         /**
          * Stream a file (HTTP byte ranges). Only this file of a `stream` torrent is downloaded from then on.
-         * @description Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
+         * @description Alias of `GET /media/{ref}` (the file's `ref`) for API v1 clients. Use the `link` of a `TorrentFile`. Supports `Range` (answers 206); the end of the file is
          *     fetched early, where MKV keeps its index. Media elements can use the URL directly. A stopped
          *     torrent starts again (503 `BUSY` past the limit), unless the file is finished on disk: then it
          *     is read from disk.
@@ -857,7 +1045,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Codecs and duration of a file (ffprobe) */
+        /** Codecs and duration of a file (ffprobe); alias of /media/{ref}/probe */
         get: operations["probeFile"];
         put?: never;
         post?: never;
@@ -885,7 +1073,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it) */
+        /** Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it); alias of /media/{ref}/keyframe */
         get: operations["getKeyframe"];
         put?: never;
         post?: never;
@@ -914,12 +1102,222 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
+         * The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`; alias of /media/{ref}/transcode
          * @description Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
          */
         get: operations["transcodeFile"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Stream a file by its media ref (HTTP byte ranges)
+         * @description A torrent's file (`TorrentFile.ref`) or a file on disk. Supports `Range` (answers 206); media
+         *     elements can use the URL directly. Takes or refreshes the calling device's lease (on the
+         *     torrent, or on the disk file). A torrent's file: as `GET /torrents/{infoHash}/files/{path}` (a
+         *     stopped torrent starts again, 503 `BUSY` past the limit, unless the file is finished on disk).
+         *     A disk file of an adults-only library folder answers 403 `FORBIDDEN` to a kids profile
+         *     (`profile`, else the profile of the device's last keepalive).
+         */
+        get: operations["streamMedia"];
+        put?: never;
+        post?: never;
+        /**
+         * Release the calling device's lease (leaving the player)
+         * @description For a torrent's file, the same as `DELETE /torrents/{infoHash}`. Never deletes anything.
+         */
+        delete: operations["releaseMedia"];
+        options?: never;
+        head: operations["headMedia"];
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/probe": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /** Codecs and duration of a file (ffprobe) */
+        get: operations["probeMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/keyframe": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /** Where a transcoded stream asked to start at `t` really starts (the keyframe at or before it) */
+        get: operations["getMediaKeyframe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/transcode": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
+         * @description Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
+         */
+        get: operations["transcodeMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/subtitles": {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /** Subtitle files next to a file on disk (`Movie.en.srt`, `Subs/…`); empty for a torrent's file */
+        get: operations["listMediaSubtitles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/subtitles/{index}": {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                index: number;
+            };
+            cookie?: never;
+        };
+        /** One sidecar subtitle as WebVTT (for `<track>`) */
+        get: operations["getMediaSubtitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/keepalive": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh the calling device's lease (every minute while a player is open), with what it plays
+         * @description For a torrent's file, the same as `POST /torrents/{infoHash}/keepalive`.
+         */
+        post: operations["keepMedia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1810,10 +2208,13 @@ export interface components {
             /** @description <name>/<version> from X-Playpex-Client */
             client: string | null;
             address: string;
-            infoHash: string;
-            /** @description null until the metadata has arrived */
+            /** @description The torrent held; null for a file on disk */
+            infoHash: string | null;
+            /** @description Media ref of the file last streamed (null before the first stream) */
+            ref: string | null;
+            /** @description null until the metadata has arrived, and for a file on disk */
             torrentName: string | null;
-            /** @description Path of the file being played */
+            /** @description Path of the file being played (in the torrent, or in its library folder) */
             file: string | null;
             /** @enum {string|null} */
             method: "direct" | "audio-transcode" | null;
@@ -1909,6 +2310,8 @@ export interface components {
             files: {
                 name: string;
                 path: string;
+                /** @description Media ref (GET /media/{ref}) */
+                ref: string;
                 size: number;
                 offset: number;
                 selected: boolean;
@@ -1932,6 +2335,160 @@ export interface components {
             title?: string;
             profileId?: string;
         };
+        /**
+         * @description What to match its files as (other: never matched)
+         * @enum {string}
+         */
+        LibraryFolderKind: "movies" | "shows" | "mixed" | "other";
+        /**
+         * @description adults: never for kids profiles or over DLNA
+         * @enum {string}
+         */
+        LibraryAudience: "everyone" | "adults";
+        /** @enum {string} */
+        LibraryFileState: "ok" | "missing" | "unmatched" | "ignored";
+        AddLibraryFolderRequest: {
+            /** @description Absolute path on the server */
+            path: string;
+            kind: components["schemas"]["LibraryFolderKind"];
+            audience?: components["schemas"]["LibraryAudience"];
+            dlna?: boolean;
+        };
+        LibraryFolder: {
+            id: string;
+            path: string;
+            kind: components["schemas"]["LibraryFolderKind"];
+            audience: components["schemas"]["LibraryAudience"];
+            dlna: boolean;
+            /** @description The download directory: added by the server, not removable */
+            builtin: boolean;
+            /** @description ok · scanning · missing (unreachable: its files are kept 7 days) · error: <message> */
+            status: string;
+            /** Format: date-time */
+            addedAt: string;
+            /** Format: date-time */
+            lastScanAt: string | null;
+            counts: {
+                ok: number;
+                missing: number;
+                unmatched: number;
+                ignored: number;
+            };
+            scanning: boolean;
+            queued: boolean;
+        };
+        LibraryScanStatus: {
+            current: null | components["schemas"]["LibraryScanProgress"];
+            /** @description Folder ids waiting */
+            queued: string[];
+        };
+        LibraryScanProgress: {
+            folderId: string;
+            /** @description New or changed files to probe and match */
+            total?: number;
+            processed?: number;
+            added?: number;
+            changed?: number;
+            missing?: number;
+            matched?: number;
+            unmatched?: number;
+        };
+        /** @description `data` of `library.scan` (admin): a scan started, progressed (every 25 files), ended */
+        LibraryScanEvent: components["schemas"]["LibraryScanProgress"] & {
+            /** @enum {string} */
+            state: "scanning" | "done" | "missing" | "error";
+            error?: string;
+        };
+        LibraryView: {
+            folders: components["schemas"]["LibraryFolder"][];
+            scan: components["schemas"]["LibraryScanStatus"];
+        };
+        /** @description What a file is. For an episode, `tmdbId` is the episode's, `imdbId` the show's. */
+        LibraryItem: {
+            id: string;
+            /** @enum {string} */
+            kind: "movie" | "episode";
+            tmdbId: number | null;
+            showTmdbId: number | null;
+            season: number | null;
+            episode: number | null;
+            imdbId: string | null;
+            /** @description The movie's, or the show's */
+            title: string | null;
+            episodeTitle: string | null;
+            year: number | null;
+            artwork: {
+                posterPath?: string | null;
+                backdropPath?: string | null;
+                stillPath?: string | null;
+            } | null;
+        };
+        LibraryFile: {
+            id: string;
+            /** @description Media ref: GET /media/{ref} streams it */
+            ref: string;
+            folderId: string;
+            /** @description Inside its folder, / separated */
+            relPath: string;
+            size: number;
+            /** Format: date-time */
+            mtime: string;
+            state: components["schemas"]["LibraryFileState"];
+            /**
+             * @description admin: kept by rescans
+             * @enum {string|null}
+             */
+            matchedBy: "auto" | "nfo" | "admin" | null;
+            /** Format: date-time */
+            addedAt: string;
+            /** Format: date-time */
+            missingSince: string | null;
+            /** @description What the path says (kind, title, year, season, episode, episodeEnd, resolution, source, codec, tmdbId, imdbId) */
+            parse: Record<string, never> | null;
+            probe: null | components["schemas"]["ProbeResult"];
+            subtitles: {
+                index: number;
+                language: string | null;
+                forced: boolean;
+                sdh: boolean;
+                relPath: string;
+            }[];
+            item: null | components["schemas"]["LibraryItem"];
+        };
+        LibraryMatch: {
+            /** @constant */
+            kind: "movie";
+            tmdbId: number;
+        } | {
+            /** @constant */
+            kind: "episode";
+            showTmdbId: number;
+            season: number;
+            episode: number;
+        };
+        FolderListing: {
+            /** @description The folder listed (its realpath); null without ?path= */
+            path: string | null;
+            parent: string | null;
+            dirs: {
+                name: string;
+                path: string;
+            }[];
+            /** @description Where to start (home, the download directory, the file system's roots or drives) */
+            places: {
+                name: string;
+                path: string;
+            }[];
+        };
+        MediaSubtitle: {
+            /** @description GET /media/{ref}/subtitles/{index} */
+            index: number;
+            /** @description ISO 639-1 when known */
+            language: string | null;
+            languageName: string | null;
+            forced: boolean;
+            sdh: boolean;
+        };
         /** @description `data` of `download.removed` */
         DownloadRemovedEvent: {
             infoHash?: string;
@@ -1939,7 +2496,9 @@ export interface components {
         TorrentFile: {
             name: string;
             path: string;
-            /** @description Stream URL path (append to the server origin): /api/v1/torrents/{infoHash}/files/{path} */
+            /** @description Media ref: GET /media/{ref} streams it (also probe / keyframe / transcode) */
+            ref: string;
+            /** @description Stream URL path (append to the server origin): /api/v1/torrents/{infoHash}/files/{path} (an alias of /media/{ref}) */
             link: string;
             length: number;
             offset: number;
@@ -1973,6 +2532,10 @@ export interface components {
             duration: number | null;
             /** @description Codec, e.g. h264, hevc */
             video: string | null;
+            width?: number | null;
+            height?: number | null;
+            /** @description PQ (HDR10, Dolby Vision) or HLG transfer */
+            hdr?: boolean;
             audio: {
                 index?: number;
                 codec?: string;
@@ -1980,6 +2543,14 @@ export interface components {
                 title?: string | null;
                 channels?: number;
                 default?: boolean;
+            }[];
+            /** @description Subtitle streams inside the file (not played by the server yet) */
+            subtitles?: {
+                index?: number;
+                codec?: string | null;
+                language?: string | null;
+                title?: string | null;
+                forced?: boolean;
             }[];
             /** @description The default audio track needs /transcode to be heard in Chromium */
             transcode: boolean;
@@ -2792,7 +3363,10 @@ export interface components {
         SessionEndedEvent: {
             id?: string;
             deviceId?: string;
-            infoHash?: string;
+            /** @description null for a file on disk */
+            infoHash?: string | null;
+            /** @description Media ref of the file last streamed */
+            ref?: string | null;
         };
         Event: {
             /** @description server.status, torrent.stats, session.*, download.*, settings.changed, log, device.*, pairing.*, host.updated */
@@ -2853,6 +3427,15 @@ export interface components {
         };
         /** @description Bad parameters or body (`INVALID`) */
         Invalid: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Not allowed (`FORBIDDEN`) */
+        Forbidden: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2936,6 +3519,10 @@ export interface components {
         UserCode: string;
         /** @description `<name>/<version>; api=<n>` — shown to the admin next to the pairing request */
         ClientHeader: string;
+        /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+        MediaRef: string;
+        /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+        Profile: string;
         /** @description The file's `path`, URL-encoded (it may contain slashes) */
         FilePath: string;
         ImdbId: string;
@@ -3830,6 +4417,341 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
         };
     };
+    getLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Library */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryView"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    addLibraryFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddLibraryFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description The folder */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFolder"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            409: components["responses"]["Error"];
+        };
+    };
+    removeLibraryFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
+    updateLibraryFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kind?: components["schemas"]["LibraryFolderKind"];
+                    audience?: components["schemas"]["LibraryAudience"];
+                    dlna?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The folder */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFolder"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    scanLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Omitted: every folder */
+                    folderId?: string;
+                    force?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The scanner's state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryScanStatus"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listLibraryFiles: {
+        parameters: {
+            query?: {
+                folder?: string;
+                state?: components["schemas"]["LibraryFileState"];
+                /** @description Files of one item */
+                item?: string;
+                /** @description Part of the path or of the matched title */
+                q?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Files */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        files: components["schemas"]["LibraryFile"][];
+                        total: number;
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    getLibraryFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFile"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    matchLibraryFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LibraryMatch"];
+            };
+        };
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFile"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+            503: components["responses"]["Error"];
+        };
+    };
+    unmatchLibraryFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFile"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    ignoreLibraryFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ignored: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryFile"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    searchLibraryCatalog: {
+        parameters: {
+            query: {
+                kind: "movie" | "tv";
+                q: string;
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 20 results, TMDB's order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results: {
+                            tmdbId: number;
+                            title: string;
+                            year: number | null;
+                            overview: string | null;
+                            posterPath: string | null;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            502: components["responses"]["Upstream"];
+            503: components["responses"]["Error"];
+        };
+    };
+    browseFolders: {
+        parameters: {
+            query?: {
+                /** @description Absolute; omitted: only `places` */
+                path?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A folder's subfolders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderListing"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     events: {
         parameters: {
             query?: {
@@ -4292,6 +5214,308 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    streamMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: {
+                Range?: string;
+            };
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Media"];
+            206: components["responses"]["Media"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Busy"];
+        };
+    };
+    releaseMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    headMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Length and type of the file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Length of the range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    probeMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Probe result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeResult"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    getMediaKeyframe: {
+        parameters: {
+            query: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                t: number;
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Time in seconds */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        time: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    transcodeMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                t?: number;
+                /** @description Audio track index (ProbeResult.audio[].index) */
+                audio?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matroska stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/x-matroska": unknown;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `BUSY` (the server runs its maximum of transcodes; a new one from the same device and file replaces the previous) or `TRANSCODER_UNAVAILABLE` */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listMediaSubtitles: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sidecar subtitles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        subtitles: components["schemas"]["MediaSubtitle"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMediaSubtitle: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebVTT */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    keepMedia: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["KeepaliveRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["Ok"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listDownloads: {

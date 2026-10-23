@@ -16,7 +16,7 @@ Branch on `code`, show `error`. Some list routes add an empty list next to it (`
 | `DEVICE_REQUIRED` | 400 | the route needs to know the calling device: send `X-Playpex-Device` (or `?device=`); paired clients: send `deviceId` with `PUT /devices/me` ([settings](settings.md)) |
 | `PAIRING_REQUIRED` | 401 | no valid device token: pair, or pair again if it was revoked ([auth](auth.md)) |
 | `ADMIN_REQUIRED` | 401 | an admin-only route; not for clients |
-| `FORBIDDEN` | 403 | e.g. a wrong profile PIN |
+| `FORBIDDEN` | 403 | e.g. a wrong profile PIN, a file of an adults-only library folder for a kids profile |
 | `HOST_NOT_ALLOWED` | 403 | the `Host` header isn't this server (DNS-rebinding defence). Use the server's IP, `localhost`, its `.local` name, or a name the admin allowed (Settings › Network › Extra host names) |
 | `ORIGIN_NOT_ALLOWED` | 403 | a browser page from another origin tried to change something. Web clients must be served from an allowed origin (Settings › Network › Extra web origins) |
 | `NOT_FOUND` | 404 | unknown route, torrent, profile, file… |

@@ -200,6 +200,86 @@ var downloads = sqliteTable('downloads', {
   ];
 });
 
+// ── media library (lib/media, docs/media-server-plan.md §5) ─────────────────
+// Folders of video files the admin added, the files found in them, and what
+// each file is (a movie or an episode). Files are addressed by their id (media
+// ref `f_<id>`), never by a path from a client: the path is the folder's plus
+// `rel_path`, checked to stay inside the folder (lib/media).
+
+var FOLDER_KINDS = ['movies', 'shows', 'mixed', 'other'],
+  AUDIENCES = ['everyone', 'adults'],
+  FILE_STATES = ['ok', 'missing', 'unmatched', 'ignored'],
+  ITEM_KINDS = ['movie', 'episode'],
+  MATCHED_BY = ['auto', 'nfo', 'admin'];
+
+var libraryFolders = sqliteTable('library_folders', {
+  id: text('id').primaryKey(),
+  path: text('path').notNull().unique(),           // its realpath when added
+  kind: text('kind', { enum: FOLDER_KINDS }).notNull(),
+  audience: text('audience', { enum: AUDIENCES }).notNull().default('everyone'),
+  dlna: integer('dlna', { mode: 'boolean' }).notNull().default(false),
+  status: text('status').notNull().default('ok'),  // ok · scanning · missing · error: <message>
+  builtin: integer('builtin', { mode: 'boolean' }).notNull().default(false),   // the download dir
+  addedAt: timestamp('added_at').notNull(),
+  lastScanAt: timestamp('last_scan_at')
+}, function (table) {
+  return [
+    check('library_folders_kind_check', sql`${table.kind} IN ('movies', 'shows', 'mixed', 'other')`),
+    check('library_folders_audience_check', sql`${table.audience} IN ('everyone', 'adults')`)
+  ];
+});
+
+// What a file is: a movie (tmdb_id) or an episode (show_tmdb_id + season +
+// episode). One item can have several files (1080p + 4K).
+var mediaItems = sqliteTable('media_items', {
+  id: text('id').primaryKey(),
+  kind: text('kind', { enum: ITEM_KINDS }).notNull(),
+  tmdbId: integer('tmdb_id'),                      // the movie's, or the episode's
+  showTmdbId: integer('show_tmdb_id'),
+  season: integer('season'),
+  episode: integer('episode'),
+  imdbId: text('imdb_id'),
+  title: text('title'),                            // the movie's, or the show's
+  episodeTitle: text('episode_title'),
+  year: integer('year'),
+  artwork: text('artwork', { mode: 'json' }),      // { posterPath, backdropPath, stillPath }
+  matchedBy: text('matched_by', { enum: MATCHED_BY }).notNull()
+}, function (table) {
+  return [
+    index('media_items_movie').on(table.kind, table.tmdbId),
+    index('media_items_episode').on(table.showTmdbId, table.season, table.episode),
+    check('media_items_kind_check', sql`${table.kind} IN ('movie', 'episode')`),
+    check('media_items_matched_by_check', sql`${table.matchedBy} IN ('auto', 'nfo', 'admin')`)
+  ];
+});
+
+var mediaFiles = sqliteTable('media_files', {
+  id: text('id').primaryKey(),
+  folderId: text('folder_id').notNull().references(function () {
+    return libraryFolders.id;
+  }, { onDelete: 'cascade' }),
+  relPath: text('rel_path').notNull(),             // inside the folder, '/' separated
+  size: integer('size').notNull(),
+  mtime: timestamp('mtime').notNull(),
+  probe: text('probe', { mode: 'json' }),          // ffprobe's answer (lib/transcode.js#probe)
+  parse: text('parse', { mode: 'json' }),          // what the name says (title, year, season, episode…)
+  itemId: text('item_id').references(function () {
+    return mediaItems.id;
+  }, { onDelete: 'set null' }),
+  state: text('state', { enum: FILE_STATES }).notNull().default('unmatched'),
+  // how item_id was chosen (null: never matched); 'admin' survives rescans
+  matchedBy: text('matched_by', { enum: MATCHED_BY }),
+  subtitles: text('subtitles', { mode: 'json' }),  // sidecar files: [{ relPath, language, forced }]
+  addedAt: timestamp('added_at').notNull(),
+  missingSince: timestamp('missing_since')         // kept 7 days (an unplugged drive)
+}, function (table) {
+  return [
+    uniqueIndex('media_files_folder_path').on(table.folderId, table.relPath),
+    index('media_files_item').on(table.itemId),
+    check('media_files_state_check', sql`${table.state} IN ('ok', 'missing', 'unmatched', 'ignored')`)
+  ];
+});
+
 // ── auth (Better Auth, lib/auth) ─────────────────────────────────────────────
 // Tables of Better Auth's core and device-authorization plugin, in its field
 // names (the JS keys must match them; lib/auth maps its models onto these).
@@ -317,6 +397,9 @@ module.exports = {
   MEDIA_TYPES: MEDIA_TYPES,
   DOWNLOAD_STATES: DOWNLOAD_STATES,
   DOWNLOAD_INTENTS: DOWNLOAD_INTENTS,
+  FOLDER_KINDS: FOLDER_KINDS,
+  AUDIENCES: AUDIENCES,
+  FILE_STATES: FILE_STATES,
   profiles: profiles,
   watchlist: watchlist,
   progress: progress,
@@ -325,6 +408,9 @@ module.exports = {
   profileSettings: profileSettings,
   deviceSettings: deviceSettings,
   downloads: downloads,
+  libraryFolders: libraryFolders,
+  mediaItems: mediaItems,
+  mediaFiles: mediaFiles,
   authUser: authUser,
   authSession: authSession,
   authAccount: authAccount,

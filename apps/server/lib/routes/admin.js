@@ -61,6 +61,9 @@ router.post('/setup', authHttp.localOnly, function (req, res) {
 
 router.use(authHttp.requireAdmin);
 
+// The media library and the folder browser (lib/routes/adminLibrary.js)
+router.use(require('./adminLibrary'));
+
 // body: { currentPassword, newPassword }. Signs out every admin session.
 router.put('/password', function (req, res) {
   var body = req.body || {};

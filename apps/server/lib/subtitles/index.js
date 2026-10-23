@@ -108,5 +108,7 @@ function file(providerId, ref, language) {
 module.exports = {
   list: list,
   search: search,
-  file: file
+  file: file,
+  // a subtitle file's bytes → WebVTT text (lib/routes/media.js: sidecar files)
+  toVtt: function (buffer, language) { return toVtt(decode(buffer, language)); }
 };

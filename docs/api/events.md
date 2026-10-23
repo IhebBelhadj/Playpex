@@ -20,7 +20,7 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `torrent.stats` | every 2 s while torrents with a lease run | `[{ infoHash, peers, downloadSpeed, uploadSpeed, downloaded }]` (bytes, bytes/s) |
 | `session.started` | a device takes a lease on a torrent | a `Session` (see below) |
 | `session.updated` | a keepalive with a playback state arrives | a `Session` |
-| `session.ended` | the lease is released, reaped, or stopped by the admin | `{ id, deviceId, infoHash }` |
+| `session.ended` | the lease is released, reaped, or stopped by the admin | `{ id, deviceId, infoHash, ref }` (`infoHash` null for a file on disk; `ref` = the media ref last streamed) |
 | `download.added` | the server keeps a new torrent ([downloads](playback.md#downloads)) | a `Download` |
 | `download.updated` | a download's state changed (at once), or its progress (at most every 2 s) | a `Download` |
 | `download.removed` | the admin removed it (or "remove when watched") | `{ infoHash }` |
@@ -28,7 +28,7 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 
 Payload schemas: `ServerStatusEvent` (`torrents` = running ones), `TorrentStatsEvent`, `Session`, `SessionEndedEvent`, `Download`, `DownloadRemovedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).
 
-`Session` (schema in the spec): `{ id, deviceId, deviceName, paired, client, address, infoHash, torrentName, file, method ('direct' | 'audio-transcode'), streaming, since, lastActivity, playback (your last keepalive body), torrent: {peers, downloadSpeed, uploadSpeed, downloaded, length} }`.
+`Session` (schema in the spec): `{ id, deviceId, deviceName, paired, client, address, infoHash (null for a file on disk), ref (the media ref last streamed), torrentName, file, method ('direct' | 'audio-transcode'), streaming, since, lastActivity, playback (your last keepalive body), torrent: {peers, downloadSpeed, uploadSpeed, downloaded, length} }`.
 
 **Every client currently receives every device's sessions** (names, addresses, titles), not only its own; this may be narrowed to a device's own sessions later, so don't build features on other devices' sessions. To find yours, compare `deviceId` with your own id **as the server knows it**: for a paired device, the `id` of `GET /devices/me` (not the `deviceId` you sent in `PUT /devices/me`, which is stored as `clientDeviceId`); for a local client, the value of your `X-Playpex-Device` header.
 
@@ -36,4 +36,4 @@ A player can use `torrent.stats` for its buffering screen instead of polling `/s
 
 ## Admin-only topics
 
-Sent only to the dashboard's admin session: `log` (log lines), `device.paired`, `device.revoked`, `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`. Listed so you know they exist; device tokens never receive them.
+Sent only to the dashboard's admin session: `log` (log lines), `device.paired`, `device.revoked`, `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (the media library's scanner: a folder's scan started, progressed, ended). Listed so you know they exist; device tokens never receive them.

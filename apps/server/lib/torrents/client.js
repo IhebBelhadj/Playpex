@@ -38,6 +38,7 @@ var fs = require('fs'),
   errors = require('./errors'),
   files = require('./files'),
   trackers = require('../trackers'),
+  refs = require('../media/refs'),
   progressbar = require('../progressbar'),
   settings = require('../settings'),
   events = require('../events'),
@@ -627,6 +628,23 @@ function prepareStream(hash, filePath) {
   });
 }
 
+/**
+ * Where a finished file of a stopped download is on disk (ffmpeg reads it
+ * there, lib/media), or null while it needs the engine.
+ * @returns {Promise<string|null>}
+ */
+function diskPath(hash, filePath) {
+  return ready.then(function () {
+    var d = downloads[hash], file = d && fileOf(d, filePath);
+    if (!file) {
+      return null;
+    }
+    return onDisk(d, file).then(function (disk) {
+      return disk ? files.location(d.row.saveDir, file.path) : null;
+    });
+  });
+}
+
 /** The bytes start…end (inclusive) of a file: from disk for a finished file of a stopped download */
 function stream(hash, filePath, range) {
   return Promise.resolve().then(function () {
@@ -897,7 +915,7 @@ function filesOf(hash) {
   return d.meta.files.map(function (f) {
     var selected = !d.row.selectedFiles || d.row.selectedFiles.indexOf(f.path) !== -1;
     return {
-      name: path.basename(f.path), path: f.path, size: f.size, offset: f.offset,
+      name: path.basename(f.path), path: f.path, ref: refs.torrent(d.row.infoHash, f.path), size: f.size, offset: f.offset,
       selected: selected,
       // a finished download's selected files are whole (edge pieces shared with
       // files not downloaded can't be counted from the pieces)
@@ -923,6 +941,7 @@ function torrent(hash) {
       return {
         name: f.name,
         path: f.path,
+        ref: f.ref,
         link: protocol.API_PREFIX + '/torrents/' + r.infoHash + '/files/' + encodeURIComponent(f.path),
         length: f.size,
         offset: f.offset,
@@ -991,7 +1010,7 @@ function owners(dir) {
     }
     files.topEntries(d.meta.files).forEach(function (top) {
       if (!all[top] || isActive(d)) {
-        all[top] = { infoHash: hash, name: d.meta.name, active: isActive(d) };
+        all[top] = { infoHash: hash, name: d.meta.name, active: isActive(d), done: isDone(d) };
       }
     });
   });
@@ -1204,6 +1223,7 @@ module.exports = {
   ready: function () { return ready; },
   add: add,
   prepareStream: prepareStream,
+  diskPath: diskPath,
   stream: stream,
   prefetchTail: prefetchTail,
   select: select,

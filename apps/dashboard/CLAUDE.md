@@ -16,8 +16,8 @@ The Playpex Media Server's admin web UI (plan §7, step 5): desktop web and phon
 src/main.tsx            QueryClient (a 401 anywhere → session cleared → /login), TooltipProvider, Toaster
 src/router.tsx          routes: /setup, /login, /docs (public, lazy: DocsLayout → /docs = guide index, /docs/:page = a chapter,
                         /docs/reference = the API reference), then RequireAdmin + AppLayout: / (Overview), /activity, /devices,
-                        /link (pairing's verification_uri; ?user_code= from the client's QR code), /downloads (?hash= opens a
-                        download's sheet), /storage, /logs,
+                        /link (pairing's verification_uri; ?user_code= from the client's QR code), /library (?file= opens a
+                        library file's sheet), /downloads (?hash= opens a download's sheet), /storage, /logs,
                         /settings[/:tab] (tabs = settings groups + desktop app (desktop host only) + account), /profiles, /about
 src/lib/api.ts          `api` (openapi-fetch client, baseUrl /api/v1, cookies), `unwrap()` → data or ApiError
                         ({error,code} / Better Auth {message,code} / RFC {error_description}), schema type aliases
@@ -43,7 +43,7 @@ src/pages/docs-reference.tsx  Scalar on `/api/v1/openapi.yaml`, its own lazy chu
 ```
 
 ## Conventions
-- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `host`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`. The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
+- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `pages/library.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
 - **API first**: a new page needs its route in `openapi.yaml` (+ `npm run generate -w packages/protocol`, server, contract test) before the UI; the types then flow here. Don't hand-write response types.
 - Theme tokens only (`bg-card`, `text-muted-foreground`, `text-success`, `text-warning`, `bg-destructive`…, defined in `src/index.css`); the accent (`--primary`) is the gold of the Playpex logo. Dark unless the OS prefers light (`index.html` script toggles `.dark`).
 - Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`).

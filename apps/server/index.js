@@ -46,6 +46,7 @@ var http = require('http'),
   auth = require('./lib/auth'),
   events = require('./lib/events'),
   discovery = require('./lib/discovery'),
+  library = require('./lib/library'),
   api = require('./lib/api');
 
 var log = logger.child('server');
@@ -142,6 +143,10 @@ function start(options) {
     running = { server: server, sockets: sockets, info: info };
     system.start(info);
     sessions.start();
+    // the library's scanner (option library: false = off, tests; else its start options)
+    if (!recovery && options.library !== false) {
+      library.start(Object.assign({ torrents: torrents }, options.library));
+    }
     // only when listening on the LAN: not the TV app's loopback fallback
     discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
     events.attach(server, {
@@ -203,7 +208,9 @@ function stop() {
   system.stop();
   sessions.stop();
   events.detach();
-  return discovery.stop().then(function () {
+  return library.stop().then(function () {
+    return discovery.stop();
+  }).then(function () {
     return torrents.close();
   }).then(function () {
     return new Promise(function (resolve) {

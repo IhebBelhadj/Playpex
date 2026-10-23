@@ -41,7 +41,9 @@ export interface DiscoveryReply {
   minApiVersion: number;
   version: string;
 }
-export type ErrorCode = components['schemas']['Error']['code'];
+/** What a media ref looks like (opaque to clients: they get refs from the server) */
+export declare const MEDIA_REF_PATTERN: string;
+export type ErrorCode =components['schemas']['Error']['code'];
 export declare const ERROR_CODES: { readonly [code in ErrorCode]: number };
 export declare function parseClientHeader(value: string | null | undefined):
   { name: string; version: string; api: number | null } | null;

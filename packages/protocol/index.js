@@ -53,6 +53,11 @@ var DISCOVERY = {
   INTERVAL_MS: 5000                      // how often a client asks again while it looks
 };
 
+// Media refs (media-server plan §3): the id the media routes (/media/{ref})
+// take, `t_<infoHash>_<16 hex>` for a file of a torrent, `f_<uuid>` for a file
+// on disk. Opaque to clients: they get refs from the server, never build them.
+var MEDIA_REF_PATTERN = '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$';
+
 // Every error answer is { error: <message for people>, code: <one of these> }
 var ERROR_CODES = {
   INVALID: 400,                  // bad parameters or body
@@ -112,6 +117,7 @@ module.exports = {
   DEFAULT_PORT: DEFAULT_PORT,
   DISCOVERY_PORT: DISCOVERY_PORT,
   DISCOVERY: DISCOVERY,
+  MEDIA_REF_PATTERN: MEDIA_REF_PATTERN,
   ERROR_CODES: ERROR_CODES,
   parseClientHeader: parseClientHeader,
   clientHeader: clientHeader

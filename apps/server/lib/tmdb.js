@@ -1,8 +1,10 @@
 'use strict';
 
 // Minimal TMDB client for the server (the UI calls TMDB directly). Used as the
-// recommendations "catalog". Key: TMDB_API_KEY (environment or the repo's .env,
-// loaded by server.js); without it every call rejects and recommendations are empty.
+// recommendations "catalog" and by the library's matching (lib/library/match.js).
+// Key: TMDB_API_KEY (environment or the repo's .env, loaded by server.js);
+// without it every call rejects (code PROVIDER_NOT_CONFIGURED) and
+// recommendations are empty.
 
 var axios = require('axios').default;
 var settings = require('./settings');
@@ -51,6 +53,49 @@ function recommendations(ref) {
   return results;
 }
 
+// GET <path> with params, cached 6 h (failures are not kept)
+function get(path, params) {
+  var key = path + '?' + JSON.stringify(params || {}),
+    cached = cache.get(key);
+  if (cached && cached.expires > Date.now()) {
+    return cached.results;
+  }
+  if (!settings.get('providers.tmdbApiKey')) {
+    var err = new Error('TMDB_API_KEY is not set');
+    err.code = 'PROVIDER_NOT_CONFIGURED';
+    return Promise.reject(err);
+  }
+  var results = axios.get(BASE + path, {
+    params: Object.assign({ api_key: settings.get('providers.tmdbApiKey'), language: 'en-US' }, params),
+    timeout: 15000
+  }).then(function (res) {
+    return res.data;
+  });
+  cache.set(key, { results: results, expires: Date.now() + CACHE_TTL });
+  results.catch(function () { cache.delete(key); });
+  return results;
+}
+
+function configured() {
+  return !!settings.get('providers.tmdbApiKey');
+}
+
+// search/movie · search/tv: the first page's results
+function search(mediaType, query, year) {
+  var params = { query: query, include_adult: false };
+  if (year) {
+    params[mediaType === 'movie' ? 'year' : 'first_air_date_year'] = year;
+  }
+  return get('/search/' + mediaType, params).then(function (data) { return data.results || []; });
+}
+
 module.exports = {
-  recommendations: recommendations
+  recommendations: recommendations,
+  configured: configured,
+  search: search,
+  movie: function (id) { return get('/movie/' + id, { append_to_response: 'external_ids' }); },
+  tv: function (id) { return get('/tv/' + id, { append_to_response: 'external_ids' }); },
+  season: function (id, season) { return get('/tv/' + id + '/season/' + season); },
+  // An IMDb / TVDB id → { movie_results, tv_results, tv_episode_results }
+  find: function (id, source) { return get('/find/' + id, { external_source: source || 'imdb_id' }); }
 };

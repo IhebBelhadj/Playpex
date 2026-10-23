@@ -75,6 +75,49 @@
  * @property {Date} addedAt
  * @property {Date|null} completedAt
  * @property {Date|null} lastActiveAt
+ *
+ * @typedef {object} LibraryFolder
+ *   A folder of video files in the library (docs/media-server-plan.md §5.1)
+ * @property {string} id
+ * @property {string} path               absolute, its realpath when added
+ * @property {'movies'|'shows'|'mixed'|'other'} kind
+ * @property {'everyone'|'adults'} audience   adults: never for kids profiles or DLNA
+ * @property {boolean} dlna
+ * @property {string} status             ok · scanning · missing · error: <message>
+ * @property {boolean} builtin           the download dir (added by the server, not removable)
+ * @property {Date} addedAt
+ * @property {Date|null} lastScanAt
+ *
+ * @typedef {object} MediaFile
+ *   A video file of a library folder (§5.2), addressed by its id (media ref f_<id>)
+ * @property {string} id
+ * @property {string} folderId
+ * @property {string} relPath            inside the folder, '/' separated
+ * @property {number} size
+ * @property {Date} mtime
+ * @property {object|null} probe
+ * @property {object|null} parse
+ * @property {string|null} itemId
+ * @property {'ok'|'missing'|'unmatched'|'ignored'} state
+ * @property {'auto'|'nfo'|'admin'|null} matchedBy   how itemId was chosen; admin survives rescans
+ * @property {object[]|null} subtitles   sidecar files: [{ relPath, language, forced }]
+ * @property {Date} addedAt
+ * @property {Date|null} missingSince
+ *
+ * @typedef {object} MediaItem
+ *   What files are: a movie, or an episode of a show (§5.2)
+ * @property {string} id
+ * @property {'movie'|'episode'} kind
+ * @property {number|null} tmdbId         the movie's, or the episode's
+ * @property {number|null} showTmdbId
+ * @property {number|null} season
+ * @property {number|null} episode
+ * @property {string|null} imdbId
+ * @property {string|null} title          the movie's, or the show's
+ * @property {string|null} episodeTitle
+ * @property {number|null} year
+ * @property {object|null} artwork        { posterPath, backdropPath, stillPath }
+ * @property {'auto'|'nfo'|'admin'} matchedBy
  */
 
 /**
@@ -127,6 +170,28 @@
  * @property {function(string, Partial<Download>): Promise<Download|null>} update
  * @property {function(string): Promise<boolean>} remove
  *
+ * @typedef {object} LibraryRepository
+ * @property {function(): Promise<LibraryFolder[]>} listFolders                          oldest first
+ * @property {function(string): Promise<LibraryFolder|null>} findFolder
+ * @property {function(LibraryFolder): Promise<LibraryFolder>} insertFolder              DuplicateError for a known path
+ * @property {function(string, Partial<LibraryFolder>): Promise<LibraryFolder|null>} updateFolder
+ * @property {function(string): Promise<boolean>} removeFolder                           its files too
+ * @property {function(string): Promise<MediaFile[]>} listFiles                          of a folder, by path
+ * @property {function(string): Promise<MediaFile|null>} findFile
+ * @property {function(MediaFile): Promise<MediaFile>} insertFile                        DuplicateError for a known folder + path
+ * @property {function(string, Partial<MediaFile>): Promise<MediaFile|null>} updateFile
+ * @property {function(string): Promise<boolean>} removeFile
+ * @property {function({ folderId?: string, state?: string, q?: string, itemId?: string, limit: number, offset: number }): Promise<{ rows: Array<MediaFile & { item: MediaItem|null }>, total: number }>} queryFiles
+ *   newest first; q matches the path
+ * @property {function(): Promise<Array<{ folderId: string, state: string, count: number }>>} countFiles
+ * @property {function(Date): Promise<number>} removeMissingBefore   rows missing since before the date
+ * @property {function(string): Promise<MediaItem|null>} findItem
+ * @property {function({ kind: string, tmdbId?: number, showTmdbId?: number, season?: number, episode?: number }): Promise<MediaItem|null>} findItemFor
+ *   a movie by tmdbId, an episode by show + season + episode
+ * @property {function(MediaItem): Promise<MediaItem>} insertItem
+ * @property {function(string, Partial<MediaItem>): Promise<MediaItem|null>} updateItem
+ * @property {function(): Promise<number>} removeOrphanItems         items no file points at
+ *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles
  * @property {WatchlistRepository} watchlist
@@ -135,6 +200,7 @@
  * @property {RatingsRepository} ratings
  * @property {SettingsRepository} settings
  * @property {DownloadsRepository} downloads
+ * @property {LibraryRepository} library
  */
 
 module.exports = {};

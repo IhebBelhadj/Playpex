@@ -1,8 +1,9 @@
 'use strict';
 
 // Audio transcoding for codecs Chromium can't decode (AC-3, E-AC-3, DTS,
-// TrueHD...). ffmpeg reads the file from our own byte-range route (so the
-// torrent still downloads on demand), copies the video and re-encodes only
+// TrueHD...). ffmpeg reads the file from its path on disk, or from our own
+// byte-range route while a torrent downloads it (so the torrent still
+// downloads on demand; lib/media#input), copies the video and re-encodes only
 // the audio to AAC, as live Matroska (it keeps each stream's own timestamps;
 // fragmented MP4 lost the audio/video gap after a seek). The output can't be
 // seeked by bytes: the player restarts it at ?t=<seconds> instead, where
@@ -19,13 +20,17 @@ var PLAYABLE_AUDIO = ['aac', 'mp3', 'opus', 'vorbis', 'flac'],
 
 var probes = {};
 
-// { duration, video, audio: [{ index, codec, language, channels, title }], transcode }
-// `transcode`: the default audio track can't be played by Chromium.
-function probe(url) {
-  if (probes[url]) {
-    return probes[url];
+// { duration, video, width, height, hdr, audio: [{ index, codec, language, channels, title }],
+//   subtitles: [{ index, codec, language, title, forced }], transcode }
+// `transcode`: the default audio track can't be played by Chromium. Cached
+// by `key` (lib/media#probeKey), else by the input; not at all with
+// { cache: false } (the library's scanner keeps its answers in the DB).
+function probe(url, key, options) {
+  key = key || url;
+  if (probes[key]) {
+    return probes[key];
   }
-  probes[url] = new Promise(function (resolve, reject) {
+  probes[key] = new Promise(function (resolve, reject) {
     var out = '',
       child = spawn(ffmpeg.paths().ffprobe, ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', url]),
       timer = setTimeout(function () { child.kill('SIGKILL'); }, PROBE_TIMEOUT_MS);
@@ -53,18 +58,37 @@ function probe(url) {
             default: !!(s.disposition && s.disposition['default']),
           };
         }),
+        subtitles = streams.filter(function (s) { return s.codec_type === 'subtitle'; }).map(function (s, i) {
+          var tags = s.tags || {};
+          return {
+            index: i,
+            codec: s.codec_name || null,
+            language: tags.language || null,
+            title: tags.title || null,
+            forced: !!(s.disposition && s.disposition.forced)
+          };
+        }),
         main = audio.filter(function (a) { return a['default']; })[0] || audio[0];
 
       resolve({
         duration: parseFloat(data.format && data.format.duration) || null,
         video: video ? video.codec_name : null,
+        width: video && video.width || null,
+        height: video && video.height || null,
+        hdr: !!video && ['smpte2084', 'arib-std-b67'].indexOf(video.color_transfer) !== -1,
         audio: audio,
+        subtitles: subtitles,
         transcode: !!main && PLAYABLE_AUDIO.indexOf(main.codec) === -1,
       });
     });
   });
-  probes[url].catch(function () { delete probes[url]; });
-  return probes[url];
+  var result = probes[key];
+  if (options && options.cache === false) {
+    delete probes[key];
+  } else {
+    result.catch(function () { delete probes[key]; });
+  }
+  return result;
 }
 
 // Time of the last video keyframe at or before `t` (falls back to `t`)
