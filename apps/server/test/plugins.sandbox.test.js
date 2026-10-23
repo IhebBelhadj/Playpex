@@ -95,7 +95,9 @@ playpex.data('denied', async function () {
   await attempt('secret', function () { return playpex.secrets.get('stolen'); });
   await attempt('hook', function () { playpex.hooks.on('play.collect', function () {}); });
   await attempt('event', function () { playpex.events.on('playback.started', function () {}); });
-  await attempt('later', function () { return playpex.watchlist.list('p'); });
+  await attempt('write', function () { return playpex.watchlist.list('p'); });
+  await attempt('notify', function () { return playpex.notify.send('all', { text: 'x' }); });
+  await attempt('later', function () { return playpex.plugins.call('other', 'x'); });
   return { data: out };
 });
 playpex.data('playIt', function () {
@@ -109,6 +111,7 @@ playpex.data('badAnswer', function () { return { data: 1, effects: [{ type: 'eva
 `;
 
 var GOOD = String.raw`
+playpex.data('home', function () { return { data: { rows: [] } }; });
 playpex.data('slow', async function () {
   var r = await playpex.http.request({ url: 'https://api.playpex-test.dev:PORT/slow', responseType: 'json' });
   return { data: r.body };
@@ -224,7 +227,7 @@ test.before(function () {
       writePlugin('good', {
         permissions: { network: ['api.playpex-test.dev'], storage: '4KB', secrets: ['apiKey'], hooks: ['play.collect'], sources: ['magnet'] },
         contributes: {
-          screens: [{ name: 'home', template: 'catalog', data: 'slow' }],
+          screens: [{ name: 'home', template: 'catalog', data: 'home' }],
           settings: [{ key: 'mode', scope: 'server', type: 'choice', label: 'Mode', options: [['a', 'A'], ['b', 'B']], default: 'b' }]
         },
         icon: 'assets/icon.svg'
@@ -399,7 +402,7 @@ test('bytes both ways, context, store quota, secrets, settings, translations', {
 test('permissions it didn\'t ask for are refused', function () {
   return data('hostile', 'denied').then(function (r) {
     assert.deepEqual(r.json.data, { store: 'PERMISSION_DENIED', secret: 'PERMISSION_DENIED', hook: 'PERMISSION_DENIED',
-      event: 'PERMISSION_DENIED', later: 'NOT_AVAILABLE' });
+      event: 'PERMISSION_DENIED', write: 'PERMISSION_DENIED', notify: 'PERMISSION_DENIED', later: 'NOT_AVAILABLE' });
   });
 });
 
@@ -456,7 +459,7 @@ test('audience: kids profiles never reach an adults plugin', function () {
   }).then(function (r) {
     assert.ok(r.json.plugins.some(function (p) { return p.id === 'nsfw'; }));
     var good = r.json.plugins.filter(function (p) { return p.id === 'good'; })[0];
-    assert.deepEqual(Object.keys(good).sort(), ['assets', 'audience', 'chrome', 'icon', 'id', 'name', 'screens', 'sections', 'slots', 'version']);
+    assert.deepEqual(Object.keys(good).sort(), ['assets', 'audience', 'chrome', 'icon', 'id', 'name', 'play', 'screens', 'sections', 'slots', 'version']);
     return data('nsfw', 'probe', {}, kidsProfile);
   }).then(function (r) {
     assert.equal(r.status, 403);

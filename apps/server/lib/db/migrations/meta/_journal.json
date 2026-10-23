@@ -85,6 +85,13 @@
       "when": 1792768516341,
       "tag": "0011_plugins_installed",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792774819735,
+      "tag": "0012_plugin_grants",
+      "breakpoints": true
     }
   ]
 }

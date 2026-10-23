@@ -8,6 +8,7 @@ import {
   Plus,
   Puzzle,
   RotateCw,
+  Settings2,
   ShieldAlert,
   Trash2,
   Upload,
@@ -16,6 +17,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
+import { PluginSettingsSheet } from '@/components/plugin-settings'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -34,6 +36,14 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { ago, bytes } from '@/lib/format'
+
+/** 900000 → "15 min" */
+function duration(ms: number): string {
+  if (ms >= 86400000 && ms % 86400000 === 0) return `${ms / 86400000} d`
+  if (ms >= 3600000) return `${Math.round((ms / 3600000) * 10) / 10} h`
+  if (ms >= 60000) return `${Math.round(ms / 60000)} min`
+  return `${Math.round(ms / 1000)} s`
+}
 
 // Plugins (docs/plugins-plan.md §6.3): what is installed, installing a package
 // (an upload, or a URL: a direct link or a GitHub repository / release), and
@@ -160,6 +170,7 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
     onError: (err) => toast.error(errorMessage(err)),
   })
   const [details, setDetails] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const dev = p.origin === 'dev'
 
   return (
@@ -196,6 +207,13 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
           )}
           {p.updatedAt && ` · ${p.installedAt === p.updatedAt ? 'installed' : 'updated'} ${ago(p.updatedAt)}`}
         </p>
+        {(p.jobs ?? []).map((job) => (
+          <p key={job.name} className="text-xs text-muted-foreground">
+            Runs “{job.name}” every {duration(job.intervalMs)}
+            {job.lastRunAt ? ` · last ${ago(job.lastRunAt)} (${job.lastDurationMs} ms)` : ' · not run yet'}
+            {job.lastError && <span className="text-destructive"> · {job.lastError}</span>}
+          </p>
+        ))}
         {details && (
           <ul className="mt-2 space-y-1 text-sm">
             {p.permissions.length === 0 && <li className="text-muted-foreground">Asks for nothing</li>}
@@ -211,6 +229,12 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
         </button>
       </div>
       <div className="flex items-center gap-2">
+        {(p.settings !== 0 || !!p.personal || !!p.links) && (
+          <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+            <Settings2 /> Settings
+          </Button>
+        )}
+        <PluginSettingsSheet plugin={settingsOpen ? p : null} onClose={() => setSettingsOpen(false)} />
         {!dev && (
           <Switch
             checked={p.enabled}

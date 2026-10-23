@@ -10,7 +10,7 @@ import { ProfilesService } from './profiles.service';
 import { ReleasesKind, ReleasesService } from './releases.service';
 import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.service';
 import { ServerService } from './server.service';
-import { installHelloPlugin } from './plugins-dev/hello/hello-plugin';
+import { RemotePlugins } from './plugins/remote';
 import { TorrentPickerService } from './torrent-picker.service';
 
 // the overlays overlay() opens with fixture data (their screenshots)
@@ -43,8 +43,8 @@ export interface PlaypexDev {
   // the server's API base and this client's device id (scenarios read the settings with them)
   api:string;
   deviceId:string;
-  // the example plugin's contributions on / off (src/app/plugins-dev/hello)
-  plugin(name:'hello', on:boolean):void;
+  // the server's plugins shown to this profile, read again now (ids; plugins/remote.ts)
+  plugins():Promise<string[]>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -63,6 +63,7 @@ export class DevHook {
     private layerStack:LayerStack,
     private server:ServerService,
     private playSources:PlaySourcesService,
+    private remotePlugins:RemotePlugins,
     private zone:NgZone,
   ) { }
 
@@ -98,7 +99,7 @@ export class DevHook {
       chosen: () => this.lastChosen,
       api: this.server.api,
       deviceId: this.server.deviceId,
-      plugin: (name, on) => run(() => installHelloPlugin(on)),
+      plugins: () => run(() => firstValueFrom(this.remotePlugins.reload()).then(list => list.map(p => p.id))),
     };
     window['playpexDev'] = hook;
   }

@@ -280,6 +280,7 @@
             "tokenUrl": { "type": "string", "pattern": "^https://" },
             "refreshUrl": { "type": "string", "pattern": "^https://" },
             "scope": { "type": "string", "maxLength": 200 },
+            "body": { "description": "How requests are sent: form (RFC 8628, default) or json (Trakt)", "enum": ["form", "json"] },
             "clientIdSecret": { "$ref": "#/$defs/name" },
             "clientSecretSecret": { "$ref": "#/$defs/name" }
           }
@@ -376,7 +377,7 @@
       "properties": {
         "key": { "$ref": "#/$defs/name" },
         "scope": { "enum": ["profile", "server"] },
-        "type": { "enum": ["switch", "choice", "slider", "text", "secret", "action"] },
+        "type": { "enum": ["switch", "choice", "slider", "number", "text", "secret", "action"] },
         "label": { "$ref": "#/$defs/label" },
         "description": { "type": "string", "maxLength": 200 },
         "group": { "description": "Settings of a group are shown together under its title", "$ref": "#/$defs/label" },
@@ -428,10 +429,27 @@
           "additionalProperties": false
         },
         {
+          "description": "A number typed in a field (a port, an interval, a limit); integer: whole numbers only",
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "number" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "type": "number", "exclusiveMinimum": 0 },
+            "integer": { "type": "boolean" },
+            "unit": { "type": "string", "maxLength": 10 },
+            "default": { "type": "number" }
+          },
+          "required": ["default"],
+          "additionalProperties": false
+        },
+        {
           "properties": {
             "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
             "type": { "enum": ["text", "secret"] },
             "maxLength": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "placeholder": { "type": "string", "maxLength": 60 },
+            "pattern": { "description": "A regular expression the whole value must match (text only)", "type": "string", "maxLength": 200 },
             "default": { "type": "string" }
           },
           "additionalProperties": false

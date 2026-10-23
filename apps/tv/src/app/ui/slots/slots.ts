@@ -4,7 +4,7 @@
 // to keep: add one only for a real need. Contexts are read-only snapshots,
 // never a page or a service.
 
-export type SlotKind = 'actions' | 'rows' | 'meta';
+export type SlotKind = 'actions' | 'rows' | 'meta' | 'searchFilter';
 
 export interface ProfileContext {
   id:string;
@@ -56,6 +56,12 @@ export interface WatchlistContext {
   profile:ProfileContext;
 }
 
+export interface SearchContext {
+  // what was typed (the search page asks again when it changes)
+  query:string;
+  profile:ProfileContext;
+}
+
 export interface SlotDef {
   kind:SlotKind;
   // contributions to it are refused for kids profiles
@@ -74,6 +80,7 @@ export interface SlotContexts {
   'core.shows.rows':SectionContext;
   'core.title.meta':TitleMetaContext;
   'core.watchlist.rows':WatchlistContext;
+  'core.search.filters':SearchContext;
 }
 
 export type SlotName = keyof SlotContexts;
@@ -88,4 +95,5 @@ export const SLOTS:{ readonly [name in SlotName]:SlotDef } = {
   'core.shows.rows': { kind: 'rows', description: 'Rows of the TV shows section, after its categories' },
   'core.title.meta': { kind: 'meta', description: 'More items on the meta line of a title (another score, a tag)' },
   'core.watchlist.rows': { kind: 'rows', description: 'Rows of the watch list, after the library\'s' },
+  'core.search.filters': { kind: 'searchFilter', description: 'A chip after the search page\'s filters, showing its rows for the query' },
 };

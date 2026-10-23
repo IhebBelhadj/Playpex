@@ -30,7 +30,8 @@ Every handler gets a context: `{ profile: { id, kids } | null, device: { id, nam
 | `playpex.events.on(name, handler)` | `events` | below |
 | `playpex.schedule.every(name, interval, handler, { atStart? })` / `cancel(name)` | `schedule` | below |
 | `playpex.watchlist.*`, `watched.*`, `progress.set`, `ratings.*`, `downloads.add / list` | `write` | below |
-| `playpex.link.status(name, profileId?)` / `start` / `clear` | `link` | below |
+| `playpex.profiles.list(permission?)` | | the profiles granted that personal permission (`[{ id, kids }]`): who a job acts for |
+| `playpex.link.status(name, profileId?)` | `link` | below |
 | `playpex.data(name, handler)` | | answers for the screens / slots / actions in `contributes` ([tv.md](tv.md)) |
 
 Never available: the database, other plugins (but what they export to you), devices, auth, `settings.json`, the file system, process or OS information, ports other than HTTPS.
@@ -100,35 +101,35 @@ playpex.events.on('playback.progress', function (e) {   // { name, time, context
 | `library` | `library.changed` | `{ added: [titleRef], removed: [titleRef] }` |
 | `watchlist` | `watchlist.added`, `.removed`, `watched.set`, `watched.cleared`, `rating.set` | `{ title, rating? }`, with `by` (`user` or `plugin:<id>`) |
 
-You get `playback` events only of profiles that opted in. Untracked plays (`tracking: 'none'`, every play of an `adults` plugin) send none. Your own writes never come back to you.
+You get `playback` events only of profiles the admin granted you `events.playback` for (the dashboard: Plugins › <name> › Settings › Profiles; off until switched on). They come from the player's reports: `started` on the first, then `progress` (about every minute), `paused`, `finished` the first time past 90 %, `ended` when the player is left. Plays of titles the TV doesn't name (18+, `tracking: 'none'`, every play of an `adults` plugin) send none. Your own writes never come back to you; another plugin's come with its `by`. A kids profile's events never reach an `adults` plugin.
 
 ## Schedules
 
 ```js
-playpex.schedule.every('sync', '1h', async function (ctx) {
-  var profiles = await ctx.profiles();                 // the profiles that opted in: [{ id, kids }]
+playpex.schedule.every('sync', '1h', async function (ctx) {          // ctx.profile is null
+  var profiles = await playpex.profiles.list('write.watchlist');      // the profiles granted it: [{ id, kids }]
   …
-}, { atStart: true });                                  // first run 1 min after start, else one interval after
+}, { atStart: true });                                               // first run 1 min after the server started, else one interval after
 ```
 
-Intervals `5m` and up (`m`, `h`), 10 % jitter, never two runs of a job at once (a run still going skips the next), at most 5 min per run. Declared again each time `server.js` loads, so they survive restarts. A job's context has no profile.
+Intervals `5m` and up (`s`, `m`, `h`, `d`, or milliseconds), 10 % jitter, never two runs of a job at once (a run still going skips the next), at most 5 min per run (CPU counts like any call). Declared again each time `server.js` loads, so they survive restarts. The dashboard shows each job's last run, duration and error.
 
 ## Writes
 
-Through the core's services, so its rules apply; only for profiles that opted in; recorded and emitted with `by: plugin:<id>`.
+Through the core's services, so its rules apply; only for profiles the admin granted the scope (`write.<scope>`, per profile in the dashboard; otherwise `PERMISSION_DENIED`); emitted as events with `by: plugin:<id>`. Titles are titleRefs with a TMDB id (`{ kind: 'movie' | 'show' | 'episode', tmdbId, season?, episode?, title? }`); the server adds the poster from TMDB when it has a key.
 
 | Scope | Calls |
 |---|---|
-| `watchlist` | `watchlist.add(profileId, titleRef)`, `remove`, `list` |
-| `watched` | `watched.set(profileId, titleRef, { at? })`, `clear`, `progress.set(profileId, titleRef, position, duration)` (kept only if newer than the core's) |
-| `ratings` | `ratings.set(profileId, titleRef, value)`, `clear` |
-| `downloads` | `downloads.add({ title, source })` (the core's queue and limits; added by `plugin:<id>`), `downloads.list()` (yours) |
+| `watchlist` | `watchlist.add(profileId, titleRef)`, `remove(profileId, titleRef)`, `list(profileId)` → `[{ title, addedAt }]` (an episode counts as its show) |
+| `watched` | `watched.set(profileId, titleRef, { at? })` (history + watched mark; `at` when it was watched), `watched.clear`, `progress.set(profileId, titleRef, position, duration, { at? })` (a resume point; kept only if newer than the core's: answers `false` otherwise) |
+| `ratings` | `ratings.set(profileId, titleRef, 1–10)`, `clear`: the core keeps likes and dislikes (6–10 like, 1–5 dislike); `rating.set` events carry 10 for a like, 1 for a dislike |
+| `downloads` | `downloads.add({ magnet \| infoHash \| url, title, ref? })` → `{ infoHash }` (the core's queue and limits; added by `plugin:<id>`), `downloads.list()` (yours only) |
 
-`adults` plugins have only `downloads`.
+`adults` plugins have only `downloads`. Not a personal permission: a download is the server's.
 
 ## Account linking
 
-With a `deviceCode` link in the manifest, the admin presses **Link** in the dashboard (Plugins › <name> › Accounts: per profile for `profile` scope, once for `server` scope), the dashboard shows the code, URL and QR (whoever owns the account enters it on their phone), the host polls the token URL, stores and refreshes the tokens. You read them:
+With a `deviceCode` link in the manifest, the admin presses **Link** in the dashboard (Plugins › <name> › Settings › Accounts: per profile for `profile` scope, once for `server` scope), the dashboard shows the code and its URL (whoever owns the account enters it on their phone), the host polls the token URL (at the interval the service gives, slower on `slow_down`), stores the tokens with your secrets and refreshes them when they're within 5 minutes of expiring. Requests go out as your plugin (its hosts and address rules), form-encoded as RFC 8628 says, or JSON with `"body": "json"` (Trakt); the token request carries the code as both `device_code` and `code`. The client id is your secret named by `clientIdSecret` (a `secret` setting the admin fills in first). You read the link:
 
 ```js
 var s = await playpex.link.status('trakt', ctx.profile.id);   // { linked, accessToken, expiresAt }
@@ -141,7 +142,7 @@ A service without a device flow: declare the link with `"custom": "<data name>"`
 
 ## Notifications
 
-`playpex.notify.send(profileIds | 'all', { text, tone?, key? })` (needs `notify`): a toast (≤ 120 characters) on those profiles' clients, kept 24 h for clients that aren't open; one per `key`, the newest wins. 10 per hour per profile; never to kids profiles from an `adults` plugin.
+`playpex.notify.send(profileIds | 'all', { text, tone?, key? })` (needs `notify`) → `{ sent: [ids], limited: [ids] }`: a toast (≤ 120 characters) on those profiles' clients, shown once per device and kept 24 h for devices that aren't on; one per `key`, the newest wins. 10 per hour per plugin and profile (more are `limited`); never to kids profiles from an `adults` plugin. Clients get them with `GET /plugins/notifications?profile=` ([client guide](../api/plugins.md)).
 
 ## Data handlers
 

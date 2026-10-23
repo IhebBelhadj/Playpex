@@ -78,4 +78,19 @@ describe('nav ScreenRegistry', () => {
     expect(() => registry.define({ id: 'plugin.hello.b', path: 'p/hello/b', component: PageComponent, kind: 'root' })).toThrowError(/core's/);
     expect(() => registry.define({ id: 'plugin.hello.c', path: 'p/hello/c', component: PageComponent, kind: 'detail' })).not.toThrow();
   });
+
+  it('undefines a plugin\'s screens (never the core\'s) and says so', () => {
+    let changes = 0;
+    let sub = registry.changes$.subscribe(() => changes++);
+    registry.define({ id: 'plugin.hello.homeScreen', path: 'p/hello/homeScreen', component: PageComponent, kind: 'section' });
+    expect(changes).toBe(1);
+    expect(registry.undefine('core.movie')).toBeFalse();
+    expect(registry.undefine('plugin.hello.homeScreen')).toBeTrue();
+    expect(registry.has('plugin.hello.homeScreen')).toBeFalse();
+    expect(registry.undefine('plugin.hello.homeScreen')).toBeFalse();
+    expect(changes).toBe(2);
+    // defined again, at the same path (a plugin updated)
+    expect(() => registry.define({ id: 'plugin.hello.homeScreen', path: 'p/hello/homeScreen', component: PageComponent, kind: 'section' })).not.toThrow();
+    sub.unsubscribe();
+  });
 });

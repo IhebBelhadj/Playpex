@@ -27,13 +27,22 @@ export class ApiError extends Error {
   status: number
   code: string | null
   details: string[]
+  /** `errors: [{ key, message }]` by key (a form's fields) */
+  fields: Record<string, string>
   constructor(status: number, body: unknown) {
     const b = (body ?? {}) as Record<string, unknown>
     const message = (b.error_description ?? b.error ?? b.message ?? `Request failed (${status})`) as string
     super(typeof message === 'string' ? message : `Request failed (${status})`)
     this.status = status
     this.code = typeof b.code === 'string' ? b.code : null
-    this.details = Array.isArray(b.errors) ? (b.errors as string[]) : []
+    const errors: unknown[] = Array.isArray(b.errors) ? b.errors : []
+    this.fields = {}
+    this.details = errors.map((e) => {
+      if (typeof e === 'string') return e
+      const { key, message } = (e ?? {}) as { key?: string; message?: string }
+      if (key && message) this.fields[key] = message
+      return [key, message].filter(Boolean).join(' ')
+    })
   }
 }
 

@@ -1,20 +1,24 @@
 'use strict';
 
-var validate = require('./validate');
+var validate = require('./validate'),
+  changes = require('./changes');
 
 /**
  * @param {import('../data/contracts').Repositories} repositories
- * @param {{ profiles: object, now?: function(): Date }} options
+ * @param {{ profiles: object, now?: function(): Date, publish?: function }} options
  */
 module.exports = function watchlistService(repositories, options) {
   var repo = repositories.watchlist,
+    changed = changes(options.publish),
     profiles = options.profiles,
     now = options.now || function () { return new Date(); };
 
-  function add(profileId, item) {
+  // by: 'user' (default) or 'plugin:<id>' (its internal event, lib/services/changes.js)
+  function add(profileId, item, by) {
     return profiles.requireProfile(profileId).then(function () {
       var ref = validate.mediaRef(item);
-      return repo.add({
+      return repo.find(profileId, ref).then(function (existing) {
+        return Promise.all([existing, repo.add({
         profileId: profileId,
         mediaType: ref.mediaType,
         tmdbId: ref.tmdbId,
@@ -22,13 +26,25 @@ module.exports = function watchlistService(repositories, options) {
         posterPath: validate.optionalString(item.posterPath, 'posterPath'),
         backdropPath: validate.optionalString(item.backdropPath, 'backdropPath'),
         addedAt: now()
+      })]);
+      }).then(function (r) {
+        if (!r[0]) {
+          changed('watchlist.added', profileId, Object.assign({}, ref, { title: item.title }), by);
+        }
+        return r[1];
       });
     });
   }
 
-  function remove(profileId, ref) {
+  function remove(profileId, ref, by) {
     return profiles.requireProfile(profileId).then(function () {
-      return repo.remove(profileId, validate.mediaRef(ref));
+      var key = validate.mediaRef(ref);
+      return repo.remove(profileId, key).then(function (removed) {
+        if (removed) {
+          changed('watchlist.removed', profileId, key, by);
+        }
+        return removed;
+      });
     });
   }
 
@@ -56,13 +72,13 @@ module.exports = function watchlistService(repositories, options) {
     remove: remove,
 
     /** Adds when absent, removes when present. Resolves { inWatchlist } */
-    toggle: function (profileId, item) {
+    toggle: function (profileId, item, by) {
       return profiles.requireProfile(profileId).then(function () {
         return repo.find(profileId, validate.mediaRef(item));
       }).then(function (existing) {
         return existing
-          ? remove(profileId, item).then(function () { return { inWatchlist: false }; })
-          : add(profileId, item).then(function () { return { inWatchlist: true }; });
+          ? remove(profileId, item, by).then(function () { return { inWatchlist: false }; })
+          : add(profileId, item, by).then(function () { return { inWatchlist: true }; });
       });
     }
   };

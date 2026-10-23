@@ -1,6 +1,8 @@
-// The 18+ poster layout. Built from the movies page / watch list pieces
-// (title info on top, 180×270 poster rows below, white focus); the 18+ seal
-// and its toolbar are what the compact layout shares with it.
+// The catalog template (plugin screens, plugins/templates/plugin-catalog)
+// and the 18+ poster layout, which it was extracted from (until the 18+
+// section is a plugin, docs/plugins-plan.md P5). Built from the movies page /
+// watch list pieces (title info on top, 180×270 poster rows below, white
+// focus); the toolbar's seal is the 18+ layout's.
 @use 'px' as *;
 
 

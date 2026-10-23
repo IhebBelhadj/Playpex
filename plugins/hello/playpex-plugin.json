@@ -1,0 +1,214 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "hello",
+  "name": "Hello",
+  "description": "The example plugin: every screen template, slot and kind of setting, events, a job, a write, a linked account and notifications, with made-up titles.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1",
+    "nav": "^1",
+    "ui": "^1"
+  },
+  "audience": "everyone",
+  "icon": "assets/hello.svg",
+  "listing": {
+    "summary": "The example plugin: a section, a title page, a release list, a menu and contributions to core screens, all made up.",
+    "license": "See licence.md",
+    "categories": [
+      "catalog",
+      "tools"
+    ]
+  },
+  "permissions": {
+    "storage": "1MB",
+    "secrets": [
+      "apiToken"
+    ],
+    "play": true,
+    "sources": [
+      "magnet"
+    ],
+    "events": [
+      "watchlist"
+    ],
+    "schedule": true,
+    "notify": true,
+    "write": [
+      "watchlist"
+    ],
+    "link": [
+      "demo"
+    ]
+  },
+  "contributes": {
+    "sections": [
+      {
+        "screen": "home",
+        "menu": {
+          "label": "@menu",
+          "icon": "assets/hello.svg",
+          "order": 70
+        }
+      }
+    ],
+    "screens": [
+      {
+        "name": "home",
+        "template": "catalog",
+        "data": "home",
+        "title": "Hello"
+      },
+      {
+        "name": "title",
+        "template": "title",
+        "data": "title",
+        "params": [
+          "id"
+        ]
+      },
+      {
+        "name": "releases",
+        "template": "releases",
+        "data": "releases",
+        "params": [
+          "id"
+        ]
+      },
+      {
+        "name": "menu",
+        "template": "list",
+        "data": "menu",
+        "title": "Hello menu"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "core.movie.actions",
+        "data": "movieAction",
+        "order": 60
+      },
+      {
+        "slot": "core.movies.rows",
+        "data": "moviesRow",
+        "order": 15
+      },
+      {
+        "slot": "core.title.meta",
+        "data": "titleMeta"
+      },
+      {
+        "slot": "core.search.filters",
+        "data": "searchFilter"
+      }
+    ],
+    "settings": [
+      {
+        "key": "greeting",
+        "scope": "server",
+        "type": "text",
+        "label": "@greeting",
+        "group": "Greeting",
+        "description": "Said by the section's title and the Say hello action.",
+        "default": "Hello",
+        "maxLength": 30,
+        "placeholder": "Hello"
+      },
+      {
+        "key": "shout",
+        "scope": "server",
+        "type": "switch",
+        "label": "Shout it",
+        "group": "Greeting",
+        "default": false
+      },
+      {
+        "key": "rowSize",
+        "scope": "server",
+        "type": "number",
+        "label": "Titles per page",
+        "group": "Catalog",
+        "description": "How many made-up titles a row loads at a time.",
+        "min": 4,
+        "max": 40,
+        "integer": true,
+        "default": 12
+      },
+      {
+        "key": "minRating",
+        "scope": "server",
+        "type": "slider",
+        "label": "Lowest rating shown",
+        "group": "Catalog",
+        "min": 0,
+        "max": 9,
+        "step": 0.5,
+        "default": 0,
+        "level": "advanced"
+      },
+      {
+        "key": "apiToken",
+        "scope": "server",
+        "type": "secret",
+        "label": "Made-up service token",
+        "group": "Account",
+        "description": "Not used: shows how a secret is entered."
+      },
+      {
+        "key": "testConnection",
+        "scope": "server",
+        "type": "action",
+        "label": "Test the greeting",
+        "group": "Account",
+        "data": "testConnection",
+        "confirm": "Say the greeting now?"
+      },
+      {
+        "key": "layout",
+        "scope": "profile",
+        "type": "choice",
+        "label": "Cards",
+        "default": "poster",
+        "options": [
+          [
+            "poster",
+            "Posters"
+          ],
+          [
+            "still",
+            "Wide pictures"
+          ]
+        ]
+      },
+      {
+        "key": "showReleases",
+        "scope": "profile",
+        "type": "switch",
+        "label": "Show release lists",
+        "default": true
+      },
+      {
+        "key": "nickname",
+        "scope": "profile",
+        "type": "text",
+        "label": "Greet this profile as",
+        "visibleIf": {
+          "key": "shout",
+          "equals": false
+        },
+        "maxLength": 20,
+        "pattern": "[A-Za-z ]*"
+      }
+    ]
+  },
+  "link": [
+    {
+      "name": "demo",
+      "label": "Hello account",
+      "scope": "profile",
+      "custom": "linkStart"
+    }
+  ]
+}

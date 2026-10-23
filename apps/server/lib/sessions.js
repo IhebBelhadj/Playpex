@@ -137,6 +137,9 @@ function release(key, deviceId) {
   }
   log.info('released ' + key + ' by ' + deviceId, { leases: Object.keys(t.leases).length });
   events.publish('session.ended', { id: lease.id, deviceId: deviceId, infoHash: lease.infoHash, ref: lease.ref });
+  if (lease.started) {
+    playbackEvent('playback.ended', lease);
+  }
   if (!Object.keys(t.leases).length) {
     if (lease.infoHash) {
       scheduleEnd(key);
@@ -268,9 +271,70 @@ function mediaRef(media) {
   return ref;
 }
 
+// What plays, for plugins' playback events: never the magnet, path or ref
+function sourceKind(lease) {
+  if (lease.ref && lease.ref.indexOf('f_') === 0) {
+    return 'file';
+  }
+  if (lease.ref && lease.ref.indexOf('r_') === 0) {
+    return 'plugin';
+  }
+  var d = lease.infoHash && torrents.get(lease.infoHash);
+  return d && d.intent === 'download' ? 'download' : 'torrent';
+}
+
+// playback.* for the plugins' event bus (docs/plugins-plan.md §4.4; internal
+// events, lib/plugins/bus.js): only a title the player named (`media`: never
+// an 18+ title, the TV doesn't name those) and a profile
+function playbackEvent(name, lease) {
+  var p = lease.playback || {};
+  if (!lease.media || !p.profileId) {
+    return;
+  }
+  var m = lease.media,
+    episode = m.mediaType === 'tv' && m.season > 0 && m.episode > 0,
+    title = { kind: m.mediaType === 'movie' ? 'movie' : episode ? 'episode' : 'show', tmdbId: m.tmdbId };
+  if (episode) {
+    title.season = m.season;
+    title.episode = m.episode;
+  }
+  events.publish(name, {
+    profileId: p.profileId,
+    device: { id: lease.deviceId, name: lease.deviceName || '' },
+    title: title,
+    position: p.positionS || 0,
+    duration: p.durationS > 0 ? p.durationS : null,
+    source: sourceKind(lease)
+  }, { internal: true });
+}
+
+// The playback.* event a report means: started (the first), paused (play → pause),
+// finished (≥ 90 % the first time), else progress
+function playbackEvents(lease, before) {
+  var p = lease.playback || {};
+  if (!lease.media || !p.profileId) {
+    return;
+  }
+  if (!lease.started) {
+    lease.started = true;
+    playbackEvent('playback.started', lease);
+  } else if (p.paused && !(before && before.paused)) {
+    playbackEvent('playback.paused', lease);
+  } else {
+    playbackEvent('playback.progress', lease);
+  }
+  if (!lease.finished && p.durationS > 0 && p.positionS >= p.durationS * 0.9) {
+    lease.finished = true;
+    playbackEvent('playback.finished', lease);
+  }
+}
+
 // What the player reports with its keepalive (all optional)
 function report(lease, body) {
   var state = {}, media = mediaRef(body && body.media);
+  if (media) {
+    lease.media = { mediaType: media.mediaType, tmdbId: media.tmdbId, season: media.season, episode: media.episode };
+  }
   Object.keys(PLAYBACK_FIELDS).forEach(function (k) {
     var v = body && body[k];
     if (typeof v === PLAYBACK_FIELDS[k] && (typeof v !== 'number' || isFinite(v)) &&
@@ -286,11 +350,13 @@ function report(lease, body) {
     });
   }
   if (Object.keys(state).length) {
+    var before = lease.playback;
     lease.playback = _.extend({}, lease.playback, state, { updatedAt: Date.now() });
     if (state.file) {
       lease.file = state.file;
     }
     events.publish('session.updated', present(lease));
+    playbackEvents(lease, before);
   }
 }
 
@@ -403,6 +469,9 @@ function dropTorrent(infoHash) {
   _.values(t.leases).forEach(function (lease) {
     lease.streams.forEach(function (res) { res.destroy(); });
     events.publish('session.ended', { id: lease.id, deviceId: lease.deviceId, infoHash: infoHash, ref: lease.ref });
+    if (lease.started) {
+      playbackEvent('playback.ended', lease);
+    }
   });
   transcodes.filter(function (x) { return x.key === infoHash; }).forEach(function (x) { x.res.destroy(); });
 }

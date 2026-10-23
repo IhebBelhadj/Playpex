@@ -34,7 +34,7 @@ const INVALIDATES: [string, string[]][] = [
   ['download.added', ['downloads', 'overview']],
   ['download.removed', ['downloads', 'storage', 'overview']],
   // a plugin loaded, stopped or was removed (its library.match: the folders' information providers)
-  ['plugin.changed', ['admin-plugins', 'library']],
+  ['plugin.changed', ['admin-plugins', 'admin-plugin-settings', 'library']],
 ]
 
 export function EventsProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {

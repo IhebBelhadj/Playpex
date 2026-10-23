@@ -1,0 +1,5 @@
+{
+  "menu": "Hello",
+  "greeting": "Greeting",
+  "said": "{greeting} from the example plugin"
+}

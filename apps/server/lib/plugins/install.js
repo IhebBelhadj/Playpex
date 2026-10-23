@@ -395,6 +395,7 @@ function remove(id, options) {
         throw failure('NOT_FOUND', 'No installed plugin ' + id);
       }
       plugins.unload(id);
+      require('./notifications').forget(id);
       rm(dirOf(id));
       rm(previousOf(id));
       delete loadErrors[id];
@@ -488,6 +489,12 @@ function describe(row, loaded) {
     error: loaded ? loaded.error : row && row.enabled ? loadErrors[row.id] || 'not loaded' : null,
     permissions: m ? protocol.describePermissions(m) : [],
     hooks: m ? (m.permissions.hooks || []) : [],
+    // how many options it has (Plugins › <name> › Settings); null: not loaded, read when opened
+    settings: m ? ((m.contributes && m.contributes.settings) || []).length : null,
+    // its personal permissions (granted per profile) and account links: the Settings panel's Profiles and Accounts
+    personal: m ? protocol.describePermissions(m).filter(function (x) { return x.personal; }).length : null,
+    links: m ? (m.link || []).length : null,
+    jobs: loaded ? require('./scheduler').view(loaded.id) : [],
     registered: loaded ? loaded.registered : null,
     stats: loaded ? Object.assign({}, loaded.stats, { sandbox: loaded.sandbox ? loaded.sandbox.stats : null }) : null,
     previous: row ? fs.existsSync(path.join(previousOf(row.id), MANIFEST)) : false,

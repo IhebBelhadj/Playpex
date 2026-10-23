@@ -55,7 +55,8 @@ function send(client, message) {
  * Sends an event to every connected client allowed to see it.
  * @param {string} topic
  * @param {*} data
- * @param {{ admin?: boolean }} [options] admin: only admin sessions get it
+ * @param {{ admin?: boolean, internal?: boolean }} [options] admin: only admin sessions get it;
+ *   internal: only in-process listeners (onPublish: the plugins' event bus), never a client
  */
 function publish(topic, data, options) {
   localListeners.forEach(function (fn) {
@@ -65,7 +66,7 @@ function publish(topic, data, options) {
       log.warn('event listener failed: ' + e.message);
     }
   });
-  if (!clients.size) {
+  if (!clients.size || (options && options.internal)) {
     return;
   }
   var adminOnly = options && options.admin,

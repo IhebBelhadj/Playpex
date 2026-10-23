@@ -105,7 +105,9 @@ function stringsOf(dir, files) {
 }
 
 function publish(plugin) {
-  events.publish('plugin.changed', { id: plugin.id, state: plugin.state });
+  events.publish('plugin.changed', plugin.reason
+    ? { id: plugin.id, state: plugin.state, reason: plugin.reason }
+    : { id: plugin.id, state: plugin.state });
 }
 
 /**
@@ -203,6 +205,9 @@ function unload(id) {
     return false;
   }
   plugins.delete(id);
+  require('./scheduler').stop(id);
+  require('./bus').forget(id);
+  require('./links').forget(id);
   if (plugin.sandbox) {
     plugin.sandbox.stop();
   }
@@ -218,6 +223,11 @@ function start(options) {
   if (options.http) {
     http.configure(options.http);
   }
+  if (options.schedule) {
+    require('./scheduler').configure(options.schedule);
+  }
+  // the core's events, for plugins' events.on handlers (P3b)
+  require('./bus').start(module.exports, options.events);
   var dirs = (options.dirs || []).map(function (d) { return { dir: d, origin: 'dev' }; });
   if (options.developerMode) {
     try {
@@ -243,6 +253,7 @@ function start(options) {
 
 function stop() {
   started = false;
+  require('./scheduler').stopAll();
   Array.from(plugins.keys()).forEach(function (id) {
     var plugin = plugins.get(id);
     plugins.delete(id);
@@ -316,6 +327,37 @@ function runHook(name, input, ctx, options) {
   });
 }
 
+/**
+ * What a data handler's `data` must look like, from where the manifest uses
+ * it: a screen's template, a slot's kind ($defs paths of plugin-api.schema.json).
+ * A handler only called by actions, cards or row pages answers anything.
+ */
+function shapeOf(manifest, name) {
+  var c = manifest.contributes || {}, out = [];
+  (c.screens || []).forEach(function (s) {
+    if (s.data === name) {
+      out.push('templates/properties/' + s.template);
+    }
+  });
+  (c.slots || []).forEach(function (s) {
+    if (s.data === name) {
+      out.push('slots/' + protocol.SLOTS[s.slot]);
+    }
+  });
+  return out.filter(function (d, i) { return out.indexOf(d) === i; });
+}
+
+/** A manifest string as a reader sees it: "@key" from i18n/<locale>.json (then en), else the text */
+function localize(plugin, text, locale) {
+  if (typeof text !== 'string' || text.charAt(0) !== '@') {
+    return text;
+  }
+  var key = text.slice(1),
+    found = [plugin.strings(locale), plugin.strings('en')].map(function (t) { return t && t[key]; })
+      .filter(function (v) { return typeof v === 'string'; })[0];
+  return found === undefined ? key : found;
+}
+
 /** A client's call to one of a plugin's data handlers */
 function data(id, name, args, ctx) {
   var plugin = plugins.get(id);
@@ -331,6 +373,12 @@ function data(id, name, args, ctx) {
   bump(plugin.stats.data, name, 'calls');
   return plugin.sandbox.call('data', name, args === undefined ? null : args, ctx, { timeoutMs: DATA_TIMEOUT_MS }).then(function (answer) {
     var problem = schemas.apiProblem('dataAnswer', answer || {});
+    if (!problem && answer && answer.data !== undefined && answer.data !== null) {
+      problem = shapeOf(plugin.manifest, name).map(function (def) {
+        var p = schemas.apiProblem(def, answer.data);
+        return p && 'data (' + def + '): ' + p;
+      }).filter(Boolean)[0] || null;
+    }
     if (problem) {
       throw failure('BAD_ANSWER', problem);
     }
@@ -350,20 +398,26 @@ function data(id, name, args, ctx) {
 }
 
 /** What a client renders: enabled plugins for this profile, never permissions, settings or state */
-function clientView(profile) {
+function clientView(profile, locale) {
   return Array.from(plugins.values()).filter(function (plugin) {
     return plugin.state === 'enabled' && !kidsBlocked(plugin, { profile: profile });
   }).map(function (plugin) {
     var m = plugin.manifest, c = m.contributes || {};
     return {
       id: m.id,
-      name: m.name,
+      name: localize(plugin, m.name, locale),
       version: m.version,
       audience: m.audience,
       icon: m.icon || null,
       assets: '/plugins/' + m.id + '/assets/',   // under the API prefix
-      sections: c.sections || [],
-      screens: c.screens || [],
+      // may hand play requests to the core: a releases screen's rows play
+      play: !!(plugin.permissions && plugin.permissions.play),
+      sections: (c.sections || []).map(function (s) {
+        return { screen: s.screen, menu: Object.assign({}, s.menu, { label: localize(plugin, s.menu.label, locale) }) };
+      }),
+      screens: (c.screens || []).map(function (s) {
+        return s.title ? Object.assign({}, s, { title: localize(plugin, s.title, locale) }) : s;
+      }),
       slots: c.slots || [],
       chrome: c.chrome || null
     };
@@ -402,6 +456,8 @@ module.exports = {
   withHook: withHook,
   data: data,
   clientView: clientView,
+  localize: localize,
+  publish: publish,
   list: list,
   get: get,
   all: function () { return Array.from(plugins.values()); },

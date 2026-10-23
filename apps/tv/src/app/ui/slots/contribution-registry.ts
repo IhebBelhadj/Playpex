@@ -1,5 +1,5 @@
 import { isObservable, Observable, of } from 'rxjs';
-import { ActionModel, MetaItem, RowModel } from '../models';
+import { ActionModel, MetaItem, RowModel, SearchFilterModel } from '../models';
 import { SLOTS, SlotContexts, SlotName } from './slots';
 
 type Out<T> = T[] | null | undefined | Observable<T[] | null | undefined>;
@@ -19,6 +19,7 @@ export interface ContributionDef<N extends SlotName = SlotName> {
   actions?:(ctx:SlotContexts[N]) => Out<ActionModel>;
   rows?:(ctx:SlotContexts[N]) => Out<RowModel>;
   meta?:(ctx:SlotContexts[N]) => Out<MetaItem>;
+  searchFilter?:(ctx:SlotContexts[N]) => Out<SearchFilterModel>;
 }
 
 // a plugin may add this many contributions to one slot
@@ -38,7 +39,7 @@ export class ContributionRegistry {
     if (!plugin && !/^core\.[a-z0-9.-]+$/.test(def.id)) {
       throw new Error(`Contribution ids are plugin.<pluginId>.<name> (or core.<name>): ${def.id}`);
     }
-    let kinds = (['actions', 'rows', 'meta'] as const).filter(k => typeof def[k] == 'function');
+    let kinds = (['actions', 'rows', 'meta', 'searchFilter'] as const).filter(k => typeof def[k] == 'function');
     if (kinds.length != 1 || kinds[0] != slot.kind) {
       throw new Error(`Contribution ${def.id}: slot ${def.slot} takes ${slot.kind}`);
     }
@@ -109,7 +110,7 @@ export class ContributionRegistry {
 }
 
 export function pluginOf(id:string):string | null {
-  let match = /^plugin\.([a-z0-9-]+)\.[a-z0-9.-]+$/.exec(id);
+  let match = /^plugin\.([a-z0-9-]+)\.[A-Za-z0-9.-]+$/.exec(id);
   return match ? match[1] : null;
 }
 

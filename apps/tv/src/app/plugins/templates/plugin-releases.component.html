@@ -1,0 +1,81 @@
+<px-rail-layout class="releasesPage pluginReleases" [railWidth]="360">
+
+  <!-- The way back, search and the plugin's filters -->
+  <aside pxRail class="rail" pxSection="pluginReleasesRail"
+    [leaveFor]="{ left: '@menu', right: ['grid:' + listId, '@pluginReleasesList'] }">
+    <div class="railHead" *ngIf="canGoBack">
+      <px-button key="origin" variant="toolbar" size="l" icon="back" align="start" width="100%" label="Back"
+        (pxSelect)="navigator.back()"></px-button>
+    </div>
+
+    <px-search-field key="search" size="l" width="100%" [query]="state.query" placeholder="Search releases"
+      (pxSelect)="keyboardOpen = true"></px-search-field>
+    <div class="clearSearch" *ngIf="state.query">
+      <px-button key="clear" variant="toolbar" [quiet]="true" label="Clear search" (pxSelect)="clearSearch()"></px-button>
+    </div>
+
+    <ng-container *ngFor="let g of groups">
+      <h2 class="groupTitle">{{ g.label }}</h2>
+      <div class="chips">
+        <px-chip [key]="g.key + ':any'" label="Any" [selected]="isOn(g, null)" (pxSelect)="toggle(g, null)"></px-chip>
+        <px-chip *ngFor="let o of g.options" [key]="g.key + ':' + o.value" [label]="o.label" [selected]="isOn(g, o.value)"
+          (pxSelect)="toggle(g, o.value)"></px-chip>
+      </div>
+    </ng-container>
+  </aside>
+
+  <!-- Its releases, most seeded first -->
+  <section pxMain class="releases" pxSection="pluginReleasesList" [leaveFor]="{ left: '@pluginReleasesRail' }">
+    <header class="listHeader">
+      <h1 class="heading">{{ heading }}</h1>
+      <p class="count" *ngIf="state.releases.length">
+        {{ state.releases.length }}{{ state.last ? '' : '+' }} releases, most seeded first
+      </p>
+    </header>
+
+    <px-empty class="listNote" *ngIf="note" [text]="note" [action]="loadError ? 'Try again' : ''" actionKey="retry"
+      (act)="load()"></px-empty>
+    <px-empty class="listNote" *ngIf="loading && !state.releases.length" [busy]="true" [text]="'Loading ' + scope.name + '…'"></px-empty>
+
+    <div class="releasesViewport" *ngIf="state.releases.length"
+      [pxGrid]="listId" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
+      <ol class="releaseList">
+        <li *ngFor="let r of state.releases; trackBy: trackRelease">
+          <button class="release focusable" pxItem [pxItemKey]="keyOf(r)" [class.quiet]="r.seeds < 5" (pxSelect)="play(r)">
+            <span class="seeds">
+              <span class="seedCount">{{ r.seeds | number }}</span>
+              <span class="seedLabel">{{ r.seeds == 1 ? 'seeder' : 'seeders' }}</span>
+              <span class="seedMeter"><span [style.width.%]="seedShare(r.seeds) * 100"></span></span>
+            </span>
+
+            <span class="releaseInfo">
+              <span class="releaseTitle">{{ r.title }}</span>
+              <span class="releaseMeta">
+                <span *ngIf="r.peers != null">{{ r.peers | number }} peers</span>
+                <span *ngIf="r.uploadedAt">{{ age(r.uploadedAt) }}</span>
+                <span *ngFor="let n of r.notes || []">{{ n }}</span>
+              </span>
+            </span>
+
+            <span class="releaseTags">
+              <span class="tag quality" *ngIf="r.quality">{{ r.quality }}</span>
+              <span class="tag" *ngIf="r.size">{{ size(r.size) }}</span>
+            </span>
+          </button>
+        </li>
+      </ol>
+      <p class="moreNote" *ngIf="loading && state.releases.length">Loading more…</p>
+    </div>
+  </section>
+</px-rail-layout>
+
+<text-keyboard *ngIf="keyboardOpen"
+  title="Search releases"
+  placeholder="Release name"
+  [value]="state.query"
+  [maxLength]="60"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="onSearchCancelled()">
+</text-keyboard>

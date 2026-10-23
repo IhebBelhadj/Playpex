@@ -1,0 +1,27 @@
+// A plugin's title page, styled like the movie page and the 18+ title page
+// (adult-title): the frame is <px-detail-layout> (a pxStack: the title info
+// on top, the tiles at the bottom of the first screen, the rows scrolled
+// into view)
+@use 'px' as *;
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.options {
+  min-height: var(--px-screen-h);
+}
+
+.row {
+  --px-row-gap: #{dp(21)};
+  padding-bottom: dp(25);
+}
+
+.error {
+  margin: 0 0 dp(30);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  color: var(--px-color-text-muted);
+}

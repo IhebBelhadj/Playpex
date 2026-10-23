@@ -10,11 +10,15 @@
 //
 // Errors reach the plugin as rejections with `code`: PERMISSION_DENIED,
 // HOST_NOT_ALLOWED, ADDRESS_NOT_ALLOWED, RATE_LIMITED, QUOTA_EXCEEDED,
-// NOT_AVAILABLE (a part of the API a later step brings: events, schedules,
-// writes, links, notifications, calls between plugins), INVALID…
+// NOT_AVAILABLE (a part of the API a later step brings: calls between
+// plugins), INVALID… Writes are ./writes.js, schedules ./scheduler.js,
+// notifications ./notifications.js, link status ./links.js (plan step P3b).
 
 var http = require('./http'),
-  protocol = require('@playpex/protocol/plugins');
+  protocol = require('@playpex/protocol/plugins'),
+  writes = require('./writes'),
+  scheduler = require('./scheduler'),
+  notifications = require('./notifications');
 
 function failure(code, message) {
   var err = new Error(message);
@@ -28,9 +32,7 @@ function denied(message) {
 
 // The plan step that brings each part not built yet
 var LATER = {
-  'schedule.every': 'P3b', 'schedule.cancel': 'P3b', 'notify.send': 'P3b', 'link.status': 'P3b',
-  'watchlist.add': 'P3b', 'watchlist.remove': 'P3b', 'watchlist.list': 'P3b',
-  'downloads.add': 'P3b', 'downloads.list': 'P3b', 'plugins.call': 'P4b'
+  'plugins.call': 'P4b'
 };
 
 function interpolate(text, vars) {
@@ -124,6 +126,30 @@ function createHost(plugin, services) {
       });
     },
 
+    'schedule.every': function (args) {
+      if (!p.schedule) {
+        return denied('schedule needs permissions.schedule');
+      }
+      count(plugin.stats, 'schedule');
+      return { value: scheduler.every(plugin, args.name, args.interval, args.options) };
+    },
+    'schedule.cancel': function (args) {
+      return { value: scheduler.cancel(plugin.id, args.name) };
+    },
+
+    'notify.send': function (args) {
+      if (!p.notify) {
+        return denied('notify needs permissions.notify');
+      }
+      count(plugin.stats, 'notify');
+      return notifications.send(plugin, args.profiles, args.message).then(function (r) { return { value: r }; });
+    },
+
+    'link.status': function (args) {
+      count(plugin.stats, 'link');
+      return require('./links').status(plugin, args.name, args.profileId).then(function (r) { return { value: r }; });
+    },
+
     'i18n.t': function (args) {
       var key = String(args.key || ''),
         tables = [plugin.strings(args.locale), plugin.strings('en')],
@@ -131,6 +157,8 @@ function createHost(plugin, services) {
       return Promise.resolve({ value: interpolate(text === undefined ? key : text, args.vars) });
     }
   };
+
+  Object.assign(API, writes(plugin, services));
 
   return function host(api, args, bytes) {
     args = args || {};

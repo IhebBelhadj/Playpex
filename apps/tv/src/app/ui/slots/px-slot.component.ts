@@ -93,7 +93,8 @@ export class PxSlotComponent implements OnChanges, OnDestroy {
   }
 
   pick(card:CardModel) {
-    if (card.intent) this.open(card.intent);
+    if (card.run) card.run();
+    else if (card.intent) this.open(card.intent);
   }
 
   more(row:RowState) {

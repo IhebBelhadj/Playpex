@@ -12,6 +12,7 @@ import { InputDispatcher, Navigator } from './nav/public-api';
 import { DevHook } from './dev-hook.service';
 import { ServerLibraryService } from './server-library.service';
 import { PluginMetaService } from './plugin-meta.service';
+import { RemotePlugins } from './plugins/remote';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -48,11 +49,14 @@ export class AppComponent implements AfterViewInit , OnInit{
     // "On this server" on titles' meta lines (its core.title.meta contribution)
     serverLibrary:ServerLibraryService,
     pluginMeta:PluginMetaService,
+    // the server's plugins: their screens, menu entries and contributions (plugins/remote.ts)
+    remotePlugins:RemotePlugins,
     ){
     // remote / keyboard media keys → the screen shown (§13.2)
     mediaKeys.init();
     // development builds: window.playpexDev (scripts/screens.js)
     devHook.install();
+    remotePlugins.start();
     navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);
   }
 

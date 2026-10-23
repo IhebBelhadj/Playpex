@@ -10,7 +10,7 @@
     <button *ngFor="let section of sections; trackBy: trackById" class="tabGroup element menuItem"
       [class.active]="section.id == activeSection" (pxSelect)="openSection(section)">
       <div class="inner">
-        <img [src]="'assets/icons/' + section.menu.icon + '.svg'" alt="">
+        <img [src]="icon(section)" alt="">
         <span class="description">{{ section.menu.label }}</span>
       </div>
     </button>

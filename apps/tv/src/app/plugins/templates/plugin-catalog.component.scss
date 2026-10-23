@@ -1,0 +1,14 @@
+// What the catalog template adds to catalog.scss (shared with the 18+ poster
+// layout): the plugin screen's title at the start of its toolbar
+@use 'px' as *;
+
+.heading {
+  margin: 0 dp(14) 0 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-headline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: dp(420);
+}

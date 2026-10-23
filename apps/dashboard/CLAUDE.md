@@ -40,9 +40,19 @@ src/pages/plugins.tsx   Plugins (docs/plugins-plan.md §6.3): Installed (icon, s
                         do", the on / off switch, Remove / Remove keep its data, Reload for a developer copy), Install plugin (a
                         dialog: upload a .ppx / .zip or a link (a GitHub repo / release page too) → POST /admin/plugins/packages
                         → the preview (permissions, changelog, signer, why it can't install + "Turn on developer mode") → install
-                        by token), Trust (developer mode, trusted publisher keys: PUT /admin/settings {plugins}). Library ›
+                        by token), Trust (developer mode, trusted publisher keys: PUT /admin/settings {plugins}); a plugin's Settings button
+                        (when it declares any) → components/plugin-settings.tsx. Library ›
                         Edit folder has the "Information provider" select (the plugins with library.match, GET /admin/library
                         `matchers`)
+src/components/plugin-settings.tsx  PluginSettingsSheet: a plugin's options rendered from its manifest (GET /admin/plugins/{id}/settings,
+                        key ['admin-plugin-settings', id]): Server / Profiles / Accounts tabs (Profiles: a profile picker, "What it may
+                        do for <profile>": a switch per personal permission (PUT …/grants), then its profile settings), groups, "Show advanced",
+                        visibleIf / enabledIf against the draft, switch / choice / slider / number / text / secret (never shown: "Set")
+                        / action (POST …/settings/{key}/run, its toasts shown); edits are a draft per tab saved together (PUT; a
+                        refusal's `errors` per field: ApiError.fields)
+src/components/plugin-accounts.tsx  PluginAccounts (the Accounts tab): each link's accounts (GET /admin/plugins/{id}/links, key
+                        ['admin-plugin-links', id]), Link → a dialog (POST …/start: a code + its URL, polled every 3 s with …/progress;
+                        or a custom link's form → …/submit), Unlink (Confirm). The plugin row lists its jobs (`AdminPlugin.jobs`)
 src/pages/docs.tsx      the client author guide: `docs/api/*.md` (repo root) bundled with `import.meta.glob(…?raw)`, rendered
                         with react-markdown (GitHub-style heading ids, `chapter.md#x` links → `/docs/chapter#x`); chapter order
                         in `ORDER`; styles `.doc-prose` in index.css. A new chapter = a new .md file there (+ `ORDER`)
@@ -52,7 +62,7 @@ src/pages/docs-reference.tsx  Scalar on `/api/v1/openapi.yaml`, its own lazy chu
 ```
 
 ## Conventions
-- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`, `dlna`, `admin-plugins`; `plugin.changed` invalidates it and `library`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `pages/library.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
+- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`, `dlna`, `admin-plugins`, `admin-plugin-settings` (+ id); `plugin.changed` invalidates them and `library`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `pages/library.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
 - **API first**: a new page needs its route in `openapi.yaml` (+ `npm run generate -w packages/protocol`, server, contract test) before the UI; the types then flow here. Don't hand-write response types.
 - Theme tokens only (`bg-card`, `text-muted-foreground`, `text-success`, `text-warning`, `bg-destructive`…, defined in `src/index.css`); the accent (`--primary`) is the gold of the Playpex logo. Dark unless the OS prefers light (`index.html` script toggles `.dark`).
 - Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`).

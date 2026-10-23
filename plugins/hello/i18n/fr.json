@@ -1,0 +1,5 @@
+{
+  "menu": "Bonjour",
+  "greeting": "Salutation",
+  "said": "{greeting} de l'extension d'exemple"
+}

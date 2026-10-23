@@ -1,5 +1,6 @@
 import { InjectionToken, Type } from '@angular/core';
 import { Route, Routes } from '@angular/router';
+import { Subject } from 'rxjs';
 import { Intent, Requirement, ScreenDef } from './screen';
 
 // Route data keys the navigator reads back from the activated routes
@@ -18,6 +19,10 @@ export class ScreenRegistry {
 
   private screens = new Map<string, ScreenDef>();
 
+  // a screen defined or undefined after start (the server's plugins): the menu
+  // reads its sections again, the router gets its table again (RemotePlugins)
+  readonly changes$ = new Subject<void>();
+
   define<P, D>(def:ScreenDef<P, D>):ScreenDef<P, D> {
     if (this.screens.has(def.id)) throw new Error(`Screen ${def.id} is already defined`);
     let path = normalize(def.path);
@@ -28,7 +33,16 @@ export class ScreenRegistry {
     }
     if (def.id.startsWith('plugin.')) checkPlugin(def);
     this.screens.set(def.id, def as ScreenDef);
+    this.changes$.next();
     return def;
+  }
+
+  // A plugin's screen gone (uninstalled, disabled, another profile): the
+  // caller resets the router's table (core screens can't be undefined)
+  undefine(id:string):boolean {
+    if (!id.startsWith('plugin.') || !this.screens.delete(id)) return false;
+    this.changes$.next();
+    return true;
   }
 
   get(id:string):ScreenDef {
@@ -127,7 +141,7 @@ export function defineScreen<P = any, D = any>(def:ScreenDef<P, D>):ScreenDef<P,
 
 // Plugin rules (docs/navigation-system-plan.md §8, decision G)
 function checkPlugin(def:ScreenDef) {
-  let match = /^plugin\.([a-z0-9-]+)\.[a-z0-9.-]+$/.exec(def.id);
+  let match = /^plugin\.([a-z0-9-]+)\.[A-Za-z0-9.-]+$/.exec(def.id);
   if (!match) throw new Error(`Plugin screen ids are plugin.<pluginId>.<name>: ${def.id}`);
   if (!normalize(def.path).startsWith(`p/${match[1]}/`)) throw new Error(`Plugin screen ${def.id}: paths go under p/${match[1]}/`);
   if (def.kind == 'root' || def.kind == 'system') throw new Error(`Plugin screen ${def.id}: kind ${def.kind} is the core's`);

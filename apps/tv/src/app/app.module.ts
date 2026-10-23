@@ -22,7 +22,7 @@ import { DisplaySizeComponent } from './display-size/display-size.component';
 import { DisplaySetupComponent } from './display-setup/display-setup.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
 import { ScreenEdgesComponent } from './screen-edges/screen-edges.component';
-import { HELLO_COMPONENTS } from './plugins-dev/hello/hello-plugin';
+import { PLUGIN_TEMPLATES } from './plugins/templates/templates';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
@@ -74,7 +74,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     DisplaySetupComponent,
     SettingsPageComponent,
     ScreenEdgesComponent,
-    ...HELLO_COMPONENTS,
+    ...PLUGIN_TEMPLATES,
     ShowOptionsComponent,
     TorrentPickerComponent,
     ProfilePickerComponent,

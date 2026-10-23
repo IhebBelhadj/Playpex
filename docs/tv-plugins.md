@@ -1,8 +1,8 @@
 # Playpex TV plugins: author guide (draft)
 
-How a plugin adds to Playpex TV: its own screens, and contributions to the core's screens. It is a **draft**: there is no plugin loader yet (a plugin is compiled with the app, like the example in `apps/tv/src/app/plugins-dev/hello/`), and what's described here is the contract that loader will keep. Server-side plugins and clients other than Playpex TV are out of scope; for those, see the client author guide in `docs/api/`.
+How a plugin adds to Playpex TV: its own screens, and contributions to the core's screens. What's described here is compiled with the app: the core's own features use it, and so does the remote plugin adapter (`apps/tv/src/app/plugins/remote.ts`), which defines the server's plugins' screens and contributions with it at run time. Server-side plugins and clients other than Playpex TV are out of scope; for those, see the client author guide in `docs/api/`.
 
-**This is the core's internal extension API, not the third-party plugin API.** Packaged plugins (`.ppx`, `docs/plugins-plan.md`) never ship Angular code: they are a manifest plus sandboxed server code, and the TV renders them with core templates (that plan's §5, decision B). What's described here is what the core's own features, those templates and development plugins like `hello` use; third-party authors start from [`docs/plugins/`](plugins/README.md) (the packaged-plugin contract, P0 done; the loader comes with P2–P4).
+**This is the core's internal extension API, not the third-party plugin API.** Packaged plugins (`.ppx`, `docs/plugins-plan.md`) never ship Angular code: they are a manifest plus sandboxed server code, and the TV renders them with core templates (that plan's §5, decision B). What's described here is what the core's own features and those templates use; third-party authors start from [`docs/plugins/`](plugins/README.md), and the example plugin is [`plugins/hello`](../plugins/hello) (a packaged plugin since P1).
 
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live. Plugins inherit that framing.
 
@@ -17,7 +17,7 @@ A plugin imports only these two files, never the core's other files:
 
 A breaking change of either bumps its version. Design tokens marked `// stable` in `apps/tv/src/styles/_tokens.scss` are part of the UI contract: a renamed one keeps its old name for one version, a removed one bumps it. Unmarked tokens may change with the core.
 
-The example plugin re-exports both from one file (`plugins-dev/hello/hello-api.ts`); do the same.
+Code outside the core that uses them (the remote adapter, the templates in `apps/tv/src/app/plugins/`) imports only these two files.
 
 ## Two ways in
 
@@ -108,11 +108,8 @@ Rules (checked when defined, or the contribution shows nothing):
 
 ## The example
 
-`apps/tv/src/app/plugins-dev/hello/` (development builds only):
-- screens `plugin.hello.section` (`p/hello/home`: `px-section-layout`, a title info following the focused card, a paged row of made-up titles) and `plugin.hello.title` (`p/hello/title/:id`: `px-detail-layout`, an action asking with `Dialogs.confirm` and answering with a toast);
-- contributions: an action on movie pages opening its title screen, a paged row in the Movies section. They're installed on demand (`window.playpexDev.plugin('hello', true)`) so the core's screenshots stay the core's.
-- Its path through the app is checked by `npx electron scripts/scenario.js plugin` (from `apps/tv`, after a development build).
+The compiled-in example (`plugins-dev/hello`) was rebuilt as a packaged plugin in step P1: [`plugins/hello`](../plugins/hello), drawn by the core's templates (`apps/tv/src/app/plugins/templates/`) from the server's answers. Its path through the app is checked by `npx electron scripts/scenario.js plugin-templates --server <url>` (from `apps/tv`, after a development build; a server in plugin developer mode with `plugins/hello` copied into `<config>/plugins-dev/hello`).
 
 ## Not yet (docs/ui-system-plan.md §12)
 
-Loading plugins at run time (and from the server), isolating their code, a manifest with the API version ranges and permissions, data access beyond view models (catalog, library, playback as a contract), settings pages contributed by plugins (with setting keys `plugin.<pluginId>.<name>`, planned in `docs/settings-plan.md` §4), player extension points.
+Isolating compiled plugin code (packaged plugins have no TV code, so they need none), data access beyond view models (catalog, library, playback as a contract), settings pages contributed by plugins (with setting keys `plugin.<pluginId>.<name>`, planned in `docs/settings-plan.md` §4), player extension points.

@@ -50,7 +50,7 @@ var MARKER_KINDS = ['intro', 'recap', 'credits', 'chapter'];
 var EFFECTS = ['open', 'play', 'toast', 'refresh', 'confirm', 'download'];
 // No settings template: setup is the dashboard's, clients only show content (§1 goal 7)
 var TEMPLATES = ['catalog', 'title', 'releases', 'list'];
-var SETTING_TYPES = ['switch', 'choice', 'slider', 'text', 'secret', 'action'];
+var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'secret', 'action'];
 var LISTING_CATEGORIES = ['catalog', 'sources', 'resolvers', 'subtitles', 'metadata', 'library', 'tracking', 'notifications', 'tools'];
 
 // Slots of core screens a packaged plugin may contribute to (the TV's slot
@@ -338,8 +338,11 @@ function checkManifest(manifest, options) {
     }
   });
   (c.sections || []).forEach(function (s, i) {
-    if (screens.indexOf(s.screen) === -1) {
+    var screen = (c.screens || []).filter(function (x) { return x.name === s.screen; })[0];
+    if (!screen) {
       problem('/contributes/sections/' + i + '/screen', 'no screen named ' + s.screen);
+    } else if (screen.params && screen.params.length) {
+      problem('/contributes/sections/' + i + '/screen', 'a section opens a screen without params');
     }
   });
   var perSlot = {};
@@ -376,6 +379,23 @@ function checkManifest(manifest, options) {
     }
     if (s.type === 'slider' && !(s.min < s.max && s.default >= s.min && s.default <= s.max)) {
       problem(at, 'needs min < max and the default between them');
+    }
+    if (s.type === 'number' && ((s.min !== undefined && s.default < s.min) || (s.max !== undefined && s.default > s.max) ||
+        (s.min !== undefined && s.max !== undefined && s.min >= s.max) || (s.integer && Math.round(s.default) !== s.default))) {
+      problem(at, 'needs min < max and a default between them (whole with integer)');
+    }
+    if (s.pattern !== undefined) {
+      var re = null;
+      try {
+        re = new RegExp('^(?:' + s.pattern + ')$');
+      } catch (e) {
+        problem(at + '/pattern', 'not a regular expression');
+      }
+      if (s.type !== 'text') {
+        problem(at + '/pattern', 'only text settings have a pattern');
+      } else if (re && s.default != null && s.default !== '' && !re.test(s.default)) {
+        problem(at + '/default', 'doesn\'t match the pattern');
+      }
     }
     if (s.type === 'text' && s.default != null && s.maxLength && s.default.length > s.maxLength) {
       problem(at + '/default', 'longer than maxLength');

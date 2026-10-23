@@ -75,7 +75,7 @@
 
   <!-- What to search: the selected filter stays highlighted -->
   <div class="filters" pxSection="searchFilters" [leaveFor]="{ up: '@keyboard' }" pxGrid="filters">
-    <px-chip *ngFor="let f of visibleFilters" [key]="f.id" [label]="f.label" [selected]="f.id == state.filter"
+    <px-chip *ngFor="let f of visibleFilters; trackBy: trackFilter" [key]="f.id" [label]="f.label" [selected]="f.id == state.filter"
       (pxSelect)="setFilter(f.id)"></px-chip>
   </div>
 
@@ -91,6 +91,11 @@
           [badges]="item.badge ? [{ text: item.badge }] : null" [data]="{ key: item.key }"></px-card>
       </ng-container>
     </px-card-row>
+
+    <!-- a plugin's chip: its rows (view models, plugins/remote.ts) -->
+    <px-card-row class="section resultRow" *ngFor="let row of pluginRows; trackBy: trackPluginRow" pxStackItem
+      [attr.data-row]="row.key" [rowKey]="row.key" [title]="row.title" align="nearest" [variant]="row.variant || 'compact'"
+      [items]="row.items" (picked)="pickPlugin($event)"></px-card-row>
   </div>
 
 </div>

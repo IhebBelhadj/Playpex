@@ -1,11 +1,11 @@
 import { MenuServiceService } from './../menu-service.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
-import { combineLatest, Subscription } from 'rxjs';
+import { combineLatest, startWith, Subscription } from 'rxjs';
 import { Profile, ProfilesService } from '../profiles.service';
 import { ServerService } from '../server.service';
 import { Navigator, ScreenDef } from '../nav/public-api';
-import { dp } from '../ui/public-api';
+import { dp, iconUrl } from '../ui/public-api';
 
 // The left menu: the sections declared with a menu entry (src/app/nav/screens.ts),
 // the server in use and who's watching. Enter on a section → that section
@@ -41,7 +41,8 @@ export class MenuComponent implements OnInit , OnDestroy {
   ngOnInit(): void {
     this.subscriptions.push(
       // Who's watching: shown at the bottom of the menu; some sections depend on it (18+)
-      this.profiles.current.subscribe(profile => {
+      // … and on the server's plugins (their sections come and go: plugins/remote.ts)
+      combineLatest([this.profiles.current, this.navigator.registry.changes$.pipe(startWith(null))]).subscribe(([profile]) => {
         this.profile = profile;
         this.sections = this.navigator.registry.sections().filter(s => !s.menu.visible || s.menu.visible({ profile }));
       }),
@@ -149,4 +150,8 @@ export class MenuComponent implements OnInit , OnDestroy {
     document.querySelector('.menu')?.classList.remove('hide')
   }
 
+
+  icon(section:ScreenDef):string {
+    return iconUrl(section.menu.icon);
+  }
 }

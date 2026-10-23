@@ -1,0 +1,23 @@
+<px-section-layout class="libraryFolder pluginList" pxSection="pluginList" [leaveFor]="{ left: '@menu' }">
+  <header class="head">
+    <p class="eyebrow">{{ scope.name }}</p>
+    <h1 class="heading"><span class="current">{{ heading }}</span></h1>
+  </header>
+
+  <px-empty class="note" *ngIf="loadError" [text]="loadError" action="Try again" actionKey="retry" (act)="load()"></px-empty>
+  <px-spinner class="note" *ngIf="loading && !data"></px-spinner>
+  <px-empty class="note" *ngIf="data && !data.items.length" [text]="data.empty || 'Nothing here yet.'"></px-empty>
+
+  <div class="viewport" *ngIf="data?.items.length" [pxGrid]="gridId" align="third">
+    <ol class="list">
+      <li *ngFor="let item of data.items; trackBy: byKey">
+        <button class="row focusable" pxItem [pxItemKey]="item.key" (pxSelect)="select(item)">
+          <img class="icon" *ngIf="icon(item) as src; else noIcon" [src]="src" alt="">
+          <ng-template #noIcon><span></span></ng-template>
+          <span class="name">{{ item.label }}</span>
+          <span class="meta" *ngIf="item.meta">{{ item.meta }}</span>
+        </button>
+      </li>
+    </ol>
+  </div>
+</px-section-layout>

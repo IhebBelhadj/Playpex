@@ -1,0 +1,68 @@
+<px-section-layout class="pluginCatalog">
+
+  <!-- Its title, search and filters -->
+  <div class="toolbar" pxSection="pluginToolbar"
+    [leaveFor]="{ left: '@menu', down: ['stack:' + stackId, '@pluginRows'] }">
+    <h1 class="heading">{{ heading }}</h1>
+    <px-search-field *ngIf="state.data?.search" key="search" [query]="state.query" placeholder="Search"
+      (pxSelect)="openKeyboard()"></px-search-field>
+    <px-button *ngIf="groups.length" key="filters" variant="toolbar" icon="opts" [label]="filterLabel"
+      [active]="filterLabel != 'Filters'" (pxSelect)="openFilters()"></px-button>
+    <px-button *ngIf="filtered" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearAll()"></px-button>
+  </div>
+
+  <!-- Cards, and the empty state's way out: one section -->
+  <div class="postersArea" pxSection="pluginRows" [leaveFor]="{ left: '@menu', up: '@pluginToolbar' }">
+
+    <px-title-info class="titleInfo" *ngIf="info && !note" [info]="info" layout="section"></px-title-info>
+
+    <px-empty class="titleInfo" *ngIf="note" size="hero" [title]="loadError ? scope.name + ' unavailable' : 'Nothing here'" [text]="note"
+      [action]="loadError ? 'Try again' : filtered ? 'Clear search and filters' : ''" [actionKey]="loadError ? 'retry' : 'clear'"
+      (act)="loadError ? load() : clearAll()"></px-empty>
+
+    <px-empty class="titleInfo" *ngIf="!info && !note && loading" size="hero" [busy]="true"
+      [text]="'Loading ' + scope.name + '…'"></px-empty>
+
+    <div class="sliderContainer rows" *ngIf="state.rows.length && !loadError" [pxStack]="stackId" align="row-top" motion="transform">
+      <div class="overlay"></div>
+      <div class="content" pxTrack>
+        <ng-container *ngFor="let row of state.rows; trackBy: trackRow">
+          <px-card-row class="section" *ngIf="row.items.length || row.loading" pxStackItem [rowKey]="row.model.key"
+            [title]="row.model.title" [variant]="row.model.variant || 'poster'" [items]="row.items" [loading]="row.loading"
+            [loadAhead]="loadAhead" (nearEnd)="more(row)" (picked)="pick($event)"></px-card-row>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</px-section-layout>
+
+<!-- Its filter groups, applied together -->
+<px-panel *ngIf="panel == 'filters'" class="filterPanel" id="pluginFilterPanel" title="Filter" align="start" [width]="1040"
+  focus=".panelBody .selected" (closed)="panel = null">
+  <div class="panelBody" pxStack>
+    <ng-container *ngFor="let g of groups">
+      <h3 class="groupTitle">{{ g.label }}</h3>
+      <div class="chipLine" pxGrid enter="nearest">
+        <px-chip [key]="g.key + ':any'" [label]="g.multiple ? 'Any' : 'All'" [selected]="isOn(g, null)" (pxSelect)="toggle(g, null)"></px-chip>
+        <px-chip *ngFor="let o of g.options" [key]="g.key + ':' + o.value" [label]="o.label" [selected]="isOn(g, o.value)"
+          (pxSelect)="toggle(g, o.value)"></px-chip>
+      </div>
+    </ng-container>
+
+    <div class="panelActions" pxGrid enter="nearest">
+      <px-button key="apply" variant="primary" label="Show" (pxSelect)="applyFilters()"></px-button>
+      <px-button key="reset" label="Reset filters" (pxSelect)="resetFilters()"></px-button>
+    </div>
+  </div>
+</px-panel>
+
+<text-keyboard *ngIf="panel == 'keyboard'"
+  [title]="'Search ' + scope.name"
+  placeholder="Search"
+  [value]="state.query"
+  [maxLength]="60"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="onSearchCancelled()">
+</text-keyboard>

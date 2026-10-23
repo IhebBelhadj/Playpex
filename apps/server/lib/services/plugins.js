@@ -154,6 +154,24 @@ module.exports = function pluginsService(repositories, options) {
       }
     },
 
+    // Personal permissions granted per profile (decision G; plugins.js PERSONAL)
+    grants: {
+      /** { profileId: [permission] } */
+      byProfile: function (pluginId) {
+        return repo.grantsList(pluginId).then(function (rows) {
+          var out = {};
+          rows.forEach(function (r) { (out[r.profileId] = out[r.profileId] || []).push(r.permission); });
+          return out;
+        });
+      },
+      set: function (pluginId, profileId, permission, on) {
+        if (typeof permission !== 'string' || !/^(events\.playback|write\.[a-z]+)$/.test(permission)) {
+          return Promise.reject(errors.invalid('not a personal permission: ' + permission));
+        }
+        return repo.grantSet(pluginId, profileId, permission, !!on, now());
+      }
+    },
+
     /** Everything a plugin kept (removal, plan §6.4) */
     removeAll: function (pluginId) {
       return repo.removeAll(pluginId);

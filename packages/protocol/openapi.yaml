@@ -940,6 +940,228 @@ paths:
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /admin/plugins/{pluginId}/settings:
+    get:
+      tags: [plugins]
+      operationId: getAdminPluginSettings
+      summary: A plugin's options (its manifest's `contributes.settings`), as the dashboard edits them
+      description: |
+        Definitions with their labels translated (`Accept-Language`), the server-scope values (the manifest's defaults
+        for the ones never set), which secrets are set (never their values), and the values of each profile for its
+        profile-scope settings (kids profiles absent for an `adults` plugin). Also for a disabled installed plugin.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Its settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginSettings' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [plugins]
+      operationId: updateAdminPluginSettings
+      summary: Set some of a plugin's options
+      description: |
+        Server-scope values (no `profile`) or one profile's. All or nothing: an unknown key, a key of the other scope or a
+        bad value refuses the change (400 with `errors`). `null` puts a setting back to its default; a secret's `null` or
+        `""` removes it. Publishes `plugin.changed` with `reason: settings`.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [values]
+              properties:
+                profile: { type: string, description: 'A profile id: its profile-scope values' }
+                values: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Its settings after the change
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginSettings' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/settings/{key}/run:
+    post:
+      tags: [plugins]
+      operationId: runAdminPluginAction
+      summary: Press an `action` setting (Test connection, Clear cache, Sync now)
+      description: Calls its data handler without a profile; the dashboard shows the toasts among the effects. 409 while the plugin is off.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The handler's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginDataAnswer' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+
+  /admin/plugins/{pluginId}/grants:
+    put:
+      tags: [plugins]
+      operationId: grantAdminPluginPermission
+      summary: Grant (or take back) one of a plugin's personal permissions for a profile
+      description: |
+        Personal permissions (`events.playback`, `write.watchlist`, `write.watched`, `write.ratings`) are off for every
+        profile until the admin switches them on here (decision G). Answers the plugin's settings view (its `profiles[].grants`).
+        Publishes `plugin.changed` with `reason: grants`.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profile, permission, granted]
+              properties:
+                profile: { type: string }
+                permission: { type: string }
+                granted: { type: boolean }
+      responses:
+        '200':
+          description: Its settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginSettings' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/links:
+    get:
+      tags: [plugins]
+      operationId: getAdminPluginLinks
+      summary: A plugin's account links and their accounts (one per profile, or the server's)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Its links
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [links]
+                properties:
+                  links: { type: array, items: { $ref: '#/components/schemas/PluginLink' } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/links/{name}/start:
+    post:
+      tags: [plugins]
+      operationId: startAdminPluginLink
+      summary: Start linking an account
+      description: |
+        A device-code link: the host asks the service for a code (the client id from the plugin's secret) and polls for the
+        token; show `code` and `url` to the person whose account it is. A custom link: the plugin's handler answers a code
+        to show, or a form to fill (`submit`). 400 when the client id isn't entered yet, 409 while the plugin is off.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { profile: { type: string, description: 'For a link of scope profile' } } }
+      responses:
+        '200':
+          description: What to show
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginLinkStart' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+  /admin/plugins/{pluginId}/links/{name}/progress:
+    get:
+      tags: [plugins]
+      operationId: getAdminPluginLinkProgress
+      summary: How a started link is going (poll every few seconds)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+        - { name: profile, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Its state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginLinkProgress' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/links/{name}/submit:
+    post:
+      tags: [plugins]
+      operationId: submitAdminPluginLink
+      summary: A custom link's form, filled
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [values]
+              properties:
+                profile: { type: string }
+                values: { type: object, additionalProperties: { type: string } }
+      responses:
+        '200':
+          description: Its state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginLinkProgress' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/plugins/{pluginId}/links/{name}:
+    delete:
+      tags: [plugins]
+      operationId: unlinkAdminPluginLink
+      summary: Unlink an account (its tokens deleted)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: name, in: path, required: true, schema: { type: string } }
+        - { name: profile, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ── media library (admin; docs/media-server-plan.md §5) ────────────────────
   /admin/library:
     get:
@@ -2018,6 +2240,28 @@ paths:
                         label: { type: string }
         '400': { $ref: '#/components/responses/Invalid' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /plugins/notifications:
+    get:
+      tags: [plugins]
+      operationId: takePluginNotifications
+      summary: The profile's plugin notifications this device hasn't had yet
+      description: |
+        What plugins sent the profile with `notify.send` (kept 24 h, one per plugin and key), each answered once per device:
+        show them as toasts. Ask when the app opens for a profile and on the event `plugin.notification` with its `profileId`.
+      parameters:
+        - { name: profile, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Its notifications, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notifications]
+                properties:
+                  notifications: { type: array, items: { $ref: '#/components/schemas/PluginNotification' } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /plugins/meta:
     post:
       tags: [plugins]
@@ -2113,14 +2357,7 @@ paths:
           description: The handler's answer
           content:
             application/json:
-              schema:
-                type: object
-                required: [data, effects]
-                properties:
-                  data: { description: 'The model of the template / slot / call' }
-                  effects:
-                    type: array
-                    items: { type: object, required: [type], properties: { type: { type: string, enum: [open, play, toast, refresh, confirm, download] } } }
+              schema: { $ref: '#/components/schemas/PluginDataAnswer' }
         '400': { $ref: '#/components/responses/Invalid' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -3074,6 +3311,7 @@ components:
         audience: { type: string, enum: [everyone, adults] }
         icon: { type: [string, 'null'], description: 'assets/… of the package' }
         assets: { type: string, description: 'Where its assets are, under the API prefix: /plugins/<id>/assets/' }
+        play: { type: boolean, description: 'It may hand play requests to the core (permissions.play): its releases screens play what is selected' }
         sections:
           type: array
           items:
@@ -3775,8 +4013,146 @@ components:
         registered: { type: ['object', 'null'] }
         stats: { type: ['object', 'null'] }
         previous: { type: boolean, description: 'The version it replaced is kept' }
+        settings: { type: [integer, 'null'], description: 'How many options it declares (null: not loaded; GET …/settings tells)' }
+        personal: { type: [integer, 'null'], description: 'How many personal permissions it asks for (granted per profile)' }
+        links: { type: [integer, 'null'], description: 'How many account links it declares' }
+        jobs:
+          type: array
+          description: Its scheduled jobs
+          items:
+            type: object
+            required: [name, intervalMs, runs, errors, skipped, running, lastRunAt, lastDurationMs, lastError, nextRunAt]
+            properties:
+              name: { type: string }
+              intervalMs: { type: integer }
+              runs: { type: integer }
+              errors: { type: integer }
+              skipped: { type: integer, description: 'Runs skipped: the last one was still going' }
+              running: { type: boolean }
+              lastRunAt: { type: [string, 'null'], format: date-time }
+              lastDurationMs: { type: [integer, 'null'] }
+              lastError: { type: [string, 'null'] }
+              nextRunAt: { type: [string, 'null'], format: date-time }
         installedAt: { type: [string, 'null'], format: date-time }
         updatedAt: { type: [string, 'null'], format: date-time }
+    PluginDataAnswer:
+      type: object
+      description: A data handler's answer (`dataAnswer` of plugin-api.schema.json, effects checked by the server)
+      required: [data, effects]
+      properties:
+        data: { description: 'The model of the template / slot / call' }
+        effects:
+          type: array
+          items: { type: object, required: [type], properties: { type: { type: string, enum: [open, play, toast, refresh, confirm, download] } } }
+    PluginSettingDefinition:
+      type: object
+      description: One of a plugin's options as declared in its manifest (docs/plugins/manifest.md), labels translated
+      required: [key, scope, type, label, level]
+      properties:
+        key: { type: string }
+        scope: { type: string, enum: [server, profile] }
+        type: { type: string, enum: [switch, choice, slider, number, text, secret, action] }
+        label: { type: string }
+        description: { type: string }
+        group: { type: string }
+        level: { type: string, enum: [basic, advanced] }
+        visibleIf: { type: object, properties: { key: { type: string }, equals: {} } }
+        enabledIf: { type: object, properties: { key: { type: string }, equals: {} } }
+        options: { type: array, items: { type: object, required: [value, label], properties: { value: { type: string }, label: { type: string } } } }
+        min: { type: number }
+        max: { type: number }
+        step: { type: number }
+        unit: { type: string }
+        integer: { type: boolean }
+        maxLength: { type: integer }
+        placeholder: { type: string }
+        pattern: { type: string }
+        confirm: { type: string, description: 'An action: asked before it runs' }
+        default: {}
+    PluginSettings:
+      type: object
+      required: [plugin, state, definitions, server, secrets, personal, profiles]
+      properties:
+        plugin: { type: string }
+        state: { type: string }
+        definitions: { type: array, items: { $ref: '#/components/schemas/PluginSettingDefinition' } }
+        server: { type: object, additionalProperties: true, description: 'Server-scope values (secrets and actions left out)' }
+        secrets: { type: object, additionalProperties: { type: boolean }, description: 'Secret key → set or not' }
+        personal:
+          type: array
+          description: Its personal permissions, granted per profile (`profiles[].grants`)
+          items: { type: object, required: [key, text], properties: { key: { type: string }, text: { type: string } } }
+        profiles:
+          type: array
+          description: Only when it has profile-scope settings or personal permissions
+          items:
+            type: object
+            required: [id, name, kids, values]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              kids: { type: boolean }
+              values: { type: object, additionalProperties: true }
+              grants: { type: array, items: { type: string }, description: 'The personal permissions granted for this profile' }
+    PluginLink:
+      type: object
+      required: [name, label, scope, kind, accounts]
+      properties:
+        name: { type: string }
+        label: { type: string }
+        scope: { type: string, enum: [profile, server] }
+        kind: { type: string, enum: [deviceCode, custom] }
+        accounts:
+          type: array
+          items:
+            type: object
+            required: [profileId, profileName, linked, linkedAt, expiresAt, pending]
+            properties:
+              profileId: { type: [string, 'null'], description: 'null: the server''s account' }
+              profileName: { type: [string, 'null'] }
+              linked: { type: boolean }
+              linkedAt: { type: [string, 'null'], format: date-time }
+              expiresAt: { type: [string, 'null'], format: date-time }
+              pending: { type: boolean, description: 'A link started and not finished' }
+    PluginLinkStart:
+      oneOf:
+        - type: object
+          required: [kind, code, url, expiresAt]
+          properties:
+            kind: { const: code }
+            code: { type: string }
+            url: { type: string }
+            urlComplete: { type: [string, 'null'] }
+            qr: { type: boolean }
+            expiresAt: { type: string, format: date-time }
+        - type: object
+          required: [kind, form]
+          properties:
+            kind: { const: form }
+            form:
+              type: array
+              items:
+                type: object
+                required: [key, label]
+                properties: { key: { type: string }, label: { type: string }, secret: { type: boolean }, help: { type: string } }
+            help: { type: [string, 'null'] }
+    PluginLinkProgress:
+      type: object
+      required: [state, message]
+      properties:
+        state: { type: string, enum: [none, pending, done, failed] }
+        message: { type: [string, 'null'] }
+    PluginNotification:
+      type: object
+      required: [id, plugin, name, text, tone, key, at]
+      properties:
+        id: { type: string }
+        plugin: { type: string }
+        name: { type: string, description: 'The plugin''s name' }
+        text: { type: string }
+        tone: { type: string, enum: [info, success, error] }
+        key: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
     AdminPlugins:
       type: object
       required: [plugins, developerMode, publisherKeys, devDir, pluginsDir]

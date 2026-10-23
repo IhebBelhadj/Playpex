@@ -704,6 +704,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plugins/{pluginId}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A plugin's options (its manifest's `contributes.settings`), as the dashboard edits them
+         * @description Definitions with their labels translated (`Accept-Language`), the server-scope values (the manifest's defaults
+         *     for the ones never set), which secrets are set (never their values), and the values of each profile for its
+         *     profile-scope settings (kids profiles absent for an `adults` plugin). Also for a disabled installed plugin.
+         */
+        get: operations["getAdminPluginSettings"];
+        /**
+         * Set some of a plugin's options
+         * @description Server-scope values (no `profile`) or one profile's. All or nothing: an unknown key, a key of the other scope or a
+         *     bad value refuses the change (400 with `errors`). `null` puts a setting back to its default; a secret's `null` or
+         *     `""` removes it. Publishes `plugin.changed` with `reason: settings`.
+         */
+        put: operations["updateAdminPluginSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/settings/{key}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Press an `action` setting (Test connection, Clear cache, Sync now)
+         * @description Calls its data handler without a profile; the dashboard shows the toasts among the effects. 409 while the plugin is off.
+         */
+        post: operations["runAdminPluginAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Grant (or take back) one of a plugin's personal permissions for a profile
+         * @description Personal permissions (`events.playback`, `write.watchlist`, `write.watched`, `write.ratings`) are off for every
+         *     profile until the admin switches them on here (decision G). Answers the plugin's settings view (its `profiles[].grants`).
+         *     Publishes `plugin.changed` with `reason: grants`.
+         */
+        put: operations["grantAdminPluginPermission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A plugin's account links and their accounts (one per profile, or the server's) */
+        get: operations["getAdminPluginLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/links/{name}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start linking an account
+         * @description A device-code link: the host asks the service for a code (the client id from the plugin's secret) and polls for the
+         *     token; show `code` and `url` to the person whose account it is. A custom link: the plugin's handler answers a code
+         *     to show, or a form to fill (`submit`). 400 when the client id isn't entered yet, 409 while the plugin is off.
+         */
+        post: operations["startAdminPluginLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/links/{name}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How a started link is going (poll every few seconds) */
+        get: operations["getAdminPluginLinkProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/links/{name}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A custom link's form, filled */
+        post: operations["submitAdminPluginLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/links/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink an account (its tokens deleted) */
+        delete: operations["unlinkAdminPluginLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/library": {
         parameters: {
             query?: never;
@@ -1781,6 +1941,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plugins/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The profile's plugin notifications this device hasn't had yet
+         * @description What plugins sent the profile with `notify.send` (kept 24 h, one per plugin and key), each answered once per device:
+         *     show them as toasts. Ask when the app opens for a profile and on the event `plugin.notification` with its `profileId`.
+         */
+        get: operations["takePluginNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plugins/meta": {
         parameters: {
             query?: never;
@@ -2522,6 +2703,8 @@ export interface components {
             icon: string | null;
             /** @description Where its assets are, under the API prefix: /plugins/<id>/assets/ */
             assets: string;
+            /** @description It may hand play requests to the core (permissions.play): its releases screens play what is selected */
+            play?: boolean;
             sections: {
                 screen: string;
                 menu: {
@@ -3177,10 +3360,163 @@ export interface components {
             stats?: Record<string, never> | null;
             /** @description The version it replaced is kept */
             previous: boolean;
+            /** @description How many options it declares (null: not loaded; GET …/settings tells) */
+            settings?: number | null;
+            /** @description How many personal permissions it asks for (granted per profile) */
+            personal?: number | null;
+            /** @description How many account links it declares */
+            links?: number | null;
+            /** @description Its scheduled jobs */
+            jobs?: {
+                name: string;
+                intervalMs: number;
+                runs: number;
+                errors: number;
+                /** @description Runs skipped: the last one was still going */
+                skipped: number;
+                running: boolean;
+                /** Format: date-time */
+                lastRunAt: string | null;
+                lastDurationMs: number | null;
+                lastError: string | null;
+                /** Format: date-time */
+                nextRunAt: string | null;
+            }[];
             /** Format: date-time */
             installedAt?: string | null;
             /** Format: date-time */
             updatedAt?: string | null;
+        };
+        /** @description A data handler's answer (`dataAnswer` of plugin-api.schema.json, effects checked by the server) */
+        PluginDataAnswer: {
+            /** @description The model of the template / slot / call */
+            data: unknown;
+            effects: {
+                /** @enum {string} */
+                type: "open" | "play" | "toast" | "refresh" | "confirm" | "download";
+            }[];
+        };
+        /** @description One of a plugin's options as declared in its manifest (docs/plugins/manifest.md), labels translated */
+        PluginSettingDefinition: {
+            key: string;
+            /** @enum {string} */
+            scope: "server" | "profile";
+            /** @enum {string} */
+            type: "switch" | "choice" | "slider" | "number" | "text" | "secret" | "action";
+            label: string;
+            description?: string;
+            group?: string;
+            /** @enum {string} */
+            level: "basic" | "advanced";
+            visibleIf?: {
+                key?: string;
+                equals?: unknown;
+            };
+            enabledIf?: {
+                key?: string;
+                equals?: unknown;
+            };
+            options?: {
+                value: string;
+                label: string;
+            }[];
+            min?: number;
+            max?: number;
+            step?: number;
+            unit?: string;
+            integer?: boolean;
+            maxLength?: number;
+            placeholder?: string;
+            pattern?: string;
+            /** @description An action: asked before it runs */
+            confirm?: string;
+            default?: unknown;
+        };
+        PluginSettings: {
+            plugin: string;
+            state: string;
+            definitions: components["schemas"]["PluginSettingDefinition"][];
+            /** @description Server-scope values (secrets and actions left out) */
+            server: {
+                [key: string]: unknown;
+            };
+            /** @description Secret key → set or not */
+            secrets: {
+                [key: string]: boolean;
+            };
+            /** @description Its personal permissions, granted per profile (`profiles[].grants`) */
+            personal: {
+                key: string;
+                text: string;
+            }[];
+            /** @description Only when it has profile-scope settings or personal permissions */
+            profiles: {
+                id: string;
+                name: string;
+                kids: boolean;
+                values: {
+                    [key: string]: unknown;
+                };
+                /** @description The personal permissions granted for this profile */
+                grants?: string[];
+            }[];
+        };
+        PluginLink: {
+            name: string;
+            label: string;
+            /** @enum {string} */
+            scope: "profile" | "server";
+            /** @enum {string} */
+            kind: "deviceCode" | "custom";
+            accounts: {
+                /** @description null: the server's account */
+                profileId: string | null;
+                profileName: string | null;
+                linked: boolean;
+                /** Format: date-time */
+                linkedAt: string | null;
+                /** Format: date-time */
+                expiresAt: string | null;
+                /** @description A link started and not finished */
+                pending: boolean;
+            }[];
+        };
+        PluginLinkStart: {
+            /** @constant */
+            kind: "code";
+            code: string;
+            url: string;
+            urlComplete?: string | null;
+            qr?: boolean;
+            /** Format: date-time */
+            expiresAt: string;
+        } | {
+            /** @constant */
+            kind: "form";
+            form: {
+                key: string;
+                label: string;
+                secret?: boolean;
+                help?: string;
+            }[];
+            help?: string | null;
+        };
+        PluginLinkProgress: {
+            /** @enum {string} */
+            state: "none" | "pending" | "done" | "failed";
+            message: string | null;
+        };
+        PluginNotification: {
+            id: string;
+            plugin: string;
+            /** @description The plugin's name */
+            name: string;
+            text: string;
+            /** @enum {string} */
+            tone: "info" | "success" | "error";
+            key: string | null;
+            /** Format: date-time */
+            at: string;
         };
         AdminPlugins: {
             plugins: components["schemas"]["AdminPlugin"][];
@@ -5445,6 +5781,268 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getAdminPluginSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateAdminPluginSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A profile id: its profile-scope values */
+                    profile?: string;
+                    values: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Its settings after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    runAdminPluginAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The handler's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginDataAnswer"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    grantAdminPluginPermission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profile: string;
+                    permission: string;
+                    granted: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Its settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAdminPluginLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        links: components["schemas"]["PluginLink"][];
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startAdminPluginLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description For a link of scope profile */
+                    profile?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What to show */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLinkStart"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    getAdminPluginLinkProgress: {
+        parameters: {
+            query?: {
+                profile?: string;
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLinkProgress"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitAdminPluginLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profile?: string;
+                    values: {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Its state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginLinkProgress"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
+    unlinkAdminPluginLink: {
+        parameters: {
+            query?: {
+                profile?: string;
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getMediaLibrary: {
         parameters: {
             query?: never;
@@ -7007,6 +7605,32 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    takePluginNotifications: {
+        parameters: {
+            query: {
+                profile: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its notifications, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        notifications: components["schemas"]["PluginNotification"][];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     pluginTitleMeta: {
         parameters: {
             query?: {
@@ -7105,14 +7729,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The model of the template / slot / call */
-                        data: unknown;
-                        effects: {
-                            /** @enum {string} */
-                            type: "open" | "play" | "toast" | "refresh" | "confirm" | "download";
-                        }[];
-                    };
+                    "application/json": components["schemas"]["PluginDataAnswer"];
                 };
             };
             400: components["responses"]["Invalid"];

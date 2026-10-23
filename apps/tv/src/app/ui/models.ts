@@ -27,6 +27,10 @@ export interface CardModel {
   rating?:{ source:ScoreSource, value:number } | null;
   /** what Enter opens (the row / slot opens it) */
   intent?:Intent;
+  /** called on Enter instead of opening `intent` (a plugin's card calling its handler) */
+  run?:() => void;
+  /** the title info a section shows while the card has the focus (a plugin's catalog) */
+  info?:TitleInfoModel;
 }
 
 export interface RowPage {
@@ -44,6 +48,14 @@ export interface RowModel {
   title:string;
   variant?:CardVariant;
   source:RowSource;
+}
+
+/** A chip of the search page's filters with what it shows for the query (core.search.filters) */
+export interface SearchFilterModel {
+  /** plugins prefix it `<pluginId>:` */
+  key:string;
+  label:string;
+  rows:RowModel[];
 }
 
 export interface ActionModel {
@@ -84,6 +96,8 @@ export interface TitleInfoModel {
   notes?:string[];
   /** shown dimmed when there's no overview ("No description for this episode yet.") */
   overviewFallback?:string;
+  /** a full URL for the shell's backdrop while it's shown (pages send it to BackgroundService) */
+  backdrop?:string | null;
 }
 
 /** assets/icons/<name>.svg for a bare name, the string itself for a path or URL */

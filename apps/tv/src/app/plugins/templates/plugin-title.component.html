@@ -1,0 +1,27 @@
+<!-- Laid out like the movie page and the 18+ title page: the title info on
+     top, then the entries of this page's pxStack: the action tiles, the rows -->
+<px-detail-layout class="pluginTitle" pxSection="pluginTitle" [leaveFor]="{ left: '@menu' }" pxStack>
+
+  <px-title-info class="titleBlock" [info]="info" [loading]="!info && !error" layout="detail"></px-title-info>
+
+  <div class="options" *ngIf="info">
+    <px-action-bar *ngIf="actions.length">
+      <px-action *ngFor="let a of actions; trackBy: trackAction" [key]="a.key" [icon]="a.icon" [label]="a.label" [on]="!!a.on"
+        [progress]="a.progress ?? null" [disabled]="!!a.disabled" (pxSelect)="run(a)"></px-action>
+    </px-action-bar>
+
+    <ng-container *ngFor="let row of rows; trackBy: trackRow">
+      <px-card-row class="row" *ngIf="row.items.length || row.loading" pxStackItem [rowKey]="row.model.key" [title]="row.model.title"
+        tone="detail" align="third" [variant]="row.model.variant || 'compact'" [items]="row.items" [loading]="row.loading"
+        [loadAhead]="6" (nearEnd)="more(row)" (picked)="pick($event)"></px-card-row>
+    </ng-container>
+  </div>
+
+  <div class="options" *ngIf="error && !info">
+    <p class="error">{{ error }}</p>
+    <px-action-bar>
+      <px-action key="back" icon="back" label="Go back" (pxSelect)="navigator.back()"></px-action>
+      <px-action key="retry" icon="opts" label="Try again" (pxSelect)="load()"></px-action>
+    </px-action-bar>
+  </div>
+</px-detail-layout>

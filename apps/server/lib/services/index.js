@@ -19,12 +19,13 @@ var profilesService = require('./profiles'),
  * @param {{ catalog: object, now?: function(): Date, publish?: function(string, object) }} options
  *   catalog: { recommendations({ mediaType, tmdbId }) → Promise<candidate[]> } (lib/tmdb.js)
  *   now: clock, for tests
- *   publish: events.publish (lib/events.js), for `settings.changed`
+ *   publish: events.publish (lib/events.js), for `settings.changed` and the internal events the
+ *            plugins' bus reads (watchlist.*, watched.*, rating.*: lib/services/changes.js)
  */
 function createServices(repositories, options) {
   options = options || {};
   var profiles = profilesService(repositories, { now: options.now }),
-    shared = { profiles: profiles, now: options.now };
+    shared = { profiles: profiles, now: options.now, publish: options.publish };
 
   return {
     profiles: profiles,

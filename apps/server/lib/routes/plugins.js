@@ -8,6 +8,8 @@
 //   GET  /plugins/:id/assets/*              a file of the package's assets/ (fixed types, nosniff, SVG without scripts)
 //   POST /plugins/meta?profile=             body { title: TitleRef } → { meta: [{ plugin, name, items: MetaItem[] }] }:
 //                                           what metadata.title handlers add to a title page (≤ 3 items each)
+//   GET  /plugins/notifications?profile=    { notifications }: the profile's plugin notifications this device
+//                                           hasn't had yet (lib/plugins/notifications.js; then marked had)
 
 var express = require('express'),
   path = require('path'),
@@ -16,6 +18,7 @@ var express = require('express'),
   RateLimiter = require('../plugins/ratelimit'),
   sessions = require('../sessions'),
   userData = require('../userData'),
+  notifications = require('../plugins/notifications'),
   fail = require('../errors').fail;
 
 var router = express.Router(),
@@ -54,7 +57,17 @@ function answerError(res, err) {
 
 router.get('/', function (req, res) {
   profileOf(req).then(function (profile) {
-    res.json({ plugins: plugins.clientView(profile) });
+    res.json({ plugins: plugins.clientView(profile, localeOf(req)) });
+  }).catch(function (err) { answerError(res, err); });
+});
+
+router.get('/notifications', function (req, res) {
+  var device = sessions.device(req);
+  if (!req.query.profile) {
+    return fail(res, 'INVALID', 'profile is required');
+  }
+  profileOf(req).then(function (profile) {
+    res.json({ notifications: notifications.take(profile.id, device.id) });
   }).catch(function (err) { answerError(res, err); });
 });
 

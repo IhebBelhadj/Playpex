@@ -130,7 +130,7 @@ function capitalize(text:string){
   return text.length <= 3 ? text.toUpperCase() : text[0].toUpperCase() + text.slice(1);
 }
 
-function formatBytes(bytes:number){
+export function formatBytes(bytes:number){
   if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
   return Math.round(bytes / 1e6) + ' MB';
 }

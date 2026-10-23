@@ -43,6 +43,17 @@ describe('ContributionRegistry', () => {
     expect(() => registry.define({ id: 'plugin.x.d', slot: 'core.movie.actions', actions: () => [] })).toThrowError(/at most 3/);
   });
 
+  it('takes search filter chips on core.search.filters', () => {
+    let def = registry.define({
+      id: 'plugin.x.chip', slot: 'core.search.filters',
+      searchFilter: ctx => [{ key: 'x:chip', label: 'X', rows: [] }],
+    });
+    let seen:any[] = [];
+    registry.models(def, { query: 'abc', profile: { id: 'p', name: 'P', kids: false } }).subscribe(items => seen.push(items));
+    expect(seen[0][0].label).toBe('X');
+    expect(() => registry.define({ id: 'plugin.x.rows2', slot: 'core.search.filters', rows: () => [] } as any)).toThrowError(/takes searchFilter/);
+  });
+
   it('never gives a kids profile adult contributions', () => {
     registry.define({ id: 'plugin.x.adult', slot: 'core.movie.actions', adult: true, actions: () => [] });
     registry.define({ id: 'plugin.x.family', slot: 'core.movie.actions', actions: () => [] });

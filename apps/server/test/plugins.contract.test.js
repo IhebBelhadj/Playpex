@@ -62,6 +62,33 @@ test('the reference manifests are valid', function () {
   });
 });
 
+test('the example plugin (plugins/hello) is valid, with its translations', function () {
+  var strings = { en: require(path.join(ROOT, 'plugins', 'hello', 'i18n', 'en.json')) };
+  assert.deepEqual(problems(reference('hello'), { versions: { nav: 1, ui: 1 }, strings: strings }), []);
+});
+
+test('settings: number (bounds, integer), text pattern; a section opens a screen without params', function () {
+  function withSettings(settings) {
+    return minimal({ contributes: { settings: settings } });
+  }
+  var number = { key: 'n', scope: 'server', type: 'number', label: 'N', default: 5 };
+  assert.deepEqual(problems(withSettings([number])), []);
+  assert.deepEqual(problems(withSettings([Object.assign({}, number, { min: 1, max: 10, integer: true, unit: 's' })])), []);
+  assert.notDeepEqual(problems(withSettings([Object.assign({}, number, { min: 6 })])), [], 'default under min');
+  assert.notDeepEqual(problems(withSettings([Object.assign({}, number, { default: 2.5, integer: true })])), [], 'not whole');
+  assert.notDeepEqual(problems(withSettings([Object.assign({}, number, { options: [] })])), [], 'no options on a number');
+  var text = { key: 't', scope: 'profile', type: 'text', label: 'T', pattern: '[a-z]+', default: 'abc', placeholder: 'abc' };
+  assert.deepEqual(problems(withSettings([text])), []);
+  assert.notDeepEqual(problems(withSettings([Object.assign({}, text, { default: 'ABC' })])), [], 'default doesn\'t match');
+  assert.notDeepEqual(problems(withSettings([Object.assign({}, text, { pattern: '(' })])), [], 'not a regex');
+  assert.notDeepEqual(problems(withSettings([{ key: 's', scope: 'server', type: 'switch', label: 'S', default: true, pattern: 'x' }])), []);
+  var sections = minimal({ contributes: {
+    screens: [{ name: 'title', template: 'title', data: 'title', params: ['id'] }],
+    sections: [{ screen: 'title', menu: { label: 'T', icon: 'assets/x.svg' } }]
+  } });
+  assert.ok(problems(sections).some(function (p) { return /without params/.test(p); }));
+});
+
 test('a minimal manifest is valid', function () {
   assert.deepEqual(problems(minimal()), []);
 });

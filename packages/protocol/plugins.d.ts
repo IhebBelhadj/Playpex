@@ -56,6 +56,8 @@ export interface PluginLink {
     tokenUrl: string;
     refreshUrl?: string;
     scope?: string;
+    /** form (RFC 8628, default) or json (Trakt) */
+    body?: 'form' | 'json';
     clientIdSecret: string;
     clientSecretSecret?: string;
   };
@@ -79,7 +81,8 @@ export type PluginSetting =
   | SettingBase & { type: 'switch'; default: boolean }
   | SettingBase & { type: 'choice'; options: [value: string, label: string][]; default: string }
   | SettingBase & { type: 'slider'; min: number; max: number; step?: number; unit?: string; default: number }
-  | SettingBase & { type: 'text' | 'secret'; maxLength?: number; default?: string }
+  | SettingBase & { type: 'number'; min?: number; max?: number; step?: number; integer?: boolean; unit?: string; default: number }
+  | SettingBase & { type: 'text' | 'secret'; maxLength?: number; placeholder?: string; pattern?: string; default?: string }
   /** a button in the dashboard calling a data handler */
   | SettingBase & { type: 'action'; data: string; confirm?: string };
 

@@ -43,7 +43,7 @@ export { display, UI_SCALES, DEFAULT_UI_SCALE, UiScaleOption, previewUiScale, sa
 
 // view models (§5.5)
 export {
-  ActionModel, Badge, CardModel, CardVariant, MetaItem, RowModel, RowPage, RowSource, ScoreSource, TitleInfoModel, iconUrl,
+  ActionModel, Badge, CardModel, CardVariant, MetaItem, RowModel, RowPage, RowSource, ScoreSource, SearchFilterModel, TitleInfoModel, iconUrl,
 } from './models';
 
 // overlays (step 2)
@@ -74,7 +74,7 @@ export {
 } from './slots/contribution-registry';
 export {
   EpisodeContext, MovieContext, ProfileContext, SectionContext, ShowContext, SlotContexts, SlotDef, SlotKind, SlotName, SLOTS,
-  TitleMetaContext, TitleRef, WatchlistContext,
+  TitleMetaContext, TitleRef, WatchlistContext, SearchContext,
 } from './slots/slots';
 
 // toasts (§13.3)

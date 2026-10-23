@@ -26,7 +26,7 @@ const SEARCH_FIELD = '.adultBrowse [data-px-key="search"]';
 @Component({
   selector: 'app-adult-browse',
   templateUrl: './adult-browse.component.html',
-  styleUrls: ['./adult-browse.component.scss']
+  styleUrls: ['../plugins/templates/catalog.scss']
 })
 export class AdultBrowseComponent implements OnInit, AfterViewInit, OnDestroy {
 

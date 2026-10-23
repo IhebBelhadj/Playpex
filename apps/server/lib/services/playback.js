@@ -7,7 +7,8 @@
 // appended to the history, which feeds recommendations.
 
 var validate = require('./validate'),
-  errors = require('./errors');
+  errors = require('./errors'),
+  changes = require('./changes');
 
 var RESUME_MIN_RATIO = 0.05,   // below: start from the beginning
   FINISHED_RATIO = 0.9,        // at or above: finished (credits)
@@ -45,6 +46,7 @@ module.exports = function playbackService(repositories, options) {
   var progress = repositories.progress,
     history = repositories.history,
     profiles = options.profiles,
+    changed = changes(options.publish),
     now = options.now || function () { return new Date(); };
 
   function withProfile(profileId, work) {
@@ -200,13 +202,14 @@ module.exports = function playbackService(repositories, options) {
       });
     },
 
-    /** Mark as watched without playing it (logged in the history like a real view) */
-    markWatched: function (profileId, input) {
+    /** Mark as watched without playing it (logged in the history like a real view); by: 'user' or 'plugin:<id>' */
+    markWatched: function (profileId, input, by) {
       input = input || {};
       return withProfile(profileId, function () {
         var key = validate.episodeKey(input),
           durationS = input.durationS == null ? 0 : validate.nonNegativeNumber(input.durationS, 'durationS'),
-          at = now();
+          // when it was watched (a plugin's sync), never in the future
+          at = input.at && !isNaN(Date.parse(input.at)) ? new Date(Math.min(Date.parse(input.at), now().getTime())) : now();
         return progress.find(profileId, key).then(function (previous) {
           var record = keepKnown(Object.assign({ profileId: profileId }, key, {
             title: validate.optionalString(input.title, 'title'),
@@ -221,16 +224,28 @@ module.exports = function playbackService(repositories, options) {
             updatedAt: at
           }), previous);
           return progress.upsert(record).then(function (saved) {
-            return previous && previous.finished ? saved : logView(profileId, key, withArtwork(input, record), 1, at).then(function () { return saved; });
+            if (previous && previous.finished) {
+              return saved;
+            }
+            return logView(profileId, key, withArtwork(input, record), 1, at).then(function () {
+              changed('watched.set', profileId, Object.assign({}, key, { title: record.title }), by);
+              return saved;
+            });
           });
         });
       });
     },
 
     /** Forget the resume point / watched state. The history log is kept. */
-    markUnwatched: function (profileId, keyInput) {
+    markUnwatched: function (profileId, keyInput, by) {
       return withProfile(profileId, function () {
-        return progress.remove(profileId, validate.episodeKey(keyInput));
+        var key = validate.episodeKey(keyInput);
+        return progress.remove(profileId, key).then(function (removed) {
+          if (removed) {
+            changed('watched.cleared', profileId, key, by);
+          }
+          return removed;
+        });
       });
     },
 

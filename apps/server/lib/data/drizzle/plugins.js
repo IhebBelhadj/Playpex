@@ -7,7 +7,8 @@ var orm = require('drizzle-orm'),
 var installed = schema.plugins,
   store = schema.pluginStore,
   secrets = schema.pluginSecrets,
-  settings = schema.pluginSettings;
+  settings = schema.pluginSettings,
+  grants = schema.pluginGrants;
 
 function storeWhere(pluginId, key) {
   return orm.and(orm.eq(store.pluginId, pluginId), orm.eq(store.key, key));
@@ -100,11 +101,27 @@ module.exports = function pluginsRepository(db) {
         .then(function () {});
     },
 
+    /** [{ profileId, permission }] of a plugin */
+    grantsList: function (pluginId) {
+      return db.select({ profileId: grants.profileId, permission: grants.permission }).from(grants)
+        .where(orm.eq(grants.pluginId, pluginId));
+    },
+
+    grantSet: function (pluginId, profileId, permission, on, at) {
+      var where = orm.and(orm.eq(grants.pluginId, pluginId), orm.eq(grants.profileId, profileId), orm.eq(grants.permission, permission));
+      if (!on) {
+        return db.delete(grants).where(where).then(function () {});
+      }
+      return db.insert(grants).values({ pluginId: pluginId, profileId: profileId, permission: permission, grantedAt: at })
+        .onConflictDoNothing().then(function () {});
+    },
+
     removeAll: function (pluginId) {
       return db.batch([
         db.delete(store).where(orm.eq(store.pluginId, pluginId)),
         db.delete(secrets).where(orm.eq(secrets.pluginId, pluginId)),
-        db.delete(settings).where(orm.eq(settings.pluginId, pluginId))
+        db.delete(settings).where(orm.eq(settings.pluginId, pluginId)),
+        db.delete(grants).where(orm.eq(grants.pluginId, pluginId))
       ]).then(function () {});
     }
   };

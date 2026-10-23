@@ -458,6 +458,20 @@ var pluginSettings = sqliteTable('plugin_settings', {
   ];
 });
 
+// Personal permissions (plugins.js PERSONAL: events.playback, write.watchlist,
+// write.watched, write.ratings) the admin granted a plugin for a profile
+// (decision G): a missing row = not granted; a profile's rows go with it
+var pluginGrants = sqliteTable('plugin_grants', {
+  pluginId: text('plugin_id').notNull(),
+  profileId: text('profile_id').notNull().references(function () { return profiles.id; }, { onDelete: 'cascade' }),
+  permission: text('permission').notNull(),
+  grantedAt: timestamp('granted_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.pluginId, table.profileId, table.permission] })
+  ];
+});
+
 module.exports = {
   MEDIA_TYPES: MEDIA_TYPES,
   DOWNLOAD_STATES: DOWNLOAD_STATES,
@@ -485,5 +499,6 @@ module.exports = {
   plugins: plugins,
   pluginStore: pluginStore,
   pluginSecrets: pluginSecrets,
-  pluginSettings: pluginSettings
+  pluginSettings: pluginSettings,
+  pluginGrants: pluginGrants
 };

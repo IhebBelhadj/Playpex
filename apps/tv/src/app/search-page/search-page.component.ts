@@ -5,11 +5,28 @@ import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { ProfilesService } from '../profiles.service';
 import { Navigator, useScreen } from '../nav/public-api';
-import { tmdbImageBase } from '../ui/public-api';
+import { RemotePlugins } from '../plugins/remote';
+import { CardModel, ContributionDef, CONTRIBUTIONS, SearchFilterModel, tmdbImageBase } from '../ui/public-api';
 
 interface Filter {
   id: string;
   label: string;
+}
+
+// A plugin's chip (slot core.search.filters): its contribution, and what it
+// answered for the query (its label, its rows)
+interface PluginFilter {
+  id: string;                 // 'plugin:<chip key>'
+  chip: Filter;               // one object: the chips' *ngFor keeps its element
+  def: ContributionDef<'core.search.filters'>;
+  model: SearchFilterModel;
+}
+
+interface PluginRow {
+  key: string;
+  title: string;
+  variant?: CardModel['variant'];
+  items: CardModel[];
 }
 
 const MIN_QUERY = 3;
@@ -36,6 +53,11 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   imgBase = tmdbImageBase('poster', 150);
   state:SearchState = EMPTY_SEARCH;
   loading = false;
+  // the plugins' chips after the core's, and the chosen one's rows
+  pluginFilters:PluginFilter[] = [];
+  pluginRows:PluginRow[] = [];
+  private pluginSub:Subscription;
+  private chipsSub:Subscription;
 
   searchSub:Subscription;
   private searches = new Subject<{query:string , filter:string}>();
@@ -48,6 +70,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
     private profiles:ProfilesService,
     private engine:FocusEngine,
     private positions:PositionStore,
+    private remotePlugins:RemotePlugins,
   ) { }
 
   get isKid():boolean {
@@ -55,13 +78,19 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   }
 
   get visibleFilters():Filter[] {
-    return this.isKid ? this.filters.filter(f => f.id != 'adult') : this.filters;
+    let core = this.isKid ? this.filters.filter(f => f.id != 'adult') : this.filters;
+    return [...core, ...this.pluginFilters.map(f => f.chip)];
+  }
+
+  get pluginFilter():PluginFilter | null {
+    return this.pluginFilters.find(f => f.id == this.state.filter) || null;
   }
 
   ngOnInit(): void {
     this.state = this.moviesService.searchData.value;
     // left over from another profile
     if (this.isKid && this.state.filter == 'adult') this.state = EMPTY_SEARCH;
+    this.loadPluginChips();
 
     // Latest query/filter wins; typing on the on-screen keyboard is debounced
     this.searchSub = this.searches.pipe(
@@ -106,6 +135,8 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   ngOnDestroy(): void {
     this.searchSub?.unsubscribe();
+    this.pluginSub?.unsubscribe();
+    this.chipsSub?.unsubscribe();
   }
 
   // ── searching ───────────────────────────────────────────────────────────
@@ -113,6 +144,11 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   get note():string {
     if (this.state.query.trim().length < MIN_QUERY) return '';
     if (this.loading && !this.state.rows.length) return 'Searching…';
+    if (this.state.filter.startsWith('plugin:')) {
+      if (this.loading && !this.pluginRows.length) return 'Searching…';
+      let label = this.pluginFilter?.model.label || 'this plugin';
+      return this.state.searched && !this.pluginRows.length ? `${label} has nothing for “${this.state.query.trim()}”.` : '';
+    }
     if (this.state.searched && !this.state.rows.length) {
       let what = this.filters.find(f => f.id == this.state.filter);
       return this.state.filter == 'all'
@@ -137,13 +173,93 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   search(){
     let query = this.state.query.trim();
+    this.pluginSub?.unsubscribe();
+    this.pluginRows = [];
     if (query.length < MIN_QUERY) {
       this.loading = false;
       this.update({ rows : [] , searched : false });
       return;
     }
     this.loading = true;
+    if (this.state.filter.startsWith('plugin:')) {
+      this.update({ rows : [] , searched : false });
+      this.searchPlugin(query);
+      return;
+    }
     this.searches.next({ query : this.state.query , filter : this.state.filter });
+  }
+
+  // ── plugins' chips (slot core.search.filters) ───────────────────────────
+
+  private context(query:string) {
+    let p = this.profiles.current.value;
+    return { query , profile : { id : p?.id , name : p?.name , kids : !!p?.isKid } };
+  }
+
+  // Each plugin's chip: its label comes from its answer, asked once with the query shown
+  // (again when the server's plugins change)
+  private loadPluginChips(){
+    this.chipsSub = this.remotePlugins.plugins$.pipe(
+      switchMap(() => {
+        let defs = CONTRIBUTIONS.for('core.search.filters' , this.context(this.state.query));
+        if (!defs.length) return of([]);
+        return forkJoin(defs.map(def => CONTRIBUTIONS.models(def , this.context(this.state.query.trim())).pipe(
+          first(),
+          map(models => models[0] ? {
+            id : `plugin:${models[0].key}` , def , model : models[0] , chip : { id : `plugin:${models[0].key}` , label : models[0].label },
+          } as PluginFilter : null),
+          catchError(() => of(null)),
+        )));
+      }),
+    ).subscribe(found => {
+      this.pluginFilters = (found as PluginFilter[]).filter(Boolean);
+      // a plugin chip left from before: its rows again, or All when it's gone
+      if (this.state.filter.startsWith('plugin:')) {
+        if (this.pluginFilter) this.search();
+        else {
+          this.update({ filter : 'all' });
+          this.search();
+        }
+      }
+    });
+  }
+
+  private searchPlugin(query:string){
+    let chosen = this.pluginFilter;
+    if (!chosen) return;
+    this.pluginSub = CONTRIBUTIONS.models(chosen.def , this.context(query)).pipe(
+      first(),
+      map(models => models.find(m => m.key == chosen.model.key) || models[0] || null),
+      switchMap((model:SearchFilterModel | null) => {
+        if (!model?.rows.length) return of([] as PluginRow[]);
+        return forkJoin(model.rows.map(row => 'items' in row.source
+          ? of({ key : row.key , title : row.title , variant : row.variant , items : row.source.items })
+          : row.source.page(1).pipe(
+              map(page => ({ key : row.key , title : row.title , variant : row.variant , items : page.items })),
+              catchError(() => of(null)),
+            )));
+      }),
+      catchError(() => of([] as PluginRow[])),
+    ).subscribe(rows => {
+      this.loading = false;
+      if (query != this.state.query.trim() || this.pluginFilter !== chosen) return;
+      this.positions.clear(STACK);
+      this.pluginRows = rows.filter(r => r && r.items.length);
+      this.update({ searched : true });
+    });
+  }
+
+  pickPlugin(card:CardModel){
+    if (card.run) card.run();
+    else if (card.intent) this.navigator.open(card.intent);
+  }
+
+  trackFilter(index:number , filter:Filter){
+    return filter.id;
+  }
+
+  trackPluginRow(index:number , row:PluginRow){
+    return row.key;
   }
 
   // One row per kind of result, in the order people expect them

@@ -113,6 +113,22 @@ module.exports = String.raw`(function (host, register, log) {
       remove: function (profileId, title) { return call('watchlist.remove', { profileId: profileId, title: title }); },
       list: function (profileId) { return call('watchlist.list', { profileId: profileId }); }
     },
+    watched: {
+      set: function (profileId, title, options) { return call('watched.set', { profileId: profileId, title: title, options: options || null }); },
+      clear: function (profileId, title) { return call('watched.clear', { profileId: profileId, title: title }); }
+    },
+    progress: {
+      set: function (profileId, title, position, duration, options) {
+        return call('progress.set', { profileId: profileId, title: title, position: position, duration: duration, options: options || null });
+      }
+    },
+    ratings: {
+      set: function (profileId, title, value) { return call('ratings.set', { profileId: profileId, title: title, value: value }); },
+      clear: function (profileId, title) { return call('ratings.clear', { profileId: profileId, title: title }); }
+    },
+    profiles: {
+      list: function (permission) { return call('profiles.list', { permission: permission || null }); }
+    },
     downloads: {
       add: function (request) { return call('downloads.add', request); },
       list: function () { return call('downloads.list', {}); }

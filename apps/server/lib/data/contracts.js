@@ -221,7 +221,9 @@
  * @property {function(string, string, string, string|null, Date): Promise<void>} secretSet  null deletes
  * @property {function(string, 'server'|'profile', string): Promise<Array<{ key: string, value: * }>>} settingsList
  * @property {function(string, 'server'|'profile', string, string, *, Date): Promise<void>} settingSet   null deletes
- * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings
+ * @property {function(string): Promise<Array<{ profileId: string, permission: string }>>} grantsList
+ * @property {function(string, string, string, boolean, Date): Promise<void>} grantSet       false deletes
+ * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings, grants
  *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles

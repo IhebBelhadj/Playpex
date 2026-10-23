@@ -116,15 +116,16 @@ Plain data: the core reads it without running your code. `data` names a handler 
 
 ### Settings
 
-Rendered by the dashboard from the manifest (Plugins › <name>: Settings for `server` scope, Profiles for `profile` scope, one column per profile); clients never show settings. A choice that only changes what one of your screens shows (a layout, a sort) belongs on that screen as a filter, not here. Read them with `settings.get(key, ctx)`.
+Rendered by the dashboard from the manifest (Plugins › <name> › Settings: a **Server** tab for `server` scope, a **Profiles** tab with a profile picker for `profile` scope; `GET` / `PUT /api/v1/admin/plugins/<id>/settings`); clients never show settings. A choice that only changes what one of your screens shows (a layout, a sort) belongs on that screen as a filter, not here. Read them with `settings.get(key, ctx)` (the manifest's `default` until the admin sets one); a change publishes `plugin.changed` and clients ask your open screens again. The server checks every value against its definition (type, options, bounds, `integer`, `maxLength`, `pattern`) and refuses a change with a bad one.
 
 | `type` | Fields | Note |
 |---|---|---|
 | `switch` | `default` (boolean) | |
 | `choice` | `options: [[value, label], …]` (2–20, unique values), `default` (one of the values) | |
 | `slider` | `min`, `max`, `step?`, `unit?`, `default` (between them) | |
-| `text` | `maxLength?`, `default?` | |
-| `secret` | `maxLength?` | **scope `server`**, its key listed in `permissions.secrets`: the admin enters it, you read it with `secrets.get` |
+| `number` | `default`, `min?`, `max?`, `step?`, `integer?`, `unit?` | a typed number: a port, an interval, a limit |
+| `text` | `maxLength?`, `placeholder?`, `pattern?` (a regular expression the whole value matches; the default too), `default?` | |
+| `secret` | `maxLength?`, `placeholder?` | **scope `server`**, its key listed in `permissions.secrets`: the admin enters it (never shown again, only "set"), you read it with `secrets.get` |
 | `action` | `data` (a handler), `confirm?` | a button ("Sync now", "Test connection"): the dashboard calls the handler and shows its answer's toast |
 
 All have `key`, `scope` (`profile` · `server`), `label`, `description?`, and, from Kodi's settings: `group` (shown together under that title), `level` (`basic` · `advanced`: behind "Show advanced"), `visibleIf` / `enabledIf: { key, equals }` (another setting with a value, of the same scope or `server`).
