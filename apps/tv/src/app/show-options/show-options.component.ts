@@ -14,6 +14,7 @@ import { Navigator, useScreen } from '../nav/public-api';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { ImdbSeries, ImdbService } from '../imdb.service';
+import { ServerLibraryService } from '../server-library.service';
 import { Badge, ShowContext, Toasts, tmdbImageBase } from '../ui/public-api';
 import { formatDate } from '@angular/common';
 
@@ -33,6 +34,7 @@ import { formatDate } from '@angular/common';
 export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   private toasts = inject(Toasts);
+  private serverLibrary = inject(ServerLibraryService);
 
   private profiles = inject(ProfilesService);
 
@@ -55,6 +57,9 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   inWatchlist = false;
   private episodeProgress = new Map<string, EpisodeProgress>();
   private libraryBusy = false;
+  // episodes with a file on the Playpex server ("<season>x<episode>"), live
+  private onServer = new Set<string>();
+  private onServerSub:Subscription;
 
   private seasonRequests = new Subject<{ showId:number , season:number }>();
   private subscriptions:Subscription[] = [];
@@ -136,6 +141,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   ngOnDestroy(): void {
     this.mediaSub.unsubscribe();
+    this.onServerSub?.unsubscribe();
     this.subscriptions.forEach(s => s.unsubscribe());
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
@@ -219,6 +225,10 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   loadLibraryState(){
     this.inWatchlist = false;
     this.episodeProgress.clear();
+    this.onServerSub?.unsubscribe();
+    this.onServerSub = this.serverLibrary.live('tv' , Number(this.show['id'])).subscribe(title => {
+      this.onServer = ServerLibraryService.episodesOf(title);
+    });
     if (this.isAdult) return;
     let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
     this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
@@ -320,7 +330,17 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   episodeBadges(ep):Badge[] | null {
     if (ep.upcoming) return ['upcoming'];
-    return this.progressOf(ep)?.finished ? ['watched'] : null;
+    let badges:Badge[] = [];
+    if (this.progressOf(ep)?.finished) badges.push('watched');
+    if (this.onServer.has(`${this.selectedSeason}x${ep.episode_number}`)) badges.push('server');
+    return badges.length ? badges : null;
+  }
+
+  // How many of the season's episodes are on the Playpex server (0: none)
+  seasonOnServer(season:number):number {
+    let n = 0;
+    this.onServer.forEach(key => key.startsWith(`${season}x`) && n++);
+    return n;
   }
 
   // The episode's own page: its details, ratings, Play and Find releases

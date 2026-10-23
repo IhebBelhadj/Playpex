@@ -22,6 +22,9 @@
         (pxSelect)="enterEpisodes()">
         {{season.name}}
         <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
+        <!-- episodes of the season on the Playpex server -->
+        <span class="seasonOnServer" *ngIf="seasonOnServer(season.season_number) as n"
+          [attr.aria-label]="n + ' on this server'"><img src="assets/icons/server.svg" alt="">{{n}}</span>
       </button>
     </ng-container>
   </px-card-row>

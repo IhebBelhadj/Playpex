@@ -749,12 +749,14 @@ test('settings: device and profile, defaults, reset, rules', function () {
     .then(function () { return call('DELETE', '/profiles/' + kid, undefined, { expect: 200 }); });
 });
 
-test('media library (admin): folders, scan, files, matches, subtitles, folder browser', function () {
-  var dir = path.join(tmp, 'media', 'Movies'), folder, file;
+test('media library: folders, scan, files, matches, subtitles, folder browser; what clients browse', function () {
+  var dir = path.join(tmp, 'media', 'Movies'), folder, file, kid;
   fs.mkdirSync(path.join(dir, 'Inception (2010)'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'Inception (2010)', 'Inception (2010).mkv'), Buffer.alloc(2000, 1));
   fs.writeFileSync(path.join(dir, 'Inception (2010)', 'Inception (2010).en.srt'), '1\n00:00:01,000 --> 00:00:02,000\nHi\n');
   fs.writeFileSync(path.join(dir, 'Unknown.Thing.2001.mkv'), Buffer.alloc(2000, 1));
+  fs.mkdirSync(path.join(dir, 'Clips', 'Holiday'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Clips', 'Holiday', 'beach.mkv'), Buffer.alloc(2000, 1));
   return call('GET', '/admin/library', undefined, { expect: 401 })
     .then(function () { return call('POST', '/admin/library/folders', { path: dir, kind: 'movies' }, { expect: 201, admin: true }); })
     .then(function (res) {
@@ -767,11 +769,11 @@ test('media library (admin): folders, scan, files, matches, subtitles, folder br
     .then(function () { return require('../lib/library').idle(); })
     .then(function () { return call('GET', '/admin/library', undefined, { expect: 200, admin: true }); })
     .then(function (res) {
-      assert.ok(res.body.folders.some(function (f) { return f.id === folder.id && f.counts.ok === 1 && f.counts.unmatched === 1; }));
+      assert.ok(res.body.folders.some(function (f) { return f.id === folder.id && f.counts.ok === 1 && f.counts.unmatched === 2; }));
       return call('GET', '/admin/library/files?folder=' + folder.id + '&state=unmatched', undefined, { expect: 200, admin: true });
     })
     .then(function (res) {
-      file = res.body.files[0];
+      file = res.body.files.filter(function (f) { return /Unknown/.test(f.relPath); })[0];
       return call('GET', '/admin/library/files?state=bogus', undefined, { expect: 400, admin: true });
     })
     .then(function () { return call('GET', '/admin/library/files/' + file.id, undefined, { expect: 200, admin: true }); })
@@ -810,16 +812,62 @@ test('media library (admin): folders, scan, files, matches, subtitles, folder br
       assert.match(first.ref, /^f_/);
       assert.equal(res.body.policy.autoplay, first.id);
     })
+    // what clients browse: the movie, the folder holding the other video (the ignored one never shows)
+    .then(function () { return call('GET', '/library/home', undefined, { expect: 200 }); })
+    .then(function (res) {
+      assert.deepEqual(res.body.movies.map(function (m) { return m.tmdbId; }), [27205]);
+      assert.equal(res.body.movies[0].fileCount, 1);
+      assert.equal(res.body.recent[0].title, 'Inception');
+      assert.equal(res.body.other.count, 1);
+      assert.deepEqual(res.body.other.folders.map(function (f) { return f.id; }), [folder.id]);
+      return call('GET', '/library/folders/' + folder.id, undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.deepEqual(res.body.folders, [{ name: 'Clips', path: 'Clips', count: 1 }]);
+      assert.equal(res.body.videos.length, 0);
+      assert.equal(res.body.parent, null);
+      return call('GET', '/library/folders/' + folder.id + '?path=Clips/Holiday', undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.equal(res.body.parent, 'Clips');
+      assert.equal(res.body.videos[0].name, 'beach.mkv');
+      assert.match(res.body.videos[0].ref, /^f_/);
+      return call('GET', '/library/folders/' + folder.id + '?path=../x', undefined, { expect: 400 });
+    })
+    .then(function () { return call('GET', '/library/folders/' + folder.id + '?path=Nothing', undefined, { expect: 404 }); })
+    .then(function () { return call('GET', '/library/folders/nope', undefined, { expect: 404 }); })
+    .then(function () { return call('GET', '/library/titles/movie/27205', undefined, { expect: 200 }); })
+    .then(function (res) {
+      assert.equal(res.body.fileCount, 1);
+      return call('GET', '/library/titles/tv/1396', undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.deepEqual([res.body.fileCount, res.body.episodes], [0, []]);
+      return call('GET', '/library/titles/film/1', undefined, { expect: 400 });
+    })
+    .then(function () { return call('GET', '/library/home?profile=nope', undefined, { expect: 404 }); })
     .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { audience: 'adults' }, { expect: 200, admin: true }); })
     // a kids profile gets no file of an adults-only folder
     .then(function () { return call('POST', '/profiles', { name: 'Little one', isKid: true }, { expect: 201 }); })
     .then(function (res) {
-      return call('POST', '/play/sources', { kind: 'movie', tmdbId: 27205, title: 'Inception', profileId: res.body.id }, { expect: 200 });
+      kid = res.body.id;
+      return call('POST', '/play/sources', { kind: 'movie', tmdbId: 27205, title: 'Inception', profileId: kid }, { expect: 200 });
     })
     .then(function (res) {
       assert.equal(res.body.sources.length, 0);
       assert.equal(res.body.policy.autoplay, null);
+      return call('GET', '/library/home?profile=' + kid, undefined, { expect: 200 });
     })
+    .then(function (res) {
+      assert.deepEqual([res.body.movies.length, res.body.recent.length, res.body.other.count], [0, 0, 0]);
+      return call('GET', '/library/titles/movie/27205?profile=' + kid, undefined, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.equal(res.body.fileCount, 0);
+      return call('GET', '/library/folders/' + folder.id + '?profile=' + kid, undefined, { expect: 404 });
+    })
+    .then(function () { return call('GET', '/library/home', undefined, { expect: 200 }); })
+    .then(function (res) { assert.equal(res.body.movies.length, 1, 'other profiles still see it'); })
     .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { kind: 'films' }, { expect: 400, admin: true }); })
     .then(function () { return call('PATCH', '/admin/library/folders/nope', { dlna: true }, { expect: 404, admin: true }); })
     .then(function () { return call('DELETE', '/admin/library/folders/' + folder.id, undefined, { expect: 200, admin: true }); })

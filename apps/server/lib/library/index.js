@@ -64,6 +64,12 @@ function publish(data) {
   events.publish('library.scan', data, { admin: true });
 }
 
+// What clients see of the library changed (files, matches, a folder's kind or
+// audience): every client, to refetch (lib/library/view.js)
+function changed(folderId) {
+  events.publish('library.changed', { folderId: folderId || null });
+}
+
 // ── folders ─────────────────────────────────────────────────────────────────
 
 /**
@@ -109,6 +115,7 @@ function removeFolder(id) {
   return services().then(function (s) { return s.library.removeFolder(id); }).then(function (removed) {
     if (removed) {
       log.info('folder removed: ' + id);
+      changed(id);
     }
     return removed;
   });
@@ -217,7 +224,10 @@ function scanFolder(job) {
         return s.library.updateFolder(folder.id, { status: walked.missing ? 'missing' : 'ok', lastScanAt: new Date() });
       }).then(function () {
         return s.library.purge();
-      }).then(function () {
+      }).then(function (purged) {
+        if (progress.added || progress.changed || progress.missing || progress.matched || purged.files) {
+          changed(folder.id);
+        }
         log.info('scanned ' + folder.path + (walked.missing ? ' (missing)' : ''), Object.assign({
           ms: Date.now() - started
         }, progress));
@@ -471,5 +481,6 @@ module.exports = {
   idle: idle,
   addFolder: addFolder,
   removeFolder: removeFolder,
+  changed: changed,
   ensureDownloadFolder: ensureDownloadFolder
 };

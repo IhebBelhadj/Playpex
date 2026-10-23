@@ -184,6 +184,10 @@
  * @property {function({ folderId?: string, state?: string, q?: string, itemId?: string, limit: number, offset: number }): Promise<{ rows: Array<MediaFile & { item: MediaItem|null }>, total: number }>} queryFiles
  *   newest first; q matches the path
  * @property {function(): Promise<Array<{ folderId: string, state: string, count: number }>>} countFiles
+ * @property {function({ audiences: string[], folderId?: string }): Promise<Array<MediaFile & { item: MediaItem|null, folder: { kind: string, path: string, builtin: boolean } }>>} listShown
+ *   files in state ok / unmatched of folders with these audiences (what clients browse)
+ * @property {function({ kind: 'movie'|'tv', tmdbId: number, audiences: string[] }): Promise<Array<{ id: string, season: number|null, episode: number|null }>>} titleFiles
+ *   files in state ok of a movie, or of a show's episodes
  * @property {function(Date): Promise<number>} removeMissingBefore   rows missing since before the date
  * @property {function(string): Promise<MediaItem|null>} findItem
  * @property {function({ kind: string, tmdbId?: number, showTmdbId?: number, season?: number, episode?: number }): Promise<MediaItem|null>} findItemFor

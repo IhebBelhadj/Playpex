@@ -225,6 +225,7 @@ module.exports = {
   register: function (play) {
     [library, downloads, movieTorrents, episodeTorrents].forEach(play.use);
   },
+  qualityOf: qualityOf,
   // tests
   fileFor: fileFor,
   isTitle: isTitle

@@ -173,6 +173,26 @@ module.exports = function libraryService(repositories, options) {
     },
 
     /**
+     * What a profile may browse: files in state ok / unmatched, with their item
+     * and folder (kind, path, builtin); a kids profile gets no adults-only
+     * folder. `folderId` keeps one folder's.
+     */
+    shown: function (options) {
+      options = options || {};
+      return repo.listShown({ audiences: options.kid ? ['everyone'] : AUDIENCES, folderId: options.folderId });
+    },
+
+    // The files (state ok) of a movie ('movie') or a show's episodes ('tv'): [{ id, season, episode }]
+    titleFiles: function (mediaType, tmdbId, options) {
+      return Promise.resolve().then(function () {
+        if ((mediaType !== 'movie' && mediaType !== 'tv') || !positiveInt(tmdbId)) {
+          throw errors.invalid('A title is movie or tv and a TMDB id');
+        }
+        return repo.titleFiles({ kind: mediaType, tmdbId: tmdbId, audiences: options && options.kid ? ['everyone'] : AUDIENCES });
+      });
+    },
+
+    /**
      * The files of a movie / an episode that can play (state ok), newest
      * first, each with its item; [] when the library has none.
      * @returns {Promise<Array<MediaFile & { item: object }>>}

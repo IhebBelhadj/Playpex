@@ -79,6 +79,38 @@ module.exports = function libraryRepository(db) {
       });
     },
 
+    // Files a client may see (ok / unmatched) in folders of these audiences, each
+    // with its item and a few fields of its folder
+    listShown: function (query) {
+      return db.select({
+        file: {
+          id: files.id, folderId: files.folderId, relPath: files.relPath, size: files.size, state: files.state,
+          addedAt: files.addedAt, probe: files.probe, parse: files.parse
+        },
+        item: items,
+        folder: { kind: folders.kind, path: folders.path, builtin: folders.builtin }
+      }).from(files).innerJoin(folders, orm.eq(files.folderId, folders.id)).leftJoin(items, orm.eq(files.itemId, items.id))
+        .where(orm.and(
+          orm.inArray(files.state, ['ok', 'unmatched']),
+          orm.inArray(folders.audience, query.audiences),
+          query.folderId ? orm.eq(files.folderId, query.folderId) : undefined
+        )).then(function (rows) {
+          return rows.map(function (row) {
+            return Object.assign({}, row.file, { item: row.item || null, folder: row.folder });
+          });
+        });
+    },
+
+    // The files (state ok) of a movie, or of every episode of a show, in folders of these audiences
+    titleFiles: function (query) {
+      var title = query.kind === 'movie' ?
+        orm.and(orm.eq(items.kind, 'movie'), orm.eq(items.tmdbId, query.tmdbId)) :
+        orm.and(orm.eq(items.kind, 'episode'), orm.eq(items.showTmdbId, query.tmdbId));
+      return db.select({ id: files.id, season: items.season, episode: items.episode })
+        .from(files).innerJoin(items, orm.eq(files.itemId, items.id)).innerJoin(folders, orm.eq(files.folderId, folders.id))
+        .where(orm.and(title, orm.eq(files.state, 'ok'), orm.inArray(folders.audience, query.audiences)));
+    },
+
     countFiles: function () {
       return db.select({ folderId: files.folderId, state: files.state, count: orm.count() })
         .from(files).groupBy(files.folderId, files.state);

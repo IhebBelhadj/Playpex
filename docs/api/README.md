@@ -12,7 +12,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 |---|---|
 | [Finding a server](discovery.md) | mDNS, the UDP fallback, manual entry, recognising a server by its `id` |
 | [Pairing and auth](auth.md) | the RFC 8628 device flow, tokens, clients on the server machine, re-pairing |
-| [Playing a torrent](playback.md) | catalog sources, adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
+| [Playing a torrent](playback.md) | catalog sources, what's on this server (the media library), adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
 | [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |

@@ -77,6 +77,26 @@
       opacity: .6;
     }
 
+    // its episodes on the Playpex server
+    .seasonOnServer {
+      display: inline-flex;
+      align-items: center;
+      gap: dp(4);
+      font-family: var(--px-font-bold);
+      font-size: var(--px-text-small);
+      opacity: .6;
+
+      img {
+        width: dp(14);
+        height: dp(14);
+        filter: var(--px-icon-light);
+      }
+    }
+
+    .focused .seasonOnServer img {
+      filter: none;
+    }
+
     .focused {
       background: var(--px-color-focus);
       color: var(--px-color-on-focus);

@@ -10,6 +10,7 @@ import { PointerService } from './pointer.service';
 import { FocusEngine } from './movement/movement';
 import { InputDispatcher, Navigator } from './nav/public-api';
 import { DevHook } from './dev-hook.service';
+import { ServerLibraryService } from './server-library.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -43,6 +44,8 @@ export class AppComponent implements AfterViewInit , OnInit{
     // loads this device's and the profile's settings from the start
     settings:SettingsService,
     mediaKeys:MediaKeys,
+    // "On this server" on titles' meta lines (its core.title.meta contribution)
+    serverLibrary:ServerLibraryService,
     ){
     // remote / keyboard media keys → the screen shown (§13.2)
     mediaKeys.init();

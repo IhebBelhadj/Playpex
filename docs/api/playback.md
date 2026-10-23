@@ -151,6 +151,18 @@ The server keeps a torrent running while at least one device holds a **lease** o
 - **Starting again after a pause** may take a moment: depending on the server's engine, it first checks the data already on disk (`state: checking`); stream requests wait for it.
 - Season packs: two devices playing two different episodes of the same pack currently undo each other's file selection (plan §14.2): avoid it in tests.
 
+## What's on this server
+
+The server's media library (folders the admin added in the dashboard, plus its download folder), as a client browses it. Every route takes `?profile=<id>`: a kids profile never sees files of adults-only folders (and an unknown profile is a `404`).
+
+| What | Route | Answer |
+|---|---|---|
+| A Library screen | `GET /library/home` | `movies` and `shows` (one entry per title, by title: `tmdbId`, `title`, `year`, `posterPath`, `backdropPath`, `fileCount`, `quality` (the best file), shows also `episodeCount`, `seasonCount`, `latest` (the episode added last)), `recent` (the 20 titles with the newest files), `other` (`count` and the `folders` holding other videos: files not matched to a movie or a show, and every file of an "other" folder) |
+| "On this server" marks | `GET /library/titles/{movie\|tv}/{tmdbId}` | `fileCount` (0 = not on this server) and, for a show, `episodes: [{season, episode, fileCount}]` |
+| Browse other videos | `GET /library/folders/{folderId}?path=` | one level: `folders` (subfolders that hold some, with `path` and a `count` at any depth) and `videos` (`ref`, `name`, `size`, `duration`, `quality`), `parent` (the level above; null at the folder itself). Ask again with a `path` you were given |
+
+A movie or an episode on the server plays like any title: `POST /play/sources` lists its files first (`type: 'file'`). An other video plays by its `ref` directly (`GET /media/{ref}`); it has no TMDB title, so there is no progress to save. Refetch on the `library.changed` event ([events](events.md)): a scan found, changed or lost files, or the admin fixed a match or changed a folder.
+
 ## Downloads
 
 The server keeps every torrent it has played or been asked to download, like a torrent client: `GET /downloads` (all, with `state`, `intent`, progress, speeds, the `title` a player named), `GET /downloads/{infoHash}` (+ `files`). Events `download.added` / `download.updated` / `download.removed` ([events](events.md)) keep a list live.

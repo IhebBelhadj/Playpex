@@ -1,0 +1,35 @@
+<px-section-layout class="libraryFolder" pxSection="libraryFolder" [leaveFor]="{ left: '@menu' }">
+  <header class="head">
+    <p class="eyebrow">Other videos on this server</p>
+    <h1 class="heading">
+      <ng-container *ngFor="let part of trail; let last = last">
+        <span [class.current]="last">{{ part }}</span><span class="sep" *ngIf="!last">/</span>
+      </ng-container>
+    </h1>
+    <p class="count" *ngIf="count">{{ count }}</p>
+  </header>
+
+  <px-empty class="note" *ngIf="loadError" [text]="loadError" action="Try again" actionKey="retry" (act)="retry()"></px-empty>
+  <px-spinner class="note" *ngIf="loading && !listing"></px-spinner>
+
+  <div class="viewport" *ngIf="listing" pxGrid="library-folder" align="third">
+    <ol class="list">
+      <li *ngFor="let f of listing.folders; trackBy: byFolder">
+        <button class="row focusable" pxItem [pxItemKey]="'folder:' + f.name" (focus)="remember('folder:' + f.name)"
+          (pxSelect)="openFolder(f)">
+          <img class="icon" src="assets/icons/folder.svg" alt="">
+          <span class="name">{{ f.name }}</span>
+          <span class="meta">{{ f.count == 1 ? '1 video' : f.count + ' videos' }}</span>
+        </button>
+      </li>
+      <li *ngFor="let v of listing.videos; trackBy: byVideo">
+        <button class="row focusable" pxItem [pxItemKey]="'video:' + v.id" (focus)="remember('video:' + v.id)"
+          (pxSelect)="play(v)">
+          <img class="icon play" src="assets/icons/play.svg" alt="">
+          <span class="name">{{ v.name }}</span>
+          <span class="meta"><span *ngFor="let m of videoMeta(v)">{{ m }}</span></span>
+        </button>
+      </li>
+    </ol>
+  </div>
+</px-section-layout>

@@ -762,7 +762,7 @@ export interface paths {
          * @description Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
          *     `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
          *     `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
-         *     at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
+         *     at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
          *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`). `?topics=session,torrent.stats` keeps
          *     topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
          *     from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
@@ -1576,6 +1576,74 @@ export interface paths {
          *     Play a source with a `ref` through `/media/{ref}` (no `POST /torrents`); a torrent through its `magnet`.
          */
         post: operations["playSources"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/library/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What is on this server, for a profile
+         * @description The server's media library as a client browses it (docs/media-server-plan.md §5.5): the movies and
+         *     shows matched to TMDB (one entry per title, by title), the titles added last (20, newest first),
+         *     and the folders that hold other videos (files not matched to a title, and every file of an `other`
+         *     folder). Files missing or ignored never show. A kids profile (`?profile=`) never sees files of
+         *     adults-only folders. Refetch on the `library.changed` event.
+         */
+        get: operations["getServerLibrary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/library/titles/{mediaType}/{tmdbId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether a movie, or which episodes of a show, are on this server
+         * @description For "On this server" marks: the title's files that play (state ok), and for a show (`tv`) its
+         *     episodes on this server. `fileCount` 0 = not on this server. Same audience rule as `/library/home`.
+         */
+        get: operations["getServerLibraryTitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/library/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One level of a folder's other videos
+         * @description The subfolders that hold other videos (with how many, at any depth) and the videos right in it,
+         *     in natural name order. `path` is a folder inside it from a previous answer (`folders[].path`,
+         *     `parent`); none = the folder itself. Play a video by its `ref` (`/media/{ref}`). 404 for an
+         *     unknown folder, one a kids profile doesn't see, or a path with no videos.
+         */
+        get: operations["browseServerLibraryFolder"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2707,6 +2775,100 @@ export interface components {
                 message: string;
             }[];
         };
+        /** @description A movie or a show on this server, from its files' matches */
+        ServerLibraryEntry: {
+            /** @enum {string} */
+            mediaType: "movie" | "tv";
+            tmdbId: number;
+            imdbId: string | null;
+            title: string;
+            year: number | null;
+            /** @description TMDB image path */
+            posterPath: string | null;
+            backdropPath: string | null;
+            /**
+             * Format: date-time
+             * @description When its newest file was found
+             */
+            addedAt: string;
+            fileCount: number;
+            /** @description The best of its files: 2160p, 1080p, 720p, 480p */
+            quality: string | null;
+            /** @description Shows: episodes on this server (null for a movie) */
+            episodeCount: number | null;
+            seasonCount: number | null;
+            /** @description Shows: the episode added last (null for a movie) */
+            latest: null | {
+                season: number;
+                episode: number;
+                episodeTitle: string | null;
+            };
+        };
+        ServerLibrary: {
+            /** @description By title */
+            movies: components["schemas"]["ServerLibraryEntry"][];
+            /** @description By title */
+            shows: components["schemas"]["ServerLibraryEntry"][];
+            /** @description Movies and shows, newest file first (20) */
+            recent: components["schemas"]["ServerLibraryEntry"][];
+            other: {
+                /** @description Other videos in all */
+                count: number;
+                /** @description Library folders holding other videos, by name */
+                folders: {
+                    id: string;
+                    /** @description The folder's own name (the download folder: Downloads) */
+                    name: string;
+                    count: number;
+                }[];
+            };
+        };
+        ServerLibraryTitle: {
+            /** @enum {string} */
+            mediaType: "movie" | "tv";
+            tmdbId: number;
+            /** @description 0: not on this server */
+            fileCount: number;
+            /** @description A show's episodes on this server, in order ([] for a movie) */
+            episodes: {
+                season: number;
+                episode: number;
+                fileCount: number;
+            }[];
+        };
+        ServerLibraryFolder: {
+            folder: {
+                id: string;
+                name: string;
+            };
+            /** @description This level inside the folder ('' = the folder itself) */
+            path: string;
+            /** @description The level above (null at the folder itself) */
+            parent: string | null;
+            folders: {
+                name: string;
+                path: string;
+                /** @description Videos inside, at any depth */
+                count: number;
+            }[];
+            videos: {
+                id: string;
+                /** @description Its media ref (/media/{ref}) */
+                ref: string;
+                /** @description The file name */
+                name: string;
+                size: number;
+                /** @description Seconds (ffprobe), null when unknown */
+                duration: number | null;
+                quality: string | null;
+                /** Format: date-time */
+                addedAt: string;
+            }[];
+        };
+        /** @description `data` of `library.changed` (everyone): what clients see of the library changed (a scan found, changed or lost files, the admin fixed a match or edited a folder); refetch */
+        LibraryChangedEvent: {
+            folderId: string | null;
+        };
         ReleaseProvider: {
             id: string;
             name: string;
@@ -3474,7 +3636,7 @@ export interface components {
             ref?: string | null;
         };
         Event: {
-            /** @description server.status, torrent.stats, session.*, download.*, settings.changed, log, device.*, pairing.*, host.updated */
+            /** @description server.status, torrent.stats, session.*, download.*, settings.changed, library.changed, library.scan, log, device.*, pairing.*, host.updated */
             topic: string;
             /** Format: date-time */
             time: string;
@@ -6000,6 +6162,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaySources"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getServerLibrary: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The library */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerLibrary"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getServerLibraryTitle: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                mediaType: "movie" | "tv";
+                tmdbId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The title's files on this server */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerLibraryTitle"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    browseServerLibraryFolder: {
+        parameters: {
+            query?: {
+                /** @description A folder inside it, / separated */
+                path?: string;
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The folder's level */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerLibraryFolder"];
                 };
             };
             400: components["responses"]["Invalid"];

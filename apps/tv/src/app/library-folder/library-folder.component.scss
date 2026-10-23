@@ -1,0 +1,123 @@
+// A list like the release lists: one row per subfolder, then per video
+@use 'px' as *;
+
+$rowH: dp(72);
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.head {
+  padding-top: dp(48);
+  padding-right: dp(150);     // the shell's clock
+}
+
+.eyebrow {
+  margin: 0 0 dp(8);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-large);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--px-color-text-secondary);
+
+  .current { color: var(--px-color-text); }
+  .sep { margin: 0 dp(12); color: var(--px-color-text-faint); }
+}
+
+.count {
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+.note {
+  margin-top: dp(40);
+}
+
+.viewport {
+  flex: 1;
+  min-height: 0;
+  margin-top: dp(30);
+  // the focused row grows a little: keep it whole at the edges
+  padding: dp(6) dp(12) 0 dp(6);
+  margin-left: dp(-6);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
+  mask-image: linear-gradient(180deg, transparent 0, var(--px-black) dp(18), var(--px-black) calc(100% - dp(90)), transparent 100%);
+}
+
+.list {
+  margin: 0;
+  padding: 0 dp(80) dp(120) 0;
+  list-style: none;
+
+  li {
+    height: $rowH;
+    margin-bottom: dp(10);
+  }
+}
+
+.row {
+  display: grid;
+  grid-template-columns: dp(28) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: dp(22);
+  width: 100%;
+  height: 100%;
+  padding: 0 dp(24);
+  border: none;
+  border-radius: dp(8);
+  background: var(--px-surface-row);
+  color: var(--px-color-text);
+  text-align: left;
+  transition: transform var(--px-dur), background var(--px-dur);
+
+  .icon {
+    width: dp(24);
+    height: dp(24);
+    filter: var(--px-icon-light);
+
+    &.play { width: dp(20); height: dp(20); justify-self: center; }
+  }
+
+  .name {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-lead);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    display: flex;
+    gap: dp(18);
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    color: var(--px-color-text-muted);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+    transform: scale(1.015);
+
+    .icon { filter: none; }
+    .meta { color: var(--px-color-on-focus-muted); }
+  }
+}

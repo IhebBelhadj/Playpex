@@ -14,6 +14,7 @@ import { FocusEngine, PositionStore } from '../movement/movement';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
 import { Download, DownloadTile, DownloadsService } from '../downloads.service';
+import { ServerLibraryService } from '../server-library.service';
 import { ImdbEpisode, ImdbSeries, ImdbService } from '../imdb.service';
 import { Navigator, useScreen } from '../nav/public-api';
 import { Badge, EpisodeContext, MetaItem, TitleInfoModel, tmdbImageBase } from '../ui/public-api';
@@ -44,6 +45,10 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   download:Download | null = null;
   downloadTile:DownloadTile = DownloadsService.tile(null);
   private downloadSub:Subscription | null = null;
+  // the show's episodes with a file on the Playpex server ("<season>x<episode>"), live
+  private serverLibrary = inject(ServerLibraryService);
+  private onServer = new Set<string>();
+  private onServerSub:Subscription | null = null;
 
   stillBase = tmdbImageBase('still', 270);
   profileBase = tmdbImageBase('profile', 130);
@@ -129,6 +134,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     if (ep.runtime) meta.push({ kind: 'chip', text: ep.runtime + ' min' });
     if (this.topOfSeason) meta.push({ kind: 'chip', text: 'Best rated of season ' + this.seasonNumber });
     if (this.watched) meta.push({ kind: 'chip', text: 'Watched', icon: 'tick' });
+    if (this.onServer.has(`${this.seasonNumber}x${ep.episode_number}`)) meta.push({ kind: 'chip', text: 'On this server', icon: 'server' });
     let credits = [];
     if (this.directors.length) credits.push({ label: 'Directed by', names: this.directors });
     if (this.writers.length) credits.push({ label: 'Written by', names: this.writers.slice(0, 3) });
@@ -160,7 +166,10 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   episodeBadges(ep):Badge[] | null {
     if (ep === this.episode) return ['current'];
     if (ep.upcoming) return ['upcoming'];
-    return this.progressOf(ep)?.finished ? ['watched'] : null;
+    let badges:Badge[] = [];
+    if (this.progressOf(ep)?.finished) badges.push('watched');
+    if (this.onServer.has(`${this.seasonNumber}x${ep.episode_number}`)) badges.push('server');
+    return badges.length ? badges : null;
   }
 
   // The server's download of this episode, live (not for 18+ shows)
@@ -211,6 +220,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.downloadSub?.unsubscribe();
+    this.onServerSub?.unsubscribe();
     this.mediaSub.unsubscribe();
     this.subscriptions.forEach(s => s.unsubscribe());
     window.removeEventListener('sn:focused', this.focusListener);
@@ -241,6 +251,10 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
           upcoming: !ep.air_date || ep.air_date > this.today
         }));
         this.showEpisode(episodeNumber, true);
+        this.onServerSub?.unsubscribe();
+        this.onServerSub = this.serverLibrary.live('tv', Number(show['id'])).subscribe(title => {
+          this.onServer = ServerLibraryService.episodesOf(title);
+        });
         this.loadImdb();
         this.loadSeasonProgress();
       }, () => {

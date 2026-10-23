@@ -16,6 +16,8 @@ import { SearchPageComponent } from '../search-page/search-page.component';
 import { SettingsPageComponent } from '../settings-page/settings-page.component';
 import { ShowOptionsComponent } from '../show-options/show-options.component';
 import { WatchlistPageComponent } from '../watchlist-page/watchlist-page.component';
+import { LibraryPageComponent } from '../library-page/library-page.component';
+import { LibraryFolderComponent } from '../library-folder/library-folder.component';
 import { YoutubeComponent } from '../youtube/youtube.component';
 import { environment } from '../../environments/environment';
 import { GalleryComponent } from '../ui/public-api';
@@ -151,6 +153,26 @@ defineScreen({
   frame: SHOWS_FRAME,
   kind: 'detail',
   reuse: true,
+  requires: ['profile'],
+});
+
+// What is on the Playpex server (its media library): movies, shows, recently
+// added, folders of other videos
+defineScreen({
+  id: 'core.library',
+  path: 'library',
+  component: LibraryPageComponent,
+  kind: 'section',
+  requires: ['profile'],
+  menu: { label: 'Library', icon: 'library', order: 35 },
+});
+
+// Params { id } (a library folder); payload: { name }; the level shown is the entry's state
+defineScreen({
+  id: 'core.library.folder',
+  path: 'library/folder/:id',
+  component: LibraryFolderComponent,
+  kind: 'detail',
   requires: ['profile'],
 });
 

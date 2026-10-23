@@ -111,7 +111,7 @@ tags:
   - name: library
     description: One profile's watch list, playback progress and history
   - name: media-library
-    description: 'The server''s media library (admin): folders of video files, scans, matches to TMDB'
+    description: 'The server''s media library: what is on this server (clients), and its folders, scans and matches to TMDB (admin)'
   - name: settings
     description: User settings (per device and per profile), keys in @playpex/protocol settings.js
   - name: trailers
@@ -1050,7 +1050,7 @@ paths:
         Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
         `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
         `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
-        at most every 2 s) / `download.removed`, `settings.changed`. Admin session only: `log`, `device.paired`, `device.revoked`,
+        at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
         `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`). `?topics=session,torrent.stats` keeps
         topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
         from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
@@ -1761,6 +1761,68 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PlaySources' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /library/home:
+    get:
+      tags: [media-library]
+      operationId: getServerLibrary
+      summary: What is on this server, for a profile
+      description: |
+        The server's media library as a client browses it (docs/media-server-plan.md §5.5): the movies and
+        shows matched to TMDB (one entry per title, by title), the titles added last (20, newest first),
+        and the folders that hold other videos (files not matched to a title, and every file of an `other`
+        folder). Files missing or ignored never show. A kids profile (`?profile=`) never sees files of
+        adults-only folders. Refetch on the `library.changed` event.
+      parameters:
+        - $ref: '#/components/parameters/Profile'
+      responses:
+        '200':
+          description: The library
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerLibrary' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /library/titles/{mediaType}/{tmdbId}:
+    get:
+      tags: [media-library]
+      operationId: getServerLibraryTitle
+      summary: Whether a movie, or which episodes of a show, are on this server
+      description: |
+        For "On this server" marks: the title's files that play (state ok), and for a show (`tv`) its
+        episodes on this server. `fileCount` 0 = not on this server. Same audience rule as `/library/home`.
+      parameters:
+        - { name: mediaType, in: path, required: true, schema: { type: string, enum: [movie, tv] } }
+        - { name: tmdbId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - $ref: '#/components/parameters/Profile'
+      responses:
+        '200':
+          description: The title's files on this server
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerLibraryTitle' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /library/folders/{folderId}:
+    get:
+      tags: [media-library]
+      operationId: browseServerLibraryFolder
+      summary: One level of a folder's other videos
+      description: |
+        The subfolders that hold other videos (with how many, at any depth) and the videos right in it,
+        in natural name order. `path` is a folder inside it from a previous answer (`folders[].path`,
+        `parent`); none = the folder itself. Play a video by its `ref` (`/media/{ref}`). 404 for an
+        unknown folder, one a kids profile doesn't see, or a path with no videos.
+      parameters:
+        - { name: folderId, in: path, required: true, schema: { type: string } }
+        - { name: path, in: query, required: false, schema: { type: string }, description: 'A folder inside it, / separated' }
+        - $ref: '#/components/parameters/Profile'
+      responses:
+        '200':
+          description: The folder's level
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServerLibraryFolder' }
         '400': { $ref: '#/components/responses/Invalid' }
         '404': { $ref: '#/components/responses/NotFound' }
   /releases/providers:
@@ -3212,6 +3274,112 @@ components:
             properties:
               handler: { type: string }
               message: { type: string }
+    ServerLibraryEntry:
+      type: object
+      description: A movie or a show on this server, from its files' matches
+      required: [mediaType, tmdbId, imdbId, title, year, posterPath, backdropPath, addedAt, fileCount, quality, episodeCount, seasonCount, latest]
+      properties:
+        mediaType: { type: string, enum: [movie, tv] }
+        tmdbId: { type: integer }
+        imdbId: { type: [string, 'null'] }
+        title: { type: string }
+        year: { type: [integer, 'null'] }
+        posterPath: { type: [string, 'null'], description: 'TMDB image path' }
+        backdropPath: { type: [string, 'null'] }
+        addedAt: { type: string, format: date-time, description: 'When its newest file was found' }
+        fileCount: { type: integer }
+        quality: { type: [string, 'null'], description: 'The best of its files: 2160p, 1080p, 720p, 480p' }
+        episodeCount: { type: [integer, 'null'], description: 'Shows: episodes on this server (null for a movie)' }
+        seasonCount: { type: [integer, 'null'] }
+        latest:
+          description: 'Shows: the episode added last (null for a movie)'
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [season, episode, episodeTitle]
+              properties:
+                season: { type: integer }
+                episode: { type: integer }
+                episodeTitle: { type: [string, 'null'] }
+    ServerLibrary:
+      type: object
+      required: [movies, shows, recent, other]
+      properties:
+        movies: { type: array, items: { $ref: '#/components/schemas/ServerLibraryEntry' }, description: 'By title' }
+        shows: { type: array, items: { $ref: '#/components/schemas/ServerLibraryEntry' }, description: 'By title' }
+        recent: { type: array, items: { $ref: '#/components/schemas/ServerLibraryEntry' }, description: 'Movies and shows, newest file first (20)' }
+        other:
+          type: object
+          required: [count, folders]
+          properties:
+            count: { type: integer, description: 'Other videos in all' }
+            folders:
+              type: array
+              description: 'Library folders holding other videos, by name'
+              items:
+                type: object
+                required: [id, name, count]
+                properties:
+                  id: { type: string }
+                  name: { type: string, description: 'The folder''s own name (the download folder: Downloads)' }
+                  count: { type: integer }
+    ServerLibraryTitle:
+      type: object
+      required: [mediaType, tmdbId, fileCount, episodes]
+      properties:
+        mediaType: { type: string, enum: [movie, tv] }
+        tmdbId: { type: integer }
+        fileCount: { type: integer, description: '0: not on this server' }
+        episodes:
+          type: array
+          description: 'A show''s episodes on this server, in order ([] for a movie)'
+          items:
+            type: object
+            required: [season, episode, fileCount]
+            properties:
+              season: { type: integer }
+              episode: { type: integer }
+              fileCount: { type: integer }
+    ServerLibraryFolder:
+      type: object
+      required: [folder, path, parent, folders, videos]
+      properties:
+        folder:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+        path: { type: string, description: 'This level inside the folder ('''' = the folder itself)' }
+        parent: { type: [string, 'null'], description: 'The level above (null at the folder itself)' }
+        folders:
+          type: array
+          items:
+            type: object
+            required: [name, path, count]
+            properties:
+              name: { type: string }
+              path: { type: string }
+              count: { type: integer, description: 'Videos inside, at any depth' }
+        videos:
+          type: array
+          items:
+            type: object
+            required: [id, ref, name, size, duration, quality, addedAt]
+            properties:
+              id: { type: string }
+              ref: { type: string, description: 'Its media ref (/media/{ref})' }
+              name: { type: string, description: 'The file name' }
+              size: { type: integer }
+              duration: { type: [number, 'null'], description: 'Seconds (ffprobe), null when unknown' }
+              quality: { type: [string, 'null'] }
+              addedAt: { type: string, format: date-time }
+    LibraryChangedEvent:
+      description: '`data` of `library.changed` (everyone): what clients see of the library changed (a scan found, changed or lost files, the admin fixed a match or edited a folder); refetch'
+      type: object
+      required: [folderId]
+      properties:
+        folderId: { type: [string, 'null'] }
     ReleaseProvider:
       type: object
       required: [id, name, paged, default]
@@ -4044,6 +4212,6 @@ components:
       type: object
       required: [topic, time, data]
       properties:
-        topic: { type: string, description: 'server.status, torrent.stats, session.*, download.*, settings.changed, log, device.*, pairing.*, host.updated' }
+        topic: { type: string, description: 'server.status, torrent.stats, session.*, download.*, settings.changed, library.changed, library.scan, log, device.*, pairing.*, host.updated' }
         time: { type: string, format: date-time }
         data: {}

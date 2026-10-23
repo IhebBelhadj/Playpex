@@ -35,6 +35,8 @@ import { ProfilePickerComponent } from './profile-picker/profile-picker.componen
 import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
 import { PinPadComponent } from './pin-pad/pin-pad.component';
 import { WatchlistPageComponent } from './watchlist-page/watchlist-page.component';
+import { LibraryPageComponent } from './library-page/library-page.component';
+import { LibraryFolderComponent } from './library-folder/library-folder.component';
 import { TextKeyboardComponent } from './text-keyboard/text-keyboard.component';
 import { ReleasesPageComponent } from './releases-page/releases-page.component';
 import { AdultBrowseComponent } from './adult-browse/adult-browse.component';
@@ -79,6 +81,8 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     ProfileEditorComponent,
     PinPadComponent,
     WatchlistPageComponent,
+    LibraryPageComponent,
+    LibraryFolderComponent,
     TextKeyboardComponent,
     ReleasesPageComponent,
     AdultBrowseComponent,

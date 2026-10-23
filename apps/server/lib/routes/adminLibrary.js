@@ -124,6 +124,7 @@ router.patch('/library/folders/:id', handle(function (s, req) {
     if (body.kind !== undefined) {
       library.scan(folder.id, true);   // unmatched files may match as the new kind
     }
+    library.changed(folder.id);
     return s.library.counts().then(function (counts) {
       return folderView(folder, counts[folder.id], library.status());
     });
@@ -170,6 +171,14 @@ router.get('/library/files/:id', handle(function (s, req) {
   return s.library.file(req.params.id).then(function (file) { return withItem(s, file); });
 }));
 
+// A file the admin changed: clients refetch what they show (library.changed)
+function touched(s, file) {
+  if (file) {
+    library.changed(file.folderId);
+  }
+  return withItem(s, file);
+}
+
 // body: { kind: 'movie', tmdbId } | { kind: 'episode', showTmdbId, season, episode }:
 // the admin's match (kept by rescans)
 router.put('/library/files/:id/match', handle(function (s, req) {
@@ -191,12 +200,12 @@ router.put('/library/files/:id/match', handle(function (s, req) {
         { kind: 'episode', showTmdbId: identity.showTmdbId, season: identity.season, episode: identity.episode };
       return s.library.match(file.id, key, details, 'admin');
     });
-  }).then(function (file) { return withItem(s, file); });
+  }).then(function (file) { return touched(s, file); });
 }));
 
 // Forgets the match (the next scan matches the file again)
 router.delete('/library/files/:id/match', handle(function (s, req) {
-  return s.library.unmatch(req.params.id).then(function (file) { return withItem(s, file); });
+  return s.library.unmatch(req.params.id).then(function (file) { return touched(s, file); });
 }));
 
 // body: { ignored: boolean }
@@ -205,7 +214,7 @@ router.put('/library/files/:id/ignored', handle(function (s, req) {
   if (typeof ignored !== 'boolean') {
     return Promise.reject(serviceErrors.invalid('ignored must be true or false'));
   }
-  return s.library.ignore(req.params.id, ignored).then(function (file) { return withItem(s, file); });
+  return s.library.ignore(req.params.id, ignored).then(function (file) { return touched(s, file); });
 }));
 
 // ?kind=movie|tv&q=&year= → { results: [{ tmdbId, title, year, overview, posterPath }] } (to fix a match)

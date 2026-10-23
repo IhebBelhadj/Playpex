@@ -1,0 +1,47 @@
+// Mirrors the watch list (and so the movies page): the title info on top, the
+// rows at the bottom.
+@use 'px' as *;
+
+// Flex item of .masterContainer next to the menu: without min-width 0 it grows
+// to its widest row and rows can't scroll
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.serverLibraryPage {
+  justify-content: space-between;
+}
+
+// not called .description: the menu hides every .description in the document
+.titleInfo {
+  padding-top: dp(40);
+}
+
+// ── rows (pxStack of pxRows, motion="transform": the stack clips, its
+// track and the rows are translated, src/app/movement) ─────────────────────
+
+.sliderContainer {
+  height: dp(370);
+  position: relative;
+  // the rows' zoom room stays inside the clipping stack, which also keeps
+  // posters scrolled off to the left from showing over the menu
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
+
+  .overlay {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: dp(250);
+    pointer-events: none;
+    background: var(--px-gradient-rows-fade);
+  }
+
+  .content {
+    position: relative;
+    --px-row-margin-bottom: #{dp(4)};
+  }
+}

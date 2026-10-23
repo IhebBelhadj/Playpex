@@ -1,0 +1,26 @@
+<px-section-layout class="serverLibraryPage" pxSection="serverLibrary" [leaveFor]="{ left: '@menu' }">
+
+  <!-- The focused title or folder, laid out like <movie-description> -->
+  <px-title-info class="titleInfo" *ngIf="spot && !isEmpty && !loadError" [info]="titleInfo" layout="section"></px-title-info>
+
+  <px-empty class="titleInfo" *ngIf="isEmpty" size="hero" title="Nothing on this server yet"
+    [text]="'Movies and shows you download go here once they finish. To add the folders you already have, open ' + dashboardUrl + ' in a browser and choose Library.'"
+    action="Browse movies" actionKey="browse" (act)="navigator.switchSection('core.movies')"></px-empty>
+
+  <px-empty class="titleInfo" *ngIf="loadError" size="hero" title="Library unavailable" [text]="loadError"
+    action="Try again" actionKey="retry" (act)="load()"></px-empty>
+
+  <!-- Category-style rows, like the movies page -->
+  <div class="sliderContainer" *ngIf="rows.length" pxStack="server-library" align="row-top" motion="transform">
+    <div class="overlay"></div>
+    <div class="content" pxTrack>
+      <px-card-row class="section" *ngFor="let row of rows; trackBy: byRow" pxStackItem [attr.data-row]="row.key"
+        [rowKey]="row.key" [title]="row.title">
+        <ng-container *ngFor="let card of row.cards; trackBy: byCard">
+          <px-card variant="poster" [key]="card.key" [image]="posterUrl(card)" [title]="card.title"
+            [badges]="badges(card)" [data]="{ key: card.key }"></px-card>
+        </ng-container>
+      </px-card-row>
+    </div>
+  </div>
+</px-section-layout>

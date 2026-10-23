@@ -8,7 +8,7 @@
     <ng-container *ngIf="badges?.length || progress || busy">
       <span class="badges" *ngIf="badges?.length">
         <span *ngFor="let b of badges" class="badge" [ngClass]="'b-' + badgeKind(b)">
-          <img *ngIf="b == 'watched'" src="assets/icons/tick.svg" alt="">{{ badgeText(b) }}
+          <img *ngIf="b == 'watched'" src="assets/icons/tick.svg" alt=""><img *ngIf="b == 'server'" src="assets/icons/server.svg" alt="">{{ badgeText(b) }}
         </span>
       </span>
       <px-progress *ngIf="progress" class="progress" [value]="progress"></px-progress>
