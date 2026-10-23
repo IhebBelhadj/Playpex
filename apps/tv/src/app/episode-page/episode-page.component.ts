@@ -13,6 +13,7 @@ import { EpisodeKey, EpisodeProgress, LibraryService, PlaybackState } from '../l
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { ReleasesService } from '../releases.service';
 import { EpisodePlaybackService } from '../episode-playback.service';
+import { Download, DownloadTile, DownloadsService } from '../downloads.service';
 import { ImdbEpisode, ImdbSeries, ImdbService } from '../imdb.service';
 import { Navigator, useScreen } from '../nav/public-api';
 import { Badge, EpisodeContext, MetaItem, TitleInfoModel, tmdbImageBase } from '../ui/public-api';
@@ -37,6 +38,12 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   private toasts = inject(Toasts);
 
   private profiles = inject(ProfilesService);
+
+  private downloads = inject(DownloadsService);
+  // the server's download of this episode: the Download tile
+  download:Download | null = null;
+  downloadTile:DownloadTile = DownloadsService.tile(null);
+  private downloadSub:Subscription | null = null;
 
   stillBase = tmdbImageBase('still', 270);
   profileBase = tmdbImageBase('profile', 130);
@@ -156,7 +163,54 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     return this.progressOf(ep)?.finished ? ['watched'] : null;
   }
 
+  // The server's download of this episode, live (not for 18+ shows)
+  private watchDownload() {
+    this.downloadSub?.unsubscribe();
+    this.download = null;
+    this.downloadTile = DownloadsService.tile(null);
+    if (this.isAdult || !this.show || !this.episode) return;
+    this.downloadSub = this.downloads.forTitle(this.downloadRef()).subscribe(d => {
+      this.download = d;
+      this.downloadTile = DownloadsService.tile(d);
+    });
+  }
+
+  private downloadRef() {
+    return { mediaType: 'tv' as const, tmdbId: Number(this.show['id']), season: this.seasonNumber, episode: this.episode.episode_number };
+  }
+
+  // Download: a release of this episode kept on the server (the same lookup and
+  // picker as Play); one already there is started again, or just reported
+  onDownload() {
+    let d = this.download, title = `${this.show['name']} · ${this.code}`;
+    if (d) {
+      if (['paused', 'error'].includes(d.state)) {
+        this.downloads.start(d.infoHash).subscribe({
+          next: () => this.toasts.show({ text: 'Downloading again', detail: title, tone: 'success', key: 'download' }),
+          error: () => this.toasts.show({ text: "Couldn't start the download", tone: 'error', key: 'download' }),
+        });
+      } else {
+        this.toasts.show({ text: this.downloadTile.label, detail: title, tone: 'info', key: 'download' });
+      }
+      return;
+    }
+    if (this.episode?.upcoming) {
+      this.notificationService.sendNotification("error", `${this.code} hasn't aired yet`);
+      return;
+    }
+    let ref = this.downloadRef();
+    this.episodePlayback.chooseRelease({ show: this.show, imdbId: this.imdbId, season: this.seasonNumber, episode: this.episode })
+      .subscribe(torrent => this.downloads.add(torrent.magnet, ref, title).subscribe({
+        next: added => this.toasts.show({
+          text: added.state === 'queued' ? 'Queued on the server' : 'Downloading on the server',
+          detail: title, tone: 'success', key: 'download',
+        }),
+        error: () => this.toasts.show({ text: "Couldn't start the download", detail: 'Is the Playpex server running?', tone: 'error', key: 'download' }),
+      }));
+  }
+
   ngOnDestroy(): void {
+    this.downloadSub?.unsubscribe();
     this.mediaSub.unsubscribe();
     this.subscriptions.forEach(s => s.unsubscribe());
     window.removeEventListener('sn:focused', this.focusListener);
@@ -217,6 +271,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     this.background.sendImage(episode['still_path'] || this.show['backdrop_path']);
     this.updateImdb();
     this.loadEpisodeState();
+    this.watchDownload();
 
     if (focusPlay) {
       setTimeout(() => {

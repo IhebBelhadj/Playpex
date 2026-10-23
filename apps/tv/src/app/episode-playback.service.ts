@@ -151,29 +151,48 @@ export class EpisodePlaybackService {
   }
 
   private findAndPlay(target:EpisodeTarget, code:string, startAt?:number) {
-    if (!target.imdbId) {
-      this.notificationService.sendNotification("error", "This show has no IMDb id, so torrents can't be looked up");
-      return;
-    }
+    this.chooseRelease(target).subscribe(torrent => this.start(target, code, torrent, startAt));
+  }
 
-    let ep = target.episode;
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
-    this.torrentService.findEpisodeTorrents(target.imdbId, target.show['name'], target.season, ep.episode_number)
-      .subscribe(result => {
-        this.resolving = null;
-        if (!result.torrents.length) {
-          let reason = result.providerErrors ? " (some providers are unreachable)" : "";
-          this.notificationService.sendNotification("error", `No torrents found for ${code}${reason}`);
-          return;
-        }
-
-        let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent, i));
-        this.torrentPicker.choose(`${target.show['name']} ${code}`, options)
-          .subscribe(choice => this.start(target, code, choice.torrent, startAt));
-      }, () => {
-        this.resolving = null;
-        this.notificationService.sendNotification("error", "Couldn't reach the torrent providers. Try again later");
-      });
+  /**
+   * The episode's releases (the server's ranking) → the torrent picker →
+   * the picked torrent (with its `magnet`); completes empty on Back or when
+   * nothing is found (the user is told). Play and Download use it.
+   */
+  chooseRelease(target:EpisodeTarget):Observable<any> {
+    return new Observable(subscriber => {
+      if (!target.imdbId) {
+        this.notificationService.sendNotification("error", "This show has no IMDb id, so torrents can't be looked up");
+        subscriber.complete();
+        return undefined;
+      }
+      let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episode_number);
+      this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
+      let picking = null;
+      let lookup = this.torrentService.findEpisodeTorrents(target.imdbId, target.show['name'], target.season, ep.episode_number)
+        .subscribe(result => {
+          this.resolving = null;
+          if (!result.torrents.length) {
+            let reason = result.providerErrors ? " (some providers are unreachable)" : "";
+            this.notificationService.sendNotification("error", `No torrents found for ${code}${reason}`);
+            subscriber.complete();
+            return;
+          }
+          let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent, i));
+          picking = this.torrentPicker.choose(`${target.show['name']} ${code}`, options).subscribe({
+            next: choice => subscriber.next(choice.torrent),
+            complete: () => subscriber.complete(),
+          });
+        }, () => {
+          this.resolving = null;
+          this.notificationService.sendNotification("error", "Couldn't reach the torrent providers. Try again later");
+          subscriber.complete();
+        });
+      return () => {
+        lookup.unsubscribe();
+        picking?.unsubscribe();
+      };
+    });
   }
 
   private start(target:EpisodeTarget, code:string, torrent, startAt?:number, replace = false) {

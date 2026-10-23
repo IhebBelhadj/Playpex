@@ -30,6 +30,9 @@ const INVALIDATES: [string, string[]][] = [
   ['device.', ['devices']],
   ['pairing.', ['pairing', 'devices']],
   ['host.', ['host']],
+  // download.updated (every 2 s per torrent) is patched in place by the Downloads page
+  ['download.added', ['downloads', 'overview']],
+  ['download.removed', ['downloads', 'storage', 'overview']],
 ]
 
 export function EventsProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {

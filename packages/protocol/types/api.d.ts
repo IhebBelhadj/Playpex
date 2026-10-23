@@ -1912,6 +1912,8 @@ export interface components {
                 size: number;
                 offset: number;
                 selected: boolean;
+                /** @description Verified bytes of this file; null when unknown (stopped and not completed) */
+                doneBytes: number | null;
             }[] | null;
         };
         AddDownloadRequest: {
@@ -1919,6 +1921,16 @@ export interface components {
             link: string;
             /** @description Paths to download (default: every file) */
             files?: string[];
+            /** @description Which title it is (TMDB): the download's `title`, so a client finds it again from that title's page */
+            media?: {
+                mediaType: components["schemas"]["MediaType"];
+                tmdbId: number;
+                season?: number;
+                episode?: number;
+            };
+            /** @description For people, e.g. "Breaking Bad · S02E05" */
+            title?: string;
+            profileId?: string;
         };
         /** @description `data` of `download.removed` */
         DownloadRemovedEvent: {

@@ -262,10 +262,14 @@ v1.get('/downloads', function (req, res) {
   res.json(torrents.list());
 });
 
-// { link, files? } as JSON, or a .torrent as multipart `file`: a download
-// (runs to the end without a client; queued past downloads.maxActive)
+// { link, files?, media?, title?, profileId? } as JSON, or a .torrent as
+// multipart `file`: a download (runs to the end without a client; queued past
+// downloads.maxActive). `media` (the TMDB title) lets clients find it again.
 v1.post('/downloads', multipart(), function (req, res) {
-  var files = req.body && req.body.files;
+  var files = req.body && req.body.files,
+    media = sessions.mediaRef(req.body && req.body.media),
+    title = req.body && typeof req.body.title === 'string' ? req.body.title.slice(0, 300) : null,
+    profileId = req.body && typeof req.body.profileId === 'string' ? req.body.profileId : null;
   if (files !== undefined && (!Array.isArray(files) || files.some(function (p) { return typeof p !== 'string'; }))) {
     return fail(res, 'INVALID', 'files must be a list of paths');
   }
@@ -273,6 +277,9 @@ v1.post('/downloads', multipart(), function (req, res) {
   link.then(function (source) {
     return torrents.add(source, { intent: 'download', by: addedBy(req), files: files });
   }).then(function (infoHash) {
+    if (media || profileId) {
+      torrents.describe(infoHash, { titleRef: media ? Object.assign(media, title ? { title: title } : {}) : null, profileId: profileId });
+    }
     res.json(torrents.get(infoHash));
   }, function (err) {
     failed(res, err);

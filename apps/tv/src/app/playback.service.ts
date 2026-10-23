@@ -45,6 +45,16 @@ export class PlaybackService {
 
   constructor(private navigator:Navigator) { }
 
+  // A movie torrent's magnet: its own (18+ results), else built from the YTS hash
+  static movieMagnet(movie, torrent):string {
+    let magnet = torrent.magnet;
+    if (!magnet) {
+      magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
+      TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
+    }
+    return magnet;
+  }
+
   // The player, over the current screen (Back returns to it). `replace`: in
   // place of the current entry (the next episode, from the player itself).
   // Each playback is its own session (`player/:session`): a new component,
@@ -60,11 +70,7 @@ export class PlaybackService {
   // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash.
   // 18+ movies get server results (lib/adult.js) that carry their own `magnet`
   playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
-    let magnet = torrent.magnet;
-    if (!magnet) {
-      magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
-      TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
-    }
+    let magnet = PlaybackService.movieMagnet(movie, torrent);
 
     this.play({
       title: movie['original_title'],

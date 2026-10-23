@@ -872,16 +872,36 @@ function list() {
     .sort(function (a, b) { return a.row.addedAt - b.row.addedAt; }).map(view);
 }
 
-// Files with their selection, or null before the metadata arrived
+// Bytes of a file that are verified, from the engine's pieces (pieces at its
+// edges count by their overlap); null when unknown
+function fileDone(d, f) {
+  var live = isActive(d) ? d.live : null, pl = d.meta.pieceLength;
+  if (!live || !live.pieces || !pl || !f.size) {
+    return null;
+  }
+  var done = 0, first = Math.floor(f.offset / pl), last = Math.floor((f.offset + f.size - 1) / pl);
+  for (var i = first; i <= last && i < live.pieces.length; i++) {
+    if (live.pieces[i]) {
+      done += Math.min((i + 1) * pl, f.offset + f.size) - Math.max(i * pl, f.offset);
+    }
+  }
+  return done;
+}
+
+// Files with their selection and progress, or null before the metadata arrived
 function filesOf(hash) {
   var d = typeof hash === 'string' && downloads[hash.toLowerCase()];
   if (!d || !d.meta) {
     return null;
   }
   return d.meta.files.map(function (f) {
+    var selected = !d.row.selectedFiles || d.row.selectedFiles.indexOf(f.path) !== -1;
     return {
       name: path.basename(f.path), path: f.path, size: f.size, offset: f.offset,
-      selected: !d.row.selectedFiles || d.row.selectedFiles.indexOf(f.path) !== -1
+      selected: selected,
+      // a finished download's selected files are whole (edge pieces shared with
+      // files not downloaded can't be counted from the pieces)
+      doneBytes: selected && (d.row.state === 'completed' || isDone(d)) ? f.size : fileDone(d, f)
     };
   });
 }

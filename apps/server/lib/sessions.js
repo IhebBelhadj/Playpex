@@ -440,6 +440,7 @@ module.exports = {
   takeTranscodeSlot: takeTranscodeSlot,
   canAdd: canAdd,
   report: report,
+  mediaRef: mediaRef,
   reap: reap,
   list: list,
   stopSession: stopSession,

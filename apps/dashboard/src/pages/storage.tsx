@@ -111,6 +111,11 @@ export function StoragePage() {
                       <div className="flex items-center gap-2">
                         <Mono>{item.name}</Mono>
                         {item.infoHash && <Badge variant="secondary">in use</Badge>}
+                        {item.download && (
+                          <Link className="text-xs text-muted-foreground underline underline-offset-2" to={`/downloads?hash=${item.download.infoHash}`}>
+                            download
+                          </Link>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs whitespace-nowrap">{bytes(item.bytes)}</TableCell>

@@ -11,6 +11,9 @@
     <px-action key="play" icon="play" [label]="resumeLabel || 'Play ' + code" busyLabel="Finding torrents…"
       [busy]="resolving" [progress]="resumeRatio || null" (pxSelect)="play()"></px-action>
     <!-- every source's releases of this episode -->
+    <!-- kept on the server (Downloads): progress, then "On this server"; not for 18+ shows -->
+    <px-action *ngIf="!isAdult" key="download" icon="download" onIcon="tick" [on]="downloadTile.on" [label]="downloadTile.label"
+      [progress]="downloadTile.progress" (pxSelect)="onDownload()"></px-action>
     <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
     <!-- 18+ titles never go in the profile's library -->
     <px-action *ngIf="!isAdult" key="watched" icon="mark" onIcon="tick" [on]="watched"

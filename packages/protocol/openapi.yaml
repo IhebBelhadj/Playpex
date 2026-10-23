@@ -2319,19 +2319,31 @@ components:
               type: [array, 'null']
               items:
                 type: object
-                required: [name, path, size, offset, selected]
+                required: [name, path, size, offset, selected, doneBytes]
                 properties:
                   name: { type: string }
                   path: { type: string }
                   size: { type: number }
                   offset: { type: number }
                   selected: { type: boolean }
+                  doneBytes: { type: [number, 'null'], description: 'Verified bytes of this file; null when unknown (stopped and not completed)' }
     AddDownloadRequest:
       type: object
       required: [link]
       properties:
         link: { type: string, description: 'Magnet link, a bare 40-character info hash, or an http(s) .torrent URL' }
         files: { type: array, items: { type: string }, description: 'Paths to download (default: every file)' }
+        media:
+          type: object
+          description: 'Which title it is (TMDB): the download''s `title`, so a client finds it again from that title''s page'
+          required: [mediaType, tmdbId]
+          properties:
+            mediaType: { $ref: '#/components/schemas/MediaType' }
+            tmdbId: { type: integer, minimum: 1 }
+            season: { type: integer, minimum: 0 }
+            episode: { type: integer, minimum: 0 }
+        title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
+        profileId: { type: string }
     DownloadRemovedEvent:
       type: object
       description: '`data` of `download.removed`'

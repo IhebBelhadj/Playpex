@@ -7,8 +7,11 @@
     <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="onTrailer()"></px-action>
     <!-- every source's releases of this movie, not only YTS' -->
     <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
-    <!-- 18+ titles never go in the profile's library -->
+    <!-- 18+ titles never go in the profile's library, nor are downloaded from here -->
     <ng-container *ngIf="!isAdult">
+      <!-- kept on the server (Downloads): progress, then "On this server" -->
+      <px-action key="download" icon="download" onIcon="tick" [on]="downloadTile.on" [label]="downloadTile.label"
+        [progress]="downloadTile.progress" (pxSelect)="onDownload()"></px-action>
       <px-action key="watchlist" icon="bookmark" onIcon="tick" [on]="inWatchlist"
         [label]="inWatchlist ? 'In your watch list' : 'Add to watch list'" (pxSelect)="toggleWatchlist()"></px-action>
       <px-action key="watched" icon="mark" onIcon="tick" [on]="watched"

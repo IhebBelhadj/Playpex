@@ -12,6 +12,7 @@ import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
 import { TorrentPickerService } from '../torrent-picker.service';
+import { Download, DownloadTile, DownloadsService } from '../downloads.service';
 import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
@@ -29,6 +30,12 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   private toasts = inject(Toasts);
 
   private profiles = inject(ProfilesService);
+
+  private downloads = inject(DownloadsService);
+  // the server's download of this movie: the Download tile
+  download:Download | null = null;
+  downloadTile:DownloadTile = DownloadsService.tile(null);
+  private downloadSub:Subscription | null = null;
 
   profileImgBase = tmdbImageBase('profile', 130);
   movieImgBase = tmdbImageBase('poster', 150);
@@ -95,7 +102,53 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.loadMovie(this.screen.payload);
   }
 
+  // The server's download of this movie, live (18+ titles aren't downloaded from here)
+  private watchDownload() {
+    this.downloadSub?.unsubscribe();
+    this.download = null;
+    this.downloadTile = DownloadsService.tile(null);
+    if (this.isAdult || !this.selectedMovie?.['id']) return;
+    this.downloadSub = this.downloads.forTitle({ mediaType: 'movie', tmdbId: Number(this.selectedMovie['id']) }).subscribe(d => {
+      this.download = d;
+      this.downloadTile = DownloadsService.tile(d);
+    });
+  }
+
+  // Download: a release to keep on the server (the same picker as Play);
+  // one already there is started again, or just reported
+  onDownload() {
+    let d = this.download, movie = this.selectedMovie;
+    if (d) {
+      if (['paused', 'error'].includes(d.state)) {
+        this.downloads.start(d.infoHash).subscribe({
+          next: () => this.toasts.show({ text: 'Downloading again', detail: movie['original_title'], tone: 'success', key: 'download' }),
+          error: () => this.toasts.show({ text: "Couldn't start the download", tone: 'error', key: 'download' }),
+        });
+      } else {
+        this.toasts.show({ text: this.downloadTile.label, detail: movie['original_title'], tone: 'info', key: 'download' });
+      }
+      return;
+    }
+    if (!movie?.['torrents']?.length) {
+      this.notificationService.sendNotification('error', "No release found for this movie");
+      return;
+    }
+    let options = movie['torrents'].map(torrent => TorrentPickerService.fromYts(torrent));
+    this.torrentPicker.choose(movie['original_title'], options).subscribe(choice => {
+      let title = movie['original_title'] + (movie['release_date'] ? ` (${movie['release_date'].slice(0, 4)})` : '');
+      this.downloads.add(PlaybackService.movieMagnet(movie, choice.torrent), { mediaType: 'movie', tmdbId: Number(movie['id']) }, title)
+        .subscribe({
+          next: added => this.toasts.show({
+            text: added.state === 'queued' ? 'Queued on the server' : 'Downloading on the server',
+            detail: title, tone: 'success', key: 'download',
+          }),
+          error: () => this.toasts.show({ text: "Couldn't start the download", detail: 'Is the Playpex server running?', tone: 'error', key: 'download' }),
+        });
+    });
+  }
+
   ngOnDestroy(): void {
+    this.downloadSub?.unsubscribe();
     this.mediaSub.unsubscribe();
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
     this.subscriptions.forEach(s => s.unsubscribe());
@@ -113,6 +166,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.slotContext = { movie: titleRef(data), profile: profileContext(this.profiles.current.value) };
       this.getPlayData();
       this.loadLibraryState();
+      this.watchDownload();
     };
     if (movie?.['imdb_id'] || movie?.['adult']) {
       ready(movie);

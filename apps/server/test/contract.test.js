@@ -846,8 +846,13 @@ test('downloads: add, files, rules, pause, start, remove', function () {
   return call('GET', '/downloads', undefined, { expect: 200 })
     .then(function () { return call('POST', '/downloads', { link: 'not a torrent' }, { expect: 400 }); })
     .then(function () { return call('POST', '/downloads', { link: H, files: 'a' }, { expect: 400 }); })
-    .then(function () { return call('POST', '/downloads', { link: H }, { expect: 200, headers: { 'X-Playpex-Device': 'device-c' } }); })
+    .then(function () {
+      return call('POST', '/downloads', { link: H, media: { mediaType: 'movie', tmdbId: 42 }, title: 'Some Movie (2020)' },
+        { expect: 200, headers: { 'X-Playpex-Device': 'device-c' } });
+    })
     .then(function (res) {
+      // the title it was added for: what title pages find it by
+      assert.deepEqual(res.body.title, { mediaType: 'movie', tmdbId: 42, title: 'Some Movie (2020)' });
       assert.equal(res.body.intent, 'download');
       assert.equal(res.body.addedBy, 'device-c');
       assert.ok(['queued', 'downloading'].indexOf(res.body.state) !== -1);

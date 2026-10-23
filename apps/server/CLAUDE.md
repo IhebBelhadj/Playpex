@@ -119,8 +119,8 @@ Serialized torrent: `{ infoHash, name, length, state, interested, ready, files: 
 Every torrent the server keeps, running or not (`Download`: `infoHash, name, state, intent, error, sizeBytes, doneBytes, progress, uploadedBytes, ratio, downloadSpeed, uploadSpeed, peers, seeds, eta, checking, fileCount, selectedFiles, title, addedBy, profileId, removeWhenWatched, addedAt, completedAt, lastActiveAt`).
 | Method & path | Who | Behavior |
 |---|---|---|
-| `GET /downloads` · `GET /downloads/:hash` | client | all, oldest first · one, + `files` (`[{name, path, size, offset, selected}]`, null before metadata) |
-| `POST /downloads` `{link, files?}` or multipart `file` | client (decision D's per-device grant not built: every client may) | intent `download`: runs to the end without a client, `queued` past `downloads.maxActive`; a known hash becomes a download (paused / error → queued) |
+| `GET /downloads` · `GET /downloads/:hash` | client | all, oldest first · one, + `files` (`[{name, path, size, offset, selected, doneBytes}]`, null before metadata; `doneBytes` from the engine's pieces, whole for a finished download's selected files, null when unknown) |
+| `POST /downloads` `{link, files?, media?, title?, profileId?}` or multipart `file` | client (decision D's per-device grant not built: every client may) | intent `download`: runs to the end without a client, `queued` past `downloads.maxActive`; a known hash becomes a download (paused / error → queued) |
 | `POST /downloads/:hash/start` · `/pause` | client | Start = intent `download` + queued; pause = `paused` until started |
 | `PUT /downloads/:hash/files` `{files: [paths] \| null}` | client | selection (null = every file); a completed download with more to fetch is queued again |
 | `PATCH /downloads/:hash` `{removeWhenWatched}` | client | the "remove when watched" rule |

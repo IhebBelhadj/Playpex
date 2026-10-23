@@ -1,17 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import {
-  Activity,
-  AlertTriangle,
-  HardDrive,
-  Info,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  MonitorSmartphone,
-  ScrollText,
-  Settings,
-  Users,
-} from 'lucide-react'
+import { Activity, AlertTriangle, Download, HardDrive, Info, LayoutDashboard, LogOut, Menu, MonitorSmartphone, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -68,6 +56,7 @@ const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/activity', label: 'Activity', icon: Activity },
   { to: '/devices', label: 'Devices', icon: MonitorSmartphone },
+  { to: '/downloads', label: 'Downloads', icon: Download },
   { to: '/storage', label: 'Storage', icon: HardDrive },
   { to: '/logs', label: 'Logs', icon: ScrollText },
   { to: '/settings', label: 'Settings', icon: Settings },
