@@ -419,6 +419,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/dlna": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The DLNA media server: its state, the folders it may serve, the renderers that used it in the last day
+         * @description On / off and its port are settings (`dlna.enabled`, `dlna.port`); a folder is served with `PATCH /admin/library/folders/{id}` `{dlna: true}` (never an adults-only one).
+         */
+        get: operations["getDlna"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/engines/{id}/install": {
         parameters: {
             query?: never;
@@ -3457,6 +3477,12 @@ export interface components {
                 /** @description "Pause all downloads": downloads wait, streams still play */
                 paused: boolean;
             };
+            dlna: {
+                /** @description The DLNA / UPnP AV media server (no authentication: read-only, DLNA folders of audience everyone, LAN addresses only); only with network.lanSharing. Applied at once */
+                enabled: boolean;
+                /** @description Its own HTTP listener (default 28472); applied at once */
+                port: number;
+            };
             providers: {
                 tmdbApiKey: string;
                 openSubtitlesApiKey: string;
@@ -3466,6 +3492,66 @@ export interface components {
             transcoding: {
                 ffmpegPath: string;
                 ffprobePath: string;
+            };
+        };
+        DlnaStatus: {
+            /** @description It should run (`dlna.enabled`, LAN sharing, not recovery mode); `http` / `ssdp` tell whether it does */
+            enabled: boolean;
+            /**
+             * @description Why it is off
+             * @enum {string|null}
+             */
+            reason: "disabled" | "lanSharing" | "recovery" | null;
+            /** @description What TVs show (the server name) */
+            name: string;
+            /** @description Its UPnP device id, stable (derived from the server id) */
+            udn: string | null;
+            /** @description dlna.port */
+            port: number;
+            http: {
+                /** @enum {string} */
+                state: "off" | "starting" | "listening" | "error";
+                port: number | null;
+                error: string | null;
+            };
+            ssdp: {
+                /** @enum {string} */
+                state: "off" | "starting" | "listening" | "error";
+                port: number | null;
+                error: string | null;
+                /** @description Networks it announces on */
+                interfaces?: number;
+            };
+            /** @description The device description on each LAN address */
+            urls: string[];
+            /** @description Devices that browsed or played in the last day, latest first */
+            renderers: {
+                address: string;
+                /** @description Its own name, when it announced itself as a renderer */
+                name: string | null;
+                userAgent: string | null;
+                /** Format: date-time */
+                lastSeenAt: string;
+                /** Format: date-time */
+                lastPlayedAt: string | null;
+            }[];
+            folders: {
+                id: string;
+                path: string;
+                name: string;
+                kind: components["schemas"]["LibraryFolderKind"];
+                audience: components["schemas"]["LibraryAudience"];
+                builtin: boolean;
+                /** @description Included in DLNA (served only when its audience is everyone) */
+                dlna: boolean;
+                /** @description Its files in state ok / unmatched */
+                files: number;
+            }[];
+            /** @description What DLNA devices browse now */
+            shown: {
+                files: number;
+                movies: number;
+                shows: number;
             };
         };
         /** @description Any subset of `Settings`, same nesting (`{ general: { port: 28480 } }`) */
@@ -4481,6 +4567,28 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             401: components["responses"]["AdminRequired"];
+        };
+    };
+    getDlna: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DLNA */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DlnaStatus"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            500: components["responses"]["Error"];
         };
     };
     installEngine: {

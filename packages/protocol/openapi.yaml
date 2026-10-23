@@ -623,6 +623,22 @@ paths:
               schema: { $ref: '#/components/schemas/PortCheck' }
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/dlna:
+    get:
+      tags: [admin]
+      operationId: getDlna
+      summary: 'The DLNA media server: its state, the folders it may serve, the renderers that used it in the last day'
+      description: 'On / off and its port are settings (`dlna.enabled`, `dlna.port`); a folder is served with `PATCH /admin/library/folders/{id}` `{dlna: true}` (never an adults-only one).'
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: DLNA
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DlnaStatus' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '500': { $ref: '#/components/responses/Error' }
   /admin/engines/{id}/install:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -3977,7 +3993,7 @@ components:
     Settings:
       type: object
       description: Every server setting (plan §5.3); secrets (`providers.*ApiKey`) masked as `••••<last 4>`
-      required: [general, network, security, storage, streaming, downloads, providers, transcoding]
+      required: [general, network, security, storage, streaming, downloads, dlna, providers, transcoding]
       properties:
         general:
           type: object
@@ -4024,6 +4040,12 @@ components:
             seedMinutes: { type: integer, minimum: 0, description: '…or this long (0 = no time limit); both 0 = no seeding' }
             uploadSlots: { type: integer, minimum: 0, description: 'Peers uploaded to at once per torrent; 0 = never upload' }
             paused: { type: boolean, description: '"Pause all downloads": downloads wait, streams still play' }
+        dlna:
+          type: object
+          required: [enabled, port]
+          properties:
+            enabled: { type: boolean, description: 'The DLNA / UPnP AV media server (no authentication: read-only, DLNA folders of audience everyone, LAN addresses only); only with network.lanSharing. Applied at once' }
+            port: { type: integer, minimum: 1024, maximum: 65535, description: 'Its own HTTP listener (default 28472); applied at once' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]
@@ -4038,6 +4060,65 @@ components:
           properties:
             ffmpegPath: { type: string }
             ffprobePath: { type: string }
+    DlnaStatus:
+      type: object
+      required: [enabled, reason, name, udn, port, http, ssdp, urls, renderers, folders, shown]
+      properties:
+        enabled: { type: boolean, description: 'It should run (`dlna.enabled`, LAN sharing, not recovery mode); `http` / `ssdp` tell whether it does' }
+        reason: { type: [string, 'null'], enum: [disabled, lanSharing, recovery, null], description: 'Why it is off' }
+        name: { type: string, description: 'What TVs show (the server name)' }
+        udn: { type: [string, 'null'], description: 'Its UPnP device id, stable (derived from the server id)' }
+        port: { type: integer, description: 'dlna.port' }
+        http:
+          type: object
+          required: [state, port, error]
+          properties:
+            state: { type: string, enum: ['off', starting, listening, error] }
+            port: { type: [integer, 'null'] }
+            error: { type: [string, 'null'] }
+        ssdp:
+          type: object
+          required: [state, port, error]
+          properties:
+            state: { type: string, enum: ['off', starting, listening, error] }
+            port: { type: [integer, 'null'] }
+            error: { type: [string, 'null'] }
+            interfaces: { type: integer, description: 'Networks it announces on' }
+        urls: { type: array, items: { type: string }, description: 'The device description on each LAN address' }
+        renderers:
+          type: array
+          description: 'Devices that browsed or played in the last day, latest first'
+          items:
+            type: object
+            required: [address, name, userAgent, lastSeenAt, lastPlayedAt]
+            properties:
+              address: { type: string }
+              name: { type: [string, 'null'], description: 'Its own name, when it announced itself as a renderer' }
+              userAgent: { type: [string, 'null'] }
+              lastSeenAt: { type: string, format: date-time }
+              lastPlayedAt: { type: [string, 'null'], format: date-time }
+        folders:
+          type: array
+          items:
+            type: object
+            required: [id, path, name, kind, audience, builtin, dlna, files]
+            properties:
+              id: { type: string }
+              path: { type: string }
+              name: { type: string }
+              kind: { $ref: '#/components/schemas/LibraryFolderKind' }
+              audience: { $ref: '#/components/schemas/LibraryAudience' }
+              builtin: { type: boolean }
+              dlna: { type: boolean, description: 'Included in DLNA (served only when its audience is everyone)' }
+              files: { type: integer, description: 'Its files in state ok / unmatched' }
+        shown:
+          type: object
+          description: 'What DLNA devices browse now'
+          required: [files, movies, shows]
+          properties:
+            files: { type: integer }
+            movies: { type: integer }
+            shows: { type: integer }
     SettingsPatch:
       type: object
       description: 'Any subset of `Settings`, same nesting (`{ general: { port: 28480 } }`)'

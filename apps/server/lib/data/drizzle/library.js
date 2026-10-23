@@ -85,10 +85,10 @@ module.exports = function libraryRepository(db) {
       return db.select({
         file: {
           id: files.id, folderId: files.folderId, relPath: files.relPath, size: files.size, state: files.state,
-          addedAt: files.addedAt, probe: files.probe, parse: files.parse
+          addedAt: files.addedAt, probe: files.probe, parse: files.parse, subtitles: files.subtitles
         },
         item: items,
-        folder: { kind: folders.kind, path: folders.path, builtin: folders.builtin }
+        folder: { kind: folders.kind, path: folders.path, builtin: folders.builtin, dlna: folders.dlna }
       }).from(files).innerJoin(folders, orm.eq(files.folderId, folders.id)).leftJoin(items, orm.eq(files.itemId, items.id))
         .where(orm.and(
           orm.inArray(files.state, ['ok', 'unmatched']),

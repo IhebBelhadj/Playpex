@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Loading, PageHeader, QueryError, Spinner } from '@/components/common'
 import { DesktopCard, useHost } from '@/components/desktop'
+import { DlnaPanel } from '@/components/dlna'
 import { useOverview } from '@/components/layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,15 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
       { key: 'network.discovery', label: 'Let devices find this server', kind: 'switch', help: 'Announce it on the network (mDNS and UDP port 28471), so apps list it without typing an address. Needs sharing on the local network.' },
       { key: 'network.allowedHosts', label: 'Extra host names', kind: 'list', placeholder: 'media.home.lan', help: 'DNS names that point at this machine (IP addresses, localhost and this machine’s name always work).' },
       { key: 'network.corsOrigins', label: 'Extra web origins', kind: 'list', placeholder: 'http://192.168.1.20:8080', help: 'Web apps on other origins allowed to call the API.' },
+    ],
+  },
+  {
+    id: 'dlna',
+    title: 'DLNA',
+    description: 'TVs, consoles and players on the network (Samsung, LG, VLC, Kodi, Windows) browse and play the library without Playpex TV. DLNA has no pairing: it only serves the folders you include, never adults-only ones, and changes nothing.',
+    fields: [
+      { key: 'dlna.enabled', label: 'DLNA media server', kind: 'switch', help: 'Announces this server on the network (SSDP, UDP port 1900). Needs sharing on the local network. Applied when you save.' },
+      { key: 'dlna.port', label: 'DLNA port', kind: 'number', min: 1024, help: 'Its own HTTP port (default 28472), separate from the API: it only serves the included folders. Applied when you save.' },
     ],
   },
   {
@@ -528,6 +538,7 @@ export function SettingsPage() {
     onSuccess: (r) => {
       client.setQueryData(['settings'], r.settings)
       client.invalidateQueries({ queryKey: ['overview'] })
+      if (r.changed.some((k) => k.startsWith('dlna.') || k === 'general.serverName')) client.invalidateQueries({ queryKey: ['dlna'] })
       if (r.restartRequired.length) setPendingRestart((p) => [...new Set([...p, ...r.restartRequired])])
       if (r.lockedByEnv.length) toast.warning(`Saved, but environment variables still win for ${r.lockedByEnv.join(', ')}`)
       else toast.success('Settings saved')
@@ -602,6 +613,7 @@ export function SettingsPage() {
               {save.isPending ? <Spinner /> : <Save />} Save
             </Button>
           </div>
+          {group.id === 'dlna' && <DlnaPanel />}
         </form>
       ) : (
         <QueryError error={new Error(`No settings group "${tab}"`)} />

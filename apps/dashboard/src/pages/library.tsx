@@ -37,6 +37,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -327,6 +328,11 @@ function FolderList({
                   {folder.builtin && <Badge variant="secondary">Downloads</Badge>}
                   <Badge variant="outline">{kindLabel(folder.kind)}</Badge>
                   {folder.audience === 'adults' && <Badge variant="outline">Adults only</Badge>}
+                  {folder.dlna && folder.audience === 'everyone' && (
+                    <Badge variant="outline" title="TVs and players on the network browse it (when DLNA is on in Settings)">
+                      DLNA
+                    </Badge>
+                  )}
                   <span className="tabular-nums">
                     {folder.counts.ok} matched
                     {folder.counts.unmatched > 0 && ` · ${folder.counts.unmatched} unmatched`}
@@ -426,19 +432,39 @@ function Choice<T extends string>({
   )
 }
 
+// "Include in DLNA": TVs browse it without pairing, so never an adults-only folder
+function DlnaSwitch({ id, checked, audience, onChange }: { id: string; checked: boolean; audience: Audience; onChange: (v: boolean) => void }) {
+  const adults = audience === 'adults'
+  return (
+    <div className="flex items-start justify-between gap-6">
+      <div className="space-y-1">
+        <Label htmlFor={id}>Include in DLNA</Label>
+        <p className="text-xs text-muted-foreground">
+          {adults
+            ? 'Adults-only folders are never shown over DLNA: TVs on the network use no profiles or pairing.'
+            : 'TVs, consoles and players on the network browse and play it without Playpex (Settings › DLNA turns the DLNA server on).'}
+        </p>
+      </div>
+      <Switch id={id} checked={checked && !adults} disabled={adults} onCheckedChange={onChange} />
+    </div>
+  )
+}
+
 function AddFolderDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const client = useQueryClient()
   const [path, setPath] = useState('')
   const [kind, setKind] = useState<FolderKind>('mixed')
   const [audience, setAudience] = useState<Audience>('everyone')
+  const [dlna, setDlna] = useState(false)
   const add = useMutation({
-    mutationFn: () => unwrap(api.POST('/admin/library/folders', { body: { path: path.trim(), kind, audience } })),
+    mutationFn: () => unwrap(api.POST('/admin/library/folders', { body: { path: path.trim(), kind, audience, dlna: dlna && audience === 'everyone' } })),
     onSuccess: (folder) => {
       toast.success(`${folder.path} added, scanning`)
       client.invalidateQueries({ queryKey: ['library'] })
       setPath('')
       setKind('mixed')
       setAudience('everyone')
+      setDlna(false)
       onOpenChange(false)
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -464,6 +490,7 @@ function AddFolderDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
             <Choice id="folder-kind" label="Holds" value={kind} options={KINDS} onChange={setKind} />
             <Choice id="folder-audience" label="Who sees it" value={audience} options={AUDIENCES} onChange={setAudience} />
           </div>
+          <DlnaSwitch id="folder-dlna" checked={dlna} audience={audience} onChange={setDlna} />
           <DialogFooter>
             <Button type="submit" disabled={add.isPending || !path.trim()}>
               {add.isPending && <Spinner />} Add and scan
@@ -539,11 +566,14 @@ function EditFolderForm({ folder, onClose }: { folder: LibraryFolder; onClose: (
   const client = useQueryClient()
   const [kind, setKind] = useState<FolderKind>(folder.kind)
   const [audience, setAudience] = useState<Audience>(folder.audience)
+  const [dlna, setDlna] = useState(folder.dlna)
   const save = useMutation({
-    mutationFn: () => unwrap(api.PATCH('/admin/library/folders/{id}', { params: { path: { id: folder.id } }, body: { kind, audience } })),
+    mutationFn: () =>
+      unwrap(api.PATCH('/admin/library/folders/{id}', { params: { path: { id: folder.id } }, body: { kind, audience, dlna: dlna && audience === 'everyone' } })),
     onSuccess: () => {
       toast.success(kind !== folder.kind ? 'Saved; scan it to match its files as ' + kindLabel(kind).toLowerCase() : 'Saved')
       client.invalidateQueries({ queryKey: ['library'] })
+      client.invalidateQueries({ queryKey: ['dlna'] })
       onClose()
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -558,6 +588,7 @@ function EditFolderForm({ folder, onClose }: { folder: LibraryFolder; onClose: (
         <Choice id="edit-kind" label="Holds" value={kind} options={KINDS} onChange={setKind} />
         <Choice id="edit-audience" label="Who sees it" value={audience} options={AUDIENCES} onChange={setAudience} />
       </div>
+      <DlnaSwitch id="edit-dlna" checked={dlna} audience={audience} onChange={setDlna} />
       <DialogFooter>
         <Button disabled={save.isPending} onClick={() => save.mutate()}>
           {save.isPending && <Spinner />} Save

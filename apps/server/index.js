@@ -47,6 +47,7 @@ var http = require('http'),
   events = require('./lib/events'),
   discovery = require('./lib/discovery'),
   library = require('./lib/library'),
+  dlna = require('./lib/dlna'),
   api = require('./lib/api');
 
 var log = logger.child('server');
@@ -83,12 +84,13 @@ function listen(server, port, host) {
 
 /**
  * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number,
- *   recovery?: object, torrents?: object }} [options]
+ *   recovery?: object, torrents?: object, library?: object|false, dlna?: object }} [options]
  *   port / host: override the settings for this run (tests);
  *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg;
  *   discoveryPort: UDP port of the discovery responder (tests; default 28471);
  *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback;
- *   torrents: torrent client options for this run (tests: { engine: 'fake', engineOptions, discovery: false })
+ *   torrents: torrent client options for this run (tests: { engine: 'fake', engineOptions, discovery: false });
+ *   dlna: { port, ssdpPort } of the DLNA server for this run (tests; it runs only with dlna.enabled)
  */
 function start(options) {
   options = options || {};
@@ -149,6 +151,8 @@ function start(options) {
     }
     // only when listening on the LAN: not the TV app's loopback fallback
     discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
+    // the DLNA server (off by default; its own port; option dlna: { port, ssdpPort } for tests)
+    dlna.start(info, Object.assign({ lan: host !== '127.0.0.1' }, options.dlna));
     events.attach(server, {
       status: function () {
         return {
@@ -209,6 +213,8 @@ function stop() {
   sessions.stop();
   events.detach();
   return library.stop().then(function () {
+    return dlna.stop();
+  }).then(function () {
     return discovery.stop();
   }).then(function () {
     return torrents.close();

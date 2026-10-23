@@ -18,6 +18,8 @@ var express = require('express'),
   torrents = require('../torrents/client'),
   host = require('../host'),
   discovery = require('../discovery'),
+  dlna = require('../dlna'),
+  userData = require('../userData'),
   paths = require('../paths'),
   net = require('net'),
   errors = require('../errors'),
@@ -213,10 +215,48 @@ router.put('/settings', function (req, res) {
   if (result.changed.indexOf('general.serverName') !== -1 || result.changed.indexOf('network.discovery') !== -1) {
     discovery.refresh();
   }
+  // the DLNA server: on / off, its port, the name TVs show
+  if (result.changed.some(function (k) { return k.indexOf('dlna.') === 0 || k === 'general.serverName'; })) {
+    dlna.refresh();
+  }
   // limits, seeding rules, "pause all": the torrent client applies them now
   torrents.settingsChanged(result.changed);
   log.info('settings changed: ' + result.changed.join(', '));
   res.json(Object.assign({}, result, { settings: settingsView() }));
+});
+
+// ── DLNA (lib/dlna) ───────────────────────────────────────────────────────────
+
+// The DLNA server's state, the folders it may serve and the renderers that
+// used it in the last day; folders are switched with PATCH /admin/library/folders/{id} { dlna }
+router.get('/dlna', function (req, res) {
+  answer(res, Promise.all([userData.services(), dlna.snapshot()]).then(function (r) {
+    var snapshot = r[1];
+    return Promise.all([r[0].library.folders(), r[0].library.counts()]).then(function (f) {
+      var counts = f[1];
+      return Object.assign(dlna.status(), {
+        port: settings.get('dlna.port'),
+        folders: f[0].map(function (folder) {
+          var c = counts[folder.id] || {};
+          return {
+            id: folder.id,
+            path: folder.path,
+            name: folder.builtin ? 'Downloads' : path.basename(folder.path) || folder.path,
+            kind: folder.kind,
+            audience: folder.audience,
+            builtin: !!folder.builtin,
+            dlna: !!folder.dlna,
+            files: (c.ok || 0) + (c.unmatched || 0)
+          };
+        }),
+        shown: {
+          files: snapshot.count,
+          movies: snapshot.movies.length,
+          shows: Object.keys(snapshot.shows).length
+        }
+      });
+    });
+  }));
 });
 
 // ── torrent engines (optional downloads: lib/torrents/engines/sidecar.js) ────

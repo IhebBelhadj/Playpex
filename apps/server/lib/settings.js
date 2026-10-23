@@ -28,7 +28,7 @@ var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'st
 // Whole numbers ≥ 0 (0 = off)
 var NON_NEGATIVE_INTEGERS = ['downloads.seedMinutes', 'downloads.uploadSlots'];
 // Ports (1024–65535) other than the HTTP one
-var PORTS = ['downloads.peerPort'];
+var PORTS = ['downloads.peerPort', 'dlna.port'];
 // Numbers ≥ 0
 var NON_NEGATIVE = ['downloads.seedRatio'];
 
@@ -76,6 +76,13 @@ function defaults() {
       uploadSlots: 10,    // peers uploaded to at once per torrent; 0 = never upload
       paused: false       // "Pause all downloads" (the tray): downloads wait, streams still play
     },
+    dlna: {
+      // the UPnP AV / DLNA media server (lib/dlna): TVs and players on the LAN
+      // browse the library's folders marked "include in DLNA" without pairing;
+      // only with lanSharing
+      enabled: false,
+      port: 28472         // its own HTTP listener (read-only media, no auth)
+    },
     providers: {
       tmdbApiKey: '',
       openSubtitlesApiKey: '',
@@ -95,6 +102,7 @@ var ENV = {
   'general.logLevel': ['PLAYPEX_LOG_LEVEL'],
   'network.lanSharing': ['PLAYPEX_LAN_SHARING'],
   'network.discovery': ['PLAYPEX_DISCOVERY'],
+  'dlna.enabled': ['PLAYPEX_DLNA'],
   'storage.downloadDir': ['PLAYPEX_DOWNLOAD_DIR'],
   'downloads.engine': ['PLAYPEX_TORRENT_ENGINE'],
   'providers.tmdbApiKey': ['TMDB_API_KEY'],

@@ -868,6 +868,13 @@ test('media library: folders, scan, files, matches, subtitles, folder browser; w
     })
     .then(function () { return call('GET', '/library/home', undefined, { expect: 200 }); })
     .then(function (res) { assert.equal(res.body.movies.length, 1, 'other profiles still see it'); })
+    .then(function () { return call('GET', '/admin/dlna', undefined, { expect: 200, admin: true }); })
+    .then(function (res) {
+      // off by default; an adults-only folder is listed but never shown over DLNA
+      assert.deepEqual([res.body.enabled, res.body.reason, res.body.shown.files], [false, 'disabled', 0]);
+      assert.ok(res.body.folders.some(function (f) { return f.id === folder.id && f.audience === 'adults'; }));
+    })
+    .then(function () { return call('GET', '/admin/dlna', undefined, { expect: 401 }); })
     .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { kind: 'films' }, { expect: 400, admin: true }); })
     .then(function () { return call('PATCH', '/admin/library/folders/nope', { dlna: true }, { expect: 404, admin: true }); })
     .then(function () { return call('DELETE', '/admin/library/folders/' + folder.id, undefined, { expect: 200, admin: true }); })

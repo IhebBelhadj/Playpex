@@ -172,11 +172,12 @@ function input(media, localPort, deviceId) {
 }
 
 /**
- * A sidecar subtitle of a disk file (the scanner's list, by index) as
- * WebVTT; rejects NOT_FOUND (no such index, gone, or leaving its folder).
- * @returns {Promise<string>}
+ * A sidecar subtitle file of a disk file (the scanner's list, by index):
+ * { relPath, language, buffer }; rejects NOT_FOUND (no such index, gone,
+ * over 10 MB, or leaving its folder).
+ * @returns {Promise<{ relPath: string, language: string|null, buffer: Buffer }>}
  */
-function subtitle(media, index) {
+function sidecar(media, index) {
   var sub = media.kind === 'file' && media.subtitles[index];
   if (!sub) {
     return Promise.reject(notFound());
@@ -195,9 +196,16 @@ function subtitle(media, index) {
       return fs.promises.readFile(real[1]);
     });
   }).then(function (buffer) {
-    return require('../subtitles').toVtt(buffer, sub.language);
+    return { relPath: sub.relPath, language: sub.language || null, buffer: buffer };
   }, function () {
     throw notFound();
+  });
+}
+
+// One of them as WebVTT
+function subtitle(media, index) {
+  return sidecar(media, index).then(function (found) {
+    return require('../subtitles').toVtt(found.buffer, found.language);
   });
 }
 
@@ -214,5 +222,6 @@ module.exports = {
   open: open,
   input: input,
   probeKey: probeKey,
-  subtitle: subtitle
+  subtitle: subtitle,
+  sidecar: sidecar
 };
