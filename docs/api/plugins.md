@@ -2,11 +2,11 @@
 
 What a client does with the server's plugins (`docs/plugins-plan.md` §4.9, §5). Plugins run **on the server**, in a sandbox; a client never runs plugin code and never sets plugins up (installing, permissions, settings, linked accounts: all on the server's dashboard). A client only **renders** what enabled plugins contribute, with its own screens and components, and performs the **effects** they answer. Plugin authors: [`docs/plugins/`](../plugins/README.md).
 
-Status: all of this exists (plugins plan steps P1–P3 and P4's install part): the sandbox and these routes, the hooks in Play, release lists, subtitles, markers and title meta, packages installed from the dashboard, and Playpex TV's renderer (`apps/tv/src/app/plugins/`: the remote adapter and the four templates; the example plugin `plugins/hello` uses every part).
+Status: all of this exists (plugins plan steps P1–P4): the sandbox and these routes, the hooks in Play, release lists, subtitles, markers and title meta, packages installed from the dashboard, and Playpex TV's renderer (`apps/tv/src/app/plugins/`: the remote adapter and the four templates; the example plugin `plugins/hello` uses every part).
 
 ## What's there
 
-`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin] }`: the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin), each with
+`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin] }`: the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin, and no profile gets a plugin the admin hid from it on the dashboard), each with
 
 | Field | Use |
 |---|---|
@@ -42,7 +42,7 @@ Refetch it on the event `plugin.changed` (`{ id, state, reason? }`): a plugin wa
 - `data`: the model the template or slot expects (`$defs/templates/*`, `$defs/slots/*` of `@playpex/protocol/plugin-api.schema.json`, types in `@playpex/protocol/plugins`); checked by the server against where the manifest uses that handler (a screen's template, a slot's kind): out of shape → `502 PLUGIN_FAILED`. Images and icons that are `assets/…` paths are the package's files (`<api>/plugins/<id>/<path>`).
 - `effects` (already checked against the plugin's permissions): `open` (an intent: one of its screens or `core.movie` / `core.show` / `core.episode` / `core.search`), `play` (a `PlayRequest`: one source plays at once, several open your source picker; `tracking: 'none'` = save nothing: no resume point, progress, history, Up next, download title), `toast`, `refresh` (`screen` or a slot), `confirm` (ask, then perform `then`: an effect, or `{ type: 'call', call }`), `download`. A `play` source is `{ kind: 'magnet', magnet | infoHash, … }` (a torrent: play it as the core's) or `{ kind: 'media', ref: 'r_…', label, … }` (a stream the server proxies: `GET /media/{ref}` like a file).
 
-Errors: `404 NOT_FOUND` (no such plugin or handler; a stopped plugin), `403 FORBIDDEN` (a kids profile and an adults plugin), `502 PLUGIN_FAILED` (the handler failed, took longer than 10 s or answered out of schema: show the screen's empty or error state, never a stack), `429 TOO_MANY_ATTEMPTS` (more than ~20 calls a second from one device to one plugin).
+Errors: `404 NOT_FOUND` (no such plugin or handler; a stopped plugin), `403 FORBIDDEN` (a kids profile and an adults plugin, or a plugin hidden from that profile), `502 PLUGIN_FAILED` (the handler failed, took longer than 10 s or answered out of schema: show the screen's empty or error state, never a stack), `429 TOO_MANY_ATTEMPTS` (more than ~20 calls a second from one device to one plugin).
 
 Send the profile on every call: the plugin's answer depends on it, and the server enforces the audience with it.
 

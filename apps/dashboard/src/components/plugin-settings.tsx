@@ -7,15 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PluginAccounts } from '@/components/plugin-accounts'
 import { ApiError, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 
 // A plugin's options (docs/plugins-plan.md §4.3, §6.3), rendered from what its
-// manifest declares (`contributes.settings`): Server (server scope) and
-// Profiles (profile scope, one profile at a time). Groups, "Show advanced"
+// manifest declares (`contributes.settings`): the plugin page's Settings
+// (server scope) and Profiles (one profile at a time: shown or hidden, its
+// personal permissions, its profile-scope settings). Groups, "Show advanced"
 // for `level: advanced`, `visibleIf` / `enabledIf` against the values being
 // edited, secrets entered but never shown, `action` buttons that call the
 // plugin and show its toasts. Edits are a draft per tab, saved together
@@ -25,75 +23,31 @@ type PluginSettings = Schemas['PluginSettings']
 type Definition = Schemas['PluginSettingDefinition']
 type Values = Record<string, unknown>
 
-export function PluginSettingsSheet({
-  plugin,
-  onClose,
-}: {
-  plugin: { id: string; name: string; links?: number | null } | null
-  onClose: () => void
-}) {
-  const query = useQuery({
-    queryKey: ['admin-plugin-settings', plugin?.id],
-    queryFn: () => unwrap(api.GET('/admin/plugins/{pluginId}/settings', { params: { path: { pluginId: plugin!.id } } })),
-    enabled: !!plugin,
+export function usePluginSettings(plugin: string) {
+  return useQuery({
+    queryKey: ['admin-plugin-settings', plugin],
+    queryFn: () => unwrap(api.GET('/admin/plugins/{pluginId}/settings', { params: { path: { pluginId: plugin } } })),
   })
-  const s = query.data
-  const serverDefs = s?.definitions.filter((d) => d.scope === 'server') ?? []
-  const profileDefs = s?.definitions.filter((d) => d.scope === 'profile' && d.type !== 'action') ?? []
-  const tabs = [
-    serverDefs.length > 0 && 'server',
-    (profileDefs.length > 0 || (s?.personal.length ?? 0) > 0) && 'profiles',
-    (plugin?.links ?? 0) > 0 && 'accounts',
-  ].filter(Boolean) as string[]
-  const TAB_LABEL: Record<string, string> = { server: 'Server', profiles: 'Profiles', accounts: 'Accounts' }
+}
 
-  return (
-    <Sheet open={!!plugin} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle>{plugin?.name} settings</SheetTitle>
-          <SheetDescription>
-            What this plugin lets you choose, what it may do for each profile and the accounts it uses. Clients never show
-            these: they only see what the plugin then shows.
-          </SheetDescription>
-        </SheetHeader>
-        {query.isPending && plugin ? (
-          <Loading />
-        ) : query.error ? (
-          <QueryError error={query.error} title="Could not load its settings" />
-        ) : s && !tabs.length ? (
-          <Empty title="Nothing to set">This plugin has no settings.</Empty>
-        ) : s && plugin ? (
-          <Tabs defaultValue={tabs[0]} className="px-4 pb-6">
-            {tabs.length > 1 && (
-              <TabsList>
-                {tabs.map((t) => (
-                  <TabsTrigger key={t} value={t}>
-                    {TAB_LABEL[t]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            )}
-            {tabs.includes('server') && (
-              <TabsContent value="server">
-                <ScopeForm key={`server:${s.plugin}`} settings={s} definitions={serverDefs} values={s.server} />
-              </TabsContent>
-            )}
-            {tabs.includes('profiles') && (
-              <TabsContent value="profiles">
-                <ProfilesTab settings={s} definitions={profileDefs} />
-              </TabsContent>
-            )}
-            {tabs.includes('accounts') && (
-              <TabsContent value="accounts">
-                <PluginAccounts plugin={plugin.id} />
-              </TabsContent>
-            )}
-          </Tabs>
-        ) : null}
-      </SheetContent>
-    </Sheet>
-  )
+/** The plugin page's Settings tab: its server-scope options */
+export function PluginServerSettings({ plugin }: { plugin: string }) {
+  const query = usePluginSettings(plugin)
+  if (query.isPending) return <Loading />
+  if (query.error) return <QueryError error={query.error} title="Could not load its settings" />
+  const s = query.data
+  const defs = s.definitions.filter((d) => d.scope === 'server')
+  if (!defs.length) return <Empty title="Nothing to set">This plugin has no server settings.</Empty>
+  return <ScopeForm key={`server:${s.plugin}`} settings={s} definitions={defs} values={s.server} />
+}
+
+/** The plugin page's Profiles tab: per profile, shown or hidden, its personal permissions and its profile settings */
+export function PluginProfiles({ plugin }: { plugin: string }) {
+  const query = usePluginSettings(plugin)
+  if (query.isPending) return <Loading />
+  if (query.error) return <QueryError error={query.error} title="Could not load its profiles" />
+  const s = query.data
+  return <ProfilesTab settings={s} definitions={s.definitions.filter((d) => d.scope === 'profile' && d.type !== 'action')} />
 }
 
 function ProfilesTab({ settings, definitions }: { settings: PluginSettings; definitions: Definition[] }) {
@@ -120,8 +74,9 @@ function ProfilesTab({ settings, definitions }: { settings: PluginSettings; defi
           </SelectContent>
         </Select>
       </div>
-      {settings.personal.length > 0 && <Grants settings={settings} profile={profile} />}
-      {definitions.length > 0 && (
+      <Shown settings={settings} profile={profile} />
+      {profile.shown && settings.personal.length > 0 && <Grants settings={settings} profile={profile} />}
+      {profile.shown && definitions.length > 0 && (
         <ScopeForm
           key={`profile:${profile.id}`}
           settings={settings}
@@ -132,6 +87,37 @@ function ProfilesTab({ settings, definitions }: { settings: PluginSettings; defi
           context={settings.server}
         />
       )}
+    </div>
+  )
+}
+
+// Shown to this profile, or hidden from it: then nothing of the plugin reaches it
+function Shown({ settings, profile }: { settings: PluginSettings; profile: PluginSettings['profiles'][number] }) {
+  const client = useQueryClient()
+  const show = useMutation({
+    mutationFn: (shown: boolean) =>
+      unwrap(
+        api.PUT('/admin/plugins/{pluginId}/profiles', {
+          params: { path: { pluginId: settings.plugin } },
+          body: { profile: profile.id, shown },
+        }),
+      ),
+    onSuccess: (r, shown) => {
+      client.setQueryData(['admin-plugin-settings', settings.plugin], r)
+      toast.success(shown ? `Shown to ${profile.name}` : `Hidden from ${profile.name}`)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="space-y-1">
+        <Label htmlFor="plugin-shown">Use it for {profile.name}</Label>
+        <p className="text-xs text-muted-foreground">
+          Off: {profile.name} sees nothing of this plugin (no menu entry, screens or rows), and it gets nothing of {profile.name}&apos;s:
+          no sources in Play, events or notifications.
+        </p>
+      </div>
+      <Switch id="plugin-shown" checked={profile.shown} disabled={show.isPending} onCheckedChange={(on) => show.mutate(on)} />
     </div>
   )
 }
@@ -257,14 +243,14 @@ function ScopeForm({
           <Switch checked={advanced} onCheckedChange={setAdvanced} /> Show advanced settings
         </label>
       )}
-      <SheetFooter className="flex-row justify-end gap-2 px-0">
+      <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" disabled={!dirty || save.isPending} onClick={() => setDraft({})}>
           Discard changes
         </Button>
         <Button type="submit" disabled={!dirty || save.isPending}>
           Save
         </Button>
-      </SheetFooter>
+      </div>
     </form>
   )
 }

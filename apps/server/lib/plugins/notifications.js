@@ -67,7 +67,8 @@ function send(plugin, profiles, message) {
   return userData.services().then(function (s) { return s.profiles.list(); }).then(function (all) {
     var now = Date.now(),
       targets = all.filter(function (p) {
-        return (profiles === 'all' || profiles.indexOf(p.id) !== -1) && !(p.isKid && plugin.manifest.audience === 'adults');
+        return (profiles === 'all' || profiles.indexOf(p.id) !== -1) &&
+          !require('./index').blocked(plugin, { profile: { id: p.id, kids: !!p.isKid } });
       }),
       out = { sent: [], limited: [] };
     prune(now);

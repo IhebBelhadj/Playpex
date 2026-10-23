@@ -10,6 +10,7 @@
 //   writes go through the core (watch list, watched, ratings, downloads) with `by`, never come back to their writer,
 //   and a profile not granted the scope is never written
 //   linking against the fake device-code service stores the token and refreshes it near expiry; unlink forgets it
+//   a profile the plugin is hidden from: none of its events or notifications
 //   a notification reaches only the named profiles, once per device, is kept for a device that asks later,
 //   never reaches a kids profile from an adults plugin, and is rate limited
 
@@ -590,6 +591,26 @@ test('notifications: only the named profiles, once per device, kept for a device
   }).then(function (r) {
     var limited = r.filter(function (x) { return x.value.limited.length; }).length;
     assert.equal(limited, 1, 'the 11th within an hour is refused (one before for Ana doesn\'t count for Bob)');
+  });
+});
+
+test('hidden from a profile: none of its events or notifications', { skip: skip() }, function () {
+  return call('PUT', '/admin/plugins/watcher/profiles', { profile: kid, shown: false }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    return events('watcher');
+  }).then(function () {
+    return call('PUT', '/profiles/' + kid + '/watchlist/movie/551', { title: 'Hidden' });
+  }).then(function () {
+    return Promise.all([events('watcher'), data('watcher', 'write', { op: 'notify', profiles: [kid, ana], message: { text: 'Hi' } })]);
+  }).then(function (r) {
+    assert.deepEqual(r[0], [], 'the kid\'s watch list isn\'t sent to it');
+    assert.deepEqual(r[1].value.sent, [ana]);
+    return Promise.all([call('PUT', '/admin/plugins/watcher/profiles', { profile: kid, shown: true }),
+      call('DELETE', '/profiles/' + kid + '/watchlist/movie/551')]);
+  }).then(function () {
+    return events('watcher');
+  }).then(function (got) {
+    assert.deepEqual(got.map(function (e) { return e.name; }), ['watchlist.removed'], 'shown again');
   });
 });
 

@@ -11,7 +11,8 @@ var errors = require('./errors');
 var KEY_MAX = 200,
   VALUE_MAX = 1024 * 1024,
   LIST_MAX = 1000,
-  SCOPES = ['server', 'profile'];
+  SCOPES = ['server', 'profile'],
+  HIDDEN = 'hidden';
 
 function checkKey(key) {
   if (typeof key !== 'string' || !key || key.length > KEY_MAX) {
@@ -160,7 +161,11 @@ module.exports = function pluginsService(repositories, options) {
       byProfile: function (pluginId) {
         return repo.grantsList(pluginId).then(function (rows) {
           var out = {};
-          rows.forEach(function (r) { (out[r.profileId] = out[r.profileId] || []).push(r.permission); });
+          rows.forEach(function (r) {
+            if (r.permission !== HIDDEN) {
+              (out[r.profileId] = out[r.profileId] || []).push(r.permission);
+            }
+          });
           return out;
         });
       },
@@ -169,6 +174,20 @@ module.exports = function pluginsService(repositories, options) {
           return Promise.reject(errors.invalid('not a personal permission: ' + permission));
         }
         return repo.grantSet(pluginId, profileId, permission, !!on, now());
+      }
+    },
+
+    // Profiles the admin hid the plugin from (plan §6.3 Profiles): a row of the
+    // same table, permission `hidden`, so it goes with the plugin's grants
+    hidden: {
+      /** [profileId] */
+      list: function (pluginId) {
+        return repo.grantsList(pluginId).then(function (rows) {
+          return rows.filter(function (r) { return r.permission === HIDDEN; }).map(function (r) { return r.profileId; });
+        });
+      },
+      set: function (pluginId, profileId, hidden) {
+        return repo.grantSet(pluginId, profileId, HIDDEN, !!hidden, now());
       }
     },
 

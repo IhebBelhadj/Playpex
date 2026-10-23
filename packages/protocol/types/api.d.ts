@@ -638,7 +638,9 @@ export interface paths {
          * Install a previewed package
          * @description Into `<config>/plugins/<id>/`; the version it replaces is kept (`.previous/<id>/`) and comes back when the
          *     new one doesn't start (400). 403 when it isn't installable any more (trust settings changed), 404 for an
-         *     unknown or expired token, 409 when a developer copy of that id runs.
+         *     unknown or expired token, 409 when a developer copy of that id runs, or when the package asks for more than
+         *     the installed version (the preview's `added`) without `accept: true`. A personal permission it adds stays off
+         *     for every profile until granted.
          */
         post: operations["installPluginPackage"];
         delete?: never;
@@ -673,18 +675,62 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /** One plugin, with what its page shows (listing, requires, exports, changelog) */
+        get: operations["getAdminPlugin"];
         put?: never;
         post?: never;
         /**
          * Remove an installed plugin
-         * @description Its files, and (unless `data=keep`) its store, secrets and settings. Library folders it recognised go back to TMDB.
+         * @description Its files, and (unless `data=keep`) its store, secrets and linked accounts, settings, grants and notifications.
+         *     What it wrote to the user's data (watch list, progress, downloads) stays. Library folders it recognised go back to TMDB.
          */
         delete: operations["removeAdminPlugin"];
         options?: never;
         head?: never;
         /** Switch an installed plugin on or off (off stops it and hides it from clients; its data stays) */
         patch: operations["updateAdminPlugin"];
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stage the version the last update replaced, to put it back
+         * @description A preview like an uploaded package's (`rollback: true`, its permissions against the running version's),
+         *     installed with `POST /admin/plugins/packages/{token}/install`; the version it replaces is kept in turn.
+         *     404 when no earlier version is kept.
+         */
+        post: operations["rollbackAdminPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forget everything a plugin kept, as if just installed
+         * @description Its store, secrets and linked accounts, settings, grants, hidden profiles and notifications; a running plugin starts again.
+         */
+        post: operations["clearAdminPluginData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/plugins/{pluginId}/reload": {
@@ -767,6 +813,28 @@ export interface paths {
          *     Publishes `plugin.changed` with `reason: grants`.
          */
         put: operations["grantAdminPluginPermission"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Show a plugin to a profile, or hide it from that profile
+         * @description A hidden plugin gets nothing of that profile: no screens or slots in `GET /plugins?profile=`, no data calls
+         *     (403), no hooks, events or notifications. Answers the plugin's settings view (`profiles[].shown`).
+         *     Publishes `plugin.changed` with `reason: profiles`.
+         */
+        put: operations["showAdminPluginToProfile"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3325,7 +3393,7 @@ export interface components {
             key: string;
             /** @description In words, for the admin */
             text: string;
-            /** @description Granted per profile (later steps) */
+            /** @description Granted per profile on the plugin's Profiles (events.playback, write.*) */
             personal: boolean;
         };
         AdminPlugin: {
@@ -3360,7 +3428,9 @@ export interface components {
             stats?: Record<string, never> | null;
             /** @description The version it replaced is kept */
             previous: boolean;
-            /** @description How many options it declares (null: not loaded; GET …/settings tells) */
+            /** @description That version */
+            previousVersion?: string | null;
+            /** @description How many options it declares (null: its manifest can't be read) */
             settings?: number | null;
             /** @description How many personal permissions it asks for (granted per profile) */
             personal?: number | null;
@@ -3386,6 +3456,18 @@ export interface components {
             installedAt?: string | null;
             /** Format: date-time */
             updatedAt?: string | null;
+            /** @description GET /admin/plugins/{id} only: the manifest's listing */
+            listing?: Record<string, never> | null;
+            /** @description GET /admin/plugins/{id} only: the plugins it needs */
+            requires?: {
+                id: string;
+                version: string;
+                optional?: boolean;
+            }[];
+            /** @description GET /admin/plugins/{id} only */
+            exports?: string[];
+            /** @description GET /admin/plugins/{id} only: its CHANGELOG.md */
+            changelog?: string | null;
         };
         /** @description A data handler's answer (`dataAnswer` of plugin-api.schema.json, effects checked by the server) */
         PluginDataAnswer: {
@@ -3449,11 +3531,13 @@ export interface components {
                 key: string;
                 text: string;
             }[];
-            /** @description Only when it has profile-scope settings or personal permissions */
+            /** @description Every profile it may serve (no kids profiles for an `adults` plugin) */
             profiles: {
                 id: string;
                 name: string;
                 kids: boolean;
+                /** @description false: the admin hid the plugin from this profile */
+                shown: boolean;
                 values: {
                     [key: string]: unknown;
                 };
@@ -3557,6 +3641,12 @@ export interface components {
             changelog?: string | null;
             /** @description The installed version, if any */
             current: string | null;
+            /** @description Permissions the installed version doesn't have: to accept (`accept: true`) */
+            added: components["schemas"]["PluginPermission"][];
+            /** @description Permissions it gives up */
+            removed: components["schemas"]["PluginPermission"][];
+            /** @description The version kept by the last update (POST …/rollback) */
+            rollback?: boolean;
             /** @enum {string} */
             change: "install" | "update" | "downgrade" | "reinstall";
             conflict?: string | null;
@@ -5450,6 +5540,8 @@ export interface operations {
                 /** @description Minimum level */
                 level?: "debug" | "info" | "warn" | "error";
                 area?: string;
+                /** @description Only the lines of this plugin (area plugins) */
+                plugin?: string;
                 /** @description Only entries after this time */
                 since?: string;
                 /** @description The newest N */
@@ -5655,7 +5747,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The admin accepted the permissions the preview lists in `added` */
+                    accept?: boolean;
+                };
+            };
+        };
         responses: {
             /** @description The installed plugin */
             200: {
@@ -5696,6 +5795,30 @@ export interface operations {
                 };
             };
             401: components["responses"]["AdminRequired"];
+        };
+    };
+    getAdminPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugin"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
         };
     };
     removeAdminPlugin: {
@@ -5753,6 +5876,55 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rollbackAdminPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    clearAdminPluginData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugin"];
+                };
+            };
             401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
         };
@@ -5882,6 +6054,38 @@ export interface operations {
                     profile: string;
                     permission: string;
                     granted: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Its settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginSettings"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    showAdminPluginToProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profile: string;
+                    shown: boolean;
                 };
             };
         };

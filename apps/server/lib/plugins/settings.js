@@ -5,9 +5,10 @@
 // (`contributes.settings`); the admin sets them here; handlers read them with
 // `playpex.settings.get` and `playpex.secrets.get`. Clients never see them.
 //
-//   view(id, locale)                  { definitions, server, secrets, personal, profiles }
+//   view(id, locale)                  { definitions, server, secrets, personal, profiles (+ shown, grants, values) }
 //   update(id, { profile?, values })  values checked against the definitions; null = back to the default
 //   grant(id, { profile, permission, granted })   a personal permission for a profile (decision G)
+//   show(id, { profile, shown })      shown to a profile or hidden from it (plan §6.3 Profiles)
 //   run(id, key, locale)              an `action` setting: its data handler's { data, effects }
 //
 // Works for a disabled installed plugin too (its manifest read from disk), so
@@ -20,8 +21,6 @@ var fs = require('fs'),
   protocol = require('@playpex/protocol/plugins'),
   plugins = require('./index'),
   userData = require('../userData');
-
-var VALUE_TYPES = ['switch', 'choice', 'slider', 'number', 'text'];
 
 function failure(code, message) {
   var err = new Error(message);
@@ -135,19 +134,22 @@ function view(id, locale) {
   return source(id).then(function (src) {
     var defs = definitionsOf(src),
       secretKeys = defs.filter(function (d) { return d.type === 'secret'; }).map(function (d) { return d.key; }),
-      hasProfileScope = defs.some(function (d) { return d.scope === 'profile' && VALUE_TYPES.indexOf(d.type) !== -1; }),
       personal = protocol.describePermissions(src.manifest).filter(function (x) { return x.personal; })
         .map(function (x) { return { key: x.key, text: x.text }; });
     return services().then(function (s) {
       return Promise.all([
         s.plugins.settings.values(id, defs, null),
         Promise.all(secretKeys.map(function (k) { return s.plugins.secrets.get(id, k); })),
-        hasProfileScope || personal.length ? profilesFor(src) : [],
-        s.plugins.grants.byProfile(id)
+        profilesFor(src),
+        s.plugins.grants.byProfile(id),
+        s.plugins.hidden.list(id)
       ]).then(function (r) {
         return Promise.all(r[2].map(function (p) {
           return s.plugins.settings.values(id, defs, p.id).then(function (v) {
-            return { id: p.id, name: p.name, kids: !!p.isKid, values: v.profile || {}, grants: r[3][p.id] || [] };
+            return {
+              id: p.id, name: p.name, kids: !!p.isKid, shown: r[4].indexOf(p.id) === -1,
+              values: v.profile || {}, grants: r[3][p.id] || []
+            };
           });
         })).then(function (profiles) {
           var secrets = {};
@@ -245,6 +247,29 @@ function grant(id, body, locale) {
   });
 }
 
+/** Shows the plugin to a profile again, or hides it (no screens, hooks, events or notifications for it) */
+function show(id, body, locale) {
+  body = body || {};
+  if (typeof body.shown !== 'boolean') {
+    return Promise.reject(failure('INVALID', 'shown must be true or false'));
+  }
+  return source(id).then(function (src) {
+    return profilesFor(src).then(function (list) {
+      if (!list.some(function (p) { return p.id === body.profile; })) {
+        throw failure('NOT_FOUND', 'No profile ' + body.profile + ' for this plugin');
+      }
+      return services();
+    }).then(function (s) {
+      return s.plugins.hidden.set(id, body.profile, !body.shown);
+    }).then(function () {
+      return plugins.refreshHidden(id);
+    }).then(function () {
+      plugins.publish({ id: id, state: src.state, reason: 'profiles' });
+      return view(id, locale);
+    });
+  });
+}
+
 /** An `action` setting: calls its data handler (server scope, no profile) and answers { data, effects } */
 function run(id, key, locale) {
   return source(id).then(function (src) {
@@ -263,6 +288,7 @@ module.exports = {
   view: view,
   update: update,
   grant: grant,
+  show: show,
   run: run,
   problem: problem
 };

@@ -8,9 +8,13 @@
 //
 //   GET    /admin/plugins                       { plugins, developerMode, publisherKeys: [{ key, fingerprint }], devDir, pluginsDir }
 //   POST   /admin/plugins/packages              multipart `file` (.ppx / .zip) or { url } → the preview (lib/plugins/install.js#stage)
-//   POST   /admin/plugins/packages/:token/install   → the installed plugin
+//   POST   /admin/plugins/packages/:token/install   { accept? } → the installed plugin (`accept`: the
+//                                               preview's `added` permissions, else 409 when it has any)
 //   DELETE /admin/plugins/packages/:token       forget a preview
+//   GET    /admin/plugins/:id                   one plugin, with its listing, requires, exports, changelog
 //   PATCH  /admin/plugins/:id                   { enabled } (an installed plugin)
+//   POST   /admin/plugins/:id/rollback          the version kept by the last update → a preview, installed by its token
+//   POST   /admin/plugins/:id/clear             forget everything it kept (storage, secrets, accounts, settings, grants)
 //   POST   /admin/plugins/:id/reload            a developer copy, from its folder again
 //   DELETE /admin/plugins/:id?data=keep|delete  remove an installed plugin (default: its data too)
 //   GET    /admin/plugins/:id/settings          its options (lib/plugins/settings.js): definitions, server values,
@@ -18,6 +22,7 @@
 //   PUT    /admin/plugins/:id/settings          { profile?, values: { key: value | null } } → the same
 //   POST   /admin/plugins/:id/settings/:key/run an `action` setting → { data, effects }
 //   PUT    /admin/plugins/:id/grants            { profile, permission, granted } a personal permission → its settings
+//   PUT    /admin/plugins/:id/profiles          { profile, shown } shown to that profile or hidden from it → its settings
 //   GET    /admin/plugins/:id/links             { links: [{ name, label, scope, kind, accounts }] } (lib/plugins/links.js)
 //   POST   /admin/plugins/:id/links/:name/start { profile? } → { kind: 'code', code, url, … } | { kind: 'form', form, help }
 //   GET    /admin/plugins/:id/links/:name/progress?profile=  { state: pending | done | failed | none, message }
@@ -103,11 +108,15 @@ router.post('/plugins/packages', multipart({ maxFilesSize: 20 * 1024 * 1024 }), 
 });
 
 router.post('/plugins/packages/:token/install', function (req, res) {
-  answer(res, function () { return install.commit(req.params.token); });
+  answer(res, function () { return install.commit(req.params.token, { accept: !!(req.body && req.body.accept === true) }); });
 });
 
 router.delete('/plugins/packages/:token', function (req, res) {
   answer(res, function () { return { ok: install.discard(req.params.token) }; });
+});
+
+router.get('/plugins/:id', function (req, res) {
+  answer(res, function () { return install.view(req.params.id, { detail: true }); });
 });
 
 router.patch('/plugins/:id', function (req, res) {
@@ -122,6 +131,14 @@ router.patch('/plugins/:id', function (req, res) {
 
 router.post('/plugins/:id/reload', function (req, res) {
   answer(res, function () { return install.reload(req.params.id); });
+});
+
+router.post('/plugins/:id/rollback', function (req, res) {
+  answer(res, function () { return install.stagePrevious(req.params.id); });
+});
+
+router.post('/plugins/:id/clear', function (req, res) {
+  answer(res, function () { return install.clearData(req.params.id); });
 });
 
 router.delete('/plugins/:id', function (req, res) {
@@ -142,6 +159,10 @@ router.post('/plugins/:id/settings/:key/run', function (req, res) {
 
 router.put('/plugins/:id/grants', function (req, res) {
   answer(res, function () { return pluginSettings.grant(req.params.id, req.body, localeOf(req)); });
+});
+
+router.put('/plugins/:id/profiles', function (req, res) {
+  answer(res, function () { return pluginSettings.show(req.params.id, req.body, localeOf(req)); });
 });
 
 function profileParam(req) {

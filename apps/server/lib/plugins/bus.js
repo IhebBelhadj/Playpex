@@ -147,7 +147,7 @@ function deliver(e) {
       return;
     }
     return Promise.all(listeners.map(function (p) {
-      if (profile && profile.kids && p.manifest.audience === 'adults') {
+      if (plugins.blocked(p, { profile: profile })) {
         return null;
       }
       var check = family === 'playback'

@@ -690,6 +690,7 @@ paths:
       parameters:
         - { name: level, in: query, schema: { type: string, enum: [debug, info, warn, error] }, description: 'Minimum level' }
         - { name: area, in: query, schema: { type: string } }
+        - { name: plugin, in: query, schema: { type: string }, description: 'Only the lines of this plugin (area plugins)' }
         - { name: since, in: query, schema: { type: string, format: date-time }, description: 'Only entries after this time' }
         - { name: limit, in: query, schema: { type: integer, minimum: 1 }, description: 'The newest N' }
       responses:
@@ -850,11 +851,21 @@ paths:
       description: |
         Into `<config>/plugins/<id>/`; the version it replaces is kept (`.previous/<id>/`) and comes back when the
         new one doesn't start (400). 403 when it isn't installable any more (trust settings changed), 404 for an
-        unknown or expired token, 409 when a developer copy of that id runs.
+        unknown or expired token, 409 when a developer copy of that id runs, or when the package asks for more than
+        the installed version (the preview's `added`) without `accept: true`. A personal permission it adds stays off
+        for every profile until granted.
       security:
         - adminSession: []
       parameters:
         - { name: token, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accept: { type: boolean, description: 'The admin accepted the permissions the preview lists in `added`' }
       responses:
         '200':
           description: The installed plugin
@@ -885,6 +896,20 @@ paths:
   /admin/plugins/{pluginId}:
     parameters:
       - { name: pluginId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [plugins]
+      operationId: getAdminPlugin
+      summary: One plugin, with what its page shows (listing, requires, exports, changelog)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugin' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [plugins]
       operationId: updateAdminPlugin
@@ -909,7 +934,9 @@ paths:
       tags: [plugins]
       operationId: removeAdminPlugin
       summary: Remove an installed plugin
-      description: Its files, and (unless `data=keep`) its store, secrets and settings. Library folders it recognised go back to TMDB.
+      description: |
+        Its files, and (unless `data=keep`) its store, secrets and linked accounts, settings, grants and notifications.
+        What it wrote to the user's data (watch list, progress, downloads) stays. Library folders it recognised go back to TMDB.
       security:
         - adminSession: []
       parameters:
@@ -920,6 +947,46 @@ paths:
           content:
             application/json:
               schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/rollback:
+    post:
+      tags: [plugins]
+      operationId: rollbackAdminPlugin
+      summary: Stage the version the last update replaced, to put it back
+      description: |
+        A preview like an uploaded package's (`rollback: true`, its permissions against the running version's),
+        installed with `POST /admin/plugins/packages/{token}/install`; the version it replaces is kept in turn.
+        404 when no earlier version is kept.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginPackagePreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/clear:
+    post:
+      tags: [plugins]
+      operationId: clearAdminPluginData
+      summary: Forget everything a plugin kept, as if just installed
+      description: Its store, secrets and linked accounts, settings, grants, hidden profiles and notifications; a running plugin starts again.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugin' }
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/plugins/{pluginId}/reload:
@@ -1038,6 +1105,38 @@ paths:
                 profile: { type: string }
                 permission: { type: string }
                 granted: { type: boolean }
+      responses:
+        '200':
+          description: Its settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginSettings' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/profiles:
+    put:
+      tags: [plugins]
+      operationId: showAdminPluginToProfile
+      summary: Show a plugin to a profile, or hide it from that profile
+      description: |
+        A hidden plugin gets nothing of that profile: no screens or slots in `GET /plugins?profile=`, no data calls
+        (403), no hooks, events or notifications. Answers the plugin's settings view (`profiles[].shown`).
+        Publishes `plugin.changed` with `reason: profiles`.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profile, shown]
+              properties:
+                profile: { type: string }
+                shown: { type: boolean }
       responses:
         '200':
           description: Its settings
@@ -3990,7 +4089,7 @@ components:
       properties:
         key: { type: string }
         text: { type: string, description: 'In words, for the admin' }
-        personal: { type: boolean, description: 'Granted per profile (later steps)' }
+        personal: { type: boolean, description: 'Granted per profile on the plugin''s Profiles (events.playback, write.*)' }
     AdminPlugin:
       type: object
       required: [id, name, version, origin, enabled, state, error, permissions, hooks, previous]
@@ -4013,7 +4112,8 @@ components:
         registered: { type: ['object', 'null'] }
         stats: { type: ['object', 'null'] }
         previous: { type: boolean, description: 'The version it replaced is kept' }
-        settings: { type: [integer, 'null'], description: 'How many options it declares (null: not loaded; GET …/settings tells)' }
+        previousVersion: { type: [string, 'null'], description: 'That version' }
+        settings: { type: [integer, 'null'], description: 'How many options it declares (null: its manifest can''t be read)' }
         personal: { type: [integer, 'null'], description: 'How many personal permissions it asks for (granted per profile)' }
         links: { type: [integer, 'null'], description: 'How many account links it declares' }
         jobs:
@@ -4035,6 +4135,13 @@ components:
               nextRunAt: { type: [string, 'null'], format: date-time }
         installedAt: { type: [string, 'null'], format: date-time }
         updatedAt: { type: [string, 'null'], format: date-time }
+        listing: { type: ['object', 'null'], description: 'GET /admin/plugins/{id} only: the manifest''s listing' }
+        requires:
+          type: array
+          description: 'GET /admin/plugins/{id} only: the plugins it needs'
+          items: { type: object, required: [id, version], properties: { id: { type: string }, version: { type: string }, optional: { type: boolean } } }
+        exports: { type: array, items: { type: string }, description: 'GET /admin/plugins/{id} only' }
+        changelog: { type: [string, 'null'], description: 'GET /admin/plugins/{id} only: its CHANGELOG.md' }
     PluginDataAnswer:
       type: object
       description: A data handler's answer (`dataAnswer` of plugin-api.schema.json, effects checked by the server)
@@ -4084,14 +4191,15 @@ components:
           items: { type: object, required: [key, text], properties: { key: { type: string }, text: { type: string } } }
         profiles:
           type: array
-          description: Only when it has profile-scope settings or personal permissions
+          description: Every profile it may serve (no kids profiles for an `adults` plugin)
           items:
             type: object
-            required: [id, name, kids, values]
+            required: [id, name, kids, shown, values]
             properties:
               id: { type: string }
               name: { type: string }
               kids: { type: boolean }
+              shown: { type: boolean, description: 'false: the admin hid the plugin from this profile' }
               values: { type: object, additionalProperties: true }
               grants: { type: array, items: { type: string }, description: 'The personal permissions granted for this profile' }
     PluginLink:
@@ -4167,7 +4275,7 @@ components:
         pluginsDir: { type: string }
     PluginPackagePreview:
       type: object
-      required: [token, id, name, version, permissions, hooks, origin, source, size, fileCount, change, current, signer, installable, reason, expiresAt]
+      required: [token, id, name, version, permissions, hooks, origin, source, size, fileCount, change, current, added, removed, signer, installable, reason, expiresAt]
       properties:
         token: { type: string }
         id: { type: string }
@@ -4187,6 +4295,9 @@ components:
         fileCount: { type: integer }
         changelog: { type: [string, 'null'] }
         current: { type: [string, 'null'], description: 'The installed version, if any' }
+        added: { type: array, items: { $ref: '#/components/schemas/PluginPermission' }, description: 'Permissions the installed version doesn''t have: to accept (`accept: true`)' }
+        removed: { type: array, items: { $ref: '#/components/schemas/PluginPermission' }, description: 'Permissions it gives up' }
+        rollback: { type: boolean, description: 'The version kept by the last update (POST …/rollback)' }
         change: { type: string, enum: [install, update, downgrade, reinstall] }
         conflict: { type: [string, 'null'] }
         signer:

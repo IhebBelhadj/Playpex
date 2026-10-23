@@ -21,7 +21,9 @@
 //   list() / get(id) / all()             the admin's view (./install.js#list for the dashboard), one, every loaded plugin
 //
 // ctx = { profile: { id, kids } | null, device: { id, name } | null, locale }:
-// an `audience: adults` plugin never gets a kids profile's call (FORBIDDEN).
+// an `audience: adults` plugin never gets a kids profile's call (FORBIDDEN),
+// nor any plugin a profile the admin hid it from (`blocked`: no screens, hooks,
+// events or notifications for that profile).
 // Events: `plugin.changed` { id, state } (every client: refetch GET /plugins).
 
 var fs = require('fs'),
@@ -46,6 +48,7 @@ var MANIFEST = 'playpex-plugin.json',
   SANDBOX_LIMITS = Object.assign({ stackBytes: 512 * 1024 }, protocol.LIMITS);
 
 var plugins = new Map(),
+  hiddenFrom = {},       // id → [profile ids] the admin hid the plugin from
   started = false;
 
 function failure(code, message) {
@@ -178,7 +181,7 @@ function load(dir, origin) {
         publish(plugin);
       }
     });
-    return plugin.sandbox.start();
+    return Promise.all([plugin.sandbox.start(), refreshHidden(plugin.id)]).then(function (r) { return r[0]; });
   }).then(function (registered) {
     plugin.registered = registered;
     plugin.state = 'enabled';
@@ -265,8 +268,29 @@ function stop() {
   return Promise.resolve();
 }
 
-function kidsBlocked(plugin, ctx) {
-  return plugin.manifest.audience === 'adults' && !!(ctx && ctx.profile && ctx.profile.kids);
+/**
+ * Whether this plugin must leave the context's profile alone: an adults
+ * plugin and a kids profile, or a profile the admin hid it from (Plugins ›
+ * <name> › Profiles)
+ */
+function blocked(plugin, ctx) {
+  var profile = ctx && ctx.profile;
+  if (!profile) {
+    return false;
+  }
+  return (plugin.manifest.audience === 'adults' && !!profile.kids) ||
+    (!!profile.id && !!hiddenFrom[plugin.id] && hiddenFrom[plugin.id].indexOf(profile.id) !== -1);
+}
+
+/** Reads again which profiles a plugin is hidden from (load, and the admin's change) */
+function refreshHidden(id) {
+  return userData.services().then(function (s) {
+    return s.plugins.hidden.list(id);
+  }).then(function (list) {
+    hiddenFrom[id] = list;
+  }, function (err) {
+    log.warn('plugin ' + id + ': hidden profiles not read: ' + err.message, { plugin: id });
+  });
 }
 
 function bump(table, key, field) {
@@ -277,7 +301,7 @@ function bump(table, key, field) {
 function hooked(name, ctx) {
   return Array.from(plugins.values()).filter(function (plugin) {
     return plugin.state === 'enabled' && plugin.registered.hook.indexOf(name) !== -1 &&
-      (plugin.permissions.hooks || []).indexOf(name) !== -1 && !kidsBlocked(plugin, ctx);
+      (plugin.permissions.hooks || []).indexOf(name) !== -1 && !blocked(plugin, ctx);
   }).sort(function (a, b) { return a.id < b.id ? -1 : a.id > b.id ? 1 : 0; });
 }
 
@@ -364,7 +388,7 @@ function data(id, name, args, ctx) {
   if (!plugin || plugin.state !== 'enabled') {
     return Promise.reject(failure('NOT_FOUND', 'no plugin ' + id));
   }
-  if (kidsBlocked(plugin, ctx)) {
+  if (blocked(plugin, ctx)) {
     return Promise.reject(failure('FORBIDDEN', 'not for kids profiles'));
   }
   if (plugin.registered.data.indexOf(name) === -1) {
@@ -400,7 +424,7 @@ function data(id, name, args, ctx) {
 /** What a client renders: enabled plugins for this profile, never permissions, settings or state */
 function clientView(profile, locale) {
   return Array.from(plugins.values()).filter(function (plugin) {
-    return plugin.state === 'enabled' && !kidsBlocked(plugin, { profile: profile });
+    return plugin.state === 'enabled' && !blocked(plugin, { profile: profile });
   }).map(function (plugin) {
     var m = plugin.manifest, c = m.contributes || {};
     return {
@@ -456,6 +480,8 @@ module.exports = {
   withHook: withHook,
   data: data,
   clientView: clientView,
+  blocked: blocked,
+  refreshHidden: refreshHidden,
   localize: localize,
   publish: publish,
   list: list,

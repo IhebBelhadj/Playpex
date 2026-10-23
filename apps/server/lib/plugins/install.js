@@ -10,8 +10,13 @@
 //   stage(buffer, { origin, source }) → Promise<Preview>
 //       read and checked in memory, kept 15 min for the admin to confirm:
 //       { token, id, name, version, …, permissions (in words), signer, installable, reason }
-//   commit(token) → Promise<adminView>  <config>/plugins/<id>/ (the version it replaces in .previous/<id>/), loaded
-//   discard(token) · remove(id, { keepData }) · setEnabled(id, on) · reload(id) (a developer copy)
+//       with `added` / `removed`: its permissions against the installed version's
+//   commit(token, { accept }) → Promise<adminView>  <config>/plugins/<id>/ (the version it replaces in
+//       .previous/<id>/, with .install.json: where it came from), loaded; a package asking for more
+//       than the installed version needs `accept` (the admin saw `added`), else CONFLICT
+//   stagePrevious(id) → Promise<Preview>   the version kept in .previous/<id>/, as a package to
+//       confirm like any other (rolling back swaps them: rolling back again goes forward)
+//   discard(token) · remove(id, { keepData }) · clearData(id) · setEnabled(id, on) · reload(id) (a developer copy)
 //   loadInstalled() (start) · list() (the dashboard)
 //
 // Trust (plan §6.1 decision C): a package signed by a key in the setting
@@ -43,6 +48,7 @@ var PACKAGE_MAX = 20 * 1024 * 1024,
   // what is kept of a package: its plugin, not a whole repository
   KEEP = /^(playpex-plugin\.json|server\.js|signature|CHANGELOG\.md|README\.md|LICEN[CS]E(\.\w+)?|assets\/.+|i18n\/[^/]+\.json)$/,
   JUNK = /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)(\/|$)/,
+  INSTALL_INFO = '.install.json',
   ICON_TYPES = { svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 
 var staged = new Map(),    // token → { at, preview, files, root }
@@ -222,8 +228,39 @@ function stage(buffer, from) {
     return Promise.reject(failure('INVALID', 'a package is at most ' + PACKAGE_MAX / 1024 / 1024 + ' MB'));
   }
   return unzip(buffer).then(function (all) {
-    var found = rootOf(all),
-      signer = signing.packageSigner(found.files),
+    return stageFiles(rootOf(all), from, buffer.length);
+  });
+}
+
+/** The installed manifest of a plugin (its folder, else a running developer copy), or null */
+function installedManifest(id) {
+  var loaded = plugins.get(id);
+  if (loaded) {
+    return loaded.manifest;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dirOf(id), MANIFEST), 'utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
+/** { added, removed }: permissions in words, `next` against `current` (null: everything is added) */
+function permissionChanges(next, current) {
+  var after = protocol.describePermissions(next),
+    before = current ? protocol.describePermissions(current) : [],
+    texts = function (list) { return list.map(function (x) { return x.key + '\n' + x.text; }); },
+    a = texts(after), b = texts(before);
+  return {
+    added: current ? after.filter(function (x, i) { return b.indexOf(a[i]) === -1; }) : [],
+    removed: before.filter(function (x, i) { return a.indexOf(b[i]) === -1; })
+  };
+}
+
+// a package's files (its root found) → the preview, kept for commit()
+function stageFiles(found, from, size) {
+  return Promise.resolve().then(function () {
+    var signer = signing.packageSigner(found.files),
       files = found.files.filter(function (f) { return KEEP.test(f.path); }),
       byPath = {};
     files.forEach(function (f) { byPath[f.path] = f; });
@@ -250,7 +287,8 @@ function stage(buffer, from) {
         trust = trustOf(signer),
         icon = manifest.icon && byPath[manifest.icon],
         type = icon && ICON_TYPES[path.extname(manifest.icon).slice(1).toLowerCase()],
-        changelog = byPath['CHANGELOG.md'];
+        changelog = byPath['CHANGELOG.md'],
+        changes = permissionChanges(manifest, current ? installedManifest(manifest.id) : null);
       var preview = {
         token: token,
         id: manifest.id,
@@ -266,10 +304,13 @@ function stage(buffer, from) {
         source: from.source,
         resolved: from.resolved || null,
         root: found.root || null,
-        size: buffer.length,
+        size: size,
         fileCount: files.length,
         changelog: changelog ? changelog.bytes.toString('utf8').slice(0, CHANGELOG_MAX) : null,
         current: current ? current.version : null,
+        added: changes.added,
+        removed: changes.removed,
+        rollback: !!from.rollback,
         change: !current ? 'install' : protocol.compareVersions(manifest.version, current.version) > 0 ? 'update' :
           protocol.compareVersions(manifest.version, current.version) < 0 ? 'downgrade' : 'reinstall',
         conflict: loaded && loaded.origin === 'dev' ? 'A developer copy of ' + manifest.id + ' runs from ' +
@@ -286,6 +327,71 @@ function stage(buffer, from) {
       staged.set(token, { at: Date.now(), preview: preview, files: files, manifest: manifest, from: from });
       return preview;
     });
+  });
+}
+
+/** Every file under a folder: [{ path, bytes }] (`/`-separated, relative) */
+function readTree(dir) {
+  var out = [];
+  (function walk(rel) {
+    fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).forEach(function (e) {
+      var child = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) {
+        walk(child);
+      } else if (e.isFile()) {
+        out.push({ path: child, bytes: fs.readFileSync(path.join(dir, child)) });
+      }
+    });
+  })('');
+  return out;
+}
+
+/** The version kept by the last update, staged to be put back (a preview like a package's) */
+function stagePrevious(id) {
+  sweep();
+  var dir = previousOf(id), info = {};
+  if (!fs.existsSync(path.join(dir, MANIFEST))) {
+    return Promise.reject(failure('NOT_FOUND', 'No earlier version of ' + id + ' is kept'));
+  }
+  try {
+    info = JSON.parse(fs.readFileSync(path.join(dir, INSTALL_INFO), 'utf8'));
+  } catch (e) { /* kept before .install.json existed */ }
+  var files = readTree(dir).filter(function (f) { return KEEP.test(f.path); }),
+    size = files.reduce(function (n, f) { return n + f.bytes.length; }, 0);
+  return stageFiles({ root: '', files: files }, {
+    origin: info.origin === 'url' ? 'url' : 'upload',
+    source: info.source || dir,
+    rollback: true
+  }, size).then(function (preview) {
+    preview.root = null;
+    return preview;
+  });
+}
+
+/**
+ * Forgets everything a plugin kept (its storage, secrets and linked accounts,
+ * settings, grants and hidden profiles, notifications), as if just installed;
+ * a running plugin starts again on the empty state
+ */
+function clearData(id) {
+  return services().then(function (s) {
+    return s.plugins.installed.get(id).then(function (row) {
+      var loaded = plugins.get(id);
+      if (!row && !loaded) {
+        throw failure('NOT_FOUND', 'No plugin ' + id);
+      }
+      var restart = loaded && loaded.state !== 'disabled' ? { dir: loaded.dir, origin: loaded.origin } : null;
+      plugins.unload(id);
+      require('./notifications').forget(id);
+      return s.plugins.removeAll(id).then(function () {
+        log.info('plugin ' + id + ': its data cleared', { plugin: id });
+        return restart ? plugins.load(restart.dir, restart.origin).catch(function (err) {
+          loadErrors[id] = (err.code ? err.code + ': ' : '') + err.message;
+        }) : plugins.refreshHidden(id);
+      });
+    });
+  }).then(function () {
+    return view(id);
   });
 }
 
@@ -311,8 +417,13 @@ function rm(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-/** Installs a staged package (the admin confirmed it); the version it replaces is kept for a rollback */
-function commit(token) {
+/**
+ * Installs a staged package (the admin confirmed it); the version it replaces
+ * is kept for a rollback. More permissions than the installed version's need
+ * `options.accept`: a personal one it adds stays off for every profile anyway.
+ */
+function commit(token, options) {
+  options = options || {};
   sweep();
   var entry = staged.get(token);
   if (!entry) {
@@ -322,6 +433,10 @@ function commit(token) {
     trust = trustOf(entry.preview.signer && entry.preview.signer.key);
   if (p.conflict) {
     return Promise.reject(failure('CONFLICT', p.conflict));
+  }
+  if (p.added.length && options.accept !== true) {
+    return Promise.reject(failure('CONFLICT', p.name + ' ' + p.version + ' asks for more than the installed version (' +
+      p.added.map(function (x) { return x.text; }).join('; ') + '): accept them to install it'));
   }
   if (!trust.installable) {
     return Promise.reject(failure('FORBIDDEN', trust.reason));
@@ -345,6 +460,12 @@ function commit(token) {
       fs.mkdirSync(path.dirname(previous), { recursive: true });
       fs.renameSync(target, previous);
       hadPrevious = true;
+      if (old) {
+        // where the kept version came from, for a rollback
+        fs.writeFileSync(path.join(previous, INSTALL_INFO), JSON.stringify({
+          version: old.version, origin: old.origin, source: old.source
+        }));
+      }
     }
     fs.renameSync(incoming, target);
     return s.plugins.installed.save({
@@ -355,7 +476,7 @@ function commit(token) {
     return s.plugins.installed.get(id);
   }).then(function (row) {
     delete loadErrors[id];
-    log.info('plugin ' + id + ' ' + p.version + ' installed from ' + (p.origin === 'url' ? p.source : 'an upload') +
+    log.info('plugin ' + id + ' ' + p.version + (p.rollback ? ' put back (rollback)' : ' installed from ' + (p.origin === 'url' ? p.source : 'an upload')) +
       (trust.trusted ? ' (signed)' : ' (unsigned, developer mode)'), { plugin: id });
     if (!row.enabled) {
       return view(id);
@@ -472,7 +593,8 @@ function iso(d) {
 }
 
 function describe(row, loaded) {
-  var m = loaded ? loaded.manifest : null;
+  // a plugin that doesn't run (off, or failed to load): its manifest on disk
+  var m = loaded ? loaded.manifest : row ? installedManifest(row.id) : null;
   return {
     id: row ? row.id : loaded.id,
     name: m ? m.name : row.id,
@@ -480,7 +602,8 @@ function describe(row, loaded) {
     description: m ? m.description || (m.listing && m.listing.summary) || null : null,
     publisher: m ? m.publisher || null : null,
     audience: m ? m.audience : null,
-    icon: m && m.icon ? '/plugins/' + m.id + '/assets/' + m.icon.replace(/^assets\//, '') : null,
+    // served by the assets route, which only knows running plugins
+    icon: loaded && m.icon ? '/plugins/' + m.id + '/assets/' + m.icon.replace(/^assets\//, '') : null,
     origin: row ? row.origin : 'dev',
     source: row ? row.source : loaded.dir,
     signer: row ? row.signer : null,
@@ -488,28 +611,51 @@ function describe(row, loaded) {
     state: row && !row.enabled ? 'disabled' : loaded ? loaded.state : 'failed',
     error: loaded ? loaded.error : row && row.enabled ? loadErrors[row.id] || 'not loaded' : null,
     permissions: m ? protocol.describePermissions(m) : [],
-    hooks: m ? (m.permissions.hooks || []) : [],
-    // how many options it has (Plugins › <name> › Settings); null: not loaded, read when opened
+    hooks: m ? ((m.permissions && m.permissions.hooks) || []) : [],
+    // how many options it has (Plugins › <name> › Settings); null: its manifest can't be read
     settings: m ? ((m.contributes && m.contributes.settings) || []).length : null,
-    // its personal permissions (granted per profile) and account links: the Settings panel's Profiles and Accounts
+    // its personal permissions (granted per profile) and account links: its page's Profiles and Accounts
     personal: m ? protocol.describePermissions(m).filter(function (x) { return x.personal; }).length : null,
     links: m ? (m.link || []).length : null,
     jobs: loaded ? require('./scheduler').view(loaded.id) : [],
     registered: loaded ? loaded.registered : null,
     stats: loaded ? Object.assign({}, loaded.stats, { sandbox: loaded.sandbox ? loaded.sandbox.stats : null }) : null,
     previous: row ? fs.existsSync(path.join(previousOf(row.id), MANIFEST)) : false,
+    previousVersion: row ? previousVersion(row.id) : null,
     installedAt: row ? iso(row.installedAt) : null,
     updatedAt: row ? iso(row.updatedAt) : null
   };
 }
 
-function view(id) {
+function previousVersion(id) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(previousOf(id), MANIFEST), 'utf8')).version || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** One plugin; with `detail` also what its page shows (plan §6.3 Overview): its listing, `requires`, `exports` and changelog */
+function view(id, options) {
   return services().then(function (s) { return s.plugins.installed.get(id); }).then(function (row) {
     var loaded = plugins.get(id);
     if (!row && !loaded) {
       throw failure('NOT_FOUND', 'No plugin ' + id);
     }
-    return describe(row, loaded);
+    var out = describe(row, loaded);
+    if (options && options.detail) {
+      var dir = loaded ? loaded.dir : dirOf(id),
+        m = (loaded ? loaded.manifest : installedManifest(id)) || {},
+        changelog = null;
+      try {
+        changelog = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8').slice(0, CHANGELOG_MAX);
+      } catch (e) { /* none */ }
+      out.listing = m.listing || null;
+      out.requires = m.requires || [];
+      out.exports = m.exports || [];
+      out.changelog = changelog;
+    }
+    return out;
   });
 }
 
@@ -592,6 +738,8 @@ function fetchPackage(url) {
 module.exports = {
   fetchPackage: fetchPackage,
   stage: stage,
+  stagePrevious: stagePrevious,
+  clearData: clearData,
   discard: discard,
   commit: commit,
   remove: remove,

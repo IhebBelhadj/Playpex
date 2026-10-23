@@ -170,7 +170,7 @@ function configure(options) {
 
 /**
  * Buffered entries, oldest first.
- * @param {{ level?: string, area?: string, since?: string, limit?: number }} [filter]
+ * @param {{ level?: string, area?: string, plugin?: string, since?: string, limit?: number }} [filter]
  */
 function entries(filter) {
   filter = filter || {};
@@ -178,6 +178,7 @@ function entries(filter) {
   var list = buffer.filter(function (e) {
     return LEVELS[e.level] >= min &&
       (!filter.area || e.area === filter.area) &&
+      (!filter.plugin || e.plugin === filter.plugin) &&
       (!filter.since || e.time > filter.since);
   });
   return filter.limit ? list.slice(-filter.limit) : list;

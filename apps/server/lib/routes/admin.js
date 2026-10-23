@@ -316,7 +316,7 @@ router.post('/settings/check-port', function (req, res) {
 
 // ── logs ───────────────────────────────────────────────────────────────────
 
-// ?level=&area=&since=<ISO time>&limit= → the ring buffer (last 2 000
+// ?level=&area=&plugin=<id>&since=<ISO time>&limit= → the ring buffer (last 2 000
 // entries), oldest first; new ones arrive on the events socket (topic log)
 router.get('/logs', function (req, res) {
   var q = req.query, limit = parseInt(q.limit, 10);
@@ -327,6 +327,7 @@ router.get('/logs', function (req, res) {
     entries: logger.entries({
       level: q.level || undefined,
       area: q.area || undefined,
+      plugin: q.plugin || undefined,
       since: q.since || undefined,
       limit: limit > 0 ? limit : undefined
     }),

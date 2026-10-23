@@ -504,7 +504,7 @@ function describePermissions(manifest) {
     add('write.' + s, WRITE_TEXT[s]);
   });
   (m.link || []).forEach(function (l) {
-    add('link.' + l.name, 'Links ' + (l.scope === 'profile' ? 'your ' : 'the server\'s ') + l.label + ' account');
+    add('link.' + l.name, 'Links ' + (l.scope === 'profile' ? 'your ' : 'the server\'s ') + l.label + (/\baccount$/i.test(l.label) ? '' : ' account'));
   });
   if (p.library) {
     add('library', 'Sees what\'s on this server');

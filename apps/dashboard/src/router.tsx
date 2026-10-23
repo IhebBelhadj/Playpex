@@ -14,6 +14,7 @@ import { SetupPage } from '@/pages/setup'
 import { StoragePage } from '@/pages/storage'
 import { DownloadsPage } from '@/pages/downloads'
 import { LibraryPage } from '@/pages/library'
+import { PluginPage } from '@/pages/plugin'
 import { PluginsPage } from '@/pages/plugins'
 
 // Paths are served by the server's SPA fallback (lib/api.js): any GET without
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: 'library', element: <LibraryPage /> },
       { path: 'storage', element: <StoragePage /> },
       { path: 'plugins', element: <PluginsPage /> },
+      { path: 'plugins/:pluginId', element: <PluginPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/:tab', element: <SettingsPage /> },
       { path: 'profiles', element: <ProfilesPage /> },

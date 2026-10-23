@@ -9,6 +9,8 @@
 //   an update keeps the previous version; one that doesn't start rolls back    disabled: stopped, not for clients; enabled again
 //   kept across a restart; removed: files, row and data gone                   `..`, symlinks, no manifest, two plugins: refused
 //   a URL (a local HTTP server) is downloaded and staged                       GitHub repo / release URLs recognised
+//   more permissions: installed only when accepted                             rollback: the kept version back, and forward again
+//   its page (changelog), its log lines                                        hidden from a profile; clear data
 
 var test = require('node:test'),
   assert = require('node:assert/strict'),
@@ -17,7 +19,9 @@ var test = require('node:test'),
   path = require('path'),
   http = require('http'),
   childProcess = require('child_process'),
-  yazl = require('yazl');
+  yazl = require('yazl'),
+  YAML = require('yaml'),
+  Ajv2020 = require('ajv/dist/2020');
 
 var tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'playpex-plugins-install-'));
 process.env.PLAYPEX_CONFIG_DIR = path.join(tmp, 'config');
@@ -37,14 +41,23 @@ var PACK = path.join(__dirname, '..', 'scripts', 'pack-plugin.js'),
   filesPort = 0,
   key = path.join(tmp, 'publisher.json');
 
+// the answers of the routes this file covers, against openapi.yaml (the contract test doesn't reach them)
+var ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
+ajv.addSchema(YAML.parse(fs.readFileSync(require.resolve('@playpex/protocol/openapi.yaml'), 'utf8')), 'spec');
+
+function conforms(schema, value) {
+  var validate = ajv.getSchema('spec#/components/schemas/' + schema);
+  assert.ok(validate(value), schema + ': ' + ajv.errorsText(validate.errors));
+}
+
 // ── fixtures ────────────────────────────────────────────────────────────────
 
-function source(version, code) {
+function source(version, code, permissions) {
   var dir = path.join(tmp, 'src', 'greeter-' + version);
   fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'playpex-plugin.json'), JSON.stringify({
     id: 'greeter', name: 'Greeter', version: version, publisher: { name: 'Test' }, api: { server: '^1' },
-    audience: 'everyone', description: 'Says hello', icon: 'assets/icon.svg', permissions: { storage: '4KB' }
+    audience: 'everyone', description: 'Says hello', icon: 'assets/icon.svg', permissions: permissions || { storage: '4KB' }
   }));
   fs.writeFileSync(path.join(dir, 'server.js'), code || 'playpex.data("hello", function () { return { data: "hello ' + version + '" }; });');
   fs.writeFileSync(path.join(dir, 'assets', 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
@@ -364,6 +377,117 @@ test('from a URL: downloaded and staged; GitHub pages recognised', function () {
     assert.deepEqual(gh.exec('https://github.com/acme/trakt/releases/tag/v1.2.0').slice(1, 4), ['acme', 'trakt', 'v1.2.0']);
     assert.deepEqual(gh.exec('https://github.com/acme/trakt/releases/latest').slice(1, 4), ['acme', 'trakt', undefined]);
     assert.equal(gh.exec('https://github.com/acme/trakt/releases/download/v1/trakt.ppx'), null, 'an asset is a direct link');
+  });
+});
+
+test('an update asking for more is installed only when accepted', function () {
+  var token;
+  return upload(pack(source('3.0.0', null, { storage: '4KB', notify: true })), 'greeter-3.0.0.ppx').then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    conforms('PluginPackagePreview', r.json);
+    assert.deepEqual(r.json.added.map(function (x) { return x.key; }), ['notify']);
+    assert.deepEqual(r.json.removed, []);
+    token = r.json.token;
+    return call('POST', '/admin/plugins/packages/' + token + '/install');
+  }).then(function (r) {
+    assert.equal(r.status, 409);
+    assert.match(r.json.error, /accept/);
+    return call('POST', '/admin/plugins/packages/' + token + '/install', { accept: true });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.version, '3.0.0');
+    assert.equal(r.json.previousVersion, '2.0.0');
+  });
+});
+
+test('rollback: the kept version comes back, and forward again', function () {
+  return call('POST', '/admin/plugins/greeter/rollback').then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    conforms('PluginPackagePreview', r.json);
+    assert.equal(r.json.rollback, true);
+    assert.equal(r.json.version, '2.0.0');
+    assert.equal(r.json.change, 'downgrade');
+    assert.deepEqual(r.json.added, []);
+    assert.deepEqual(r.json.removed.map(function (x) { return x.key; }), ['notify']);
+    return call('POST', '/admin/plugins/packages/' + r.json.token + '/install');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.version, '2.0.0');
+    assert.equal(r.json.previousVersion, '3.0.0');
+    return Promise.all([call('POST', '/plugins/greeter/data/hello', { args: {} }), call('POST', '/admin/plugins/greeter/rollback')]);
+  }).then(function (r) {
+    assert.equal(r[0].json.data, 'hello 2.0.0');
+    assert.equal(r[1].json.version, '3.0.0', 'rolling back again goes forward');
+    assert.deepEqual(r[1].json.added.map(function (x) { return x.key; }), ['notify']);
+    return call('DELETE', '/admin/plugins/packages/' + r[1].json.token);
+  });
+});
+
+test('its page and its log lines', function () {
+  return Promise.all([call('GET', '/admin/plugins/greeter'), call('GET', '/admin/logs?plugin=greeter'), call('GET', '/admin/plugins/nope')])
+    .then(function (r) {
+      assert.equal(r[0].status, 200, r[0].text);
+      conforms('AdminPlugin', r[0].json);
+      assert.match(r[0].json.changelog, /# 2\.0\.0/);
+      assert.deepEqual(r[0].json.requires, []);
+      assert.ok(r[1].json.entries.length > 0);
+      assert.ok(r[1].json.entries.every(function (e) { return e.plugin === 'greeter'; }));
+      assert.equal(r[2].status, 404);
+    });
+});
+
+test('hidden from a profile: nothing of it for that profile', function () {
+  var kid;
+  return call('POST', '/profiles', { name: 'Hidden kid', isKid: true }).then(function (r) {
+    assert.equal(r.status, 201, r.text);
+    kid = r.json.id;
+    return call('PUT', '/admin/plugins/greeter/profiles', { profile: kid, shown: false });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    conforms('PluginSettings', r.json);
+    assert.equal(r.json.profiles.filter(function (p) { return p.id === kid; })[0].shown, false);
+    return Promise.all([
+      call('GET', '/plugins?profile=' + kid),
+      call('POST', '/plugins/greeter/data/hello?profile=' + kid, { args: {} }),
+      call('POST', '/plugins/greeter/data/hello', { args: {} }),
+      call('PUT', '/admin/plugins/greeter/profiles', { profile: 'nobody', shown: false }),
+      call('PUT', '/admin/plugins/greeter/profiles', { profile: kid })
+    ]);
+  }).then(function (r) {
+    assert.ok(!r[0].json.plugins.some(function (p) { return p.id === 'greeter'; }));
+    assert.equal(r[1].status, 403);
+    assert.equal(r[2].json.data, 'hello 2.0.0', 'other callers still get it');
+    assert.equal(r[3].status, 404);
+    assert.equal(r[4].status, 400);
+    return call('PUT', '/admin/plugins/greeter/profiles', { profile: kid, shown: true });
+  }).then(function () {
+    return call('GET', '/plugins?profile=' + kid);
+  }).then(function (r) {
+    assert.ok(r.json.plugins.some(function (p) { return p.id === 'greeter'; }));
+  });
+});
+
+test('clear data: what it kept is gone, it runs again', function () {
+  var kid;
+  return Promise.all([
+    userData.services().then(function (s) { return s.plugins.store.set('greeter', 'k', 1, 4096); }),
+    call('GET', '/profiles')
+  ]).then(function (r) {
+    kid = r[1].json.profiles.filter(function (p) { return p.name === 'Hidden kid'; })[0].id;
+    return call('PUT', '/admin/plugins/greeter/profiles', { profile: kid, shown: false });
+  }).then(function () {
+    return call('POST', '/admin/plugins/greeter/clear');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    conforms('AdminPlugin', r.json);
+    assert.equal(r.json.state, 'enabled');
+    return Promise.all([
+      userData.services().then(function (s) { return s.plugins.store.get('greeter', 'k'); }),
+      call('GET', '/plugins?profile=' + kid)
+    ]);
+  }).then(function (r) {
+    assert.equal(r[0], null);
+    assert.ok(r[1].json.plugins.some(function (p) { return p.id === 'greeter'; }), 'shown again');
   });
 });
 

@@ -25,6 +25,7 @@
     "test": "ng test",
     "check:ui": "node scripts/check-ui.js",
     "check:contrast": "node scripts/check-contrast.js",
+    "check:plugins": "node scripts/check-plugins.js",
     "electron": "ng build --base-href ./ && electron .",
     "electron:last": "node -e \"require('fs').existsSync('dist/playpex/index.html') || (console.error('No build in apps/tv/dist/playpex: run npm run build (or npm run electron) first'), process.exit(1))\" && electron .",
     "pack": "ng build --base-href ./ && electron-builder --dir",
