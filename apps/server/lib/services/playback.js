@@ -74,7 +74,8 @@ module.exports = function playbackService(repositories, options) {
     /**
      * Record the playback position.
      * @param {{ mediaType, tmdbId, season?, episode?, positionS, durationS,
-     *           title?, posterPath?, backdropPath?, genreIds?, infoHash?, filePath? }} input
+     *           title?, posterPath?, backdropPath?, genreIds?, infoHash?, filePath?, fileId? }} input
+     *        (the release that plays: a torrent's infoHash + filePath, or a library file's fileId)
      * @returns {Promise<{ progress: object, finished: boolean, justFinished: boolean }>}
      */
     saveProgress: function (profileId, input) {
@@ -95,6 +96,7 @@ module.exports = function playbackService(repositories, options) {
             durationS: durationS,
             infoHash: validate.optionalString(input.infoHash, 'infoHash', 64),
             filePath: validate.optionalString(input.filePath, 'filePath', 1000),
+            fileId: validate.optionalString(input.fileId, 'fileId', 64),
             updatedAt: at
           });
         record.finished = ratio(record) >= FINISHED_RATIO;
@@ -121,7 +123,7 @@ module.exports = function playbackService(repositories, options) {
       }).then(function (p) {
         var resumable = p && !p.finished && ratio(p) >= RESUME_MIN_RATIO;
         return {
-          resume: resumable ? { positionS: p.positionS, durationS: p.durationS, infoHash: p.infoHash, filePath: p.filePath, updatedAt: p.updatedAt } : null,
+          resume: resumable ? { positionS: p.positionS, durationS: p.durationS, infoHash: p.infoHash, filePath: p.filePath, fileId: p.fileId, updatedAt: p.updatedAt } : null,
           finished: !!(p && p.finished)
         };
       });
@@ -129,7 +131,7 @@ module.exports = function playbackService(repositories, options) {
 
     /**
      * Where to resume a movie / episode, or null to start from the beginning.
-     * Includes the release (infoHash, filePath) that was playing.
+     * Includes the release (infoHash + filePath, or fileId) that was playing.
      */
     getResume: function (profileId, keyInput) {
       return withProfile(profileId, function () {
@@ -138,7 +140,7 @@ module.exports = function playbackService(repositories, options) {
         if (!p || p.finished || ratio(p) < RESUME_MIN_RATIO) {
           return null;
         }
-        return { positionS: p.positionS, durationS: p.durationS, infoHash: p.infoHash, filePath: p.filePath, updatedAt: p.updatedAt };
+        return { positionS: p.positionS, durationS: p.durationS, infoHash: p.infoHash, filePath: p.filePath, fileId: p.fileId, updatedAt: p.updatedAt };
       });
     },
 
@@ -178,6 +180,7 @@ module.exports = function playbackService(repositories, options) {
               ratio: r,
               infoHash: p.infoHash,
               filePath: p.filePath,
+              fileId: p.fileId,
               updatedAt: p.updatedAt
             });
           });
@@ -213,6 +216,7 @@ module.exports = function playbackService(repositories, options) {
             durationS: durationS,
             infoHash: previous ? previous.infoHash : null,
             filePath: previous ? previous.filePath : null,
+            fileId: previous ? previous.fileId : null,
             finished: true,
             updatedAt: at
           }), previous);

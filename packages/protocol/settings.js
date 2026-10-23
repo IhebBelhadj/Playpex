@@ -23,6 +23,7 @@ var SETTINGS = {
   'subtitles.size': { scope: 'device', type: 'string', enum: ['small', 'medium', 'large', 'largest'], default: 'medium' },
   'subtitles.provider': { scope: 'profile', type: 'string', nullable: true, default: null },
   'player.autoplayNext': { scope: 'profile', type: 'boolean', default: true },
+  'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true },
   'adult.layout': { scope: 'profile', type: 'string', enum: ['posters', 'compact'], default: 'posters', adult: true },
   'adult.metadataProvider': { scope: 'profile', type: 'string', nullable: true, default: null, adult: true }
 };

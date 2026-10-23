@@ -89,6 +89,9 @@ var progress = sqliteTable('progress', {
   // The release that was playing: different releases have different cuts
   infoHash: text('info_hash'),
   filePath: text('file_path'),
+  // or a file of the library (media_files.id; no foreign key: the position
+  // outlives a file that went away)
+  fileId: text('file_id'),
   finished: integer('finished', { mode: 'boolean' }).notNull().default(false),
   updatedAt: timestamp('updated_at').notNull()
 }, function (table) {

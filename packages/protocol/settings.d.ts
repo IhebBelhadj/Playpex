@@ -10,6 +10,7 @@ export interface SettingValues {
   'subtitles.size': 'small' | 'medium' | 'large' | 'largest';
   'subtitles.provider': string | null;
   'player.autoplayNext': boolean;
+  'player.preferLocalFiles': boolean;
   'adult.layout': 'posters' | 'compact';
   'adult.metadataProvider': string | null;
 }

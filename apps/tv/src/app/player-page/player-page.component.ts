@@ -88,6 +88,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   magnetUrl;
   torrentHash;
+  private released = false;     // a source's lease was let go
   playback:PlaybackRequest;
   playerReady = false;
   controlsVisible = false;
@@ -104,7 +105,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   videoInfo;                  // <video>-side numbers for the stats panel
   statsSub:Subscription;
 
-  readonly stages = ['Starting the torrent', 'Finding peers', 'Reading the torrent', 'Downloading the start'];
+  stages = ['Starting the torrent', 'Finding peers', 'Reading the torrent', 'Downloading the start'];
 
   // timeline (fractions of the duration)
   playedPct = 0;
@@ -258,13 +259,29 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       return;
     }
 
+    // a file on the server (library, a download's file): its media ref at
+    // once, no torrent to add or wait for
+    if (this.playback.source) {
+      let source = this.playback.source;
+      this.ref = source.ref;
+      this.link = `${API_PREFIX}/media/${source.ref}`;
+      this.filePath = source.path;
+      this.torrentHash = source.infoHash;   // a download's: its stats
+      if (!source.infoHash) this.stages = ['Opening the file on the server'];
+      this.startKeepalive();
+      this.probeFile().then(() => this.setupPlayer());
+      return;
+    }
+
     this.magnetUrl = this.playback.magnet;
     let reps = 0;
     this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
     .pipe(
       switchMap(data => {
-        if (!this.torrentHash) this.startKeepalive(data['infoHash']);
-        this.torrentHash = data['infoHash'];
+        if (!this.torrentHash) {
+          this.torrentHash = data['infoHash'];
+          this.startKeepalive();
+        }
         return this.torrentService.getTorrent(data['infoHash']);
       }),
       repeat({delay : 4000})
@@ -502,14 +519,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       ...this.playback.artwork,
       positionS: this.position(),
       durationS: duration,
-      infoHash: this.torrentHash,
-      filePath: this.filePath,
+      // the release that played: a library file, else a torrent's file
+      fileId: this.ref?.startsWith('f_') ? this.ref.slice(2) : null,
+      infoHash: this.torrentHash || null,
+      filePath: this.filePath || null,
     }).subscribe({ error: () => {} });
   }
 
   // Every minute until the player closes: keeps the server's lease, and tells
   // it what plays (its Activity view)
-  startKeepalive(hash:string) {
+  startKeepalive() {
     this.keepaliveTimer = setInterval(() => {
       let player = this.moviePlayer;
       let duration = this.playerReady ? this.mediaDuration() : NaN;
@@ -526,7 +545,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         ...(this.playerReady && player ? { positionS: this.position(), paused: player.paused } : {}),
         ...(isFinite(duration) && duration > 0 ? { durationS: duration } : {}),
       };
-      this.torrentService.keepTorrent(hash , state).subscribe({ error: () => {} });
+      let sent = this.playback.source ? this.torrentService.keepMedia(this.playback.source.ref , state)
+        : this.torrentService.keepTorrent(this.torrentHash , state);
+      sent.subscribe({ error: () => {} });
     } , KEEPALIVE_EVERY_MS);
   }
 
@@ -538,7 +559,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Lets go of the torrent: the server pauses it 30 s after the last device
   // let go (its data stays, a later Play resumes it)
   private releaseTorrent() {
-    if (!this.torrentHash) return;
+    // a file played by its ref: the lease is the ref's (a download's: its torrent's)
+    if (this.playback?.source && !this.released) {
+      this.released = true;
+      clearInterval(this.keepaliveTimer);
+      this.torrentService.releaseMedia(this.playback.source.ref).subscribe({ error: () => {} });
+      return;
+    }
+    if (!this.torrentHash || this.playback?.source) return;
     let hash = this.torrentHash;
     this.torrentHash = undefined;
     clearInterval(this.keepaliveTimer);
@@ -574,7 +602,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       else if (action == 'select') {
         take();
         this.zone.run(() => {
-          if (this.upNextShown && this.upNext.torrent) this.playNext();
+          if (this.upNextShown && this.upNext.source) this.playNext();
           else {
             this.togglePlay();
             this.showControls(PLAY_BUTTON);
@@ -668,13 +696,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.updateTimeline();
       // Progress for Continue watching / history: periodically, on pause and at the end
       if (!this.moviePlayer.paused && Date.now() - this.lastSave > SAVE_EVERY_MS) this.saveProgress();
-      if (this.upNext && !this.upNext.torrent && !this.upNextLooking && this.remaining <= UP_NEXT_S + 60) this.lookUpNextRelease();
+      if (this.upNext && !this.upNext.source && !this.upNextLooking && this.remaining <= UP_NEXT_S + 60) this.lookUpNextRelease();
     });
     this.moviePlayer.addEventListener('progress', () => this.updateTimeline());
     this.moviePlayer.addEventListener('ended', () => {
       this.saveProgress();
       // the profile's "Autoplay next episode" (on by default)
-      if (this.upNext?.torrent && !this.upNextDismissed && this.settings.value('player.autoplayNext')) this.playNext();
+      if (this.upNext?.source && !this.upNextDismissed && this.settings.value('player.autoplayNext')) this.playNext();
     });
   }
 
@@ -990,16 +1018,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (!this.upNext || this.upNextLooking) return;
     this.upNextLooking = true;
     let next = this.upNext;
-    this.episodes.bestTorrent(next).subscribe(torrent => {
+    this.episodes.bestSource(next).subscribe(source => {
       this.upNextLooking = false;
-      next.torrent = torrent;
-      if (torrent) then?.();
+      next.source = source;
+      if (source) then?.();
     });
   }
 
   playNext() {
     if (!this.upNext) return;
-    if (!this.upNext.torrent) {
+    if (!this.upNext.source) {
       if (!this.upNextLooking) this.lookUpNextRelease(() => this.playNext());
       return;
     }

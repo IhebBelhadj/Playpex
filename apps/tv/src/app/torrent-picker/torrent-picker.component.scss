@@ -23,6 +23,11 @@
   background: var(--px-option-fill);
 }
 
+// the file is here, no torrent needed (the fill follows the option's focus)
+.onServer {
+  font-family: var(--px-font-bold);
+}
+
 // "on" amber in both states
 .recommended {
   background: var(--px-color-on);

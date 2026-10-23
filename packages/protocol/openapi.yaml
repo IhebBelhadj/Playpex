@@ -100,6 +100,8 @@ tags:
     description: What every device is playing (leases on torrents)
   - name: catalog
     description: Movie / show data from providers (YTS, IMDb)
+  - name: play
+    description: 'What can play a title: files on this server, downloads, torrents, ranked (the play pipeline)'
   - name: releases
     description: Torrent search and release lists (EZTV, TheRARBG, The Pirate Bay, YTS)
   - name: subtitles
@@ -772,7 +774,7 @@ paths:
   /admin/library:
     get:
       tags: [media-library]
-      operationId: getLibrary
+      operationId: getMediaLibrary
       summary: The library's folders (with file counts and scan state) and the scanner's queue
       security:
         - adminSession: []
@@ -1735,6 +1737,32 @@ paths:
               schema: { $ref: '#/components/schemas/RankedTorrents' }
         '400': { $ref: '#/components/responses/Invalid' }
         '502': { $ref: '#/components/responses/Upstream' }
+  /play/sources:
+    post:
+      tags: [play]
+      operationId: playSources
+      summary: Every way to play a movie or an episode, best first
+      description: |
+        The play pipeline (docs/media-server-plan.md §6): library files of the title, the server's
+        downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
+        the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
+        files on this server that play come first, and `policy.autoplay` names the source to start
+        without asking when it is the only one. A provider that fails or takes longer than its timeout
+        (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
+        Play a source with a `ref` through `/media/{ref}` (no `POST /torrents`); a torrent through its `magnet`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaySourcesRequest' }
+      responses:
+        '200':
+          description: Ranked sources
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlaySources' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /releases/providers:
     get:
       tags: [releases]
@@ -2096,7 +2124,7 @@ paths:
       operationId: updateProfileSettings
       summary: Change some of the profile's settings
       description: |
-        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `adult.*`, or
+        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.*`, or
         `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
         refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
         profiles (`FORBIDDEN`). Publishes `settings.changed`.
@@ -3123,6 +3151,67 @@ components:
       properties:
         torrents: { type: array, items: { $ref: '#/components/schemas/RankedTorrent' } }
         providerErrors: { type: integer, description: 'How many providers failed' }
+    PlaySourcesRequest:
+      type: object
+      required: [kind, tmdbId, title]
+      properties:
+        kind: { type: string, enum: [movie, episode] }
+        tmdbId: { type: integer, minimum: 1, description: 'The movie''s, or the episode''s show''s' }
+        imdbId: { type: [string, 'null'], pattern: '^tt\\d{5,10}$', description: 'The movie''s / the show''s (torrent providers search by it)' }
+        title: { type: string, maxLength: 200, description: 'The movie''s / the show''s, to match release names' }
+        year: { type: [integer, 'null'] }
+        season: { type: integer, minimum: 0, description: 'Episodes' }
+        episode: { type: integer, minimum: 1, description: 'Episodes' }
+        profileId: { type: [string, 'null'], description: 'Who is watching: their settings and kids rules apply' }
+    PlaySource:
+      type: object
+      required: [id, type, provider, label, playable, badges, notes]
+      properties:
+        id: { type: string, description: 'Stable for a source: the media ref of a file or a download''s file, `torrent:<infoHash>` of a torrent' }
+        type: { type: string, enum: [file, download, torrent], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider' }
+        provider: { type: string, description: 'library, downloads, yts, eztv, therarbg… (unknown values may come with plugins)' }
+        handler: { type: string, description: 'The collect handler that found it' }
+        label: { type: string, description: 'A file''s or a release''s name' }
+        ref: { type: string, description: 'file, download: the media ref to play (GET /media/{ref})' }
+        infoHash: { type: string, description: 'download, torrent' }
+        path: { type: string, description: 'download: the file''s path in its torrent' }
+        magnet: { type: string, description: 'torrent: with the server''s tracker list' }
+        size: { type: [number, 'null'], description: 'Bytes' }
+        quality: { type: [string, 'null'], description: '2160p, 1080p, 720p, 480p, SD' }
+        codec: { type: [string, 'null'] }
+        audio: { type: [string, 'null'] }
+        duration: { type: [number, 'null'], description: 'file: seconds (ffprobe)' }
+        seeds: { type: [integer, 'null'] }
+        peers: { type: [integer, 'null'] }
+        progress: { type: number, minimum: 0, maximum: 1, description: 'download: how much of the file is there (1 = on disk)' }
+        state: { $ref: '#/components/schemas/DownloadState' }
+        playable:
+          type: string
+          enum: [yes, audio-converted, maybe, no]
+          description: 'yes; audio-converted (Dolby / DTS sound re-encoded by the server''s ffmpeg); maybe (HEVC / 10-bit / 4K: depends on the hardware); no'
+        badges:
+          type: array
+          items: { type: string }
+          description: 'Flags clients may show: best (the first), on-server, downloading, pack, hdr. Ignore those you don''t know'
+        notes: { type: array, items: { type: string }, description: 'Why it may not play, in words (English)' }
+    PlaySources:
+      type: object
+      required: [sources, policy, errors]
+      properties:
+        sources: { type: array, items: { $ref: '#/components/schemas/PlaySource' } }
+        policy:
+          type: object
+          required: [autoplay]
+          properties:
+            autoplay: { type: [string, 'null'], description: 'The id of the source to play without asking, else null: show the sources' }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [handler, message]
+            properties:
+              handler: { type: string }
+              message: { type: string }
     ReleaseProvider:
       type: object
       required: [id, name, paged, default]
@@ -3381,6 +3470,7 @@ components:
             durationS: { type: number }
             infoHash: { type: [string, 'null'], description: 'The release being played, to resume the same one' }
             filePath: { type: [string, 'null'] }
+            fileId: { type: [string, 'null'], description: 'Or a library file being played (the id of its `f_` media ref)' }
     ProgressRow:
       type: object
       required: [profileId, mediaType, tmdbId, season, episode, positionS, durationS, finished, updatedAt]
@@ -3397,6 +3487,7 @@ components:
         durationS: { type: number }
         infoHash: { type: [string, 'null'] }
         filePath: { type: [string, 'null'] }
+        fileId: { type: [string, 'null'] }
         finished: { type: boolean }
         updatedAt: { type: string, format: date-time }
     SaveProgressResult:
@@ -3420,6 +3511,7 @@ components:
                 durationS: { type: number }
                 infoHash: { type: [string, 'null'] }
                 filePath: { type: [string, 'null'] }
+                fileId: { type: [string, 'null'], description: 'A library file: resume with the source `f_<fileId>`' }
                 updatedAt: { type: string, format: date-time }
         finished: { type: boolean }
     EpisodeProgress:
@@ -3450,6 +3542,7 @@ components:
         ratio: { type: number }
         infoHash: { type: [string, 'null'] }
         filePath: { type: [string, 'null'] }
+        fileId: { type: [string, 'null'] }
         updatedAt: { type: string, format: date-time }
     WatchedTitle:
       type: object

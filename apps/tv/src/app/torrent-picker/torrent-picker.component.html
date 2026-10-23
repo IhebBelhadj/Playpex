@@ -1,10 +1,10 @@
-<px-dialog *ngIf="request" id="torrentPicker" title="Choose a torrent" [width]="560"
+<px-dialog *ngIf="request" id="torrentPicker" [title]="request.heading" [width]="560"
   [subtitle]="request.title + ' · ' + request.options.length + (request.options.length == 1 ? ' source' : ' sources')"
   (closed)="cancel()">
   <px-option *ngFor="let option of request.options" (pxSelect)="pick(option)">
     <span class="main">
       <span class="quality">{{option.quality}}</span>
-      <span class="tag" *ngFor="let tag of option.tags">{{tag}}</span>
+      <span class="tag" *ngFor="let tag of option.tags" [class.onServer]="tag == 'On this server'">{{tag}}</span>
       <span class="tag recommended" *ngIf="option.recommended">Best match</span>
     </span>
     <span class="meta">

@@ -150,7 +150,7 @@ test('play → leave: paused, no peers, data kept, the title known; kept across 
 });
 
 test('Start: downloaded to the end without a client, seeds, completed at the ratio; plays from disk', function () {
-  var hash = movie.infoHash, file = movie.files[0];
+  var hash = movie.infoHash, file = movie.files[0], ref;
   server.settings.update({ downloads: { seedRatio: 0.5, seedMinutes: 0 } });
   return call('POST', '/downloads/' + hash + '/start').then(function (res) {
     assert.equal(res.body.intent, 'download');
@@ -168,7 +168,24 @@ test('Start: downloaded to the end without a client, seeds, completed at the rat
     return download(hash);
   }).then(function (d) {
     assert.equal(d.state, 'completed');
-    return call('DELETE', '/torrents/' + hash);
+    // the play pipeline: the title's finished download is a source on disk, played at once by its ref
+    return call('POST', '/play/sources', { kind: 'movie', tmdbId: 42, title: 'Movie', year: 2020 });
+  }).then(function (res) {
+    assert.equal(res.status, 200);
+    var first = res.body.sources[0];
+    assert.equal(first.type, 'download');
+    assert.equal(first.path, file.path);
+    assert.equal(first.progress, 1);
+    assert.equal(res.body.policy.autoplay, first.id);
+    ref = first.ref;
+    return call('GET', '/media/' + ref, undefined, { Range: 'bytes=0-999' });
+  }).then(function (res) {
+    assert.equal(res.status, 206);
+    assert.ok(res.raw.equals(file.data.slice(0, 1000)));
+    return download(hash);
+  }).then(function (d) {
+    assert.equal(d.state, 'completed', 'read from disk, nothing started');
+    return call('DELETE', '/media/' + ref);
   });
 });
 

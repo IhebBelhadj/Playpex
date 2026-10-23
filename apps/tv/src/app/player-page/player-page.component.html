@@ -33,7 +33,7 @@
     <div class="upNextText">
       <p class="upNextLabel">Up next</p>
       <p class="upNextName">{{ upNext.code }} {{ upNext.episode.name }}</p>
-      <ng-container *ngIf="upNext.torrent; else noRelease">
+      <ng-container *ngIf="upNext.source; else noRelease">
         <div class="countdown"><span [style.width.%]="countdownPct"></span></div>
         <p class="upNextHint">Plays in {{ clock(remaining) }}. Press OK to play now.</p>
       </ng-container>

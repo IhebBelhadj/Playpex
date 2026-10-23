@@ -800,7 +800,26 @@ test('media library (admin): folders, scan, files, matches, subtitles, folder br
         return call('GET', '/media/' + ref + '/subtitles/3', undefined, { expect: 404 });
       });
     })
+    // the play pipeline: the library's file of the movie, alone, plays at once (no imdbId: no YTS call)
+    .then(function () { return call('POST', '/play/sources', { kind: 'movie', title: 'Inception' }, { expect: 400 }); })
+    .then(function () { return call('POST', '/play/sources', { kind: 'movie', tmdbId: 27205, title: 'Inception', profileId: 'nope' }, { expect: 404 }); })
+    .then(function () { return call('POST', '/play/sources', { kind: 'movie', tmdbId: 27205, title: 'Inception', year: 2010 }, { expect: 200 }); })
+    .then(function (res) {
+      var first = res.body.sources[0];
+      assert.equal(first.type, 'file');
+      assert.match(first.ref, /^f_/);
+      assert.equal(res.body.policy.autoplay, first.id);
+    })
     .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { audience: 'adults' }, { expect: 200, admin: true }); })
+    // a kids profile gets no file of an adults-only folder
+    .then(function () { return call('POST', '/profiles', { name: 'Little one', isKid: true }, { expect: 201 }); })
+    .then(function (res) {
+      return call('POST', '/play/sources', { kind: 'movie', tmdbId: 27205, title: 'Inception', profileId: res.body.id }, { expect: 200 });
+    })
+    .then(function (res) {
+      assert.equal(res.body.sources.length, 0);
+      assert.equal(res.body.policy.autoplay, null);
+    })
     .then(function () { return call('PATCH', '/admin/library/folders/' + folder.id, { kind: 'films' }, { expect: 400, admin: true }); })
     .then(function () { return call('PATCH', '/admin/library/folders/nope', { dlna: true }, { expect: 404, admin: true }); })
     .then(function () { return call('DELETE', '/admin/library/folders/' + folder.id, undefined, { expect: 200, admin: true }); })

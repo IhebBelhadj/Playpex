@@ -1,0 +1,1 @@
+ALTER TABLE `progress` ADD `file_id` text;

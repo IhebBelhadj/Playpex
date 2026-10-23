@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import type { PlaySource } from './play-sources.service';
 
-// One choice in the picker, normalized from YTS (movies) or the server's
-// episode search (EZTV / TheRARBG)
+// One choice in the picker, normalized from YTS (movies), the server's
+// episode search (EZTV / TheRARBG) or the play pipeline's sources
 export interface TorrentOption {
   quality: string;          // "1080p"
   tags: string[];           // "x265", "BluRay", "Season pack", …
@@ -12,10 +13,13 @@ export interface TorrentOption {
   name?: string;            // release name, when the provider has one
   warnings: string[];       // e.g. "May not play", "Probably no sound"
   recommended?: boolean;
-  torrent: any;             // the provider's torrent object, handed back on pick
+  onServer?: boolean;       // a file on the server (library, finished download)
+  progress?: number;        // a download still downloading: how much is there
+  torrent: any;             // the provider's torrent object (or the PlaySource), handed back on pick
 }
 
 export interface TorrentPickRequest {
+  heading: string;          // "Choose a torrent" / "Choose a source"
   title: string;
   options: TorrentOption[];
   pick: (option:TorrentOption) => void;
@@ -31,9 +35,10 @@ export class TorrentPickerService {
 
   private requests = new Subject<TorrentPickRequest>();
 
-  choose(title:string , options:TorrentOption[]): Observable<TorrentOption> {
+  choose(title:string , options:TorrentOption[] , heading = 'Choose a torrent'): Observable<TorrentOption> {
     return new Observable(subscriber => {
       this.requests.next({
+        heading,
         title,
         options,
         pick : option => { subscriber.next(option); subscriber.complete(); },
@@ -88,6 +93,30 @@ export class TorrentPickerService {
       warnings,
       recommended : index == 0,     // the server ranks them best first
       torrent,
+    };
+  }
+
+  // A play source (POST /play/sources): a file on the server, a download, a torrent
+  static fromSource(source:PlaySource): TorrentOption {
+    let onServer = source.badges.includes('on-server');
+    let downloading = source.type == 'download' && !onServer;
+    return {
+      quality : source.quality || (source.type == 'torrent' ? 'SD' : 'Video'),
+      tags : [
+        onServer ? 'On this server' : null,
+        downloading ? `Downloading ${Math.floor((source.progress || 0) * 100)} %` : null,
+        source.codec && source.codec != 'h264' ? (source.codec == 'hevc' ? 'x265' : source.codec) : null,
+        source.badges.includes('hdr') ? 'HDR' : null,
+        source.badges.includes('pack') ? 'Season pack' : null,
+      ].filter(Boolean),
+      size : source.size ? formatBytes(source.size) : undefined,
+      seeds : source.type == 'torrent' && source.seeds != null ? source.seeds : undefined,
+      name : source.label,
+      warnings : source.notes,
+      recommended : source.badges.includes('best'),
+      onServer,
+      progress : downloading ? source.progress : undefined,
+      torrent : source,
     };
   }
 }

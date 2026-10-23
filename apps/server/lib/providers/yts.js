@@ -46,6 +46,37 @@ function releaseName(movie, t) {
   ].filter(Boolean).join(' ');
 }
 
+// A movie's torrents (no 3D ones) as releases, best quality first as YTS lists them
+function releasesOf(movie) {
+  return (movie.torrents || []).filter(function (t) {
+    return t.hash && t.quality !== '3D';
+  }).map(function (t) {
+    var hash = String(t.hash).toLowerCase();
+    var name = releaseName(movie, t);
+    return {
+      provider: 'YTS',
+      name: name,
+      hash: hash,
+      magnet: trackers.build(hash, name),
+      seeds: Number(t.seeds) || 0,
+      peers: Number(t.peers) || 0,
+      size: Number(t.size_bytes) || 0,
+      added: Number(t.date_uploaded_unix) || 0,
+      // the movie's own title / year beat what a parser makes of the name
+      title: movie.title_english || movie.title,
+      year: Number(movie.year) || null
+    };
+  });
+}
+
+// One movie's releases by IMDb id (the play pipeline, lib/play); [] when YTS has none
+function releases(imdbId) {
+  return get('movie_details.json', { imdb_id: imdbId }).then(function (res) {
+    var movie = res.data && res.data.data && res.data.data.movie;
+    return movie && movie.imdb_code === imdbId ? releasesOf(movie) : [];
+  });
+}
+
 // A release list (releases.js): every torrent of each listed movie (no 3D ones).
 // No keywords: the most downloaded movies; keywords: query_term. 50 movies per page.
 // quality: '2160p' | '1080p' | '720p' narrows the movies listed (filtered again by releases.js)
@@ -68,29 +99,9 @@ function browse(keywords, quality, page) {
     if (!data) {
       throw new Error('YTS: unexpected answer');
     }
-    var movies = data.movies || [];
     var results = [];
-    movies.forEach(function (movie) {
-      (movie.torrents || []).forEach(function (t) {
-        if (!t.hash || t.quality === '3D') {
-          return;
-        }
-        var hash = String(t.hash).toLowerCase();
-        var name = releaseName(movie, t);
-        results.push({
-          provider: 'YTS',
-          name: name,
-          hash: hash,
-          magnet: trackers.build(hash, name),
-          seeds: Number(t.seeds) || 0,
-          peers: Number(t.peers) || 0,
-          size: Number(t.size_bytes) || 0,
-          added: Number(t.date_uploaded_unix) || 0,
-          // the movie's own title / year beat what a parser makes of the name
-          title: movie.title_english || movie.title,
-          year: Number(movie.year) || null
-        });
-      });
+    (data.movies || []).forEach(function (movie) {
+      results = results.concat(releasesOf(movie));
     });
     return {
       results: results,
@@ -103,5 +114,6 @@ module.exports = {
   name: 'YTS',
   MIRRORS: MIRRORS,
   get: get,
-  browse: browse
+  browse: browse,
+  releases: releases
 };

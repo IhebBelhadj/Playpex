@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { Artwork, LibraryService, MediaType } from './library.service';
 import { Navigator } from './nav/navigator.service';
+import type { PlaySource } from './play-sources.service';
+
+// A file the server has (POST /play/sources: a library file, a download's
+// file), played through /media/{ref} with no torrent request
+export interface PlaybackSource {
+  ref: string;
+  infoHash?: string;        // a download's file: its torrent (stats, progress)
+  path?: string;            //   and its path in it
+}
 
 // What the player plays: the payload of its screen (core.player), opened by
 // PlaybackService.play().
@@ -9,7 +18,10 @@ export interface PlaybackRequest {
   subtitle?: string;        // e.g. "S01E03 · The Bear"; shown instead of year/runtime
   year?: string;
   runtimeMinutes?: number;
-  magnet: string;
+  // what plays: a torrent (`magnet`, or an info hash it already has), or a
+  // file on the server (`source`)
+  magnet?: string;
+  source?: PlaybackSource;
   imdbId?: string;          // movie or show IMDb id ("tt…"), used for subtitles
   season?: number;          // set for TV episodes: picks the episode file
   episode?: number;         //   inside season packs and looks up episode subtitles
@@ -55,6 +67,12 @@ export class PlaybackService {
     return magnet;
   }
 
+  // What a play source gives the player: its file, else its torrent
+  static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource } {
+    if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path } };
+    return { magnet: source.magnet || source.infoHash };
+  }
+
   // The player, over the current screen (Back returns to it). `replace`: in
   // place of the current entry (the next episode, from the player itself).
   // Each playback is its own session (`player/:session`): a new component,
@@ -70,13 +88,16 @@ export class PlaybackService {
   // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash.
   // 18+ movies get server results (lib/adult.js) that carry their own `magnet`
   playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
-    let magnet = PlaybackService.movieMagnet(movie, torrent);
+    this.playMovieFrom(movie, { magnet: PlaybackService.movieMagnet(movie, torrent) }, startAt);
+  }
 
+  // The same with a play source's target (PlaybackService.target)
+  playMovieFrom(movie, target:{ magnet?:string, source?:PlaybackSource }, startAt?:number) {
     this.play({
       title: movie['original_title'],
       year: (movie['release_date'] || '').slice(0, 4),
       runtimeMinutes: movie['runtime'],
-      magnet: magnet,
+      ...target,
       imdbId: movie['imdb_id'],
       mediaType: 'movie',
       tmdbId: movie['id'],

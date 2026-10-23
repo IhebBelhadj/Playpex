@@ -570,7 +570,7 @@ export interface paths {
             cookie?: never;
         };
         /** The library's folders (with file counts and scan state) and the scanner's queue */
-        get: operations["getLibrary"];
+        get: operations["getMediaLibrary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1556,6 +1556,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/play/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Every way to play a movie or an episode, best first
+         * @description The play pipeline (docs/media-server-plan.md §6): library files of the title, the server's
+         *     downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
+         *     the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
+         *     files on this server that play come first, and `policy.autoplay` names the source to start
+         *     without asking when it is the only one. A provider that fails or takes longer than its timeout
+         *     (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
+         *     Play a source with a `ref` through `/media/{ref}` (no `POST /torrents`); a torrent through its `magnet`.
+         */
+        post: operations["playSources"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/releases/providers": {
         parameters: {
             query?: never;
@@ -1911,7 +1937,7 @@ export interface paths {
         head?: never;
         /**
          * Change some of the profile's settings
-         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `adult.*`, or
+         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.*`, or
          *     `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
          *     refuses the whole patch (`INVALID`, with `errors`). `adult.*` keys are refused for kids
          *     profiles (`FORBIDDEN`). Publishes `settings.changed`.
@@ -2608,6 +2634,79 @@ export interface components {
             /** @description How many providers failed */
             providerErrors?: number;
         };
+        PlaySourcesRequest: {
+            /** @enum {string} */
+            kind: "movie" | "episode";
+            /** @description The movie's, or the episode's show's */
+            tmdbId: number;
+            /** @description The movie's / the show's (torrent providers search by it) */
+            imdbId?: string | null;
+            /** @description The movie's / the show's, to match release names */
+            title: string;
+            year?: number | null;
+            /** @description Episodes */
+            season?: number;
+            /** @description Episodes */
+            episode?: number;
+            /** @description Who is watching: their settings and kids rules apply */
+            profileId?: string | null;
+        };
+        PlaySource: {
+            /** @description Stable for a source: the media ref of a file or a download's file, `torrent:<infoHash>` of a torrent */
+            id: string;
+            /**
+             * @description file: in the library; download: a file of the server's download of this title; torrent: from a provider
+             * @enum {string}
+             */
+            type: "file" | "download" | "torrent";
+            /** @description library, downloads, yts, eztv, therarbg… (unknown values may come with plugins) */
+            provider: string;
+            /** @description The collect handler that found it */
+            handler?: string;
+            /** @description A file's or a release's name */
+            label: string;
+            /** @description file, download: the media ref to play (GET /media/{ref}) */
+            ref?: string;
+            /** @description download, torrent */
+            infoHash?: string;
+            /** @description download: the file's path in its torrent */
+            path?: string;
+            /** @description torrent: with the server's tracker list */
+            magnet?: string;
+            /** @description Bytes */
+            size?: number | null;
+            /** @description 2160p, 1080p, 720p, 480p, SD */
+            quality?: string | null;
+            codec?: string | null;
+            audio?: string | null;
+            /** @description file: seconds (ffprobe) */
+            duration?: number | null;
+            seeds?: number | null;
+            peers?: number | null;
+            /** @description download: how much of the file is there (1 = on disk) */
+            progress?: number;
+            state?: components["schemas"]["DownloadState"];
+            /**
+             * @description yes; audio-converted (Dolby / DTS sound re-encoded by the server's ffmpeg); maybe (HEVC / 10-bit / 4K: depends on the hardware); no
+             * @enum {string}
+             */
+            playable: "yes" | "audio-converted" | "maybe" | "no";
+            /** @description Flags clients may show: best (the first), on-server, downloading, pack, hdr. Ignore those you don't know */
+            badges: string[];
+            /** @description Why it may not play, in words (English) */
+            notes: string[];
+        };
+        PlaySources: {
+            sources: components["schemas"]["PlaySource"][];
+            policy: {
+                /** @description The id of the source to play without asking, else null: show the sources */
+                autoplay: string | null;
+            };
+            errors: {
+                handler: string;
+                message: string;
+            }[];
+        };
         ReleaseProvider: {
             id: string;
             name: string;
@@ -2818,6 +2917,8 @@ export interface components {
             /** @description The release being played, to resume the same one */
             infoHash?: string | null;
             filePath?: string | null;
+            /** @description Or a library file being played (the id of its `f_` media ref) */
+            fileId?: string | null;
         };
         ProgressRow: {
             profileId: string;
@@ -2834,6 +2935,7 @@ export interface components {
             durationS: number;
             infoHash?: string | null;
             filePath?: string | null;
+            fileId?: string | null;
             finished: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -2850,6 +2952,8 @@ export interface components {
                 durationS: number;
                 infoHash?: string | null;
                 filePath?: string | null;
+                /** @description A library file: resume with the source `f_<fileId>` */
+                fileId?: string | null;
                 /** Format: date-time */
                 updatedAt?: string;
             };
@@ -2883,6 +2987,7 @@ export interface components {
             ratio?: number;
             infoHash?: string | null;
             filePath?: string | null;
+            fileId?: string | null;
             /** Format: date-time */
             updatedAt?: string;
         };
@@ -4417,7 +4522,7 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
         };
     };
-    getLibrary: {
+    getMediaLibrary: {
         parameters: {
             query?: never;
             header?: never;
@@ -5873,6 +5978,32 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             502: components["responses"]["Upstream"];
+        };
+    };
+    playSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaySourcesRequest"];
+            };
+        };
+        responses: {
+            /** @description Ranked sources */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaySources"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
         };
     };
     listReleaseProviders: {

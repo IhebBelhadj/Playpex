@@ -57,6 +57,13 @@
       "when": 1792743619008,
       "tag": "0007_library_scan",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792747176377,
+      "tag": "0008_progress_file",
+      "breakpoints": true
     }
   ]
 }

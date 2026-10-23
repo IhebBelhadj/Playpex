@@ -2,16 +2,19 @@ import { Injectable } from '@angular/core';
 import { catchError, defaultIfEmpty, map, Observable, of, switchMap } from 'rxjs';
 import { MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
-import { PlaybackService } from './playback.service';
+import { PlaybackService, PlaybackSource } from './playback.service';
 import { TorrentService } from './torrent.service';
 import { TorrentPickerService } from './torrent-picker.service';
 import { LibraryService } from './library.service';
 import { PlayChoiceService } from './play-choice.service';
+import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.service';
 
 // Playing one episode of a show, shared by the show page and the episode page:
 // with a saved position, Resume / Play from the beginning first; then the
-// episode's torrents (EZTV + TheRARBG via the server, best match first) → the
-// torrent picker → the player (PlaybackService.play).
+// episode's sources (the server's play pipeline: files on the server, its
+// downloads, EZTV + TheRARBG torrents, best first) → a lone file on the
+// server plays at once, else the source picker → the player
+// (PlaybackService.play). Download picks among torrents only (chooseRelease).
 
 export interface EpisodeTarget {
   show: any;                 // TMDB show details
@@ -20,10 +23,10 @@ export interface EpisodeTarget {
   episode: any;              // TMDB episode (episode_number, name, air_date, runtime, upcoming)
 }
 
-// The player's "Up next": the episode and the release that would play
+// The player's "Up next": the episode and the source that would play
 export interface NextEpisode extends EpisodeTarget {
   code: string;              // S01E02
-  torrent: any | null;       // best match (null: none found, or not looked up yet)
+  source: PlaySource | null; // best source (null: none found, or not looked up yet)
 }
 
 @Injectable({
@@ -42,6 +45,7 @@ export class EpisodePlaybackService {
     private playChoice:PlayChoiceService,
     private playback:PlaybackService,
     private movies:MoviesService,
+    private sources:PlaySourcesService,
   ) { }
 
   static code(season:number, episode:number):string {
@@ -80,7 +84,8 @@ export class EpisodePlaybackService {
         }
         this.playChoice.choose(`${target.show['name']} ${code}`, resume).subscribe(choice => {
           if (choice == 'restart') this.findAndPlay(target, code, 0);
-          // same release as last time, so the saved position matches
+          // same file / release as last time, so the saved position matches
+          else if (resume.fileId) this.findAndPlay(target, code, resume.positionS, source => source.ref == 'f_' + resume.fileId);
           else if (resume.infoHash) this.start(target, code, { magnet: resume.infoHash }, resume.positionS);
           else this.findAndPlay(target, code, resume.positionS);
         });
@@ -121,7 +126,7 @@ export class EpisodePlaybackService {
             season: found.season,
             episode: found.ep,
             code: EpisodePlaybackService.code(found.season, found.ep['episode_number']),
-            torrent: null,
+            source: null,
           } as NextEpisode;
         }),
       )),
@@ -129,29 +134,43 @@ export class EpisodePlaybackService {
     );
   }
 
-  // Its best release (the server's ranking; the first that plays here when
-  // the ranking has one), looked up ahead so "Play next" starts at once
-  bestTorrent(next:NextEpisode):Observable<any | null> {
-    if (!next.imdbId) return of(null);
-    return this.torrentService.findEpisodeTorrents(next.imdbId, next.show['name'], next.season, next.episode['episode_number']).pipe(
-      map(result => result.torrents.find(t => t['playable'] !== false && t['audio'] != 'unsupported') || result.torrents[0] || null),
+  // Its best source (the server's ranking: a file on the server first when
+  // the profile prefers them, else the first that plays here), looked up
+  // ahead so "Play next" starts at once
+  bestSource(next:NextEpisode):Observable<PlaySource | null> {
+    return this.sources.find(EpisodePlaybackService.query(next)).pipe(
+      map(result => PlaySourcesService.best(result)),
       catchError(() => of(null)),
     );
   }
 
-  // From the player: straight to that release, no picker, from the next
+  // From the player: straight to that source, no picker, from the next
   // episode's saved position if it has one, in place of the current player
   playNext(next:NextEpisode) {
-    if (!next.torrent) return;
+    if (!next.source) return;
     let key = { mediaType: 'tv' as const, tmdbId: Number(next.show['id']), season: next.season, episode: next.episode['episode_number'] };
     this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
       let resume = state.resume;
-      this.start(next, next.code, next.torrent, resume ? resume.positionS : 0, true);
+      this.start(next, next.code, PlaybackService.target(next.source), resume ? resume.positionS : 0, true);
     });
   }
 
-  private findAndPlay(target:EpisodeTarget, code:string, startAt?:number) {
-    this.chooseRelease(target).subscribe(torrent => this.start(target, code, torrent, startAt));
+  static query(target:EpisodeTarget):SourcesQuery {
+    return {
+      kind: 'episode',
+      tmdbId: Number(target.show['id']),
+      imdbId: target.imdbId,
+      title: target.show['name'],
+      year: PlaySourcesService.year(target.show['first_air_date']),
+      season: target.season,
+      episode: target.episode.episode_number,
+    };
+  }
+
+  private findAndPlay(target:EpisodeTarget, code:string, startAt?:number, prefer?:(source:PlaySource) => boolean) {
+    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, target.episode.episode_number);
+    this.sources.choose(EpisodePlaybackService.query(target), `${target.show['name']} ${code}`, { prefer, looked: () => this.resolving = null })
+      .subscribe(source => this.start(target, code, PlaybackService.target(source), startAt));
   }
 
   /**
@@ -195,14 +214,14 @@ export class EpisodePlaybackService {
     });
   }
 
-  private start(target:EpisodeTarget, code:string, torrent, startAt?:number, replace = false) {
+  private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource }, startAt?:number, replace = false) {
     let ep = target.episode;
     this.playback.play({
       title: target.show['name'],
       subtitle: `${code} · ${ep.name}`,
       year: (ep.air_date || '').slice(0, 4),
       runtimeMinutes: ep.runtime,
-      magnet: torrent.magnet,
+      ...what,
       imdbId: target.imdbId,
       season: target.season,
       episode: ep.episode_number,

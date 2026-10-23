@@ -16,6 +16,7 @@ import { Download, DownloadTile, DownloadsService } from '../downloads.service';
 import { TorrentService } from '../torrent.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
+import { PlaySource, PlaySourcesService, SourcesQuery } from '../play-sources.service';
 import { ReleasesService } from '../releases.service';
 import { Navigator, useScreen } from '../nav/public-api';
 import { tmdbImageBase } from '../ui/public-api';
@@ -32,6 +33,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   private profiles = inject(ProfilesService);
 
   private downloads = inject(DownloadsService);
+
+  private sources = inject(PlaySourcesService);
   // the server's download of this movie: the Download tile
   download:Download | null = null;
   downloadTile:DownloadTile = DownloadsService.tile(null);
@@ -46,7 +49,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   trailer;
   playingTrailer = false;
   canPlay = false;
-  findingTorrents = false;    // 18+ movie: Play is looking up torrents
+  findingTorrents = false;    // Play is looking up sources (18+: torrents)
   selectedMovie;
   // what plugins' actions and rows on this page get (ui/slots)
   slotContext:MovieContext | null = null;
@@ -341,30 +344,37 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   play(){
     let resume = this.resume;
     if (!resume) {
-      this.chooseTorrentAndPlay();
+      this.chooseSourceAndPlay();
       return;
     }
     this.playChoice.choose(this.selectedMovie['original_title'] , resume).subscribe(choice => {
-      if (choice == 'restart') this.chooseTorrentAndPlay(0);
-      // same release as last time, so the saved position matches
+      if (choice == 'restart') this.chooseSourceAndPlay(0);
+      // same file / release as last time, so the saved position matches
+      else if (resume.fileId) this.chooseSourceAndPlay(resume.positionS, source => source.ref == 'f_' + resume.fileId);
       else if (resume.infoHash) this.startPlayer({ hash : resume.infoHash , quality : '' } , resume.positionS);
-      else this.chooseTorrentAndPlay(resume.positionS);
+      else this.chooseSourceAndPlay(resume.positionS);
     })
   }
 
-  chooseTorrentAndPlay(startAt?:number){
+  // The server's sources (files on it, its downloads, YTS torrents): a lone
+  // file on the server plays at once, else the source picker
+  chooseSourceAndPlay(startAt?:number, prefer?:(source:PlaySource) => boolean){
     let movie = this.selectedMovie;
     if (this.isAdult) {
       this.chooseAdultTorrentAndPlay();
       return;
     }
-    if (!movie['torrents']?.length) {
-      this.notificationService.sendNotification('error',"No streaming service found for the movie");
-      return;
-    }
-    let options = movie['torrents'].map(torrent => TorrentPickerService.fromYts(torrent));
-
-    this.torrentPicker.choose(movie['original_title'] , options).subscribe(choice => this.startPlayer(choice.torrent , startAt));
+    if (this.findingTorrents) return;
+    this.findingTorrents = true;
+    let query:SourcesQuery = {
+      kind: 'movie',
+      tmdbId: Number(movie['id']),
+      imdbId: movie['imdb_id'],
+      title: movie['title'] || movie['original_title'],
+      year: PlaySourcesService.year(movie['release_date']),
+    };
+    this.sources.choose(query, movie['original_title'], { prefer, looked: () => this.findingTorrents = false })
+      .subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
   }
 
   chooseAdultTorrentAndPlay(){

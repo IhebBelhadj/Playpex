@@ -9,7 +9,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | Scope | Owner | Keys | Why |
 |---|---|---|---|
 | `device` | the calling device | `display.uiScale`, `display.safeArea`, `player.volume`, `subtitles.size` | depend on the screen, its distance, its speakers |
-| `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `adult.layout`, `adult.metadataProvider` | depend on the person |
+| `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `adult.layout`, `adult.metadataProvider` | depend on the person |
 
 **Which device**: a paired client is the device its token names, keyed by the `deviceId` it sent with `PUT /devices/me` (send it right after pairing; an `X-Playpex-Device` header is ignored for paired clients, so one device can't write another's settings). A client on the server machine (no token) is its `X-Playpex-Device` header or `?device=` (letters, digits and `._:-`, up to 64). Without one, the settings routes answer `400 DEVICE_REQUIRED`. Revoking a device deletes its settings.
 
@@ -23,6 +23,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | `subtitles.size` | device | string | small, medium, large, largest | medium |
 | `subtitles.provider` | profile | string or null | a subtitle provider id (`GET /subtitles/providers`) | null (the server's first enabled one) |
 | `player.autoplayNext` | profile | boolean | | true |
+| `player.preferLocalFiles` | profile | boolean | files on the server first in `POST /play/sources`, a lone one plays at once | true |
 | `adult.layout` | profile, 18+ | string | posters, compact | posters |
 | `adult.metadataProvider` | profile, 18+ | string or null | an 18+ metadata provider id | null (the server's default) |
 

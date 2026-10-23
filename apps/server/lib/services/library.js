@@ -173,6 +173,25 @@ module.exports = function libraryService(repositories, options) {
     },
 
     /**
+     * The files of a movie / an episode that can play (state ok), newest
+     * first, each with its item; [] when the library has none.
+     * @returns {Promise<Array<MediaFile & { item: object }>>}
+     */
+    filesFor: function (identity) {
+      return Promise.resolve().then(function () {
+        checkIdentity(identity);
+        return repo.findItemFor(identity);
+      }).then(function (item) {
+        if (!item) {
+          return [];
+        }
+        return repo.queryFiles({ itemId: item.id, state: 'ok', limit: 50, offset: 0 }).then(function (r) {
+          return r.rows;
+        });
+      });
+    },
+
+    /**
      * Makes the file this item (found or made from its identity; `details`
      * fill or refresh its title, year, artwork…). A file matched by a stronger
      * decision keeps it (admin > nfo > auto) unless `matchedBy` is as strong.

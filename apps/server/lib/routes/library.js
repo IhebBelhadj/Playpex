@@ -57,12 +57,12 @@ router.delete('/watchlist/:mediaType/:tmdbId', handle(function (s, req) {
 
 // ── playback progress ───────────────────────────────────────────────────────
 
-// body: { season?, episode?, positionS, durationS, title?, posterPath?, backdropPath?, genreIds?, infoHash?, filePath? }
+// body: { season?, episode?, positionS, durationS, title?, posterPath?, backdropPath?, genreIds?, infoHash?, filePath?, fileId? }
 router.put('/progress/:mediaType/:tmdbId', handle(function (s, req) {
   return s.playback.saveProgress(req.params.profileId, Object.assign({}, req.body, episodeKey(req)));
 }));
 
-// ?season=&episode= → { resume: {positionS, durationS, infoHash, filePath} | null, finished }
+// ?season=&episode= → { resume: {positionS, durationS, infoHash, filePath, fileId} | null, finished }
 router.get('/progress/:mediaType/:tmdbId', handle(function (s, req) {
   return s.playback.getState(req.params.profileId, episodeKey(req));
 }));

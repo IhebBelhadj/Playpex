@@ -539,6 +539,8 @@ v1.use('/adult/meta', require('./routes/adultMeta'));
 // User settings, per device and per profile (docs/settings-plan.md)
 v1.use(require('./routes/settings'));
 v1.use('/profiles', require('./routes/profiles'));
+// What can play a title: files on this server, downloads, torrents (lib/play)
+v1.use('/play', require('./routes/play'));
 v1.use('/profiles/:profileId', require('./routes/library'));
 
 v1.use(function (req, res) {

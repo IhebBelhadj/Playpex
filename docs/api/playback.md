@@ -1,10 +1,39 @@
 # Playing a torrent
 
-Playing anything is the same few steps: find a release (a torrent), add it to the server, wait for its file list, choose a file, stream it over HTTP byte ranges, tell the server you're still watching, and release it when you're done. Every request here carries the device token ([auth](auth.md)).
+Playing anything is the same few steps: find a source (`POST /play/sources`; a file the server has plays by its media ref at once), else add a torrent to the server, wait for its file list, choose a file, stream it over HTTP byte ranges, tell the server you're still watching, and release it when you're done. Every request here carries the device token ([auth](auth.md)).
 
 ## 1. Finding something to play
 
-The server has no media library: titles come from public catalogs, releases from torrent providers.
+**Ask the server first**: `POST /play/sources` answers every way to play one movie or episode, best first, in one call:
+
+```http
+POST /api/v1/play/sources
+Content-Type: application/json
+
+{ "kind": "episode", "tmdbId": 1396, "imdbId": "tt0903747", "title": "Breaking Bad", "year": 2008,
+  "season": 1, "episode": 1, "profileId": "…" }
+```
+
+```json
+{ "sources": [
+    { "id": "f_3c1…", "type": "file", "provider": "library", "label": "Breaking Bad - S01E01.mkv", "ref": "f_3c1…",
+      "quality": "1080p", "size": 1460000000, "playable": "audio-converted", "badges": ["on-server", "best"],
+      "notes": ["Sound converted by the server"] },
+    { "id": "torrent:9f2…", "type": "torrent", "provider": "eztv", "label": "Breaking.Bad.S01E01.720p…", "infoHash": "9f2…",
+      "magnet": "magnet:?xt=…", "seeds": 120, "quality": "720p", "playable": "yes", "badges": [], "notes": [] } ],
+  "policy": { "autoplay": null },
+  "errors": [] }
+```
+
+- `tmdbId`, `imdbId`, `title`, `year` are the movie's, or the **show's** for an episode; `title` is matched against release names (TMDB's English name).
+- `type`: `file` (a file of the server's media library), `download` (a file of a torrent the server keeps for this title; `progress` 1 = all on disk), `torrent` (from a provider). **A source with a `ref` plays through `/media/{ref}` directly** (skip steps 2–4: no `POST /torrents`, no polling; the lease is taken by the first `GET /media/{ref}`, kept with `POST /media/{ref}/keepalive`, released with `DELETE /media/{ref}`). A `torrent` plays from its `magnet` (steps 2–5).
+- `playable`: `yes`, `audio-converted` (Dolby / DTS sound the server re-encodes, see [audio](#choosing-direct-play-or-the-transcoded-stream)), `maybe` (HEVC / 10-bit / 4K: depends on the hardware), `no`; `notes` say why in words. Like the release fields below, these are judged for a Chromium player.
+- `badges` you may show (ignore unknown ones): `best` (the first), `on-server`, `downloading`, `pack`, `hdr`.
+- With `profileId`, the profile's setting `player.preferLocalFiles` (default on) puts the files on the server that play first, and **`policy.autoplay`** names the source to start without asking (a lone file on the server that plays); otherwise show the sources and let the user pick. A kids profile gets no file of an adults-only folder.
+- A provider that fails or takes longer than 10 s only drops its own sources (`errors: [{handler, message}]`); the answer comes anyway.
+- To resume, prefer the source the progress names (`fileId` → the source `f_<fileId>`; `infoHash` → that torrent).
+
+The routes below are what the sources are built from; use them for "Find releases" lists, or on servers older than the play pipeline (a `404` for `POST /play/sources`). Titles come from public catalogs.
 
 | What | Where | Notes |
 |---|---|---|
@@ -138,7 +167,7 @@ The server keeps every torrent it has played or been asked to download, like a t
 
 ## Progress and resume
 
-Saving where the user stopped is per **profile** ([profiles](profiles.md#playback-progress-and-resume)): `PUT /profiles/{id}/progress/{mediaType}/{tmdbId}` every ~15 s while playing and on pause / exit, with `infoHash` and `filePath` so a later resume can play the same release. Separate from the keepalive, which is per device and only lives as long as the lease.
+Saving where the user stopped is per **profile** ([profiles](profiles.md#playback-progress-and-resume)): `PUT /profiles/{id}/progress/{mediaType}/{tmdbId}` every ~15 s while playing and on pause / exit, with `infoHash` and `filePath` (a torrent's file) or `fileId` (a library file: the id of its `f_` ref) so a later resume can play the same release. Separate from the keepalive, which is per device and only lives as long as the lease.
 
 ## Trailers
 
