@@ -33,7 +33,7 @@ export interface PlaypexDev {
   // the open layers' ids, bottom to top
   layers():string[];
   // the player on a plain video file (no torrent): a movie, or Breaking Bad
-  // S01E01 (its Up next is S01E02)
+  // S01E01 (its Up next is S01E02); or on a file of the server by its media ref (`f_…`)
   player(src:string, kind?:'movie' | 'episode'):void;
   // the server's API base and this client's device id (scenarios read the settings with them)
   api:string;
@@ -75,7 +75,10 @@ export class DevHook {
       overlay: kind => run(() => this.overlay(kind)),
       input: action => run(() => this.dispatcher.dispatch(action)),
       layers: () => this.layerStack.layers.map(layer => layer.def.id),
-      player: (src, kind = 'movie') => run(() => this.playback.play(kind == 'episode'
+      // a media ref (f_… / t_…): that file on the server, played as a source
+      player: (src, kind = 'movie') => run(() => /^[ft]_/.test(src)
+        ? this.playback.play({ title: 'Heat', year: '1995', source: { ref: src }, startAt: 0 })
+        : this.playback.play(kind == 'episode'
         ? { title: 'Breaking Bad', subtitle: 'S01E01 · Pilot', magnet: '', devSrc: src, imdbId: 'tt0903747',
             season: 1, episode: 1, mediaType: 'tv', tmdbId: 1396, startAt: 0 }
         : { title: 'Heat', year: '1995', runtimeMinutes: 170, magnet: '', devSrc: src, imdbId: 'tt0113277',

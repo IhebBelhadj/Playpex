@@ -185,6 +185,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // media keys while the player is shown and no layer is open (§13.2)
   private mediaSub = inject(MediaKeys).for(this.screen).subscribe(action => this.onMedia(action));
   private lastMedia:{ action:MediaAction | null, at:number } = { action: null, at: 0 };
+  // Set first in ngOnDestroy: work that finishes later (a probe, the torrent's
+  // answer, a seek's keyframe, Up next) must not start a video nobody sees
+  private destroyed = false;
+  // the <video>'s listeners, removed together on destroy
+  private videoListeners = new AbortController();
+  private readyTimer:any;
+  private registerSub:Subscription;
   private keyDown = (e:KeyboardEvent) => this.onKeyDown(e);
   private keyUp = (e:KeyboardEvent) => this.onKeyUp(e);
 
@@ -274,59 +281,78 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
 
     this.magnetUrl = this.playback.magnet;
-    let reps = 0;
-    this.playerSub = this.torrentService.registerTorrent(this.magnetUrl)
-    .pipe(
-      switchMap(data => {
-        if (!this.torrentHash) {
-          this.torrentHash = data['infoHash'];
-          this.startKeepalive();
-        }
-        return this.torrentService.getTorrent(data['infoHash']);
-      }),
-      repeat({delay : 4000})
-    )
-    .subscribe({ error: e => {
-      // e.g. 503 BUSY: the server already streams as many torrents as it allows
-      this.leavePlayer();
-      this.notificationService.sendNotification("error" , e?.error?.error || "Couldn't start this torrent. Check that the Playpex server is running.");
-    }, next: data => {
-      reps += 1;
-
-      if (data['files']) {
-        this.playerSub.unsubscribe();
-        let file = this.playback.season
-          ? this.pickEpisodeFile(data['files'] , this.playback.season , this.playback.episode)
-          : this.pickVideoFile(data['files']);
-        if (!file) {
-          this.leavePlayer();
-          let what = this.playback.season ? `${this.playback.subtitle?.split(' ')[0]} in this torrent` : "in this torrent";
-          this.notificationService.sendNotification("error" , `No playable video file found ${what}`);
+    // Not unsubscribed on destroy: when the answer comes after the player
+    // closed, the server took a lease all the same, and it is let go here
+    this.registerSub = this.torrentService.registerTorrent(this.magnetUrl).subscribe({
+      next: data => {
+        let hash = data['infoHash'];
+        if (this.destroyed) {
+          this.torrentService.removeTorrent(hash).subscribe({ error: () => {} });
           return;
         }
-        this.filePath = file['path'];
-        this.ref = file['ref'] || null;
-        this.link = this.ref ? `${API_PREFIX}/media/${this.ref}` : file['link'];
-        this.probeFile().then(() => this.setupPlayer());
-        return;
-      }
+        this.torrentHash = hash;
+        this.startKeepalive();
+        this.waitForFiles(hash);
+      },
+      error: e => this.cantStart(e),
+    });
+  }
 
-      if (reps > 4) {
-        this.playerSub.unsubscribe();
-        this.leavePlayer();
-        this.notificationService.sendNotification("error" , "Couldn't fetch the torrent's metadata (no peers?). Try again later");
-      }
-    }})
+  // e.g. 503 BUSY: the server already streams as many torrents as it allows
+  private cantStart(e) {
+    if (this.destroyed) return;
+    this.leavePlayer();
+    this.notificationService.sendNotification("error" , e?.error?.error || "Couldn't start this torrent. Check that the Playpex server is running.");
+  }
+
+  // The torrent's files, polled every 4 s until its metadata is there
+  private waitForFiles(hash:string) {
+    let reps = 0;
+    this.playerSub = this.torrentService.getTorrent(hash).pipe(repeat({ delay: 4000 })).subscribe({
+      error: e => this.cantStart(e),
+      next: data => {
+        reps += 1;
+
+        if (data['files']) {
+          this.playerSub.unsubscribe();
+          let file = this.playback.season
+            ? this.pickEpisodeFile(data['files'] , this.playback.season , this.playback.episode)
+            : this.pickVideoFile(data['files']);
+          if (!file) {
+            this.leavePlayer();
+            let what = this.playback.season ? `${this.playback.subtitle?.split(' ')[0]} in this torrent` : "in this torrent";
+            this.notificationService.sendNotification("error" , `No playable video file found ${what}`);
+            return;
+          }
+          this.filePath = file['path'];
+          this.ref = file['ref'] || null;
+          this.link = this.ref ? `${API_PREFIX}/media/${this.ref}` : file['link'];
+          this.probeFile().then(() => this.setupPlayer());
+          return;
+        }
+
+        if (reps > 4) {
+          this.playerSub.unsubscribe();
+          this.leavePlayer();
+          this.notificationService.sendNotification("error" , "Couldn't fetch the torrent's metadata (no peers?). Try again later");
+        }
+      },
+    });
   }
 
   ngOnDestroy(): void {
     // last position, while the <video> still has it
     this.saveProgress();
+    this.destroyed = true;
+    // every way out lets go of the lease (beforeLeave did already, but not
+    // every exit runs it); does nothing the second time
+    this.releaseTorrent();
     this.mediaSub?.unsubscribe();
     this.stopMediaSession();
     clearTimeout(this.seekTimer);
     clearTimeout(this.scrubTimer);
     clearTimeout(this.controlsIdle);
+    clearTimeout(this.readyTimer);
     this.stateSub?.unsubscribe();
     this.nextSub?.unsubscribe();
 
@@ -340,7 +366,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     gsap.killTweensOf('.clock');
     gsap.set('.clock' , { clearProps : 'opacity' });
 
-    if (this.moviePlayer) this.moviePlayer.src = "";
+    this.stopVideo();
     window.removeEventListener('keydown', this.keyDown, true);
     window.removeEventListener('keyup', this.keyUp, true);
   }
@@ -529,6 +555,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Every minute until the player closes: keeps the server's lease, and tells
   // it what plays (its Activity view)
   startKeepalive() {
+    if (this.destroyed) return;
+    clearInterval(this.keepaliveTimer);
     this.keepaliveTimer = setInterval(() => {
       let player = this.moviePlayer;
       let duration = this.playerReady ? this.mediaDuration() : NaN;
@@ -658,22 +686,28 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // ── playback ──────────────────────────────────────────────────────────────
 
   setupPlayer(){
+    // left while the file was being probed / the torrent opened
+    if (this.destroyed) return;
     this.moviePlayer = this.host.nativeElement.querySelector('.moviePlayer');
+    let player = this.moviePlayer;
+    let on = (name:string, fn:() => void) => player.addEventListener(name, fn, { signal: this.videoListeners.signal });
 
     this.applyVolume();
     this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
       : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
     this.moviePlayer.play()?.catch(() => {});
     // e.g. HEVC/x265 or AVI that Chromium can't decode
-    this.moviePlayer.addEventListener('error', () => {
+    on('error', () => {
       if (!this.screen.active || !this.moviePlayer.getAttribute('src')) return;
       this.leavePlayer();
       this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
     });
-    this.moviePlayer.addEventListener('canplay', () => {
+    on('canplay', () => {
       this.applyResume();
       if (this.playerReady) return;
-      setTimeout(() => {
+      clearTimeout(this.readyTimer);
+      this.readyTimer = setTimeout(() => {
+        if (this.destroyed) return;
         this.playerReady = true;
         this.updateClock();
         this.startMediaSession();
@@ -681,29 +715,43 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     });
 
     // Stalls mid-playback: spinner + swarm stats until data flows again
-    this.moviePlayer.addEventListener('waiting', () => {
+    on('waiting', () => {
       if (this.playerReady) this.buffering = true;
     });
-    this.moviePlayer.addEventListener('playing', () => this.buffering = false);
+    on('playing', () => this.buffering = false);
 
-    this.moviePlayer.addEventListener('play', () => { this.paused = false; this.updateClock(); this.poke(); this.mediaState(); });
-    this.moviePlayer.addEventListener('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); this.mediaState(); });
+    on('play', () => { this.paused = false; this.updateClock(); this.poke(); this.mediaState(); });
+    on('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); this.mediaState(); });
 
     // fires again each time the transcoded stream restarts
-    this.moviePlayer.addEventListener('loadedmetadata', () => this.updateTimeline());
-    this.moviePlayer.addEventListener('timeupdate', () => {
+    on('loadedmetadata', () => this.updateTimeline());
+    on('timeupdate', () => {
       this.checkAudio();
       this.updateTimeline();
       // Progress for Continue watching / history: periodically, on pause and at the end
       if (!this.moviePlayer.paused && Date.now() - this.lastSave > SAVE_EVERY_MS) this.saveProgress();
       if (this.upNext && !this.upNext.source && !this.upNextLooking && this.remaining <= UP_NEXT_S + 60) this.lookUpNextRelease();
     });
-    this.moviePlayer.addEventListener('progress', () => this.updateTimeline());
-    this.moviePlayer.addEventListener('ended', () => {
+    on('progress', () => this.updateTimeline());
+    on('ended', () => {
       this.saveProgress();
       // the profile's "Autoplay next episode" (on by default)
       if (this.upNext?.source && !this.upNextDismissed && this.settings.value('player.autoplayNext')) this.playNext();
     });
+  }
+
+  // Stops the <video> for good: its listeners first (no 'pause' / 'error'
+  // handlers for a closed player), then the stream itself. Removing src and
+  // calling load() aborts the request (the server's transcode ends with it)
+  // and frees the decoder; `src = ""` alone would load the page's own URL
+  private stopVideo() {
+    this.videoListeners.abort();
+    let player = this.moviePlayer || this.host.nativeElement.querySelector<HTMLVideoElement>('.moviePlayer');
+    if (!player) return;
+    player.pause();
+    player.querySelectorAll('track').forEach(track => track.remove());
+    player.removeAttribute('src');
+    player.load();
   }
 
   togglePlay() {
@@ -734,7 +782,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         fetch(this.server.media(this.mediaPath('keyframe') , { t: target }))
           .then(r => r.json()).catch(() => ({time: target}))
           .then(data => this.zone.run(() => {
-            if (this.pendingSeek !== target || !this.screen.active) return; // a newer seek won
+            if (this.destroyed || this.pendingSeek !== target || !this.screen.active) return; // a newer seek won, or the player closed
             this.offset = data['time'];
             this.pendingSeek = null;
             this.moviePlayer.src = this.streamUrl(this.offset);
@@ -1026,7 +1074,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   playNext() {
-    if (!this.upNext) return;
+    if (this.destroyed || !this.upNext) return;
     if (!this.upNext.source) {
       if (!this.upNextLooking) this.lookUpNextRelease(() => this.playNext());
       return;
