@@ -37,20 +37,29 @@ src/components/dlna.tsx   DlnaPanel (Settings › DLNA, under its two settings: 
 src/components/common.tsx  PageHeader, Stat, Empty, QueryError, Loading, Spinner, Dot, Confirm (AlertDialog), Mono
 src/components/ui/      shadcn components (generated: `npx shadcn@latest add <name>` from apps/dashboard)
 src/pages/*.tsx         one file per page
-src/pages/plugins.tsx   Plugins (docs/plugins-plan.md §6.3): Installed (icon, state, origin, signed / unsigned, the error, the
-                        on / off switch `EnableSwitch`, Open → its page), Install plugin (a dialog: upload a .ppx / .zip or a link
-                        (a GitHub repo / release page too) → POST /admin/plugins/packages → the preview → install by token), Trust
-                        (developer mode, trusted publisher keys: PUT /admin/settings {plugins}). Library › Edit folder has the
-                        "Information provider" select (the plugins with library.match, GET /admin/library `matchers`)
+src/pages/plugins.tsx   Plugins (docs/plugins-plan.md §6.3), tabs in `?tab=`: Installed (icon, state, origin or repository, signed / unsigned,
+                        update / held / deprecated, the error, `EnableSwitch`, Open → its page), Browse / Updates / Repositories
+                        (components/plugin-repositories.tsx), Developer (developer mode, trusted publisher keys: PUT /admin/settings
+                        {plugins}); "Install from a file or link" (a dialog: upload a .ppx / .zip or a link → POST /admin/plugins/packages →
+                        the preview → install by token). Library › Edit folder has the "Information provider" select (GET /admin/library `matchers`)
+src/components/plugin-repositories.tsx  BrowseTab (GET /admin/plugins/catalog, key ['plugin-catalog', …]: search, kind, cards → a details
+                        dialog with versions → POST …/catalog/install → PackagePreview), UpdatesTab (GET /admin/plugins/updates, key
+                        ['plugin-updates']: the server's policy (PUT /admin/settings {plugins: {updates}}), Update / "Update all", Check now),
+                        RepositoriesTab (GET /admin/plugins/repositories, key ['plugin-repositories']: cards with fingerprint, plugins and
+                        what's `refused`, errors / stale, a `pendingKey` to trust, on / off, remove; Add = URL → preview → "Trust and add")
 src/pages/plugin.tsx    /plugins/:pluginId, a plugin's own page (GET /admin/plugins/{id}, key ['admin-plugin', id]; refetched every
                         5 s on Activity): Overview (listing, origin, signature, requires, exports, changelog), Permissions, Settings,
                         Profiles, Accounts, Activity (its counters: `AdminPlugin.stats`; jobs; its log lines GET /admin/logs?plugin=),
-                        Versions (the version kept by the last update: POST …/rollback → the preview → install); the menu: Reload
-                        (a developer copy), Clear data (POST …/clear), Remove / Remove keep its data
+                        Versions (its update policy (PATCH {updatePolicy}), the versions its repository lists, the version kept by the
+                        last update: POST …/rollback → the preview → install); Overview alerts for `held`, deprecated (its replacement),
+                        no longer listed; the menu: Reload (a developer copy), Clear data (POST …/clear), Remove / Remove keep its data
+                        (a 409 with `dependents` → "Remove anyway" with force; ApiError.body)
 src/components/plugin-common.tsx  what both share: PluginIcon, PluginStateBadge, ORIGIN, every(ms), useRefreshPlugins, and PackagePreview
                         (a staged package as a dialog's content: what it asks for beyond the installed version first (`added`:
                         installing sends `accept: true`, the button says "Accept and update"), the rest, `removed`, changelog, signer,
-                        why it can't install + "Turn on developer mode"; a rollback's "Put it back")
+                        why it can't install + "Turn on developer mode"; a rollback's "Put it back"; a repository's package: its
+                        repository instead of a signer, `lifecycle`, `moves` (accepted by installing), `dependencies` (optional ones
+                        as checkboxes → `optional`); a repository package: "Trust and add")
 src/components/plugin-settings.tsx  a plugin's options rendered from its manifest (GET /admin/plugins/{id}/settings, key
                         ['admin-plugin-settings', id]): PluginServerSettings (its page's Settings) and PluginProfiles (its Profiles:
                         a profile picker, "Use it for <profile>" (PUT …/profiles {shown}), "What it may do for <profile>": a switch per
@@ -70,7 +79,7 @@ src/pages/docs-reference.tsx  Scalar on `/api/v1/openapi.yaml`, its own lazy chu
 ```
 
 ## Conventions
-- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`, `dlna`, `admin-plugins`, `admin-plugin` (+ id), `admin-plugin-settings` (+ id), `admin-plugin-links` (+ id); `plugin.changed` invalidates them and `library`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `pages/library.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
+- **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`, `dlna`, `admin-plugins`, `admin-plugin` (+ id), `admin-plugin-settings` (+ id), `admin-plugin-links` (+ id), `plugin-catalog`, `plugin-updates`, `plugin-repositories`; `plugin.changed` invalidates them and `library`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `pages/library.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
 - **API first**: a new page needs its route in `openapi.yaml` (+ `npm run generate -w packages/protocol`, server, contract test) before the UI; the types then flow here. Don't hand-write response types.
 - Theme tokens only (`bg-card`, `text-muted-foreground`, `text-success`, `text-warning`, `bg-destructive`…, defined in `src/index.css`); the accent (`--primary`) is the gold of the Playpex logo. Dark unless the OS prefers light (`index.html` script toggles `.dark`).
 - Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`).

@@ -28,7 +28,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { API_PREFIX, api, errorMessage, unwrap } from '@/lib/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { API_PREFIX, ApiError, api, errorMessage, unwrap } from '@/lib/api'
 import { ago, dateTime, time } from '@/lib/format'
 import { EnableSwitch, usePlugins } from '@/pages/plugins'
 
@@ -36,7 +49,8 @@ import { EnableSwitch, usePlugins } from '@/pages/plugins'
 // what it needs, changelog), Permissions, Settings (server scope), Profiles
 // (per profile: shown or hidden, personal permissions, profile settings),
 // Accounts, Activity (its counters since it started, jobs, its log lines),
-// Versions (the version the last update replaced, put back by a rollback);
+// Versions (its update policy, the versions its repository lists, the version
+// the last update replaced, put back by a rollback);
 // Clear data and Remove. Everything a plugin may do is decided here, never
 // on a client.
 
@@ -202,66 +216,94 @@ function Actions({ plugin: p }: { plugin: AdminPlugin }) {
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
+  // plugins requiring it: named first, then removed with force (they're switched off)
+  const [dependents, setDependents] = useState<{ keep: boolean; names: string[] } | null>(null)
   const remove = useMutation({
-    mutationFn: (keep: boolean) =>
-      unwrap(api.DELETE('/admin/plugins/{pluginId}', { params: { path: { pluginId: p.id }, query: { data: keep ? 'keep' : 'delete' } } })),
+    mutationFn: (v: { keep: boolean; force?: boolean }) =>
+      unwrap(
+        api.DELETE('/admin/plugins/{pluginId}', {
+          params: { path: { pluginId: p.id }, query: { data: v.keep ? 'keep' : 'delete', ...(v.force ? { force: '1' as const } : {}) } },
+        }),
+      ),
     onSuccess: () => {
       toast.success(`${p.name} removed`)
       refresh()
       navigate('/plugins')
     },
-    onError: (err) => toast.error(errorMessage(err)),
+    onError: (err, v) => {
+      const list = err instanceof ApiError ? (err.body.dependents as { name: string }[] | undefined) : undefined
+      if (list?.length) setDependents({ keep: v.keep, names: list.map((d) => d.name) })
+      else toast.error(errorMessage(err))
+    },
   })
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="More">
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {dev && (
-          <DropdownMenuItem disabled={reload.isPending} onSelect={() => reload.mutate()}>
-            <RotateCw /> Reload from its folder
-          </DropdownMenuItem>
-        )}
-        <Confirm
-          title={`Clear ${p.name}'s data?`}
-          description="Everything it kept goes: its storage, the secrets and settings entered for it, its linked accounts, what each profile allowed it and its notifications. It starts again as if just installed. What it added to watch lists or downloads stays."
-          action="Clear data"
-          onConfirm={() => clear.mutate()}
-          trigger={
-            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-              <Eraser /> Clear data
+    <>
+      <AlertDialog open={!!dependents} onOpenChange={(o) => !o && setDependents(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{dependents?.names.join(', ')} need{dependents?.names.length === 1 ? 's' : ''} {p.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing {p.name} switches {dependents?.names.length === 1 ? 'it' : 'them'} off until {p.name} is installed again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => dependents && remove.mutate({ keep: dependents.keep, force: true })}>
+              Remove anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon" aria-label="More">
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {dev && (
+            <DropdownMenuItem disabled={reload.isPending} onSelect={() => reload.mutate()}>
+              <RotateCw /> Reload from its folder
             </DropdownMenuItem>
-          }
-        />
-        {!dev && (
-          <>
-            <DropdownMenuSeparator />
-            <Confirm
-              title={`Remove ${p.name}, keep its data?`}
-              description="Its files go; its storage, secrets, accounts and settings stay, for when you install it again."
-              action="Remove"
-              onConfirm={() => remove.mutate(true)}
-              trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>Remove, keep its data</DropdownMenuItem>}
-            />
-            <Confirm
-              title={`Remove ${p.name}?`}
-              description="Its files go, and everything it kept: its storage, secrets, linked accounts and settings. What it added to watch lists or downloads stays. Library folders it recognised go back to Playpex's own matching."
-              action="Remove"
-              onConfirm={() => remove.mutate(false)}
-              trigger={
-                <DropdownMenuItem variant="destructive" onSelect={(e) => e.preventDefault()}>
-                  <Trash2 /> Remove
-                </DropdownMenuItem>
-              }
-            />
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          )}
+          <Confirm
+            title={`Clear ${p.name}'s data?`}
+            description="Everything it kept goes: its storage, the secrets and settings entered for it, its linked accounts, what each profile allowed it and its notifications. It starts again as if just installed. What it added to watch lists or downloads stays."
+            action="Clear data"
+            onConfirm={() => clear.mutate()}
+            trigger={
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Eraser /> Clear data
+              </DropdownMenuItem>
+            }
+          />
+          {!dev && (
+            <>
+              <DropdownMenuSeparator />
+              <Confirm
+                title={`Remove ${p.name}, keep its data?`}
+                description="Its files go; its storage, secrets, accounts and settings stay, for when you install it again."
+                action="Remove"
+                onConfirm={() => remove.mutate({ keep: true })}
+                trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}>Remove, keep its data</DropdownMenuItem>}
+              />
+              <Confirm
+                title={`Remove ${p.name}?`}
+                description="Its files go, and everything it kept: its storage, secrets, linked accounts and settings. What it added to watch lists or downloads stays. Library folders it recognised go back to Playpex's own matching."
+                action="Remove"
+                onConfirm={() => remove.mutate({ keep: false })}
+                trigger={
+                  <DropdownMenuItem variant="destructive" onSelect={(e) => e.preventDefault()}>
+                    <Trash2 /> Remove
+                  </DropdownMenuItem>
+                }
+              />
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   )
 }
 
@@ -270,15 +312,48 @@ function Actions({ plugin: p }: { plugin: AdminPlugin }) {
 function Overview({ plugin: p }: { plugin: AdminPlugin }) {
   const listing = (p.listing ?? {}) as Listing
   const running = p.state === 'enabled'
+  const l = p.lifecycle
   return (
     <div className="space-y-6">
+      {p.held && (
+        <Alert variant="destructive">
+          <AlertTriangle />
+          <AlertTitle>Switched off by the server</AlertTitle>
+          <AlertDescription>{p.held[0].toUpperCase() + p.held.slice(1)}.</AlertDescription>
+        </Alert>
+      )}
+      {l?.state === 'deprecated' && (
+        <Alert>
+          <AlertTriangle />
+          <AlertTitle>Deprecated by its repository</AlertTitle>
+          <AlertDescription>
+            {l.reason && <p>{l.reason}</p>}
+            {l.replacedBy && (
+              <p>
+                It&apos;s replaced by <Mono className="text-xs">{l.replacedBy}</Mono>:{' '}
+                <Link to="/plugins?tab=browse" className="underline underline-offset-2">
+                  install it from Browse
+                </Link>
+                {' '}(it takes this plugin&apos;s settings when it says it replaces it), then remove this one.
+              </p>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {l && !l.listed && (
+        <Alert>
+          <AlertTriangle />
+          <AlertTitle>No longer in its repository</AlertTitle>
+          <AlertDescription>It keeps working, but it won&apos;t get updates.</AlertDescription>
+        </Alert>
+      )}
       <Panel title="About">
         {listing.description && <p className="mb-4 text-sm whitespace-pre-line">{listing.description}</p>}
         {listing.disclaimer && <p className="mb-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">{listing.disclaimer}</p>}
         <dl className="divide-y">
           <Row label="Publisher">{p.publisher?.name ?? '—'}</Row>
           <Row label="Origin">
-            {ORIGIN[p.origin]}
+            {p.repository ? `The repository ${p.repository.name}` : ORIGIN[p.origin]}
             {p.source && (
               <span className="block text-xs break-all text-muted-foreground" title={p.source}>
                 {p.source}
@@ -329,6 +404,7 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
                 ))}
           </Row>
           {(p.exports ?? []).length > 0 && <Row label="Offers to other plugins">{(p.exports ?? []).join(', ')}</Row>}
+          {p.requiredBy.length > 0 && <Row label="Needed by">{p.requiredBy.map((d) => d.name).join(', ')}</Row>}
         </dl>
       </Panel>
       {listing.screenshots && listing.screenshots.length > 0 && running && (
@@ -513,51 +589,128 @@ function Activity({ plugin: p }: { plugin: AdminPlugin }) {
   )
 }
 
+const POLICIES = { default: 'As the server', auto: 'Install them (unless they ask for more)', notify: 'Only list them', never: "Don't look" }
+
 function Versions({ plugin: p, developerMode }: { plugin: AdminPlugin; developerMode: boolean }) {
+  const refresh = useRefreshPlugins()
   const [preview, setPreview] = useState<Preview | null>(null)
   const rollback = useMutation({
     mutationFn: () => unwrap(api.POST('/admin/plugins/{pluginId}/rollback', { params: { path: { pluginId: p.id } } })),
     onSuccess: setPreview,
     onError: (err) => toast.error(errorMessage(err)),
   })
+  const stage = useMutation({
+    mutationFn: (version: string) => unwrap(api.POST('/admin/plugins/catalog/install', { body: { repository: p.repository!.id, id: p.id, version } })),
+    onSuccess: setPreview,
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  const policy = useMutation({
+    mutationFn: (v: string) =>
+      unwrap(
+        api.PATCH('/admin/plugins/{pluginId}', {
+          params: { path: { pluginId: p.id } },
+          body: { updatePolicy: v === 'default' ? null : (v as 'auto' | 'notify' | 'never') },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success('Saved')
+      refresh()
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  // what its repository lists (any of them installs, its permissions shown first)
+  const catalog = useQuery({
+    queryKey: ['plugin-catalog', p.id, 'versions'],
+    queryFn: () => unwrap(api.GET('/admin/plugins/catalog', { params: { query: { q: p.id } } })),
+    enabled: !!p.repository,
+  })
+  const listed = catalog.data?.plugins.find((x) => x.id === p.id && x.repository.id === p.repository?.id)
   return (
-    <Panel title="Versions" description="The version an update replaces is kept on this server, to go back to it.">
-      <div className="divide-y rounded-md border">
-        <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-          <span>
-            <span className="font-mono">{p.version}</span> <Badge variant="secondary">Installed</Badge>
-          </span>
-          {p.updatedAt && <span className="text-xs text-muted-foreground">{ago(p.updatedAt)}</span>}
-        </div>
-        {p.previousVersion ? (
+    <div className="space-y-6">
+      {p.repository && (
+        <Panel title="Updates" description={`From ${p.repository.name} only: another repository offering ${p.name} doesn't update it.`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Label>When it has an update</Label>
+            <Select value={p.updatePolicy ?? 'default'} onValueChange={(v) => policy.mutate(v)}>
+              <SelectTrigger className="w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(POLICIES).map(([k, label]) => (
+                  <SelectItem key={k} value={k}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {p.update && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {p.update.version} {p.update.needsConsent ? 'waits for you: ' : 'wasn\'t installed: '}
+              {p.update.reason}
+            </p>
+          )}
+        </Panel>
+      )}
+      {listed && (
+        <Panel title={`In ${p.repository!.name}`}>
+          <div className="divide-y rounded-md border">
+            {listed.versions.map((v) => (
+              <div key={v.version} className="flex items-start gap-3 px-3 py-2 text-sm">
+                <div className="min-w-0 flex-1">
+                  <span className="font-mono">{v.version}</span> <span className="text-xs text-muted-foreground">{v.releasedAt}</span>{' '}
+                  {v.version === p.version && <Badge variant="secondary">Installed</Badge>}{' '}
+                  {v.lifecycle !== 'stable' && <Badge variant={v.lifecycle === 'broken' ? 'destructive' : 'outline'}>{v.lifecycle}</Badge>}
+                  {(v.reason || v.changelog) && <p className="mt-0.5 text-xs whitespace-pre-line text-muted-foreground">{v.reason || v.changelog}</p>}
+                </div>
+                {v.version !== p.version && v.compatible && (
+                  <Button variant="ghost" size="sm" disabled={stage.isPending} onClick={() => stage.mutate(v.version)}>
+                    Install
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+      <Panel title="Kept on this server" description="The version an update replaces is kept here, to go back to it even offline.">
+        <div className="divide-y rounded-md border">
           <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
             <span>
-              <span className="font-mono">{p.previousVersion}</span> <span className="text-muted-foreground">kept by the last update</span>
+              <span className="font-mono">{p.version}</span> <Badge variant="secondary">Installed</Badge>
             </span>
-            <Button variant="outline" size="sm" disabled={rollback.isPending} onClick={() => rollback.mutate()}>
-              {rollback.isPending ? <Spinner /> : <History />} Put it back
-            </Button>
+            {p.updatedAt && <span className="text-xs text-muted-foreground">{ago(p.updatedAt)}</span>}
           </div>
-        ) : (
-          <p className="px-3 py-2 text-sm text-muted-foreground">No earlier version is kept: one is after its next update.</p>
-        )}
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Other versions: install their package from the Plugins page. Repositories (later) will list every version they offer.
-      </p>
-      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
-        <DialogContent className="sm:max-w-xl">
-          {preview && (
-            <PackagePreview
-              preview={preview}
-              developerMode={developerMode}
-              onBack={() => setPreview(null)}
-              onDone={() => setPreview(null)}
-              onChange={setPreview}
-            />
+          {p.previousVersion ? (
+            <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <span>
+                <span className="font-mono">{p.previousVersion}</span> <span className="text-muted-foreground">kept by the last update</span>
+              </span>
+              <Button variant="outline" size="sm" disabled={rollback.isPending} onClick={() => rollback.mutate()}>
+                {rollback.isPending ? <Spinner /> : <History />} Put it back
+              </Button>
+            </div>
+          ) : (
+            <p className="px-3 py-2 text-sm text-muted-foreground">No earlier version is kept: one is after its next update.</p>
           )}
-        </DialogContent>
-      </Dialog>
-    </Panel>
+        </div>
+        {!p.repository && (
+          <p className="mt-3 text-xs text-muted-foreground">Other versions: install their package from the Plugins page.</p>
+        )}
+        <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+          <DialogContent className="sm:max-w-xl">
+            {preview && (
+              <PackagePreview
+                preview={preview}
+                developerMode={developerMode}
+                onBack={() => setPreview(null)}
+                onDone={() => setPreview(null)}
+                onChange={setPreview}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </Panel>
+    </div>
   )
 }

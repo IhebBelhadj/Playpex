@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, BadgeCheck, ChevronRight, Download, Link as LinkIcon, Plus, Puzzle, Trash2, Upload } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
 import {
@@ -20,14 +20,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { API_PREFIX, api, errorMessage, unwrap } from '@/lib/api'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BrowseTab, RepositoriesTab, UpdatesTab } from '@/components/plugin-repositories'
+import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { ago } from '@/lib/format'
 
-// Plugins (docs/plugins-plan.md §6.3): what is installed (each opens its own
-// page: pages/plugin.tsx), installing a package (an upload, or a URL: a
-// direct link or a GitHub repository / release), and the trust settings
-// (developer mode, trusted publisher keys). Installing is two steps: the
+// Plugins (docs/plugins-plan.md §6.3): tabs Installed (each opens its own
+// page: pages/plugin.tsx), Browse / Updates / Repositories
+// (components/plugin-repositories.tsx) and Developer (developer mode, trusted
+// publisher keys); installing a package from a file or a URL (a direct link
+// or a GitHub repository / release). Installing is two steps: the
 // server reads the package and shows what it is and what it may do, then the
 // admin installs it. Clients never set plugins up.
 
@@ -35,12 +37,20 @@ export function usePlugins() {
   return useQuery({ queryKey: ['admin-plugins'], queryFn: () => unwrap(api.GET('/admin/plugins')) })
 }
 
+const TABS = ['installed', 'browse', 'updates', 'repositories', 'developer'] as const
+type Tab = (typeof TABS)[number]
+
 export function PluginsPage() {
   const plugins = usePlugins()
+  const updates = useQuery({ queryKey: ['plugin-updates'], queryFn: () => unwrap(api.GET('/admin/plugins/updates')) })
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'installed'
+  const setTab = (t: string) => setParams(t === 'installed' ? {} : { tab: t }, { replace: true })
   const [installing, setInstalling] = useState(false)
   if (plugins.isPending) return <Loading />
   if (plugins.error) return <QueryError error={plugins.error} />
   const view = plugins.data
+  const waiting = updates.data?.updates.length ?? 0
 
   return (
     <>
@@ -49,36 +59,71 @@ export function PluginsPage() {
         description="What plugins this server runs. Clients only show what they add: everything is set up here."
         actions={
           <Button onClick={() => setInstalling(true)}>
-            <Plus /> Install plugin
+            <Plus /> Install from a file or link
           </Button>
         }
       />
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Puzzle className="size-4" /> Installed
-          </CardTitle>
-          <CardDescription>
-            Installed in <Mono className="text-xs">{view.pluginsDir}</Mono>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {view.plugins.length === 0 ? (
-            <Empty icon={<Puzzle />} title="No plugins yet">
-              Install one from a package file (.ppx or .zip) or a link, such as a GitHub release.
-            </Empty>
-          ) : (
-            <div className="divide-y">
-              {view.plugins.map((p) => (
-                <PluginRow key={p.id} plugin={p} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      <TrustCard developerMode={view.developerMode} keys={view.publisherKeys} devDir={view.devDir} />
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="installed">Installed</TabsTrigger>
+          <TabsTrigger value="browse">Browse</TabsTrigger>
+          <TabsTrigger value="updates">
+            Updates
+            {waiting > 0 && (
+              <Badge className="ml-1 h-4 min-w-4 px-1 text-[0.65rem]" variant="default">
+                {waiting}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="repositories">Repositories</TabsTrigger>
+          <TabsTrigger value="developer">Developer</TabsTrigger>
+        </TabsList>
+        <TabsContent value="installed">
+          <InstalledCard view={view} />
+        </TabsContent>
+        <TabsContent value="browse">
+          <BrowseTab developerMode={view.developerMode} onRepositories={() => setTab('repositories')} />
+        </TabsContent>
+        <TabsContent value="updates">
+          <UpdatesTab developerMode={view.developerMode} />
+        </TabsContent>
+        <TabsContent value="repositories">
+          <RepositoriesTab />
+        </TabsContent>
+        <TabsContent value="developer">
+          <TrustCard developerMode={view.developerMode} keys={view.publisherKeys} devDir={view.devDir} />
+        </TabsContent>
+      </Tabs>
       <InstallDialog open={installing} onOpenChange={setInstalling} developerMode={view.developerMode} />
     </>
+  )
+}
+
+function InstalledCard({ view }: { view: Schemas['AdminPlugins'] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Puzzle className="size-4" /> Installed
+        </CardTitle>
+        <CardDescription>
+          Installed in <Mono className="text-xs">{view.pluginsDir}</Mono>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        {view.plugins.length === 0 ? (
+          <Empty icon={<Puzzle />} title="No plugins yet">
+            Browse the repositories, or install one from a package file (.ppx or .zip) or a link, such as a GitHub release.
+          </Empty>
+        ) : (
+          <div className="divide-y">
+            {view.plugins.map((p) => (
+              <PluginRow key={p.id} plugin={p} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -117,8 +162,11 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
           </Link>
           <span className="font-mono text-xs text-muted-foreground">{p.version}</span>
           <PluginStateBadge plugin={p} />
-          <Badge variant="outline">{ORIGIN[p.origin]}</Badge>
+          <Badge variant="outline">{p.repository ? p.repository.name : ORIGIN[p.origin]}</Badge>
+          {p.update && <Badge>{p.update.needsConsent ? `${p.update.version} waits for you` : `Update ${p.update.version}`}</Badge>}
+          {p.lifecycle?.state === 'deprecated' && <Badge variant="outline">Deprecated</Badge>}
           {!dev &&
+            !p.repository &&
             (p.signer ? (
               <Badge variant="outline" title={`Publisher key ${p.signer}`}>
                 <BadgeCheck /> Signed
@@ -129,6 +177,11 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
           {p.audience === 'adults' && <Badge variant="outline">Adults only</Badge>}
         </div>
         {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
+        {p.held && (
+          <p className="flex items-start gap-1.5 text-sm text-warning">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> Switched off: {p.held}
+          </p>
+        )}
         {p.error && p.state !== 'disabled' && (
           <p className="flex items-start gap-1.5 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> {p.error}

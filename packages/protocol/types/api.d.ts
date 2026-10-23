@@ -666,6 +666,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plugins/repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The plugin repositories (the official one first)
+         * @description `official`: the built-in repository this server ships with (null while it isn't published). It never offers an
+         *     `audience: adults` plugin: such entries are left out (`refused`) and a package from it whose manifest says adults
+         *     is refused at install. `updates`: the server's update policy (setting `plugins.updates`).
+         */
+        get: operations["listPluginRepositories"];
+        put?: never;
+        /**
+         * Trust a repository (its key pinned)
+         * @description `key` must be the one the preview showed (409 otherwise, or when its id or URL is known). Its plugins are browsable at once.
+         */
+        post: operations["addPluginRepository"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/repositories/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What adding a repository would trust, before the admin says yes
+         * @description Fetches its index (HTTPS, public addresses, ≤ 4 MB) and checks it's signed by the key it names; nothing is saved.
+         */
+        post: operations["previewPluginRepository"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/repositories/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * "Check now": fetch the indexes (one, or every enabled), then check the installed plugins' updates
+         * @description A failure keeps the last good index (`error`, `stale`). An index signed by another key than the pinned one is
+         *     refused and the key waits (`pendingKey`). Then versions marked broken switch their plugins off (`held`), and under
+         *     `auto` updates asking for nothing new install.
+         */
+        post: operations["refreshPluginRepositories"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/repositories/{repositoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repositoryId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget a repository (its plugins stay installed and stop updating); 409 for the official one */
+        delete: operations["removePluginRepository"];
+        options?: never;
+        head?: never;
+        /** Turn a repository on or off (off: not browsed, no updates from it) */
+        patch: operations["updatePluginRepository"];
+        trace?: never;
+    };
+    "/admin/plugins/repositories/{repositoryId}/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept the new key a repository's index is signed with (its `pendingKey`) */
+        post: operations["acceptPluginRepositoryKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Browse every plugin of the enabled repositories */
+        get: operations["getPluginCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/catalog/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download a version of a repository's plugin (the newest that runs here by default) and preview it
+         * @description Its sha256 and size checked against the signed index; the preview lists its `dependencies` (what `requires` needs:
+         *     installed already, from this repository first, else another enabled one, or `missing`) and `moves` when the
+         *     plugin is installed from elsewhere. Installed with `POST /admin/plugins/packages/{token}/install`. 403 for an
+         *     adults plugin from the official repository.
+         */
+        post: operations["stageCatalogPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Updates of the plugins installed from repositories, from their origin only */
+        get: operations["getPluginUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/updates/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "Update all": install every update asking for no new permissions (whatever the policy) */
+        post: operations["applyPluginUpdates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/plugins/{pluginId}": {
         parameters: {
             query?: never;
@@ -687,7 +866,12 @@ export interface paths {
         delete: operations["removeAdminPlugin"];
         options?: never;
         head?: never;
-        /** Switch an installed plugin on or off (off stops it and hides it from clients; its data stays) */
+        /**
+         * Switch an installed plugin on or off, or set its update policy
+         * @description Off stops it and hides it from clients (its data stays); plugins requiring it go off too, held for it, and come back
+         *     when it's on again. On is refused (409) for a version its repository marked broken, or while a plugin it requires
+         *     is off or missing. `updatePolicy` null = the server's `plugins.updates`.
+         */
         patch: operations["updateAdminPlugin"];
         trace?: never;
     };
@@ -3413,7 +3597,7 @@ export interface components {
              * @description dev: a developer copy from <config>/plugins-dev/
              * @enum {string}
              */
-            origin: "upload" | "url" | "dev";
+            origin: "upload" | "url" | "repository" | "dev";
             /** @description The uploaded file's name, the URL, or the developer folder */
             source?: string | null;
             /** @description The trusted publisher key's fingerprint; null = unsigned */
@@ -3426,6 +3610,39 @@ export interface components {
             hooks: string[];
             registered?: Record<string, never> | null;
             stats?: Record<string, never> | null;
+            /** @description Origin repository: its updates come only from there */
+            repository: {
+                id: string;
+                name: string;
+            } | null;
+            /**
+             * @description null: the server's plugins.updates
+             * @enum {string|null}
+             */
+            updatePolicy: "auto" | "notify" | "never" | null;
+            /** @description Why the server switched it off (a broken version, something it requires is off) */
+            held: string | null;
+            /** @description Its version's flags in its origin repository (null when not from one) */
+            lifecycle: {
+                /** @enum {string} */
+                state: "stable" | "deprecated" | "broken";
+                reason: string | null;
+                replacedBy: string | null;
+                /** @description false: no longer in its repository */
+                listed: boolean;
+            } | null;
+            /** @description What the last update check left waiting */
+            update: {
+                version: string;
+                needsConsent: boolean;
+                reason: string | null;
+                /** Format: date-time */
+                at: string;
+            } | null;
+            requiredBy: {
+                id: string;
+                name: string;
+            }[];
             /** @description The version it replaced is kept */
             previous: boolean;
             /** @description That version */
@@ -3630,7 +3847,7 @@ export interface components {
             permissions: components["schemas"]["PluginPermission"][];
             hooks: string[];
             /** @enum {string} */
-            origin: "upload" | "url";
+            origin: "upload" | "url" | "repository";
             source: string;
             /** @description What a URL led to (a GitHub release asset, a source zip) */
             resolved?: string | null;
@@ -3647,6 +3864,28 @@ export interface components {
             removed: components["schemas"]["PluginPermission"][];
             /** @description The version kept by the last update (POST …/rollback) */
             rollback?: boolean;
+            /**
+             * @description repository: a repository package; installing it adds `adds`
+             * @enum {string}
+             */
+            kind?: "plugin" | "repository";
+            adds?: components["schemas"]["PluginRepositoryPreview"];
+            /** @description From a repository (trusted by its signed index) */
+            repository?: {
+                id: string;
+                name: string;
+            } | null;
+            lifecycle?: {
+                /** @enum {string} */
+                state: "stable" | "deprecated" | "broken";
+                reason: string | null;
+            } | null;
+            /** @description Installed from elsewhere: its updates would now come from here (accept) */
+            moves?: {
+                from: string;
+                to: string;
+            } | null;
+            dependencies?: components["schemas"]["PluginDependency"][];
             /** @enum {string} */
             change: "install" | "update" | "downgrade" | "reinstall";
             conflict?: string | null;
@@ -3660,6 +3899,141 @@ export interface components {
             reason: string | null;
             /** Format: date-time */
             expiresAt: string;
+        };
+        PluginDependency: {
+            id: string;
+            name: string;
+            /** @description The version it would get (installed already: that one) */
+            version: string | null;
+            range: string;
+            optional: boolean;
+            installed: boolean;
+            /** @description No enabled repository offers a fitting version */
+            missing: boolean;
+            /** @description Installed in a version that doesn't fit: updated */
+            update?: boolean;
+            repository: string | null;
+            repositoryName?: string;
+            permissions: components["schemas"]["PluginPermission"][];
+        };
+        PluginRepository: {
+            id: string;
+            name: string;
+            url: string;
+            homepage?: string | null;
+            /** @description The official repository (never offers adults plugins) */
+            builtin: boolean;
+            enabled: boolean;
+            /** @description The pinned key */
+            key: string;
+            fingerprint: string;
+            /** @description Its index is now signed by this key: waits for the admin */
+            pendingKey: {
+                key: string;
+                fingerprint: string;
+            } | null;
+            /** Format: date-time */
+            fetchedAt: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+            generatedAt?: string | null;
+            error: string | null;
+            /** @description The last fetch failed: its last good index is used */
+            stale: boolean;
+            plugins: number;
+            /** @description Entries left out (the official repository's adults plugins) */
+            refused: {
+                id: string;
+                name: string;
+                reason: string;
+            }[];
+            /** Format: date-time */
+            addedAt?: string | null;
+        };
+        PluginRepositoryPreview: {
+            url: string;
+            id: string;
+            name: string;
+            homepage?: string | null;
+            key: string;
+            fingerprint: string;
+            plugins: number;
+            generatedAt?: string;
+            /** @description Already added: its id */
+            known: string | null;
+            /** @description Why it can't be added */
+            problem: string | null;
+        };
+        PluginIndexVersion: {
+            version: string;
+            releasedAt: string;
+            size: number;
+            /** @enum {string} */
+            lifecycle: "stable" | "deprecated" | "broken";
+            reason?: string | null;
+            replacedBy?: string | null;
+            changelog?: string | null;
+            audience?: string | null;
+            /** @description Runs on this server's plugin API */
+            compatible: boolean;
+            permissions: components["schemas"]["PluginPermission"][];
+            requires: {
+                id: string;
+                version: string;
+                optional?: boolean;
+            }[];
+        };
+        PluginCatalog: {
+            plugins: {
+                id: string;
+                name: string;
+                publisher?: {
+                    name?: string;
+                    url?: string;
+                };
+                icon?: string | null;
+                listing?: {
+                    [key: string]: unknown;
+                };
+                repository: {
+                    id: string;
+                    name: string;
+                    builtin: boolean;
+                };
+                latest: null | components["schemas"]["PluginIndexVersion"];
+                versions: components["schemas"]["PluginIndexVersion"][];
+                incompatible: string | null;
+                installed: {
+                    version: string;
+                    repository: string | null;
+                    origin: string;
+                } | null;
+                /** @description Installed from this repository in an older version */
+                update: boolean;
+            }[];
+        };
+        PluginUpdates: {
+            /** @enum {string} */
+            policy: "auto" | "notify" | "never";
+            updates: {
+                id: string;
+                name: string;
+                repository: {
+                    id: string;
+                    name: string | null;
+                };
+                installed: string;
+                version: string;
+                changelog: string | null;
+                /** @description From the index: confirmed by the package at install */
+                added: components["schemas"]["PluginPermission"][];
+                /** @enum {string} */
+                policy: "auto" | "notify" | "never";
+                /** @description The installed version is marked broken */
+                fixes: boolean;
+                /** @description What the last automatic attempt left (needsConsent, reason) */
+                state: Record<string, never> | null;
+            }[];
         };
         PlayStart: {
             /** @constant */
@@ -4372,6 +4746,11 @@ export interface components {
                 developerMode: boolean;
                 /** @description ed25519:<base64> public keys whose signed packages install without developer mode */
                 publisherKeys: string[];
+                /**
+                 * @description Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn't look; a plugin may override it
+                 * @enum {string}
+                 */
+                updates: "auto" | "notify" | "never";
             };
             providers: {
                 tmdbApiKey: string;
@@ -5750,19 +6129,23 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description The admin accepted the permissions the preview lists in `added` */
+                    /** @description The admin accepted the permissions the preview lists in `added`, and its `moves` */
                     accept?: boolean;
+                    /** @description Optional dependencies (the preview's `dependencies`) to install with it */
+                    optional?: string[];
                 };
             };
         };
         responses: {
-            /** @description The installed plugin */
+            /** @description The installed plugin (its dependencies installed first), or the repository a repository package added */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminPlugin"];
+                    "application/json": components["schemas"]["AdminPlugin"] | {
+                        repository: components["schemas"]["PluginRepository"];
+                    };
                 };
             };
             400: components["responses"]["Invalid"];
@@ -5797,6 +6180,321 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
         };
     };
+    listPluginRepositories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The repositories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        repositories: components["schemas"]["PluginRepository"][];
+                        official: {
+                            id?: string;
+                            name?: string;
+                            url?: string;
+                        } | null;
+                        /** @enum {string} */
+                        updates: "auto" | "notify" | "never";
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    addPluginRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    url: string;
+                    key: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The repository */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginRepository"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    previewPluginRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    url: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The repository it names */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginRepositoryPreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            502: components["responses"]["Error"];
+        };
+    };
+    refreshPluginRepositories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The repositories after it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        repositories: components["schemas"]["PluginRepository"][];
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    removePluginRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repositoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
+    updatePluginRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repositoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The repository */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginRepository"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    acceptPluginRepositoryKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repositoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    key: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The repository, fetched again with that key */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginRepository"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getPluginCatalog: {
+        parameters: {
+            query?: {
+                q?: string;
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginCatalog"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    stageCatalogPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    repository: string;
+                    id: string;
+                    version?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    getPluginUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The updates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginUpdates"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    applyPluginUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What happened to each */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results: {
+                            id: string;
+                            version: string;
+                            installed: boolean;
+                            reason?: string;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
     getAdminPlugin: {
         parameters: {
             query?: never;
@@ -5825,6 +6523,8 @@ export interface operations {
         parameters: {
             query?: {
                 data?: "keep" | "delete";
+                /** @description Plugins requiring it go off (held) instead of refusing */
+                force?: "1" | "true";
             };
             header?: never;
             path: {
@@ -5847,6 +6547,21 @@ export interface operations {
             };
             401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
+            /** @description Installed plugins require it (`dependents`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"] & {
+                        dependents?: {
+                            id: string;
+                            name: string;
+                            enabled?: boolean;
+                        }[];
+                    };
+                };
+            };
         };
     };
     updateAdminPlugin: {
@@ -5861,7 +6576,9 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    enabled: boolean;
+                    enabled?: boolean;
+                    /** @enum {string|null} */
+                    updatePolicy?: "auto" | "notify" | "never" | null;
                 };
             };
         };
@@ -5878,6 +6595,7 @@ export interface operations {
             400: components["responses"]["Invalid"];
             401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
         };
     };
     rollbackAdminPlugin: {

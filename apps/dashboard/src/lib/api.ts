@@ -29,11 +29,14 @@ export class ApiError extends Error {
   details: string[]
   /** `errors: [{ key, message }]` by key (a form's fields) */
   fields: Record<string, string>
+  /** The whole answer, for routes that add fields to their errors (a plugin's `dependents`) */
+  body: Record<string, unknown>
   constructor(status: number, body: unknown) {
     const b = (body ?? {}) as Record<string, unknown>
     const message = (b.error_description ?? b.error ?? b.message ?? `Request failed (${status})`) as string
     super(typeof message === 'string' ? message : `Request failed (${status})`)
     this.status = status
+    this.body = b
     this.code = typeof b.code === 'string' ? b.code : null
     const errors: unknown[] = Array.isArray(b.errors) ? b.errors : []
     this.fields = {}

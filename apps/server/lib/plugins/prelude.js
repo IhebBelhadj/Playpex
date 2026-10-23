@@ -104,7 +104,12 @@ module.exports = String.raw`(function (host, register, log) {
     },
     data: function (name, fn) { add('data', name, fn); },
     notify: { send: function (profiles, message) { return call('notify.send', { profiles: profiles, message: message }); } },
-    plugins: { call: function (id, name, args) { return call('plugins.call', { id: id, name: name, args: args === undefined ? null : args }); } },
+    plugins: {
+      call: function (id, name, args, options) {
+        options = options || {};
+        return call('plugins.call', { id: id, name: name, args: args === undefined ? null : args, profileId: options.profileId || null, locale: options.locale || null });
+      }
+    },
     link: {
       status: function (name, profileId) { return call('link.status', { name: name, profileId: profileId || null }); }
     },

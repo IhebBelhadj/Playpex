@@ -25,7 +25,7 @@ Every handler gets a context: `{ profile: { id, kids } | null, device: { id, nam
 | `playpex.log.info / warn / error(message, fields?)` | | into the server log, tagged with your id |
 | `playpex.i18n.t(key, vars?)` | | your strings in `ctx.locale` |
 | `playpex.notify.send(profileIds \| 'all', { text, tone?, key? })` | `notify` | below |
-| `playpex.plugins.call(id, name, args)` | `requires` | a handler another plugin `exports` |
+| `playpex.plugins.call(id, name, args, { profileId? })` | `requires` | a data handler another plugin `exports`: runs in its sandbox with its permissions (for that profile, its audience and hidden rules applying), answers its `data`; `PERMISSION_DENIED` (not in your `requires`, not exported), `NOT_RUNNING` (not installed or off), `CALL_FAILED` (its handler failed) |
 | `playpex.hooks.on(name, handler)` | `hooks` | below |
 | `playpex.events.on(name, handler)` | `events` | below |
 | `playpex.schedule.every(name, interval, handler, { atStart? })` / `cancel(name)` | `schedule` | below |

@@ -12,7 +12,9 @@ var KEY_MAX = 200,
   VALUE_MAX = 1024 * 1024,
   LIST_MAX = 1000,
   SCOPES = ['server', 'profile'],
-  HIDDEN = 'hidden';
+  HIDDEN = 'hidden',
+  ORIGINS = ['upload', 'url', 'repository'],
+  POLICIES = ['auto', 'notify', 'never'];
 
 function checkKey(key) {
   if (typeof key !== 'string' || !key || key.length > KEY_MAX) {
@@ -50,10 +52,16 @@ module.exports = function pluginsService(repositories, options) {
       get: function (id) {
         return repo.installedGet(id);
       },
-      /** { id, version, origin, source, signer, enabled? }: installs or updates the row */
+      /**
+       * { id, version, origin, source, signer, repository?, enabled?, held? }: installs or updates the row
+       * (the update policy is kept; `held` is cleared unless given)
+       */
       save: function (row) {
-        if (!row || typeof row.id !== 'string' || typeof row.version !== 'string' || ['upload', 'url'].indexOf(row.origin) === -1) {
-          return Promise.reject(errors.invalid('an installed plugin needs id, version and origin (upload, url)'));
+        if (!row || typeof row.id !== 'string' || typeof row.version !== 'string' || ORIGINS.indexOf(row.origin) === -1) {
+          return Promise.reject(errors.invalid('an installed plugin needs id, version and origin (' + ORIGINS.join(', ') + ')'));
+        }
+        if ((row.origin === 'repository') !== (typeof row.repository === 'string' && !!row.repository)) {
+          return Promise.reject(errors.invalid('a plugin from a repository names it, and only then'));
         }
         var at = now();
         return repo.installedGet(row.id).then(function (old) {
@@ -63,18 +71,34 @@ module.exports = function pluginsService(repositories, options) {
             origin: row.origin,
             source: row.source || null,
             signer: row.signer || null,
+            repository: row.repository || null,
+            updatePolicy: old ? old.updatePolicy : null,
+            held: row.held || null,
             enabled: row.enabled === undefined ? (old ? old.enabled : true) : !!row.enabled,
             installedAt: old ? old.installedAt : at,
             updatedAt: at
           });
         });
       },
-      setEnabled: function (id, enabled) {
+      /** On or off; `held` = why the server switched it off (null: the admin did, or it's on) */
+      setEnabled: function (id, enabled, held) {
         return repo.installedGet(id).then(function (old) {
           if (!old) {
             throw errors.notFound('No installed plugin ' + id);
           }
-          return repo.installedSave(Object.assign({}, old, { enabled: !!enabled, updatedAt: now() }));
+          return repo.installedSave(Object.assign({}, old, { enabled: !!enabled, held: enabled ? null : held || null, updatedAt: now() }));
+        });
+      },
+      /** auto | notify | never, or null: the server's plugins.updates */
+      setUpdatePolicy: function (id, policy) {
+        if (policy !== null && POLICIES.indexOf(policy) === -1) {
+          return Promise.reject(errors.invalid('updatePolicy must be one of ' + POLICIES.join(', ') + ', or null'));
+        }
+        return repo.installedGet(id).then(function (old) {
+          if (!old) {
+            throw errors.notFound('No installed plugin ' + id);
+          }
+          return repo.installedSave(Object.assign({}, old, { updatePolicy: policy }));
         });
       },
       remove: function (id) {
@@ -189,6 +213,34 @@ module.exports = function pluginsService(repositories, options) {
       set: function (pluginId, profileId, hidden) {
         return repo.grantSet(pluginId, profileId, HIDDEN, !!hidden, now());
       }
+    },
+
+    // Repositories (plan §6.1): rows only; lib/plugins/repositories.js fetches and checks their indexes
+    repositories: {
+      list: function () {
+        return repo.repositoriesList();
+      },
+      get: function (id) {
+        return repo.repositoryGet(id);
+      },
+      /** A whole row: { id, url, name, key, … } (addedAt kept when it exists) */
+      save: function (row) {
+        if (!row || !/^[a-z][a-z0-9-]{1,31}$/.test(row.id || '') || !/^https:\/\//.test(row.url || '') || !row.key) {
+          return Promise.reject(errors.invalid('a repository needs an id, an https url and a key'));
+        }
+        return repo.repositoryGet(row.id).then(function (old) {
+          return repo.repositorySave(Object.assign({ enabled: true, builtin: false, pendingKey: null, etag: null, fetchedAt: null,
+            checkedAt: null, error: null }, old || {}, row, { addedAt: old ? old.addedAt : now() }));
+        });
+      },
+      remove: function (id) {
+        return repo.repositoryRemove(id);
+      }
+    },
+
+    /** A replacement's settings from the plugin it replaces (migratesFrom): rows it has already stay */
+    copySettings: function (fromId, toId) {
+      return repo.settingsCopy(fromId, toId, now());
     },
 
     /** Everything a plugin kept (removal, plan §6.4) */

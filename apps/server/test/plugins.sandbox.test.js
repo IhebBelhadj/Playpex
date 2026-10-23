@@ -97,7 +97,7 @@ playpex.data('denied', async function () {
   await attempt('event', function () { playpex.events.on('playback.started', function () {}); });
   await attempt('write', function () { return playpex.watchlist.list('p'); });
   await attempt('notify', function () { return playpex.notify.send('all', { text: 'x' }); });
-  await attempt('later', function () { return playpex.plugins.call('other', 'x'); });
+  await attempt('call', function () { return playpex.plugins.call('other', 'x'); });
   return { data: out };
 });
 playpex.data('playIt', function () {
@@ -402,7 +402,7 @@ test('bytes both ways, context, store quota, secrets, settings, translations', {
 test('permissions it didn\'t ask for are refused', function () {
   return data('hostile', 'denied').then(function (r) {
     assert.deepEqual(r.json.data, { store: 'PERMISSION_DENIED', secret: 'PERMISSION_DENIED', hook: 'PERMISSION_DENIED',
-      event: 'PERMISSION_DENIED', write: 'PERMISSION_DENIED', notify: 'PERMISSION_DENIED', later: 'NOT_AVAILABLE' });
+      event: 'PERMISSION_DENIED', write: 'PERMISSION_DENIED', notify: 'PERMISSION_DENIED', call: 'PERMISSION_DENIED' });
   });
 });
 

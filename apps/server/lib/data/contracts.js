@@ -223,6 +223,11 @@
  * @property {function(string, 'server'|'profile', string, string, *, Date): Promise<void>} settingSet   null deletes
  * @property {function(string): Promise<Array<{ profileId: string, permission: string }>>} grantsList
  * @property {function(string, string, string, boolean, Date): Promise<void>} grantSet       false deletes
+ * @property {function(): Promise<object[]>} repositoriesList                                   builtin first, then by name
+ * @property {function(string): Promise<object|null>} repositoryGet
+ * @property {function(object): Promise<void>} repositorySave                                   upsert by id (addedAt kept)
+ * @property {function(string): Promise<void>} repositoryRemove
+ * @property {function(string, string, Date): Promise<number>} settingsCopy                     a plugin's settings rows to another
  * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings, grants (and `hidden` rows)
  *
  * @typedef {object} Repositories

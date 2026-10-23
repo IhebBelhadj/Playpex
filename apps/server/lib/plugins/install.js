@@ -1,7 +1,7 @@
 'use strict';
 
-// Installing plugin packages (docs/plugins-plan.md §6.3: the Developer tab's
-// upload, and a URL; repositories are step P4b). A package is a zip (`.ppx`
+// Installing plugin packages (docs/plugins-plan.md §6.3: an upload, a URL, or
+// a repository's package through ./repositories.js). A package is a zip (`.ppx`
 // or `.zip`) holding playpex-plugin.json at its root, or inside one folder (a
 // GitHub source zip: `repo-1.2.0/…`, or a plugin in a sub folder of a repo).
 //
@@ -54,10 +54,10 @@ var PACKAGE_MAX = 20 * 1024 * 1024,
 var staged = new Map(),    // token → { at, preview, files, root }
   loadErrors = {};         // id → why an installed plugin didn't load
 
-function failure(code, message) {
+function failure(code, message, extra) {
   var err = new Error(message);
   err.code = code;
-  return err;
+  return Object.assign(err, extra || {});
 }
 
 function dirOf(id) {
@@ -257,6 +257,54 @@ function permissionChanges(next, current) {
   };
 }
 
+function repositories() {
+  return require('./repositories');
+}
+
+/**
+ * A package for a plugin installed from somewhere else: { from, to } in words
+ * when it leaves or joins a repository (origin pinning: updates come only from
+ * the origin, so changing it is the admin's explicit choice), else null
+ */
+function movesOf(current, from) {
+  if (!current || from.rollback) {
+    return null;
+  }
+  var before = current.origin === 'repository' ? current.repository : null,
+    after = from.origin === 'repository' ? from.repository : null;
+  if (before === after) {
+    return null;
+  }
+  var words = function (repo, origin) {
+    return repo ? 'the repository ' + (repositories().nameOf(repo) || repo) : origin === 'url' ? 'a link' : 'an upload';
+  };
+  return { from: words(before, current.origin), to: words(after, from.origin) };
+}
+
+/** A repository package (`type: repository`): adding its repository, previewed like the others */
+function stageRepository(manifest, from) {
+  return repositories().preview(manifest.repository.url).then(function (r) {
+    if (r.key !== manifest.repository.key) {
+      throw failure('INVALID', 'the index at ' + r.url + ' is signed by another key than the package names');
+    }
+    var token = crypto.randomBytes(16).toString('hex');
+    var preview = {
+      token: token, kind: 'repository', id: manifest.id, name: manifest.name, version: manifest.version,
+      description: manifest.description || 'Adds the repository ' + r.name, publisher: manifest.publisher || null,
+      audience: 'everyone', icon: null, permissions: [], hooks: [], origin: from.origin === 'url' ? 'url' : 'upload',
+      source: from.source, resolved: from.resolved || null, root: null, size: 0, fileCount: 1, changelog: null,
+      current: null, added: [], removed: [], rollback: false, moves: null, dependencies: [], repository: null, lifecycle: null,
+      change: 'install', conflict: null, signer: null,
+      adds: r,
+      installable: !r.problem,
+      reason: r.problem,
+      expiresAt: new Date(Date.now() + STAGE_MS).toISOString()
+    };
+    staged.set(token, { at: Date.now(), preview: preview, files: [], manifest: manifest, from: from });
+    return preview;
+  });
+}
+
 // a package's files (its root found) → the preview, kept for commit()
 function stageFiles(found, from, size) {
   return Promise.resolve().then(function () {
@@ -265,13 +313,23 @@ function stageFiles(found, from, size) {
       byPath = {};
     files.forEach(function (f) { byPath[f.path] = f; });
     var manifest = json(byPath[MANIFEST], MANIFEST);
-    if (manifest && manifest.type === 'repository') {
-      throw failure('INVALID_MANIFEST', 'a repository package adds a repository (plugins plan step P4b): not installable yet');
-    }
     var names = files.map(function (f) { return f.path; }),
       problems = schemas.manifestProblems(manifest, { files: names, strings: stringsOf(files) });
     if (problems.length) {
       throw failure('INVALID_MANIFEST', problems.join('; '));
+    }
+    if (manifest.type === 'repository') {
+      return stageRepository(manifest, from);
+    }
+    if (from.origin === 'repository') {
+      var e = from.expect || {};
+      if (manifest.id !== e.id || manifest.version !== e.version) {
+        throw failure('INVALID', 'the package is ' + manifest.id + ' ' + manifest.version + ', its index says ' + e.id + ' ' + e.version);
+      }
+      // the official repository never carries an adults plugin, whatever its index says
+      if (from.official && manifest.audience === 'adults') {
+        throw failure('FORBIDDEN', 'The official Playpex repository doesn\'t carry adults plugins: ' + manifest.id + ' isn\'t installed from it');
+      }
     }
     if (!byPath['server.js']) {
       throw failure('INVALID', 'no server.js next to ' + MANIFEST);
@@ -280,11 +338,15 @@ function stageFiles(found, from, size) {
       throw failure('INVALID', 'server.js is larger than 5 MB');
     }
     return services().then(function (s) {
-      return s.plugins.installed.get(manifest.id);
-    }).then(function (current) {
+      return Promise.all([s.plugins.installed.get(manifest.id), repositories().resolve(manifest, from.repository || null)]);
+    }).then(function (r) {
+      var current = r[0], dependencies = r[1];
       var loaded = plugins.get(manifest.id),
         token = crypto.randomBytes(16).toString('hex'),
-        trust = trustOf(signer),
+        // a repository's package: trusted by its signed index and sha256 (./repositories.js)
+        trust = from.origin === 'repository' ? { signer: signer, trusted: true, installable: true, reason: null } : trustOf(signer),
+        moves = movesOf(current, from),
+        missing = dependencies.filter(function (d) { return d.missing && !d.optional; }),
         icon = manifest.icon && byPath[manifest.icon],
         type = icon && ICON_TYPES[path.extname(manifest.icon).slice(1).toLowerCase()],
         changelog = byPath['CHANGELOG.md'],
@@ -311,6 +373,11 @@ function stageFiles(found, from, size) {
         added: changes.added,
         removed: changes.removed,
         rollback: !!from.rollback,
+        kind: 'plugin',
+        repository: from.repository ? { id: from.repository, name: from.repositoryName || repositories().nameOf(from.repository) || from.repository } : null,
+        lifecycle: from.expect && from.expect.lifecycle !== 'stable' ? { state: from.expect.lifecycle, reason: from.expect.reason } : null,
+        moves: moves,
+        dependencies: dependencies,
         change: !current ? 'install' : protocol.compareVersions(manifest.version, current.version) > 0 ? 'update' :
           protocol.compareVersions(manifest.version, current.version) < 0 ? 'downgrade' : 'reinstall',
         conflict: loaded && loaded.origin === 'dev' ? 'A developer copy of ' + manifest.id + ' runs from ' +
@@ -323,6 +390,10 @@ function stageFiles(found, from, size) {
       if (preview.conflict) {
         preview.installable = false;
         preview.reason = preview.conflict;
+      } else if (missing.length && preview.installable) {
+        preview.installable = false;
+        preview.reason = 'It needs ' + missing.map(function (d) { return d.id + ' ' + d.range; }).join(', ') +
+          ', which no enabled repository offers';
       }
       staged.set(token, { at: Date.now(), preview: preview, files: files, manifest: manifest, from: from });
       return preview;
@@ -359,7 +430,10 @@ function stagePrevious(id) {
   var files = readTree(dir).filter(function (f) { return KEEP.test(f.path); }),
     size = files.reduce(function (n, f) { return n + f.bytes.length; }, 0);
   return stageFiles({ root: '', files: files }, {
-    origin: info.origin === 'url' ? 'url' : 'upload',
+    origin: ['url', 'repository'].indexOf(info.origin) !== -1 && (info.origin !== 'repository' || info.repository) ? info.origin : 'upload',
+    repository: info.origin === 'repository' ? info.repository : null,
+    // trusted when it was installed: its version from that repository
+    expect: info.origin === 'repository' ? { id: id, version: info.version, lifecycle: 'stable' } : null,
     source: info.source || dir,
     rollback: true
   }, size).then(function (preview) {
@@ -430,7 +504,12 @@ function commit(token, options) {
     return Promise.reject(failure('NOT_FOUND', 'This package is no longer waiting: upload it again'));
   }
   var p = entry.preview,
-    trust = trustOf(entry.preview.signer && entry.preview.signer.key);
+    trust = p.origin === 'repository' ? { signer: null, trusted: true, installable: true } :
+      trustOf(entry.preview.signer && entry.preview.signer.key);
+  if (p.kind === 'repository') {
+    staged.delete(token);
+    return repositories().add(p.adds.url, p.adds.key).then(function (repo) { return { repository: repo }; });
+  }
   if (p.conflict) {
     return Promise.reject(failure('CONFLICT', p.conflict));
   }
@@ -438,13 +517,42 @@ function commit(token, options) {
     return Promise.reject(failure('CONFLICT', p.name + ' ' + p.version + ' asks for more than the installed version (' +
       p.added.map(function (x) { return x.text; }).join('; ') + '): accept them to install it'));
   }
+  if (p.moves && options.accept !== true) {
+    return Promise.reject(failure('CONFLICT', p.name + ' was installed from ' + p.moves.from + ' and would now come from ' +
+      p.moves.to + ' (its updates too): accept to move it'));
+  }
   if (!trust.installable) {
     return Promise.reject(failure('FORBIDDEN', trust.reason));
   }
+  var missing = (p.dependencies || []).filter(function (d) { return d.missing && !d.optional; });
+  if (missing.length) {
+    return Promise.reject(failure('CONFLICT', 'It needs ' + missing.map(function (d) { return d.id + ' ' + d.range; }).join(', ') +
+      ', which no enabled repository offers'));
+  }
   staged.delete(token);
+  var chosen = Array.isArray(options.optional) ? options.optional : [],
+    needed = (p.dependencies || []).filter(function (d) {
+      return !d.installed && !d.missing && (!d.optional || chosen.indexOf(d.id) !== -1);
+    });
+  // what it needs first, deepest first, accepted with it in one consent
+  return needed.reduce(function (chain, d) {
+    return chain.then(function () {
+      return repositories().stage(d.repository, d.id, d.version).then(function (dp) {
+        return commit(dp.token, { accept: true });
+      }).then(function () {
+        log.info('plugin ' + d.id + ' ' + d.version + ' installed for ' + p.id, { plugin: d.id });
+      });
+    });
+  }, Promise.resolve()).then(function () {
+    return installStaged(entry, p, trust);
+  });
+}
+
+// writes a staged package's files and loads it (the old copy kept, put back when the new one doesn't start)
+function installStaged(entry, p, trust) {
   var id = p.id,
     base = path.join(paths.config, 'plugins'),
-    incoming = path.join(base, '.staging-' + token),
+    incoming = path.join(base, '.staging-' + p.token),
     target = dirOf(id),
     previous = previousOf(id),
     s, old, hadPrevious = false;
@@ -463,26 +571,43 @@ function commit(token, options) {
       if (old) {
         // where the kept version came from, for a rollback
         fs.writeFileSync(path.join(previous, INSTALL_INFO), JSON.stringify({
-          version: old.version, origin: old.origin, source: old.source
+          version: old.version, origin: old.origin, source: old.source, repository: old.repository || null
         }));
       }
     }
     fs.renameSync(incoming, target);
+    var broken = p.lifecycle && p.lifecycle.state === 'broken',
+      // switched off by the server for a broken version: a fixed one turns it back on
+      unheld = !broken && !!(old && old.held && /^broken/.test(old.held));
     return s.plugins.installed.save({
       id: id, version: p.version, origin: p.origin, source: p.source,
-      signer: trust.trusted ? signing.fingerprint(trust.signer) : null
+      repository: p.origin === 'repository' ? p.repository.id : null,
+      signer: trust.trusted && trust.signer ? signing.fingerprint(trust.signer) : null,
+      enabled: broken ? false : unheld ? true : undefined,
+      held: broken ? 'broken: ' + (p.lifecycle.reason || 'its repository marked this version broken') : unheld ? null : old && old.held
     });
+  }).then(function () {
+    // a replacement takes the settings of what it replaces (migratesFrom), on its first install
+    return old ? null : Promise.all((entry.manifest.migratesFrom || []).map(function (from) {
+      return s.plugins.copySettings(from, id).then(function (n) {
+        if (n) {
+          log.info('plugin ' + id + ': ' + n + ' settings copied from ' + from, { plugin: id });
+        }
+      });
+    }));
   }).then(function () {
     return s.plugins.installed.get(id);
   }).then(function (row) {
     delete loadErrors[id];
-    log.info('plugin ' + id + ' ' + p.version + (p.rollback ? ' put back (rollback)' : ' installed from ' + (p.origin === 'url' ? p.source : 'an upload')) +
-      (trust.trusted ? ' (signed)' : ' (unsigned, developer mode)'), { plugin: id });
+    log.info('plugin ' + id + ' ' + p.version + (p.rollback ? ' put back (rollback)' : ' installed from ' +
+      (p.origin === 'repository' ? 'the repository ' + p.repository.name : p.origin === 'url' ? p.source : 'an upload')) +
+      (p.origin === 'repository' ? '' : trust.trusted ? ' (signed)' : ' (unsigned, developer mode)'), { plugin: id });
     if (!row.enabled) {
       return view(id);
     }
     return plugins.load(target, p.origin).then(function () {
-      return view(id);
+      // plugins held for it come back on (it was off, or they needed this version)
+      return enableDependents(id).then(function () { return view(id); });
     }, function (err) {
       // the new version doesn't start: the one it replaced comes back
       log.warn('plugin ' + id + ' ' + p.version + ' didn\'t start, rolling back: ' + err.message, { plugin: id });
@@ -507,14 +632,91 @@ function commit(token, options) {
   });
 }
 
-/** Removes an installed plugin: its files, its row and (unless keepData) everything it kept */
+// ── dependencies between installed plugins (plan §6.2) ──────────────────────
+
+/** Installed plugins that require `id` (not optionally): [{ id, name, enabled }] */
+function dependentsOf(id, rows) {
+  return rows.filter(function (r) { return r.id !== id; }).map(function (r) {
+    var m = installedManifest(r.id);
+    var needs = m && (m.requires || []).some(function (q) { return q.id === id && !q.optional; });
+    return needs ? { id: r.id, name: m.name, enabled: r.enabled } : null;
+  }).filter(Boolean);
+}
+
+/** What an installed plugin requires that isn't installed and on in a fitting version: [id] */
+function unmetOf(id, rows) {
+  var m = installedManifest(id), byId = {};
+  rows.forEach(function (r) { byId[r.id] = r; });
+  return ((m && m.requires) || []).filter(function (q) {
+    var here = byId[q.id];
+    return !q.optional && !(here && here.enabled && protocol.satisfiesVersion(q.version, here.version));
+  }).map(function (q) { return q.id; });
+}
+
+function needsText(name) {
+  return 'needs ' + name + ', which is off or not installed';
+}
+
+/** The server switches a plugin off and says why (a broken version, a missing dependency) */
+function hold(id, reason) {
+  return services().then(function (s) {
+    return s.plugins.installed.setEnabled(id, false, reason);
+  }).then(function () {
+    plugins.unload(id);
+    return disableDependents(id);
+  });
+}
+
+// its dependents go off with it, held with the reason
+function disableDependents(id) {
+  return services().then(function (s) {
+    return s.plugins.installed.list().then(function (rows) {
+      var name = (installedManifest(id) || {}).name || id;
+      return dependentsOf(id, rows).filter(function (d) { return d.enabled; }).reduce(function (chain, d) {
+        return chain.then(function () {
+          log.warn('plugin ' + d.id + ' switched off: it ' + needsText(name), { plugin: d.id });
+          return hold(d.id, needsText(name));
+        });
+      }, Promise.resolve());
+    });
+  });
+}
+
+// those held for it come back on when it's on again
+function enableDependents(id) {
+  return services().then(function (s) {
+    return s.plugins.installed.list().then(function (rows) {
+      var name = (installedManifest(id) || {}).name || id;
+      return rows.filter(function (r) { return !r.enabled && r.held === needsText(name); }).reduce(function (chain, r) {
+        return chain.then(function () {
+          return setEnabled(r.id, true).catch(function () {});
+        });
+      }, Promise.resolve());
+    });
+  });
+}
+
+/**
+ * Removes an installed plugin: its files, its row and (unless keepData)
+ * everything it kept. Plugins requiring it are listed first (CONFLICT with
+ * `dependents`); with `force` they're switched off, held for it.
+ */
 function remove(id, options) {
   options = options || {};
   return services().then(function (s) {
-    return s.plugins.installed.get(id).then(function (row) {
+    return Promise.all([s.plugins.installed.get(id), s.plugins.installed.list()]).then(function (r) {
+      var row = r[0];
       if (!row) {
         throw failure('NOT_FOUND', 'No installed plugin ' + id);
       }
+      var dependents = dependentsOf(id, r[1]);
+      if (dependents.length && !options.force) {
+        throw failure('CONFLICT', dependents.map(function (d) { return d.name; }).join(', ') + ' need' +
+          (dependents.length === 1 ? 's ' : ' ') + id + ': remove with force to switch ' + (dependents.length === 1 ? 'it' : 'them') + ' off',
+        { dependents: dependents });
+      }
+      return disableDependents(id).then(function () { return row; });
+    }).then(function (row) {
       plugins.unload(id);
       require('./notifications').forget(id);
       rm(dirOf(id));
@@ -537,22 +739,49 @@ function remove(id, options) {
   });
 }
 
-/** Switches an installed plugin on (loads it) or off (stops it, keeps everything) */
+/**
+ * Switches an installed plugin on (loads it) or off (stops it, keeps
+ * everything; plugins requiring it go off with it). On is refused for a
+ * version its repository marked broken, or while something it requires is off.
+ */
 function setEnabled(id, on) {
   return services().then(function (s) {
-    return s.plugins.installed.setEnabled(id, on);
+    return Promise.all([s.plugins.installed.get(id), s.plugins.installed.list()]).then(function (r) {
+      var row = r[0];
+      if (!row) {
+        throw failure('NOT_FOUND', 'No installed plugin ' + id);
+      }
+      if (on && row.held && /^broken/.test(row.held)) {
+        throw failure('CONFLICT', 'Version ' + row.version + ' is marked broken by its repository (' + row.held.replace(/^broken: /, '') +
+          '): it turns back on with a fixed version');
+      }
+      var unmet = on ? unmetOf(id, r[1]) : [];
+      if (unmet.length) {
+        throw failure('CONFLICT', 'It needs ' + unmet.join(', ') + ': install it or turn it on first');
+      }
+      return s.plugins.installed.setEnabled(id, on);
+    });
   }).then(function () {
     plugins.unload(id);
     delete loadErrors[id];
     if (!on) {
-      return view(id);
+      return disableDependents(id).then(function () { return view(id); });
     }
     return services().then(function (s) { return s.plugins.installed.get(id); }).then(function (row) {
       return plugins.load(dirOf(id), row.origin).catch(function (err) {
         loadErrors[id] = (err.code ? err.code + ': ' : '') + err.message;
       });
+    }).then(function () {
+      return enableDependents(id);
     }).then(function () { return view(id); });
   });
+}
+
+/** auto | notify | never for this plugin's updates, or null: the server's plugins.updates */
+function setUpdatePolicy(id, policy) {
+  return services().then(function (s) {
+    return s.plugins.installed.setUpdatePolicy(id, policy);
+  }).then(function () { return view(id); });
 }
 
 /** Loads a developer copy again from its folder (after the author changed it) */
@@ -571,16 +800,37 @@ function loadInstalled() {
   return services().then(function (s) {
     return s.plugins.installed.list();
   }).then(function (rows) {
-    return Promise.all(rows.filter(function (r) { return r.enabled; }).map(function (r) {
-      if (!fs.existsSync(path.join(dirOf(r.id), MANIFEST))) {
-        loadErrors[r.id] = 'its files are missing from ' + dirOf(r.id);
-        log.error('plugin ' + r.id + ' not loaded: ' + loadErrors[r.id], { plugin: r.id });
-        return null;
-      }
-      return plugins.load(dirOf(r.id), r.origin).catch(function (err) {
-        loadErrors[r.id] = (err.code ? err.code + ': ' : '') + err.message;
+    // what a plugin requires loads before it (a cycle, or something missing: not loaded, with the reason)
+    var on = rows.filter(function (r) { return r.enabled; }), done = {}, order = [], progress = true;
+    var required = function (r) {
+      return ((installedManifest(r.id) || {}).requires || []).filter(function (q) { return !q.optional; }).map(function (q) { return q.id; });
+    };
+    while (progress) {
+      progress = false;
+      on.forEach(function (r) {
+        if (!done[r.id] && !unmetOf(r.id, rows).length && required(r).every(function (id) { return done[id]; })) {
+          done[r.id] = true;
+          order.push(r);
+          progress = true;
+        }
       });
-    }));
+    }
+    on.filter(function (r) { return !done[r.id]; }).forEach(function (r) {
+      loadErrors[r.id] = 'it needs ' + required(r).filter(function (id) { return !done[id]; }).join(', ');
+      log.error('plugin ' + r.id + ' not loaded: ' + loadErrors[r.id], { plugin: r.id });
+    });
+    return order.reduce(function (chain, r) {
+      return chain.then(function () {
+        if (!fs.existsSync(path.join(dirOf(r.id), MANIFEST))) {
+          loadErrors[r.id] = 'its files are missing from ' + dirOf(r.id);
+          log.error('plugin ' + r.id + ' not loaded: ' + loadErrors[r.id], { plugin: r.id });
+          return null;
+        }
+        return plugins.load(dirOf(r.id), r.origin).catch(function (err) {
+          loadErrors[r.id] = (err.code ? err.code + ': ' : '') + err.message;
+        });
+      });
+    }, Promise.resolve());
   }, function (err) {
     log.warn('installed plugins not read: ' + err.message);
   });
@@ -592,7 +842,7 @@ function iso(d) {
   return d instanceof Date ? d.toISOString() : d || null;
 }
 
-function describe(row, loaded) {
+function describe(row, loaded, rows) {
   // a plugin that doesn't run (off, or failed to load): its manifest on disk
   var m = loaded ? loaded.manifest : row ? installedManifest(row.id) : null;
   return {
@@ -620,6 +870,13 @@ function describe(row, loaded) {
     jobs: loaded ? require('./scheduler').view(loaded.id) : [],
     registered: loaded ? loaded.registered : null,
     stats: loaded ? Object.assign({}, loaded.stats, { sandbox: loaded.sandbox ? loaded.sandbox.stats : null }) : null,
+    // repositories (plan §6.1, §6.4)
+    repository: row && row.repository ? { id: row.repository, name: repositories().nameOf(row.repository) || row.repository } : null,
+    updatePolicy: row ? row.updatePolicy || null : null,
+    held: row ? row.held || null : null,
+    lifecycle: row ? repositories().lifecycle(row) : null,
+    update: row ? repositories().pendingUpdate(row.id) : null,
+    requiredBy: row ? dependentsOf(row.id, rows || []).map(function (d) { return { id: d.id, name: d.name }; }) : [],
     previous: row ? fs.existsSync(path.join(previousOf(row.id), MANIFEST)) : false,
     previousVersion: row ? previousVersion(row.id) : null,
     installedAt: row ? iso(row.installedAt) : null,
@@ -637,12 +894,13 @@ function previousVersion(id) {
 
 /** One plugin; with `detail` also what its page shows (plan §6.3 Overview): its listing, `requires`, `exports` and changelog */
 function view(id, options) {
-  return services().then(function (s) { return s.plugins.installed.get(id); }).then(function (row) {
-    var loaded = plugins.get(id);
+  return services().then(function (s) { return s.plugins.installed.list(); }).then(function (rows) {
+    var row = rows.filter(function (r) { return r.id === id; })[0] || null,
+      loaded = plugins.get(id);
     if (!row && !loaded) {
       throw failure('NOT_FOUND', 'No plugin ' + id);
     }
-    var out = describe(row, loaded);
+    var out = describe(row, loaded, rows);
     if (options && options.detail) {
       var dir = loaded ? loaded.dir : dirOf(id),
         m = (loaded ? loaded.manifest : installedManifest(id)) || {},
@@ -662,7 +920,7 @@ function view(id, options) {
 /** Installed plugins (by id) and the developer copies that run */
 function list() {
   return services().then(function (s) { return s.plugins.installed.list(); }).then(function (rows) {
-    var out = rows.map(function (r) { return describe(r, plugins.get(r.id)); }),
+    var out = rows.map(function (r) { return describe(r, plugins.get(r.id), rows); }),
       known = rows.map(function (r) { return r.id; });
     plugins.all().filter(function (p) { return known.indexOf(p.id) === -1; }).forEach(function (p) {
       out.push(describe(null, p));
@@ -744,6 +1002,10 @@ module.exports = {
   commit: commit,
   remove: remove,
   setEnabled: setEnabled,
+  setUpdatePolicy: setUpdatePolicy,
+  hold: hold,
+  installedManifest: installedManifest,
+  permissionChanges: permissionChanges,
   reload: reload,
   loadInstalled: loadInstalled,
   list: list,

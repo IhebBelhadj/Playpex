@@ -8,7 +8,8 @@ var installed = schema.plugins,
   store = schema.pluginStore,
   secrets = schema.pluginSecrets,
   settings = schema.pluginSettings,
-  grants = schema.pluginGrants;
+  grants = schema.pluginGrants,
+  repositories = schema.pluginRepositories;
 
 function storeWhere(pluginId, key) {
   return orm.and(orm.eq(store.pluginId, pluginId), orm.eq(store.key, key));
@@ -114,6 +115,38 @@ module.exports = function pluginsRepository(db) {
       }
       return db.insert(grants).values({ pluginId: pluginId, profileId: profileId, permission: permission, grantedAt: at })
         .onConflictDoNothing().then(function () {});
+    },
+
+    repositoriesList: function () {
+      return db.select().from(repositories).orderBy(orm.desc(repositories.builtin), orm.asc(repositories.name));
+    },
+
+    repositoryGet: function (id) {
+      return db.select().from(repositories).where(orm.eq(repositories.id, id)).limit(1).then(first);
+    },
+
+    repositorySave: function (row) {
+      var set = Object.assign({}, row);
+      delete set.id;
+      delete set.addedAt;
+      return db.insert(repositories).values(row).onConflictDoUpdate({ target: repositories.id, set: set })
+        .then(function () {});
+    },
+
+    repositoryRemove: function (id) {
+      return db.delete(repositories).where(orm.eq(repositories.id, id)).then(function () {});
+    },
+
+    /** Copies a plugin's settings rows to another (a replacement's migratesFrom); the target's own rows win */
+    settingsCopy: function (fromId, toId, at) {
+      return db.select().from(settings).where(orm.eq(settings.pluginId, fromId)).then(function (rows) {
+        if (!rows.length) {
+          return 0;
+        }
+        return db.insert(settings).values(rows.map(function (r) {
+          return Object.assign({}, r, { pluginId: toId, updatedAt: at });
+        })).onConflictDoNothing().then(function () { return rows.length; });
+      });
     },
 
     removeAll: function (pluginId) {

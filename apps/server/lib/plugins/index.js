@@ -248,6 +248,9 @@ function start(options) {
   }
   var installed = options.installed === false ? Promise.resolve() : require('./install').loadInstalled();
   return installed.then(function () {
+    // their indexes from the cache now, fetched a few minutes later (P4b)
+    return options.repositories === false ? null : require('./repositories').start(options.repositories);
+  }).then(function () {
     return Promise.all(dirs.map(function (d) {
       return load(d.dir, d.origin).catch(function () { return null; });
     }));
@@ -257,6 +260,7 @@ function start(options) {
 function stop() {
   started = false;
   require('./scheduler').stopAll();
+  require('./repositories').stop();
   Array.from(plugins.keys()).forEach(function (id) {
     var plugin = plugins.get(id);
     plugins.delete(id);

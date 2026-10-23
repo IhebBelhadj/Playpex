@@ -865,13 +865,19 @@ paths:
             schema:
               type: object
               properties:
-                accept: { type: boolean, description: 'The admin accepted the permissions the preview lists in `added`' }
+                accept: { type: boolean, description: 'The admin accepted the permissions the preview lists in `added`, and its `moves`' }
+                optional: { type: array, items: { type: string }, description: 'Optional dependencies (the preview''s `dependencies`) to install with it' }
       responses:
         '200':
-          description: The installed plugin
+          description: The installed plugin (its dependencies installed first), or the repository a repository package added
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/AdminPlugin' }
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/AdminPlugin' }
+                  - type: object
+                    required: [repository]
+                    properties: { repository: { $ref: '#/components/schemas/PluginRepository' } }
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -893,6 +899,247 @@ paths:
             application/json:
               schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
         '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/repositories:
+    get:
+      tags: [plugins]
+      operationId: listPluginRepositories
+      summary: The plugin repositories (the official one first)
+      description: |
+        `official`: the built-in repository this server ships with (null while it isn't published). It never offers an
+        `audience: adults` plugin: such entries are left out (`refused`) and a package from it whose manifest says adults
+        is refused at install. `updates`: the server's update policy (setting `plugins.updates`).
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The repositories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [repositories, official, updates]
+                properties:
+                  repositories: { type: array, items: { $ref: '#/components/schemas/PluginRepository' } }
+                  official: { type: ['object', 'null'], properties: { id: { type: string }, name: { type: string }, url: { type: string } } }
+                  updates: { type: string, enum: [auto, notify, never] }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+    post:
+      tags: [plugins]
+      operationId: addPluginRepository
+      summary: Trust a repository (its key pinned)
+      description: '`key` must be the one the preview showed (409 otherwise, or when its id or URL is known). Its plugins are browsable at once.'
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [url, key], properties: { url: { type: string }, key: { type: string } } }
+      responses:
+        '200':
+          description: The repository
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginRepository' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '409': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+  /admin/plugins/repositories/preview:
+    post:
+      tags: [plugins]
+      operationId: previewPluginRepository
+      summary: What adding a repository would trust, before the admin says yes
+      description: Fetches its index (HTTPS, public addresses, ≤ 4 MB) and checks it's signed by the key it names; nothing is saved.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [url], properties: { url: { type: string } } }
+      responses:
+        '200':
+          description: The repository it names
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginRepositoryPreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '502': { $ref: '#/components/responses/Error' }
+  /admin/plugins/repositories/refresh:
+    post:
+      tags: [plugins]
+      operationId: refreshPluginRepositories
+      summary: '"Check now": fetch the indexes (one, or every enabled), then check the installed plugins'' updates'
+      description: |
+        A failure keeps the last good index (`error`, `stale`). An index signed by another key than the pinned one is
+        refused and the key waits (`pendingKey`). Then versions marked broken switch their plugins off (`held`), and under
+        `auto` updates asking for nothing new install.
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { id: { type: string } } }
+      responses:
+        '200':
+          description: The repositories after it
+          content:
+            application/json:
+              schema: { type: object, required: [repositories], properties: { repositories: { type: array, items: { $ref: '#/components/schemas/PluginRepository' } } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/repositories/{repositoryId}:
+    parameters:
+      - { name: repositoryId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [plugins]
+      operationId: updatePluginRepository
+      summary: 'Turn a repository on or off (off: not browsed, no updates from it)'
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+      responses:
+        '200':
+          description: The repository
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginRepository' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [plugins]
+      operationId: removePluginRepository
+      summary: Forget a repository (its plugins stay installed and stop updating); 409 for the official one
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Done
+          content:
+            application/json:
+              schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/plugins/repositories/{repositoryId}/key:
+    post:
+      tags: [plugins]
+      operationId: acceptPluginRepositoryKey
+      summary: Accept the new key a repository's index is signed with (its `pendingKey`)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: repositoryId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [key], properties: { key: { type: string } } }
+      responses:
+        '200':
+          description: The repository, fetched again with that key
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginRepository' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/plugins/catalog:
+    get:
+      tags: [plugins]
+      operationId: getPluginCatalog
+      summary: Browse every plugin of the enabled repositories
+      security:
+        - adminSession: []
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: The catalog
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginCatalog' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/catalog/install:
+    post:
+      tags: [plugins]
+      operationId: stageCatalogPlugin
+      summary: Download a version of a repository's plugin (the newest that runs here by default) and preview it
+      description: |
+        Its sha256 and size checked against the signed index; the preview lists its `dependencies` (what `requires` needs:
+        installed already, from this repository first, else another enabled one, or `missing`) and `moves` when the
+        plugin is installed from elsewhere. Installed with `POST /admin/plugins/packages/{token}/install`. 403 for an
+        adults plugin from the official repository.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repository, id]
+              properties:
+                repository: { type: string }
+                id: { type: string }
+                version: { type: string }
+      responses:
+        '200':
+          description: The preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginPackagePreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+  /admin/plugins/updates:
+    get:
+      tags: [plugins]
+      operationId: getPluginUpdates
+      summary: Updates of the plugins installed from repositories, from their origin only
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The updates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginUpdates' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/updates/apply:
+    post:
+      tags: [plugins]
+      operationId: applyPluginUpdates
+      summary: '"Update all": install every update asking for no new permissions (whatever the policy)'
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: What happened to each
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, version, installed]
+                      properties: { id: { type: string }, version: { type: string }, installed: { type: boolean }, reason: { type: string } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
   /admin/plugins/{pluginId}:
     parameters:
       - { name: pluginId, in: path, required: true, schema: { type: string } }
@@ -913,14 +1160,22 @@ paths:
     patch:
       tags: [plugins]
       operationId: updateAdminPlugin
-      summary: Switch an installed plugin on or off (off stops it and hides it from clients; its data stays)
+      summary: Switch an installed plugin on or off, or set its update policy
+      description: |
+        Off stops it and hides it from clients (its data stays); plugins requiring it go off too, held for it, and come back
+        when it's on again. On is refused (409) for a version its repository marked broken, or while a plugin it requires
+        is off or missing. `updatePolicy` null = the server's `plugins.updates`.
       security:
         - adminSession: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+                updatePolicy: { type: [string, 'null'], enum: [auto, notify, never, null] }
       responses:
         '200':
           description: The plugin
@@ -930,6 +1185,7 @@ paths:
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
     delete:
       tags: [plugins]
       operationId: removeAdminPlugin
@@ -941,6 +1197,7 @@ paths:
         - adminSession: []
       parameters:
         - { name: data, in: query, required: false, schema: { type: string, enum: [keep, delete] } }
+        - { name: force, in: query, required: false, schema: { type: string, enum: ['1', 'true'] }, description: 'Plugins requiring it go off (held) instead of refusing' }
       responses:
         '200':
           description: Done
@@ -949,6 +1206,16 @@ paths:
               schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Installed plugins require it (`dependents`)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Error' }
+                  - type: object
+                    properties:
+                      dependents: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string }, name: { type: string }, enabled: { type: boolean } } } }
   /admin/plugins/{pluginId}/rollback:
     post:
       tags: [plugins]
@@ -4092,7 +4359,7 @@ components:
         personal: { type: boolean, description: 'Granted per profile on the plugin''s Profiles (events.playback, write.*)' }
     AdminPlugin:
       type: object
-      required: [id, name, version, origin, enabled, state, error, permissions, hooks, previous]
+      required: [id, name, version, origin, enabled, state, error, permissions, hooks, previous, repository, updatePolicy, held, lifecycle, update, requiredBy]
       properties:
         id: { type: string }
         name: { type: string }
@@ -4101,7 +4368,7 @@ components:
         publisher: { type: ['object', 'null'], properties: { name: { type: string }, url: { type: string } } }
         audience: { type: [string, 'null'], enum: [everyone, adults, null] }
         icon: { type: [string, 'null'], description: 'Under the API prefix: /plugins/<id>/assets/…' }
-        origin: { type: string, enum: [upload, url, dev], description: 'dev: a developer copy from <config>/plugins-dev/' }
+        origin: { type: string, enum: [upload, url, repository, dev], description: 'dev: a developer copy from <config>/plugins-dev/' }
         source: { type: [string, 'null'], description: 'The uploaded file''s name, the URL, or the developer folder' }
         signer: { type: [string, 'null'], description: 'The trusted publisher key''s fingerprint; null = unsigned' }
         enabled: { type: boolean }
@@ -4111,6 +4378,28 @@ components:
         hooks: { type: array, items: { type: string } }
         registered: { type: ['object', 'null'] }
         stats: { type: ['object', 'null'] }
+        repository: { type: ['object', 'null'], required: [id, name], properties: { id: { type: string }, name: { type: string } }, description: 'Origin repository: its updates come only from there' }
+        updatePolicy: { type: ['string', 'null'], enum: [auto, notify, never, null], description: 'null: the server''s plugins.updates' }
+        held: { type: ['string', 'null'], description: 'Why the server switched it off (a broken version, something it requires is off)' }
+        lifecycle:
+          type: ['object', 'null']
+          description: Its version's flags in its origin repository (null when not from one)
+          required: [state, reason, replacedBy, listed]
+          properties:
+            state: { type: string, enum: [stable, deprecated, broken] }
+            reason: { type: [string, 'null'] }
+            replacedBy: { type: [string, 'null'] }
+            listed: { type: boolean, description: 'false: no longer in its repository' }
+        update:
+          type: ['object', 'null']
+          description: What the last update check left waiting
+          required: [version, needsConsent, reason, at]
+          properties:
+            version: { type: string }
+            needsConsent: { type: boolean }
+            reason: { type: [string, 'null'] }
+            at: { type: string, format: date-time }
+        requiredBy: { type: array, items: { type: object, required: [id, name], properties: { id: { type: string }, name: { type: string } } } }
         previous: { type: boolean, description: 'The version it replaced is kept' }
         previousVersion: { type: [string, 'null'], description: 'That version' }
         settings: { type: [integer, 'null'], description: 'How many options it declares (null: its manifest can''t be read)' }
@@ -4287,7 +4576,7 @@ components:
         icon: { type: [string, 'null'], description: 'A data: URL of its icon (≤ 256 KB)' }
         permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
         hooks: { type: array, items: { type: string } }
-        origin: { type: string, enum: [upload, url] }
+        origin: { type: string, enum: [upload, url, repository] }
         source: { type: string }
         resolved: { type: [string, 'null'], description: 'What a URL led to (a GitHub release asset, a source zip)' }
         root: { type: [string, 'null'], description: 'The folder of the zip the plugin was found in' }
@@ -4298,6 +4587,12 @@ components:
         added: { type: array, items: { $ref: '#/components/schemas/PluginPermission' }, description: 'Permissions the installed version doesn''t have: to accept (`accept: true`)' }
         removed: { type: array, items: { $ref: '#/components/schemas/PluginPermission' }, description: 'Permissions it gives up' }
         rollback: { type: boolean, description: 'The version kept by the last update (POST …/rollback)' }
+        kind: { type: string, enum: [plugin, repository], description: 'repository: a repository package; installing it adds `adds`' }
+        adds: { $ref: '#/components/schemas/PluginRepositoryPreview' }
+        repository: { type: ['object', 'null'], required: [id, name], properties: { id: { type: string }, name: { type: string } }, description: 'From a repository (trusted by its signed index)' }
+        lifecycle: { type: ['object', 'null'], required: [state, reason], properties: { state: { type: string, enum: [stable, deprecated, broken] }, reason: { type: [string, 'null'] } } }
+        moves: { type: ['object', 'null'], required: [from, to], properties: { from: { type: string }, to: { type: string } }, description: 'Installed from elsewhere: its updates would now come from here (accept)' }
+        dependencies: { type: array, items: { $ref: '#/components/schemas/PluginDependency' } }
         change: { type: string, enum: [install, update, downgrade, reinstall] }
         conflict: { type: [string, 'null'] }
         signer:
@@ -4312,6 +4607,116 @@ components:
         installable: { type: boolean }
         reason: { type: [string, 'null'], description: 'Why it can''t be installed now' }
         expiresAt: { type: string, format: date-time }
+    PluginDependency:
+      type: object
+      required: [id, name, version, range, optional, installed, missing, repository, permissions]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: [string, 'null'], description: 'The version it would get (installed already: that one)' }
+        range: { type: string }
+        optional: { type: boolean }
+        installed: { type: boolean }
+        missing: { type: boolean, description: 'No enabled repository offers a fitting version' }
+        update: { type: boolean, description: 'Installed in a version that doesn''t fit: updated' }
+        repository: { type: [string, 'null'] }
+        repositoryName: { type: string }
+        permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
+    PluginRepository:
+      type: object
+      required: [id, name, url, builtin, enabled, key, fingerprint, pendingKey, fetchedAt, checkedAt, error, stale, plugins, refused]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string }
+        homepage: { type: [string, 'null'] }
+        builtin: { type: boolean, description: 'The official repository (never offers adults plugins)' }
+        enabled: { type: boolean }
+        key: { type: string, description: 'The pinned key' }
+        fingerprint: { type: string }
+        pendingKey: { type: ['object', 'null'], required: [key, fingerprint], properties: { key: { type: string }, fingerprint: { type: string } }, description: 'Its index is now signed by this key: waits for the admin' }
+        fetchedAt: { type: [string, 'null'], format: date-time }
+        checkedAt: { type: [string, 'null'], format: date-time }
+        generatedAt: { type: [string, 'null'] }
+        error: { type: [string, 'null'] }
+        stale: { type: boolean, description: 'The last fetch failed: its last good index is used' }
+        plugins: { type: integer }
+        refused:
+          type: array
+          description: Entries left out (the official repository's adults plugins)
+          items: { type: object, required: [id, name, reason], properties: { id: { type: string }, name: { type: string }, reason: { type: string } } }
+        addedAt: { type: [string, 'null'], format: date-time }
+    PluginRepositoryPreview:
+      type: object
+      required: [url, id, name, key, fingerprint, plugins, known, problem]
+      properties:
+        url: { type: string }
+        id: { type: string }
+        name: { type: string }
+        homepage: { type: [string, 'null'] }
+        key: { type: string }
+        fingerprint: { type: string }
+        plugins: { type: integer }
+        generatedAt: { type: string }
+        known: { type: [string, 'null'], description: 'Already added: its id' }
+        problem: { type: [string, 'null'], description: 'Why it can''t be added' }
+    PluginIndexVersion:
+      type: object
+      required: [version, releasedAt, size, lifecycle, compatible, permissions, requires]
+      properties:
+        version: { type: string }
+        releasedAt: { type: string }
+        size: { type: integer }
+        lifecycle: { type: string, enum: [stable, deprecated, broken] }
+        reason: { type: [string, 'null'] }
+        replacedBy: { type: [string, 'null'] }
+        changelog: { type: [string, 'null'] }
+        audience: { type: [string, 'null'] }
+        compatible: { type: boolean, description: 'Runs on this server''s plugin API' }
+        permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
+        requires: { type: array, items: { type: object, required: [id, version], properties: { id: { type: string }, version: { type: string }, optional: { type: boolean } } } }
+    PluginCatalog:
+      type: object
+      required: [plugins]
+      properties:
+        plugins:
+          type: array
+          items:
+            type: object
+            required: [id, name, repository, latest, versions, incompatible, installed, update]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              publisher: { type: object, properties: { name: { type: string }, url: { type: string } } }
+              icon: { type: [string, 'null'] }
+              listing: { type: object, additionalProperties: true }
+              repository: { type: object, required: [id, name, builtin], properties: { id: { type: string }, name: { type: string }, builtin: { type: boolean } } }
+              latest: { oneOf: [{ type: 'null' }, { $ref: '#/components/schemas/PluginIndexVersion' }] }
+              versions: { type: array, items: { $ref: '#/components/schemas/PluginIndexVersion' } }
+              incompatible: { type: [string, 'null'] }
+              installed: { type: ['object', 'null'], required: [version, repository, origin], properties: { version: { type: string }, repository: { type: [string, 'null'] }, origin: { type: string } } }
+              update: { type: boolean, description: 'Installed from this repository in an older version' }
+    PluginUpdates:
+      type: object
+      required: [updates, policy]
+      properties:
+        policy: { type: string, enum: [auto, notify, never] }
+        updates:
+          type: array
+          items:
+            type: object
+            required: [id, name, repository, installed, version, changelog, added, policy, fixes, state]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              repository: { type: object, required: [id, name], properties: { id: { type: string }, name: { type: [string, 'null'] } } }
+              installed: { type: string }
+              version: { type: string }
+              changelog: { type: [string, 'null'] }
+              added: { type: array, items: { $ref: '#/components/schemas/PluginPermission' }, description: 'From the index: confirmed by the package at install' }
+              policy: { type: string, enum: [auto, notify, never] }
+              fixes: { type: boolean, description: 'The installed version is marked broken' }
+              state: { type: ['object', 'null'], description: 'What the last automatic attempt left (needsConsent, reason)' }
     PlayStart:
       oneOf:
         - type: object
@@ -5091,10 +5496,11 @@ components:
             port: { type: integer, minimum: 1024, maximum: 65535, description: 'Its own HTTP listener (default 28472); applied at once' }
         plugins:
           type: object
-          required: [developerMode, publisherKeys]
+          required: [developerMode, publisherKeys, updates]
           properties:
             developerMode: { type: boolean, description: 'Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart)' }
             publisherKeys: { type: array, items: { type: string }, description: 'ed25519:<base64> public keys whose signed packages install without developer mode' }
+            updates: { type: string, enum: [auto, notify, never], description: 'Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn''t look; a plugin may override it' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]

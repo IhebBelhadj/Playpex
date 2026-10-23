@@ -90,7 +90,11 @@ function defaults() {
       developerMode: false,
       // publisher keys (`ed25519:…`) whose signed packages install without
       // developer mode (lib/plugins/install.js)
-      publisherKeys: []
+      publisherKeys: [],
+      // updates from repositories (docs/plugins-plan.md §6.4): auto installs
+      // those asking for no new permissions (the rest wait for the admin),
+      // notify only lists them, never doesn't look; a plugin can override it
+      updates: 'auto'
     },
     providers: {
       tmdbApiKey: '',
@@ -218,6 +222,9 @@ function coerce(key, value, fromEnv) {
   }
   if (typeof value !== 'string') {
     return { error: key + ' must be a string' };
+  }
+  if (key === 'plugins.updates' && ['auto', 'notify', 'never'].indexOf(value) === -1) {
+    return { error: 'plugins.updates must be auto, notify or never' };
   }
   if (key === 'general.logLevel' && LOG_LEVELS.indexOf(value) === -1) {
     return { error: 'logLevel must be one of ' + LOG_LEVELS.join(', ') };

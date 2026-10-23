@@ -9,7 +9,7 @@
 // a rate limit per plugin and host (./ratelimit.js).
 //
 //   request(plugin, options) → Promise<{ value: { status, headers, url, body }, bytes? }>
-//     plugin: { id, permissions }; options: { url, method?, headers?, body?, responseType?: text|json|bytes }
+//     plugin: { id, permissions, anyHost? }; options: { url, method?, headers?, body?, responseType?: text|json|bytes }
 //   stream(plugin, { url, headers, method, range }) → Promise<{ status, headers, body, url, abort }>
 //     an http source's bytes (./remote.js): same checks, no size cap or decompression
 //   configure({ lookup, ports, ca, allowAddresses, maxWaitMs })   tests only: a fake resolver, other ports, a CA,
@@ -110,7 +110,8 @@ function target(plugin, url) {
     throw failure('PORT_NOT_ALLOWED', 'only port 443');
   }
   var host = u.hostname.toLowerCase().replace(/\.$/, '');
-  if (!protocol.hostAllowed((plugin.permissions && plugin.permissions.network) || [], host)) {
+  // the server's own fetches (repository indexes and packages) may go to any public host
+  if (!plugin.anyHost && !protocol.hostAllowed((plugin.permissions && plugin.permissions.network) || [], host)) {
     throw failure('HOST_NOT_ALLOWED', host + ' isn\'t in permissions.network');
   }
   return { url: u, host: host, port: port };

@@ -402,18 +402,38 @@ var devices = sqliteTable('devices', {
 // plugins (<config>/plugins-dev/) have no row; a removed plugin's rows go
 // with it (lib/plugins/install.js).
 
-// Installed packages (an upload or a URL; repositories are plan step P4b):
-// the files live in <config>/plugins/<id>/, the previous version in
-// <config>/plugins/.previous/<id>/
+// Installed packages (an upload, a URL or a repository): the files live in
+// <config>/plugins/<id>/, the previous version in <config>/plugins/.previous/<id>/
 var plugins = sqliteTable('plugins', {
   id: text('id').primaryKey(),
   version: text('version').notNull(),
-  origin: text('origin', { enum: ['upload', 'url'] }).notNull(),
+  origin: text('origin', { enum: ['upload', 'url', 'repository'] }).notNull(),
   source: text('source'),                          // the file's name, or the URL it came from
   signer: text('signer'),                          // the trusted publisher key's fingerprint, null = unsigned
+  repository: text('repository'),                  // origin `repository`: its id; updates come only from there
+  updatePolicy: text('update_policy', { enum: ['auto', 'notify', 'never'] }),   // null: the server's plugins.updates
+  held: text('held'),                              // why the server switched it off (a broken version, a missing dependency)
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   installedAt: timestamp('installed_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
+});
+
+// Plugin repositories (plan §6.1): a signed index at `url`, trusted by the
+// key pinned when the admin added it; the last good index is kept in
+// <config>/plugins/cache/repositories/<id>.json (+ .sig)
+var pluginRepositories = sqliteTable('plugin_repositories', {
+  id: text('id').primaryKey(),                     // the index's repository.id
+  url: text('url').notNull().unique(),
+  name: text('name').notNull(),
+  key: text('key').notNull(),                      // ed25519:… pinned on first use
+  pendingKey: text('pending_key'),                 // an index signed by another key: waits for the admin
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  builtin: integer('builtin', { mode: 'boolean' }).notNull().default(false),
+  etag: text('etag'),
+  fetchedAt: timestamp('fetched_at'),              // the last good index
+  checkedAt: timestamp('checked_at'),              // the last attempt
+  error: text('error'),
+  addedAt: timestamp('added_at').notNull()
 });
 
 // Its own key / value store (playpex.store), JSON values, quota from its manifest
@@ -473,6 +493,7 @@ var pluginGrants = sqliteTable('plugin_grants', {
 });
 
 module.exports = {
+  pluginRepositories: pluginRepositories,
   MEDIA_TYPES: MEDIA_TYPES,
   DOWNLOAD_STATES: DOWNLOAD_STATES,
   DOWNLOAD_INTENTS: DOWNLOAD_INTENTS,

@@ -40,8 +40,10 @@ https://plugins.example.org/trakt-1.2.0.ppx   the packages the index lists
 ## On the server (the dashboard, admin only)
 
 - **Plugins › Repositories › Add**: paste the index URL; the dashboard shows the repository's name and **key fingerprint** (`signing.fingerprint`), and the admin trusts it. The key is pinned: an index signed by another key is refused until the admin accepts the new one, with a warning. Or ship a **repository package** (`"type": "repository"` manifest, [manifest.md](manifest.md)): installing it adds the repository.
-- The **official Playpex repository** is built in (its key ships with the server).
-- Indexes are refreshed every 24 h, on "Check now", and 5 min after start; a repository that fails keeps its last good index (shown stale).
-- **Browse** lists the plugins of every enabled repository; installing shows the listing, the permissions in words and the dependencies, all accepted at once.
-- **Origin pinning**: a plugin updates only from the repository it was installed from; the same id elsewhere is ignored unless the admin moves it.
-- **Updates**: policy `auto` (default) · `notify` · `never`, server-wide and per plugin. `auto` installs only updates asking for **no new permissions**; the others wait in Updates as "needs consent".
+- The **official Playpex repository** is built in (its key ships with the server; not published yet). It **never carries an `audience: adults` plugin**: such an entry is left out of its index, and a package from it whose manifest says adults is refused at install. An adults plugin is published in a repository of its own, which admins add deliberately.
+- Indexes are refreshed every 24 h, on "Check now", and 5 min after start (with `If-None-Match`: serve an `ETag`); a repository that fails keeps its last good index (shown stale). Redirects to other hosts are fine (a GitHub release asset), always HTTPS to public addresses; indexes up to 4 MB, packages up to 20 MB.
+- **Browse** lists the plugins of every enabled repository; installing shows the listing, the permissions in words and the dependencies (`requires`: from the same repository first, then the others; optional ones offered), all accepted at once.
+- **Origin pinning**: a plugin updates only from the repository it was installed from; the same id elsewhere is ignored unless the admin moves it (the preview says so and installing asks for consent).
+- **Updates**: policy `auto` (default) · `notify` · `never`, server-wide (`plugins.updates`) and per plugin. `auto` installs only updates whose package asks for **no new permissions**; the others wait in Updates as "needs consent".
+- **Lifecycle**: a version marked `broken` switches the installed plugin off (and plugins requiring it) until a fixed version installs; `deprecated` + `replacedBy` shows the replacement, and a plugin listing the old one in `migratesFrom` takes its settings on its first install.
+- **Any listed version** can be installed (Versions on the plugin's page, or Browse), its permissions shown first.

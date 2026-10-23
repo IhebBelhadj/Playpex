@@ -10,9 +10,10 @@
 //
 // Errors reach the plugin as rejections with `code`: PERMISSION_DENIED,
 // HOST_NOT_ALLOWED, ADDRESS_NOT_ALLOWED, RATE_LIMITED, QUOTA_EXCEEDED,
-// NOT_AVAILABLE (a part of the API a later step brings: calls between
-// plugins), INVALID… Writes are ./writes.js, schedules ./scheduler.js,
-// notifications ./notifications.js, link status ./links.js (plan step P3b).
+// NOT_RUNNING, CALL_FAILED, INVALID… (NOT_AVAILABLE: a part of the API a later step brings;
+// none left since P4b). Writes are ./writes.js, schedules ./scheduler.js,
+// notifications ./notifications.js, link status ./links.js (plan step P3b);
+// plugins.call runs another plugin's exported data handler (P4b).
 
 var http = require('./http'),
   protocol = require('@playpex/protocol/plugins'),
@@ -30,10 +31,8 @@ function denied(message) {
   return Promise.reject(failure('PERMISSION_DENIED', message));
 }
 
-// The plan step that brings each part not built yet
-var LATER = {
-  'plugins.call': 'P4b'
-};
+// The plan step that brings each part not built yet (none left)
+var LATER = {};
 
 function interpolate(text, vars) {
   return !vars ? text : text.replace(/\{(\w+)\}/g, function (all, name) {
@@ -148,6 +147,38 @@ function createHost(plugin, services) {
     'link.status': function (args) {
       count(plugin.stats, 'link');
       return require('./links').status(plugin, args.name, args.profileId).then(function (r) { return { value: r }; });
+    },
+
+    // Another plugin's exported data handler (plan §6.2): only one this plugin
+    // `requires`, only a name it `exports`; it runs in the callee's sandbox with
+    // the callee's permissions, for the profile named (its audience and hidden
+    // rules apply); the caller gets its `data`, nothing else
+    'plugins.call': function (args) {
+      var callee = String(args.id || ''), name = String(args.name || '');
+      if (!(plugin.manifest.requires || []).some(function (q) { return q.id === callee; })) {
+        return denied('calling ' + callee + ' needs it in requires');
+      }
+      var plugins = require('./index'), target = plugins.get(callee);
+      if (!target || target.state !== 'enabled') {
+        return Promise.reject(failure('NOT_RUNNING', callee + ' isn\'t running'));
+      }
+      if ((target.manifest.exports || []).indexOf(name) === -1) {
+        return denied(callee + ' doesn\'t export ' + name);
+      }
+      var who = args.profileId ? services().then(function (s) {
+        return s.profiles.get(args.profileId).then(function (p) { return { id: p.id, kids: !!p.isKid }; }, function () {
+          throw failure('NOT_FOUND', 'no profile ' + args.profileId);
+        });
+      }) : Promise.resolve(null);
+      count(plugin.stats, 'call ' + callee);
+      return who.then(function (profile) {
+        return plugins.data(callee, name, args.args, { profile: profile, device: null, locale: args.locale || 'en' });
+      }).then(function (answer) {
+        return { value: answer.data };
+      }, function (err) {
+        // the callee's failure is the caller's to handle, never its caller's "no such handler"
+        throw failure(err.code === 'FORBIDDEN' ? 'PERMISSION_DENIED' : 'CALL_FAILED', callee + ' ' + name + ': ' + err.message);
+      });
     },
 
     'i18n.t': function (args) {
