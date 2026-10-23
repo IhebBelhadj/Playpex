@@ -15,6 +15,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | [Playing a torrent](playback.md) | catalog sources, what's on this server (the media library), adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
 | [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
+| [Plugins](plugins.md) | rendering what the server's plugins contribute, asking their handlers, performing their effects |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |
 | [Errors, versions, limits](errors-and-versions.md) | error shapes, codes, API versions, rate limits, security notes |
 
@@ -80,6 +81,7 @@ API version **1**. What exists today and what is planned (`docs/server-separatio
 | Per-device playback decision (`GET …/files/{path}/playback`, from the `capabilities` a device declares) | **Planned** (plan §6.5, "3b"). Until then the client decides from `/probe` ([playback](playback.md#choosing-direct-play-or-the-transcoded-stream)) |
 | Catalog through the server (`/api/v1/catalog/*`, TMDB key on the server) | **Planned** (plan §12 G). Until then clients call TMDB with their own key |
 | HTTPS with a pinned certificate on the LAN | **Proposed** (plan §12 K). Today the LAN traffic is plain HTTP ([security notes](errors-and-versions.md#security-notes)) |
+| Plugins for clients (`/plugins`: what to render, data handlers, effects) | **Done** on the server (`docs/plugins-plan.md` step P2); installing plugins (P4) and Playpex TV's renderer (P1) are planned |
 | A JS/TS client SDK (`packages/client-sdk`) | **Planned** (plan §6.6). Meanwhile use the generated types `@playpex/protocol/types/api` with any OpenAPI client (e.g. `openapi-fetch`, as the dashboard does) |
 
 ## A worked example: Playpex TV

@@ -25,7 +25,12 @@
     {{ audioWarning ? "No sound: this release's audio (Dolby or DTS) can't be played here. Try another release." : resumeNotice }}
   </div>
 
-  <!-- Up next (episodes, the last 40 s): Enter plays it, Back dismisses it -->
+  <!-- A plugin marked an intro / recap here: OK skips it (controls hidden), Back dismisses it -->
+  <button class="skip" *ngIf="skipMarker as marker" tabindex="-1" (click)="skipNow()">
+    {{ skipLabel(marker) }}<span class="skipKey" *ngIf="!controlsVisible">OK</span>
+  </button>
+
+  <!-- Up next (episodes, the last 40 s or from the credits): Enter plays it, Back dismisses it -->
   <div class="upNext" *ngIf="upNextShown">
     <div class="upNextStill">
       <img *ngIf="upNext.episode.still_path" [src]="stillBase + upNext.episode.still_path" alt="">

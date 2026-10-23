@@ -85,6 +85,7 @@
  * @property {boolean} dlna
  * @property {string} status             ok · scanning · missing · error: <message>
  * @property {boolean} builtin           the download dir (added by the server, not removable)
+ * @property {string|null} matcher       its information provider: a plugin's id (library.match), null = TMDB
  * @property {Date} addedAt
  * @property {Date|null} lastScanAt
  *
@@ -196,6 +197,32 @@
  * @property {function(string, Partial<MediaItem>): Promise<MediaItem|null>} updateItem
  * @property {function(): Promise<number>} removeOrphanItems         items no file points at
  *
+ * @typedef {object} InstalledPlugin     a package installed from an upload or a URL
+ * @property {string} id
+ * @property {string} version
+ * @property {'upload'|'url'} origin
+ * @property {string|null} source        the file's name or the URL
+ * @property {string|null} signer        the trusted publisher key's fingerprint, null = unsigned
+ * @property {boolean} enabled
+ * @property {Date} installedAt
+ * @property {Date} updatedAt
+ *
+ * @typedef {object} PluginsRepository   installed packages, and what the plugin sandbox keeps (docs/plugins-plan.md §4.2)
+ * @property {function(): Promise<InstalledPlugin[]>} installedList                          by id
+ * @property {function(string): Promise<InstalledPlugin|null>} installedGet
+ * @property {function(InstalledPlugin): Promise<void>} installedSave                         upsert (keeps installedAt)
+ * @property {function(string): Promise<void>} installedRemove
+ * @property {function(string, string): Promise<{ key: string, value: *, size: number }|null>} storeGet
+ * @property {function(string, string, *, number, Date): Promise<void>} storeSet             upsert
+ * @property {function(string, string): Promise<boolean>} storeRemove
+ * @property {function(string, string, number): Promise<string[]>} storeKeys                 by key, starting with the prefix
+ * @property {function(string): Promise<number>} storeUsage                                  bytes of all its values
+ * @property {function(string, string, string): Promise<string|null>} secretGet              profile '' = the server's
+ * @property {function(string, string, string, string|null, Date): Promise<void>} secretSet  null deletes
+ * @property {function(string, 'server'|'profile', string): Promise<Array<{ key: string, value: * }>>} settingsList
+ * @property {function(string, 'server'|'profile', string, string, *, Date): Promise<void>} settingSet   null deletes
+ * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings
+ *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles
  * @property {WatchlistRepository} watchlist
@@ -205,6 +232,7 @@
  * @property {SettingsRepository} settings
  * @property {DownloadsRepository} downloads
  * @property {LibraryRepository} library
+ * @property {PluginsRepository} plugins
  */
 
 module.exports = {};

@@ -55,8 +55,10 @@ var DISCOVERY = {
 
 // Media refs (media-server plan §3): the id the media routes (/media/{ref})
 // take, `t_<infoHash>_<16 hex>` for a file of a torrent, `f_<uuid>` for a file
-// on disk. Opaque to clients: they get refs from the server, never build them.
-var MEDIA_REF_PATTERN = '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$';
+// on disk, `r_<32 hex>` for a plugin's HTTPS source the server proxies
+// (plugins plan §4.7; it expires an hour after its last use). Opaque to
+// clients: they get refs from the server, never build them.
+var MEDIA_REF_PATTERN = '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32})$';
 
 // Every error answer is { error: <message for people>, code: <one of these> }
 var ERROR_CODES = {
@@ -76,6 +78,7 @@ var ERROR_CODES = {
   NOT_SUPPORTED: 501,            // this server's host can't do it (desktop-only routes on a headless server)
   UPSTREAM: 502,                 // a provider (YTS, EZTV, TMDB, a subtitle site…) failed
   PROBE_FAILED: 502,             // ffprobe couldn't read the file
+  PLUGIN_FAILED: 502,            // a plugin's handler failed, timed out or answered out of schema
   BUSY: 503,                     // a server limit is reached (torrents, transcodes); try again later
   PROVIDER_NOT_CONFIGURED: 503,  // the provider needs an API key the server doesn't have
   TRANSCODER_UNAVAILABLE: 503    // ffmpeg / ffprobe not found
@@ -105,8 +108,12 @@ function clientHeader(name, version) {
 // User settings registry (settings.js): keys, scopes, defaults, validation
 var settings = require('./settings');
 
+// The plugin contract (plugins.js; schemas plugin.schema.json, plugin-api.schema.json)
+var plugins = require('./plugins');
+
 module.exports = {
   SETTINGS: settings.SETTINGS,
+  SERVER_PLUGIN_API: plugins.SERVER_PLUGIN_API,
   API_VERSION: API_VERSION,
   MIN_API_VERSION: MIN_API_VERSION,
   API_PREFIX: API_PREFIX,

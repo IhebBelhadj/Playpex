@@ -25,6 +25,7 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `download.updated` | a download's state changed (at once), or its progress (at most every 2 s) | a `Download` |
 | `download.removed` | the admin removed it (or "remove when watched") | `{ infoHash }` |
 | `settings.changed` | a device's or a profile's settings were written or reset ([settings](settings.md)) | `{ scope: 'device' \| 'profile', ownerId, keys }` |
+| `plugin.changed` | a plugin was loaded, stopped (it failed) or removed ([plugins](plugins.md)): refetch `GET /plugins` | `{ id, state: 'enabled' \| 'failed' \| 'removed' \| … }` |
 | `library.changed` | what clients see of the media library changed: a scan found, changed or lost files, the admin fixed a match, ignored a file, changed or removed a folder ([what's on this server](playback.md#whats-on-this-server)) | `{ folderId }` (null: several) |
 
 Payload schemas: `ServerStatusEvent` (`torrents` = running ones), `TorrentStatsEvent`, `Session`, `SessionEndedEvent`, `Download`, `DownloadRemovedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).

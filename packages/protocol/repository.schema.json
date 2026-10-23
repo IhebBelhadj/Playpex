@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://playpex.dev/schemas/repository.schema.json",
+  "title": "Playpex plugin repository index (index.json)",
+  "description": "A repository's signed list of plugins (docs/plugins-plan.md §6.1, author guide docs/plugins/repositories.md). Served over HTTPS with its signature at <url>.sig: the base64 ed25519 signature of the file's exact bytes by repository.key (signing.js). The server trusts a package listed here when the index's signature checks with the key it pinned for this repository and the package's sha256 matches.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "repository", "generatedAt", "plugins"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "description": "Bumped on breaking changes of this file", "const": 1 },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "key"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "key": { "$ref": "plugin.schema.json#/$defs/key" },
+        "homepage": { "type": "string", "pattern": "^https://" }
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "plugins": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "publisher", "versions"],
+      "properties": {
+        "id": { "$ref": "plugin.schema.json#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "type": { "enum": ["plugin", "repository"] },
+        "publisher": { "$ref": "plugin.schema.json#/properties/publisher" },
+        "icon": { "description": "A full HTTPS URL (the package's assets aren't downloaded before install)", "type": "string", "maxLength": 2048, "pattern": "^https://" },
+        "listing": {
+          "description": "The manifest's listing, with screenshots / fanart as full HTTPS URLs",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "summary": { "type": "string", "maxLength": 150 },
+            "description": { "type": "string", "maxLength": 4000 },
+            "disclaimer": { "type": "string", "maxLength": 1000 },
+            "license": { "type": "string", "maxLength": 40 },
+            "source": { "type": "string", "pattern": "^https://" },
+            "categories": { "$ref": "plugin.schema.json#/properties/listing/properties/categories" },
+            "screenshots": { "type": "array", "maxItems": 8, "items": { "type": "string", "maxLength": 2048, "pattern": "^https://" } },
+            "fanart": { "type": "string", "maxLength": 2048, "pattern": "^https://" }
+          }
+        },
+        "versions": {
+          "description": "Newest first",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/version" }
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "url", "sha256", "size", "releasedAt"],
+      "properties": {
+        "version": { "$ref": "plugin.schema.json#/properties/version" },
+        "url": { "description": "The .ppx", "type": "string", "maxLength": 2048, "pattern": "^https://" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "size": { "type": "integer", "minimum": 1, "maximum": 52428800 },
+        "releasedAt": { "type": "string", "format": "date" },
+        "api": { "$ref": "plugin.schema.json#/properties/api" },
+        "audience": { "$ref": "plugin.schema.json#/properties/audience" },
+        "permissions": { "$ref": "plugin.schema.json#/$defs/permissions" },
+        "requires": { "$ref": "plugin.schema.json#/properties/requires" },
+        "lifecycle": { "enum": ["stable", "deprecated", "broken"] },
+        "replacedBy": { "description": "deprecated: the plugin to move to", "$ref": "plugin.schema.json#/$defs/id" },
+        "reason": { "description": "broken: why, for the admin", "type": "string", "maxLength": 300 },
+        "changelog": { "type": "string", "maxLength": 4000 }
+      },
+      "allOf": [
+        { "if": { "required": ["lifecycle"], "properties": { "lifecycle": { "const": "broken" } } }, "then": { "required": ["reason"] } }
+      ]
+    }
+  }
+}

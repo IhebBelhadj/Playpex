@@ -33,6 +33,8 @@ const INVALIDATES: [string, string[]][] = [
   // download.updated (every 2 s per torrent) is patched in place by the Downloads page
   ['download.added', ['downloads', 'overview']],
   ['download.removed', ['downloads', 'storage', 'overview']],
+  // a plugin loaded, stopped or was removed (its library.match: the folders' information providers)
+  ['plugin.changed', ['admin-plugins', 'library']],
 ]
 
 export function EventsProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {

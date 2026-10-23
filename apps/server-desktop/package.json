@@ -46,7 +46,7 @@
       "package.json",
       "!node_modules/@playpex/server/{torrents,test,vendor}{,/**}",
       "!node_modules/@playpex/server/{README.md,CLAUDE.md,drizzle.config.js}",
-      "!node_modules/@playpex/server/node_modules/{ajv,yaml}{,/**}",
+      "!node_modules/@playpex/server/node_modules/yaml{,/**}",
       "!node_modules/@playpex/protocol/README.md"
     ],
     "asar": true,
@@ -162,6 +162,11 @@
         "libsecret-1-0",
         "libayatana-appindicator3-1 | libappindicator3-1"
       ]
-    }
+    },
+    "asarUnpack": [
+      "node_modules/@playpex/server/lib/plugins/**",
+      "node_modules/quickjs-emscripten-core/**",
+      "node_modules/@jitl/quickjs-wasmfile-release-sync/**"
+    ]
   }
 }

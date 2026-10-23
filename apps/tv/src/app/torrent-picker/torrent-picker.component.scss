@@ -57,3 +57,11 @@
   font-size: var(--px-text-small);
   color: var(--px-option-caution);
 }
+
+// sources a plugin hid (play.rank): said, not choices
+.hidden {
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}

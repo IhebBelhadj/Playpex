@@ -19,6 +19,7 @@ import { LayerStack, Navigator, useScreen } from '../nav/public-api';
 import { FocusEngine } from '../movement/movement';
 import { tmdbImageBase } from '../ui/public-api';
 import { EpisodePlaybackService, NextEpisode } from '../episode-playback.service';
+import { Marker, PlaySourcesService } from '../play-sources.service';
 import { environment } from '../../environments/environment';
 
 const SAVE_EVERY_MS = 15000;
@@ -153,6 +154,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   subtitleDelay = 0;          // seconds, positive = later
   private appliedCueShift = 0; // seconds taken off the cues' file times so far
 
+  // markers from the server's plugins (player.markers): Skip intro / recap, credits
+  markers:Marker[] = [];
+  private markersAsked = false;
+  private markersSub:Subscription;
+  private skipDismissed = new Set<Marker>();
+
   // up next (episodes)
   upNext:NextEpisode | null = null;
   upNextLooking = false;
@@ -210,6 +217,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private profiles:ProfilesService,
     private episodes:EpisodePlaybackService,
     private settings:SettingsService,
+    private sources:PlaySourcesService,
   ) { }
 
   ngOnInit(): void {
@@ -355,6 +363,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.readyTimer);
     this.stateSub?.unsubscribe();
     this.nextSub?.unsubscribe();
+    this.markersSub?.unsubscribe();
 
     this.pointer.wheelNavigation = true;
     this.pointerSub?.unsubscribe();
@@ -427,12 +436,38 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return at < this.loadedStart - .001 || at > this.loadedEnd + .001;
   }
 
+  // How long before the end Up next shows: from the credits when a plugin
+  // marks them (at most 10 min), else the last 40 s
+  get upNextWindow():number {
+    let credits = this.markers.find(m => m.kind == 'credits'), d = this.mediaDuration();
+    return credits && d > credits.start ? Math.min(600, Math.max(UP_NEXT_S / 4, d - credits.start)) : UP_NEXT_S;
+  }
+
   get upNextShown():boolean {
-    return !!this.upNext && !this.upNextDismissed && this.playerReady && this.duration > 0 && this.remaining <= UP_NEXT_S;
+    return !!this.upNext && !this.upNextDismissed && this.playerReady && this.duration > 0 && this.remaining <= this.upNextWindow;
   }
 
   get countdownPct():number {
-    return Math.min(100, Math.max(0, (1 - this.remaining / UP_NEXT_S) * 100));
+    return Math.min(100, Math.max(0, (1 - this.remaining / this.upNextWindow) * 100));
+  }
+
+  // The intro / recap playing now, when a plugin marked it: "Skip intro"
+  get skipMarker():Marker | null {
+    if (!this.playerReady || this.scrub || !this.markers.length) return null;
+    let t = this.position();
+    return this.markers.find(m => (m.kind == 'intro' || m.kind == 'recap') && m.end != null &&
+      t >= m.start && t < m.end - 1 && !this.skipDismissed.has(m)) || null;
+  }
+
+  skipLabel(m:Marker):string {
+    return m.label || (m.kind == 'intro' ? 'Skip intro' : 'Skip recap');
+  }
+
+  skipNow() {
+    let m = this.skipMarker;
+    if (!m) return;
+    this.skipDismissed.add(m);
+    this.seekTo(m.end);
   }
 
   get subtitleSizeIndex():number {
@@ -630,7 +665,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       else if (action == 'select') {
         take();
         this.zone.run(() => {
-          if (this.upNextShown && this.upNext.source) this.playNext();
+          if (this.skipMarker) this.skipNow();
+          else if (this.upNextShown && this.upNext.source) this.playNext();
           else {
             this.togglePlay();
             this.showControls(PLAY_BUTTON);
@@ -676,6 +712,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   private back():boolean {
     if (!this.playerReady) return false;
     if (this.scrub) this.cancelScrub();
+    else if (this.skipMarker && !this.controlsVisible) this.skipDismissed.add(this.skipMarker);
     else if (this.upNextShown && !this.controlsVisible) this.upNextDismissed = true;
     else if (this.controlsVisible) this.hideControls();
     else if (this.statsVisible) this.statsVisible = false;
@@ -724,13 +761,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     on('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); this.mediaState(); });
 
     // fires again each time the transcoded stream restarts
-    on('loadedmetadata', () => this.updateTimeline());
+    on('loadedmetadata', () => {
+      this.updateTimeline();
+      this.askMarkers();
+    });
     on('timeupdate', () => {
       this.checkAudio();
       this.updateTimeline();
       // Progress for Continue watching / history: periodically, on pause and at the end
       if (!this.moviePlayer.paused && Date.now() - this.lastSave > SAVE_EVERY_MS) this.saveProgress();
-      if (this.upNext && !this.upNext.source && !this.upNextLooking && this.remaining <= UP_NEXT_S + 60) this.lookUpNextRelease();
+      if (this.upNext && !this.upNext.source && !this.upNextLooking && this.remaining <= this.upNextWindow + 60) this.lookUpNextRelease();
     });
     on('progress', () => this.updateTimeline());
     on('ended', () => {
@@ -1051,6 +1091,28 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let s = seconds % 60;
     let pad = (n:number) => (n < 10 ? '0' : '') + n;
     return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  }
+
+  // ── markers ───────────────────────────────────────────────────────────────
+
+  // Once the length is known: what the server's plugins mark in this title
+  // (not for 18+ titles or videos without a TMDB title)
+  private askMarkers() {
+    let p = this.playback, duration = this.mediaDuration();
+    if (this.markersAsked || this.destroyed || p.adult || !p.tmdbId || !p.mediaType || !(duration > 0)) return;
+    this.markersAsked = true;
+    let episode = p.mediaType == 'tv' && p.season != null && !!p.episode;
+    let fileName = (this.filePath || '').split('/').pop();
+    this.markersSub = this.sources.markers({
+      kind: episode ? 'episode' : 'movie',
+      tmdbId: p.tmdbId,
+      imdbId: p.imdbId,
+      title: p.title,
+      year: PlaySourcesService.year(p.year),
+      ...(episode ? { season: p.season, episode: p.episode } : {}),
+      duration: Math.round(duration),
+      ...(fileName ? { fileName } : {}),
+    }).subscribe(markers => this.markers = markers);
   }
 
   // ── up next ───────────────────────────────────────────────────────────────

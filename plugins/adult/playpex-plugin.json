@@ -1,0 +1,120 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "adult",
+  "name": "18+",
+  "description": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1",
+    "nav": "^1",
+    "ui": "^1"
+  },
+  "audience": "adults",
+  "icon": "assets/seal.svg",
+  "listing": {
+    "summary": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders.",
+    "disclaimer": "Adult content. Hidden from kids profiles and never shared over DLNA. Streaming copyrighted content via torrents may be illegal where you live.",
+    "license": "See licence.md",
+    "categories": [
+      "catalog",
+      "sources"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "apibay.org",
+      "therarbg.to",
+      "api.theporndb.net",
+      "api.themoviedb.org",
+      "image.tmdb.org",
+      "*.metadataapi.net"
+    ],
+    "storage": "10MB",
+    "secrets": [
+      "theporndbApiKey"
+    ],
+    "play": true,
+    "sources": [
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers"
+    ],
+    "write": [
+      "downloads"
+    ]
+  },
+  "contributes": {
+    "sections": [
+      {
+        "screen": "browse",
+        "menu": {
+          "label": "18+",
+          "icon": "assets/seal.svg",
+          "order": 50
+        }
+      }
+    ],
+    "screens": [
+      {
+        "name": "browse",
+        "template": "catalog",
+        "data": "browse",
+        "title": "18+"
+      },
+      {
+        "name": "title",
+        "template": "title",
+        "data": "title",
+        "params": [
+          "id"
+        ]
+      },
+      {
+        "name": "releases",
+        "template": "releases",
+        "data": "releases",
+        "title": "18+"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "core.search.filters",
+        "data": "searchFilter"
+      }
+    ],
+    "settings": [
+      {
+        "key": "metadataProvider",
+        "scope": "profile",
+        "type": "choice",
+        "label": "Catalog from",
+        "options": [
+          [
+            "tmdb",
+            "TMDB"
+          ],
+          [
+            "theporndb",
+            "ThePornDB"
+          ]
+        ],
+        "default": "tmdb"
+      },
+      {
+        "key": "theporndbApiKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "ThePornDB API key",
+        "description": "Needed for the ThePornDB catalog (theporndb.net, free account)"
+      }
+    ],
+    "chrome": {
+      "accent": "adult"
+    }
+  }
+}

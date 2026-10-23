@@ -27,10 +27,12 @@ var fs = require('fs'),
   paths = require('../paths'),
   events = require('../events'),
   userData = require('../userData'),
+  plugins = require('../plugins'),
   serviceErrors = require('../services/errors'),
   log = require('../logger').child('library');
 
-var RESCAN_MS = 15 * 60 * 1000,
+var PLUGIN_CONTEXT = { profile: null, device: null, locale: 'en' },
+  RESCAN_MS = 15 * 60 * 1000,
   FIRST_SCAN_MS = 5000,
   DOWNLOAD_SCAN_MS = 15000,
   PROGRESS_EVERY = 25,
@@ -151,7 +153,8 @@ function ensureDownloadFolder() {
 
 /**
  * Queues a scan of one folder, or of every folder (no id). `force`: unmatched
- * files are matched again, files never probed are probed again.
+ * files are matched again, files never probed are probed again; 'rematch'
+ * (its information provider changed): every file the admin didn't match is.
  */
 function scan(folderId, force) {
   var ids = folderId ? Promise.resolve([folderId]) :
@@ -161,10 +164,11 @@ function scan(folderId, force) {
   return ids.then(function (list) {
     list.forEach(function (id) {
       var queued = queue.filter(function (q) { return q.folderId === id; })[0];
+      var level = force === 'rematch' ? 'rematch' : !!force;
       if (queued) {
-        queued.force = queued.force || !!force;
+        queued.force = queued.force === 'rematch' || level === 'rematch' ? 'rematch' : queued.force || level;
       } else if (!(current && current.folderId === id && !force)) {
-        queue.push({ folderId: id, force: !!force });
+        queue.push({ folderId: id, force: level });
       }
     });
     next();
@@ -279,10 +283,11 @@ function scanFolder(job) {
           patch.state = row.itemId ? 'ok' : 'unmatched';
           patch.missingSince = null;
         }
-        var again = job.force && row.state !== 'ignored' && (!row.probe || !row.itemId && row.matchedBy !== 'admin');
+        var rematch = job.force === 'rematch' && row.matchedBy !== 'admin',
+          again = job.force && row.state !== 'ignored' && (!row.probe || rematch || !row.itemId && row.matchedBy !== 'admin');
         return (Object.keys(patch).length ? s.library.updateFile(row.id, patch) : Promise.resolve(row)).then(function (r) {
           if (again) {
-            work.push({ row: r, file: file, probe: !r.probe, match: !r.itemId });
+            work.push({ row: r, file: file, probe: !r.probe, match: rematch || !r.itemId });
           }
         });
       };
@@ -376,6 +381,44 @@ function scanFolder(job) {
     return Promise.all(workers);
   }
 
+  // The folder's information provider, when it's a plugin (library.match,
+  // docs/plugins-plan.md §4.3): its identity with TMDB's details, else null
+  // (no answer, the plugin not running: the core's own rules then)
+  function byPlugin(row, parsed, ids) {
+    if (!folder.matcher || folder.kind === 'other') {
+      return Promise.resolve(null);
+    }
+    var file = { relPath: row.relPath.slice(0, 4096), folderKind: folder.kind, parse: parsed, size: row.size },
+      known = {},
+      tmdbId = ids.tmdbId || ids.showTmdbId,
+      imdbId = ids.imdbId || ids.showImdbId;
+    if (Number.isInteger(tmdbId) && tmdbId > 0) {
+      known.tmdbId = tmdbId;
+    }
+    if (typeof imdbId === 'string' && /^tt\d{5,10}$/.test(imdbId)) {
+      known.imdbId = imdbId;
+    }
+    if (Object.keys(known).length) {
+      file.ids = known;
+    }
+    if (row.probe && typeof row.probe.duration === 'number') {
+      file.duration = row.probe.duration;
+    }
+    return plugins.runHook('library.match', { file: file }, PLUGIN_CONTEXT, { only: folder.matcher }).then(function (r) {
+      var identity = r.results[0] && r.results[0].output.identity;
+      if (!identity) {
+        return null;
+      }
+      identity = identity.kind === 'movie' ? { kind: 'movie', tmdbId: identity.tmdbId } :
+        { kind: 'episode', showTmdbId: identity.showTmdbId, season: identity.season, episode: identity.episode };
+      return matcher.describe(identity, options.catalog).then(function (details) {
+        return details ? { identity: identity, details: details, matchedBy: 'auto', score: 1 } : null;
+      });
+    }, function () {
+      return null;
+    });
+  }
+
   // true: matched · null: no confident match · false: couldn't ask TMDB
   function identify(task) {
     var parsed = task.row.parse || parse(task.row.relPath),
@@ -383,7 +426,9 @@ function scanFolder(job) {
         return path.join(folder.path, rel.split('/').join(path.sep));
       });
     return nfo.read(nfoFiles).then(function (ids) {
-      return matcher.match(parsed, ids, folder.kind, options.catalog);
+      return byPlugin(task.row, parsed, ids).then(function (found) {
+        return found || matcher.match(parsed, ids, folder.kind, options.catalog);
+      });
     }).then(function (found) {
       if (!found) {
         return task.row.matchedBy === 'admin' ? true : s.library.unmatch(task.row.id).then(function () { return null; });

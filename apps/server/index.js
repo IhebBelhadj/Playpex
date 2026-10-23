@@ -48,6 +48,7 @@ var http = require('http'),
   discovery = require('./lib/discovery'),
   library = require('./lib/library'),
   dlna = require('./lib/dlna'),
+  plugins = require('./lib/plugins'),
   api = require('./lib/api');
 
 var log = logger.child('server');
@@ -84,13 +85,15 @@ function listen(server, port, host) {
 
 /**
  * @param {{ port?: number, host?: string, console?: boolean, ffmpegDir?: string, discoveryPort?: number,
- *   recovery?: object, torrents?: object, library?: object|false, dlna?: object }} [options]
+ *   recovery?: object, torrents?: object, library?: object|false, dlna?: object, plugins?: object|false }} [options]
  *   port / host: override the settings for this run (tests);
  *   console: also log to stdout/stderr (default true); ffmpegDir: bundled ffmpeg;
  *   discoveryPort: UDP port of the discovery responder (tests; default 28471);
  *   recovery: { reason, port, owner } (startOrRecover): dashboard only, loopback;
  *   torrents: torrent client options for this run (tests: { engine: 'fake', engineOptions, discovery: false });
- *   dlna: { port, ssdpPort } of the DLNA server for this run (tests; it runs only with dlna.enabled)
+ *   dlna: { port, ssdpPort } of the DLNA server for this run (tests; it runs only with dlna.enabled);
+ *   plugins: false = no plugins (tests), else lib/plugins start options for this run
+ *     ({ dirs, http }; developerMode comes from the settings unless given)
  */
 function start(options) {
   options = options || {};
@@ -153,6 +156,10 @@ function start(options) {
     discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
     // the DLNA server (off by default; its own port; option dlna: { port, ssdpPort } for tests)
     dlna.start(info, Object.assign({ lan: host !== '127.0.0.1' }, options.dlna));
+    // plugins (docs/plugins-plan.md): each in its own sandbox; none in recovery mode
+    if (!recovery && options.plugins !== false) {
+      plugins.start(Object.assign({ developerMode: settings.get('plugins.developerMode') }, options.plugins));
+    }
     events.attach(server, {
       status: function () {
         return {
@@ -212,7 +219,9 @@ function stop() {
   system.stop();
   sessions.stop();
   events.detach();
-  return library.stop().then(function () {
+  return plugins.stop().then(function () {
+    return library.stop();
+  }).then(function () {
     return dlna.stop();
   }).then(function () {
     return discovery.stop();

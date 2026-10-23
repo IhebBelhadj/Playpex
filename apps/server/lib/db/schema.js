@@ -223,6 +223,7 @@ var libraryFolders = sqliteTable('library_folders', {
   dlna: integer('dlna', { mode: 'boolean' }).notNull().default(false),
   status: text('status').notNull().default('ok'),  // ok · scanning · missing · error: <message>
   builtin: integer('builtin', { mode: 'boolean' }).notNull().default(false),   // the download dir
+  matcher: text('matcher'),                        // its information provider: a plugin's id (library.match), null = TMDB
   addedAt: timestamp('added_at').notNull(),
   lastScanAt: timestamp('last_scan_at')
 }, function (table) {
@@ -396,6 +397,67 @@ var devices = sqliteTable('devices', {
   lastSeenAt: timestamp('last_seen_at').notNull()
 });
 
+// ── plugins (docs/plugins-plan.md §4.2, §6.5) ───────────────────────────────
+// What the sandbox keeps for a plugin. No foreign keys to `plugins`: developer
+// plugins (<config>/plugins-dev/) have no row; a removed plugin's rows go
+// with it (lib/plugins/install.js).
+
+// Installed packages (an upload or a URL; repositories are plan step P4b):
+// the files live in <config>/plugins/<id>/, the previous version in
+// <config>/plugins/.previous/<id>/
+var plugins = sqliteTable('plugins', {
+  id: text('id').primaryKey(),
+  version: text('version').notNull(),
+  origin: text('origin', { enum: ['upload', 'url'] }).notNull(),
+  source: text('source'),                          // the file's name, or the URL it came from
+  signer: text('signer'),                          // the trusted publisher key's fingerprint, null = unsigned
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  installedAt: timestamp('installed_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+// Its own key / value store (playpex.store), JSON values, quota from its manifest
+var pluginStore = sqliteTable('plugin_store', {
+  pluginId: text('plugin_id').notNull(),
+  key: text('key').notNull(),
+  value: text('value', { mode: 'json' }).notNull(),
+  size: integer('size').notNull(),            // bytes of the JSON, for the quota
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.pluginId, table.key] })
+  ];
+});
+
+// Values the admin entered for names in permissions.secrets, and linked
+// accounts' tokens (plan step P3b); profile_id '' = the server's
+var pluginSecrets = sqliteTable('plugin_secrets', {
+  pluginId: text('plugin_id').notNull(),
+  name: text('name').notNull(),
+  profileId: text('profile_id').notNull().default(''),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.pluginId, table.name, table.profileId] })
+  ];
+});
+
+// Values of a plugin's contributes.settings: scope 'server' (owner_id '') or
+// 'profile' (owner_id = the profile); a missing row = the manifest's default
+var pluginSettings = sqliteTable('plugin_settings', {
+  pluginId: text('plugin_id').notNull(),
+  scope: text('scope', { enum: ['server', 'profile'] }).notNull(),
+  ownerId: text('owner_id').notNull().default(''),
+  key: text('key').notNull(),
+  value: text('value', { mode: 'json' }).notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.pluginId, table.scope, table.ownerId, table.key] })
+  ];
+});
+
 module.exports = {
   MEDIA_TYPES: MEDIA_TYPES,
   DOWNLOAD_STATES: DOWNLOAD_STATES,
@@ -419,5 +481,9 @@ module.exports = {
   authAccount: authAccount,
   authVerification: authVerification,
   authDeviceCode: authDeviceCode,
-  devices: devices
+  devices: devices,
+  plugins: plugins,
+  pluginStore: pluginStore,
+  pluginSecrets: pluginSecrets,
+  pluginSettings: pluginSettings
 };

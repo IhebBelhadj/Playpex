@@ -209,7 +209,7 @@ export function LibraryPage() {
         />
       )}
       <AddFolderDialog open={adding} onOpenChange={setAdding} />
-      <EditFolderDialog folder={editing} onClose={() => setEditing(null)} />
+      <EditFolderDialog folder={editing} matchers={library.data.matchers} onClose={() => setEditing(null)} />
       <FileSheet id={openFile} folders={folders} onClose={() => setParams({})} />
     </>
   )
@@ -328,6 +328,7 @@ function FolderList({
                   {folder.builtin && <Badge variant="secondary">Downloads</Badge>}
                   <Badge variant="outline">{kindLabel(folder.kind)}</Badge>
                   {folder.audience === 'adults' && <Badge variant="outline">Adults only</Badge>}
+                  {folder.matcher && <Badge variant="outline">Recognised by {folder.matcher}</Badge>}
                   {folder.dlna && folder.audience === 'everyone' && (
                     <Badge variant="outline" title="TVs and players on the network browse it (when DLNA is on in Settings)">
                       DLNA
@@ -554,24 +555,55 @@ function FolderBrowser({ path, onChoose }: { path: string; onChoose: (path: stri
   )
 }
 
-function EditFolderDialog({ folder, onClose }: { folder: LibraryFolder | null; onClose: () => void }) {
+type Matcher = { id: string; name: string }
+
+// The folder's information provider: Playpex's own matching (TMDB), or a plugin's library.match
+const TMDB = 'tmdb'
+
+function EditFolderDialog({ folder, matchers, onClose }: { folder: LibraryFolder | null; matchers: Matcher[]; onClose: () => void }) {
   return (
     <Dialog open={!!folder} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>{folder && <EditFolderForm key={folder.id} folder={folder} onClose={onClose} />}</DialogContent>
+      <DialogContent>{folder && <EditFolderForm key={folder.id} folder={folder} matchers={matchers} onClose={onClose} />}</DialogContent>
     </Dialog>
   )
 }
 
-function EditFolderForm({ folder, onClose }: { folder: LibraryFolder; onClose: () => void }) {
+function EditFolderForm({ folder, matchers, onClose }: { folder: LibraryFolder; matchers: Matcher[]; onClose: () => void }) {
   const client = useQueryClient()
   const [kind, setKind] = useState<FolderKind>(folder.kind)
   const [audience, setAudience] = useState<Audience>(folder.audience)
   const [dlna, setDlna] = useState(folder.dlna)
+  const [matcher, setMatcher] = useState(folder.matcher ?? TMDB)
+  const providers = [
+    { id: TMDB, label: 'Playpex (TMDB)', hint: 'File and folder names, .nfo files, matched on TMDB' },
+    ...matchers.map((m) => ({ id: m.id, label: m.name, hint: `The ${m.name} plugin recognises the files; Playpex's own matching when it can't` })),
+    // a plugin that was chosen but isn't running now
+    ...(folder.matcher && !matchers.some((m) => m.id === folder.matcher)
+      ? [{ id: folder.matcher, label: `${folder.matcher} (not running)`, hint: 'Playpex matches the files until the plugin runs again' }]
+      : []),
+  ]
+  const matcherChanged = matcher !== (folder.matcher ?? TMDB)
   const save = useMutation({
     mutationFn: () =>
-      unwrap(api.PATCH('/admin/library/folders/{id}', { params: { path: { id: folder.id } }, body: { kind, audience, dlna: dlna && audience === 'everyone' } })),
+      unwrap(
+        api.PATCH('/admin/library/folders/{id}', {
+          params: { path: { id: folder.id } },
+          body: {
+            kind,
+            audience,
+            dlna: dlna && audience === 'everyone',
+            ...(matcherChanged && { matcher: matcher === TMDB ? null : matcher }),
+          },
+        }),
+      ),
     onSuccess: () => {
-      toast.success(kind !== folder.kind ? 'Saved; scan it to match its files as ' + kindLabel(kind).toLowerCase() : 'Saved')
+      toast.success(
+        matcherChanged
+          ? 'Saved; its files are matched again by ' + (providers.find((p) => p.id === matcher)?.label ?? matcher)
+          : kind !== folder.kind
+            ? 'Saved; scan it to match its files as ' + kindLabel(kind).toLowerCase()
+            : 'Saved',
+      )
       client.invalidateQueries({ queryKey: ['library'] })
       client.invalidateQueries({ queryKey: ['dlna'] })
       onClose()
@@ -588,6 +620,9 @@ function EditFolderForm({ folder, onClose }: { folder: LibraryFolder; onClose: (
         <Choice id="edit-kind" label="Holds" value={kind} options={KINDS} onChange={setKind} />
         <Choice id="edit-audience" label="Who sees it" value={audience} options={AUDIENCES} onChange={setAudience} />
       </div>
+      {kind !== 'other' && (providers.length > 1 || folder.matcher) && (
+        <Choice id="edit-matcher" label="Information provider" value={matcher} options={providers} onChange={setMatcher} />
+      )}
       <DlnaSwitch id="edit-dlna" checked={dlna} audience={audience} onChange={setDlna} />
       <DialogFooter>
         <Button disabled={save.isPending} onClick={() => save.mutate()}>

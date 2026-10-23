@@ -17,6 +17,8 @@ var express = require('express'),
   paths = require('../paths'),
   serviceErrors = require('../services/errors');
 
+var plugins = require('../plugins');
+
 var router = express.Router();
 
 function iso(date) {
@@ -30,6 +32,7 @@ function folderView(folder, counts, scan) {
     kind: folder.kind,
     audience: folder.audience,
     dlna: folder.dlna,
+    matcher: folder.matcher || null,
     builtin: folder.builtin,
     status: folder.status,
     addedAt: iso(folder.addedAt),
@@ -99,11 +102,15 @@ function upstream(err) {
 
 // ── folders and scans ───────────────────────────────────────────────────────
 
-// { folders: [...], scan: { current, queued } }
+// { folders: [...], scan: { current, queued }, matchers: [{ id, name }] (plugins with library.match) }
 router.get('/library', handle(function (s) {
   return Promise.all([s.library.folders(), s.library.counts()]).then(function (r) {
     var scan = library.status();
-    return { folders: r[0].map(function (f) { return folderView(f, r[1][f.id], scan); }), scan: scan };
+    return {
+      folders: r[0].map(function (f) { return folderView(f, r[1][f.id], scan); }),
+      scan: scan,
+      matchers: plugins.withHook('library.match')
+    };
   });
 }));
 
@@ -114,14 +121,22 @@ router.post('/library/folders', handle(function (s, req) {
   });
 }, 201));
 
-// body: { kind?, audience?, dlna? }
+// body: { kind?, audience?, dlna?, matcher? (a plugin with library.match, null = TMDB) }
 router.patch('/library/folders/:id', handle(function (s, req) {
   var body = req.body || {};
-  return s.library.updateFolder(req.params.id, { kind: body.kind, audience: body.audience, dlna: body.dlna }).then(function (folder) {
+  if (body.matcher !== undefined && body.matcher !== null &&
+    !plugins.withHook('library.match').some(function (p) { return p.id === body.matcher; })) {
+    throw serviceErrors.invalid('No running plugin ' + String(body.matcher).slice(0, 40) + ' recognises library files');
+  }
+  return s.library.updateFolder(req.params.id, {
+    kind: body.kind, audience: body.audience, dlna: body.dlna, matcher: body.matcher
+  }).then(function (folder) {
     if (!folder) {
       throw serviceErrors.notFound('No such folder');
     }
-    if (body.kind !== undefined) {
+    if (body.matcher !== undefined) {
+      library.scan(folder.id, 'rematch');   // every file the admin didn't match, by the new provider
+    } else if (body.kind !== undefined) {
       library.scan(folder.id, true);   // unmatched files may match as the new kind
     }
     library.changed(folder.id);

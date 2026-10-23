@@ -541,6 +541,7 @@ v1.use(require('./routes/settings'));
 v1.use('/profiles', require('./routes/profiles'));
 // What can play a title: files on this server, downloads, torrents (lib/play)
 v1.use('/play', require('./routes/play'));
+v1.use('/plugins', require('./routes/plugins'));
 // The media library as clients browse it (lib/library/view.js)
 v1.use('/library', require('./routes/mediaLibrary'));
 v1.use('/profiles/:profileId', require('./routes/library'));

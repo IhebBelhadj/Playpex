@@ -14,6 +14,7 @@ import { SetupPage } from '@/pages/setup'
 import { StoragePage } from '@/pages/storage'
 import { DownloadsPage } from '@/pages/downloads'
 import { LibraryPage } from '@/pages/library'
+import { PluginsPage } from '@/pages/plugins'
 
 // Paths are served by the server's SPA fallback (lib/api.js): any GET without
 // a dot outside /api answers index.html. /link is pairing's verification_uri.
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
       { path: 'downloads', element: <DownloadsPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'storage', element: <StoragePage /> },
+      { path: 'plugins', element: <PluginsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/:tab', element: <SettingsPage /> },
       { path: 'profiles', element: <ProfilesPage /> },

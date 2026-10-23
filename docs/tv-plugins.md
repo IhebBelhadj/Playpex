@@ -2,6 +2,8 @@
 
 How a plugin adds to Playpex TV: its own screens, and contributions to the core's screens. It is a **draft**: there is no plugin loader yet (a plugin is compiled with the app, like the example in `apps/tv/src/app/plugins-dev/hello/`), and what's described here is the contract that loader will keep. Server-side plugins and clients other than Playpex TV are out of scope; for those, see the client author guide in `docs/api/`.
 
+**This is the core's internal extension API, not the third-party plugin API.** Packaged plugins (`.ppx`, `docs/plugins-plan.md`) never ship Angular code: they are a manifest plus sandboxed server code, and the TV renders them with core templates (that plan's §5, decision B). What's described here is what the core's own features, those templates and development plugins like `hello` use; third-party authors start from [`docs/plugins/`](plugins/README.md) (the packaged-plugin contract, P0 done; the loader comes with P2–P4).
+
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live. Plugins inherit that framing.
 
 ## The two contracts
@@ -97,7 +99,7 @@ Context types: `MovieContext`, `ShowContext`, `EpisodeContext`, `SectionContext`
 Rules (checked when defined, or the contribution shows nothing):
 - ids `plugin.<pluginId>.<name>`; at most 3 contributions per plugin and slot; one kind, the slot's.
 - **keys** of your actions and rows start with `<pluginId>:` (`hello:party`): position memory and the action bar can't collide with the core's.
-- `adult: true` on a contribution with adult content: it's never offered to kids profiles.
+- `adult: true` on a contribution with adult content: it's never offered to kids profiles. (Packaged plugins don't set it: their manifest's `audience` decides for every contribution, `docs/plugins-plan.md` §5.3.)
 - a contribution that throws, or an Observable that errors, shows nothing (logged); it never takes the screen down.
 
 ### View models

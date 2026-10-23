@@ -149,9 +149,12 @@ export class EpisodePlaybackService {
   playNext(next:NextEpisode) {
     if (!next.source) return;
     let key = { mediaType: 'tv' as const, tmdbId: Number(next.show['id']), season: next.season, episode: next.episode['episode_number'] };
-    this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
-      let resume = state.resume;
-      this.start(next, next.code, PlaybackService.target(next.source), resume ? resume.positionS : 0, true);
+    // through the server's plugins first (they may ask, refuse, or give a stream)
+    this.sources.start(next.source).subscribe(source => {
+      this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
+        let resume = state.resume;
+        this.start(next, next.code, PlaybackService.target(source), resume ? resume.positionS : 0, true);
+      });
     });
   }
 

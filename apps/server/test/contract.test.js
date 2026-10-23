@@ -626,6 +626,14 @@ test('profiles', function () {
     .then(function () { return call('DELETE', '/profiles/' + id, undefined, { expect: 200 }); });
 });
 
+test('plugins: what clients get (none loaded here; the sandbox has its own test)', function () {
+  return call('GET', '/plugins', undefined, { expect: 200 })
+    .then(function (res) { assert.deepEqual(res.body.plugins, []); })
+    .then(function () { return call('GET', '/plugins?profile=nope', undefined, { expect: 404 }); })
+    .then(function () { return call('POST', '/plugins/none/data/home', { args: {} }, { expect: 404 }); })
+    .then(function () { return call('GET', '/plugins/none/assets/icon.svg', undefined, { expect: 404 }); });
+});
+
 test('library of a profile', function () {
   var p;
   return call('POST', '/profiles', { name: 'Bob' }, { expect: 201 })

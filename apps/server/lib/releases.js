@@ -4,7 +4,9 @@
 // most seeded first, with a quality filter, a "playable" filter, keywords and
 // paging for paged sources. Kinds: 'adult' (the 18+ section), 'movie', 'tv'.
 // Routes: /api/releases/{providers,browse} (and /api/adult/{providers,browse}
-// = kind 'adult', see adult.js).
+// = kind 'adult', see adult.js). Plugins with `releases.providers` are more
+// sources of the kinds movie and tv (`plugin:<id>`, after the core's; hook
+// kinds `movie` / `show`); never `audience: adults` ones (no profile here).
 
 var piratebay = require('./providers/piratebay');
 var therarbg = require('./providers/therarbg');
@@ -12,6 +14,7 @@ var eztv = require('./providers/eztv');
 var yts = require('./providers/yts');
 var episodes = require('./episodes');
 var present = require('./present');
+var trackers = require('./trackers');
 
 var describe = episodes.describe;
 
@@ -120,11 +123,70 @@ function isKind(kind) {
   return Object.prototype.hasOwnProperty.call(PROVIDERS, kind);
 }
 
+var HOOK_KINDS = { movie: 'movie', tv: 'show' },
+  // what withHook filters on: as a kids profile would, so no adults plugin
+  NO_ADULTS = { profile: { id: '', kids: true }, device: null, locale: 'en' };
+
+// A plugin's release as a provider's torrent (the server's trackers, not its own)
+function fromPlugin(pluginId, r) {
+  var hash = (r.infoHash || (/xt=urn:btih:([0-9a-fA-F]{40})/.exec(r.magnet || '') || [])[1] || '').toLowerCase();
+  if (!hash) {
+    return null;
+  }
+  return {
+    provider: pluginId,
+    name: r.title,
+    hash: hash,
+    magnet: trackers.build(hash, r.title),
+    seeds: r.seeds,
+    peers: r.peers === undefined ? null : r.peers,
+    size: r.size || null,
+    added: r.uploadedAt ? Math.floor(Date.parse(r.uploadedAt) / 1000) || 0 : 0
+  };
+}
+
+function pluginProviders(kind) {
+  var plugins = require('./plugins');
+  if (!HOOK_KINDS[kind]) {
+    return [];
+  }
+  return plugins.withHook('releases.providers', NO_ADULTS).map(function (p) {
+    return {
+      id: 'plugin:' + p.id,
+      name: p.name,
+      paged: true,
+      list: function (c) {
+        var input = { kind: HOOK_KINDS[kind], page: c.page };
+        if (c.q) {
+          input.query = c.q;
+        }
+        if (c.quality) {
+          input.filters = { quality: c.quality };
+        }
+        return plugins.runHook('releases.providers', input, NO_ADULTS, { only: p.id }).then(function (r) {
+          if (!r.results.length) {
+            throw new Error(p.name + ': ' + (r.errors[0] ? r.errors[0].message : 'no answer'));
+          }
+          var out = r.results[0].output;
+          return {
+            results: out.releases.map(function (rel) { return fromPlugin(p.id, rel); }).filter(Boolean),
+            hasMore: !out.last
+          };
+        });
+      }
+    };
+  });
+}
+
+function all(kind) {
+  return PROVIDERS[kind].concat(pluginProviders(kind));
+}
+
 function providers(kind) {
   if (!isKind(kind)) {
     throw new Error('unknown kind: ' + kind);
   }
-  return PROVIDERS[kind].map(function (p, i) {
+  return all(kind).map(function (p, i) {
     return { id: p.id, name: p.name, paged: p.paged, default: i === 0 };
   });
 }
@@ -152,7 +214,7 @@ function browse(options) {
   if (!isKind(kind)) {
     return Promise.reject(new Error('unknown kind: ' + kind));
   }
-  var list = PROVIDERS[kind];
+  var list = all(kind);
   var provider = list.filter(function (p) {
     return p.id === options.provider;
   })[0] || list[0];

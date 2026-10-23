@@ -22,6 +22,7 @@ export interface TorrentPickRequest {
   heading: string;          // "Choose a torrent" / "Choose a source"
   title: string;
   options: TorrentOption[];
+  footnotes: string[];      // not choices: what a plugin hid ("Hidden by <plugin>: HEVC")
   pick: (option:TorrentOption) => void;
   cancel: () => void;
 }
@@ -35,12 +36,13 @@ export class TorrentPickerService {
 
   private requests = new Subject<TorrentPickRequest>();
 
-  choose(title:string , options:TorrentOption[] , heading = 'Choose a torrent'): Observable<TorrentOption> {
+  choose(title:string , options:TorrentOption[] , heading = 'Choose a torrent', footnotes:string[] = []): Observable<TorrentOption> {
     return new Observable(subscriber => {
       this.requests.next({
         heading,
         title,
         options,
+        footnotes,
         pick : option => { subscriber.next(option); subscriber.complete(); },
         cancel : () => subscriber.complete(),
       });
@@ -100,10 +102,13 @@ export class TorrentPickerService {
   static fromSource(source:PlaySource): TorrentOption {
     let onServer = source.badges.includes('on-server');
     let downloading = source.type == 'download' && !onServer;
+    let cached = source.resolver ? `Cached on ${source.resolver.label}` : null;
     return {
       quality : source.quality || (source.type == 'torrent' ? 'SD' : 'Video'),
       tags : [
         onServer ? 'On this server' : null,
+        cached,
+        source.type == 'plugin' ? 'Stream' : null,
         downloading ? `Downloading ${Math.floor((source.progress || 0) * 100)} %` : null,
         source.codec && source.codec != 'h264' ? (source.codec == 'hevc' ? 'x265' : source.codec) : null,
         source.badges.includes('hdr') ? 'HDR' : null,
@@ -112,7 +117,7 @@ export class TorrentPickerService {
       size : source.size ? formatBytes(source.size) : undefined,
       seeds : source.type == 'torrent' && source.seeds != null ? source.seeds : undefined,
       name : source.label,
-      warnings : source.notes,
+      warnings : source.notes.filter(note => note != cached),
       recommended : source.badges.includes('best'),
       onServer,
       progress : downloading ? source.progress : undefined,

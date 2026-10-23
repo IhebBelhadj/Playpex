@@ -8,6 +8,7 @@ import { PlaybackService } from './playback.service';
 import { PlayChoiceService } from './play-choice.service';
 import { ProfilesService } from './profiles.service';
 import { ReleasesKind, ReleasesService } from './releases.service';
+import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.service';
 import { ServerService } from './server.service';
 import { installHelloPlugin } from './plugins-dev/hello/hello-plugin';
 import { TorrentPickerService } from './torrent-picker.service';
@@ -35,6 +36,10 @@ export interface PlaypexDev {
   // the player on a plain video file (no torrent): a movie, or Breaking Bad
   // S01E01 (its Up next is S01E02); or on a file of the server by its media ref (`f_…`)
   player(src:string, kind?:'movie' | 'episode'):void;
+  // the play pipeline for a title, as Play does (PlaySourcesService.choose: the picker, the plugins'
+  // questions); what was chosen lands in chosen() (scenarios: scripts/scenarios/plugin-play.js)
+  sources(query:SourcesQuery):void;
+  chosen():PlaySource | null;
   // the server's API base and this client's device id (scenarios read the settings with them)
   api:string;
   deviceId:string;
@@ -57,8 +62,11 @@ export class DevHook {
     private playback:PlaybackService,
     private layerStack:LayerStack,
     private server:ServerService,
+    private playSources:PlaySourcesService,
     private zone:NgZone,
   ) { }
+
+  private lastChosen:PlaySource | null = null;
 
   install() {
     if (environment.production) return;
@@ -83,6 +91,11 @@ export class DevHook {
             season: 1, episode: 1, mediaType: 'tv', tmdbId: 1396, startAt: 0 }
         : { title: 'Heat', year: '1995', runtimeMinutes: 170, magnet: '', devSrc: src, imdbId: 'tt0113277',
             mediaType: 'movie', tmdbId: 949, startAt: 0 })),
+      sources: query => run(() => {
+        this.lastChosen = null;
+        this.playSources.choose(query, query.title).subscribe(source => this.lastChosen = source);
+      }),
+      chosen: () => this.lastChosen,
       api: this.server.api,
       deviceId: this.server.deviceId,
       plugin: (name, on) => run(() => installHelloPlugin(on)),

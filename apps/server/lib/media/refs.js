@@ -4,6 +4,8 @@
 //   t_<infoHash>_<pathHash>   a file of a torrent; pathHash = the first 16 hex
 //                             of the SHA-1 of its path in the torrent
 //   f_<fileId>                a file of the library (media_files.id, a UUID)
+//   r_<32 hex>                a plugin's HTTPS source, proxied by the server
+//                             (lib/plugins/remote.js; random, kept in memory)
 // Opaque to clients (the pattern is @playpex/protocol MEDIA_REF_PATTERN):
 // they get refs from the server (TorrentFile.ref, later the play sources).
 
@@ -24,18 +26,23 @@ function file(id) {
   return 'f_' + id;
 }
 
-// { kind: 'torrent', infoHash, pathHash } | { kind: 'file', id } | null
+function remote(id) {
+  return 'r_' + id;
+}
+
+// { kind: 'torrent', infoHash, pathHash } | { kind: 'file' | 'remote', id } | null
 function parse(ref) {
   if (typeof ref !== 'string' || !PATTERN.test(ref)) {
     return null;
   }
   return ref[0] === 't' ? { kind: 'torrent', infoHash: ref.slice(2, 42), pathHash: ref.slice(43) } :
-    { kind: 'file', id: ref.slice(2) };
+    { kind: ref[0] === 'r' ? 'remote' : 'file', id: ref.slice(2) };
 }
 
 module.exports = {
   torrent: torrent,
   file: file,
+  remote: remote,
   parse: parse,
   pathHash: pathHash
 };

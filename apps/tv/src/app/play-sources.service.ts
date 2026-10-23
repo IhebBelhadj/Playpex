@@ -1,14 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import type { Schema } from '@playpex/protocol';
 import { NotificationService } from './notification.service';
 import { ProfilesService } from './profiles.service';
 import { ServerService } from './server.service';
 import { TorrentPickerService } from './torrent-picker.service';
+import { Dialogs } from './ui/public-api';
 
 export type PlaySource = Schema<'PlaySource'>;
 export type PlaySources = Schema<'PlaySources'>;
+export type PlayStart = Schema<'PlayStart'>;
+// intro / recap / credits / chapter of what plays, from the server's plugins (player.markers)
+export interface Marker { plugin:string; kind:'intro' | 'recap' | 'credits' | 'chapter'; start:number; end?:number; label?:string; }
 
 // The title asked for: a movie, or an episode of a show (tmdbId / imdbId /
 // title are the show's)
@@ -26,14 +31,20 @@ export interface SourcesQuery {
 // §6): every way to play a title, best first — files on the server, its
 // downloads, torrents — and whether the top one may start without asking
 // (`policy.autoplay`, a source id). For the current profile (its "Prefer
-// files on this server", kids rules).
+// files on this server", kids rules). Whatever is chosen goes through
+// `start()` (POST /play/start): the server's plugins may ask first, refuse,
+// or turn a "cached" torrent into a stream (docs/plugins-plan.md §4.3).
 @Injectable({
   providedIn: 'root'
 })
 export class PlaySourcesService {
 
+  // which sources answer a source came from (POST /play/start needs its `request`)
+  private requests = new WeakMap<PlaySource, string>();
+
   constructor(
     private http:HttpClient,
+    private dialogs:Dialogs,
     private server:ServerService,
     private profiles:ProfilesService,
     private picker:TorrentPickerService,
@@ -47,7 +58,37 @@ export class PlaySourcesService {
       year: query.year || null,
       profileId: this.profiles.current.value?.id || null,
     };
-    return this.http.post<PlaySources>(`${this.server.api}/play/sources`, body);
+    return this.http.post<PlaySources>(`${this.server.api}/play/sources`, body).pipe(
+      map(result => {
+        result.sources.forEach(source => this.requests.set(source, result.request));
+        return result;
+      }),
+    );
+  }
+
+  /**
+   * What to play of a source from `find()`: the server's plugins may ask a
+   * question first (a dialog; no → completes empty), refuse (the reason is
+   * notified, completes empty) or give another source (a torrent a debrid
+   * service has, as a stream). A server without /play/start, or an answer
+   * that has expired: the source as it is.
+   */
+  start(source:PlaySource, confirmed = false):Observable<PlaySource> {
+    let request = this.requests.get(source);
+    if (!request) return of(source);
+    return this.http.post<PlayStart>(`${this.server.api}/play/start`, { request, source: source.id, confirmed }).pipe(
+      catchError(() => of({ action: 'play', source } as PlayStart)),
+      switchMap(answer => {
+        if (answer.action == 'play') return of(answer.source);
+        if (answer.action == 'refuse') {
+          this.notifications.sendNotification('error', `${answer.reason} (${answer.by})`);
+          return EMPTY;
+        }
+        return this.dialogs.confirm({ title: answer.question, text: answer.by, confirm: answer.yes, cancel: answer.no }).pipe(
+          switchMap(yes => yes ? this.start(source, true) : EMPTY),
+        );
+      }),
+    );
   }
 
   /**
@@ -72,14 +113,11 @@ export class PlaySourcesService {
             return;
           }
           let chosen = (prefer && sources.find(prefer)) || PlaySourcesService.autoplay(result);
-          if (chosen) {
-            subscriber.next(chosen);
-            subscriber.complete();
-            return;
-          }
-          let options = sources.map(source => TorrentPickerService.fromSource(source));
-          picking = this.picker.choose(label, options, 'Choose a source').subscribe({
-            next: choice => subscriber.next(choice.torrent),
+          let picked:Observable<PlaySource> = chosen ? of(chosen) :
+            this.picker.choose(label, sources.map(source => TorrentPickerService.fromSource(source)), 'Choose a source',
+              PlaySourcesService.hiddenNotes(result)).pipe(map(choice => choice.torrent as PlaySource));
+          picking = picked.pipe(switchMap(source => this.start(source))).subscribe({
+            next: source => subscriber.next(source),
             complete: () => subscriber.complete(),
           });
         },
@@ -94,6 +132,25 @@ export class PlaySourcesService {
         picking?.unsubscribe();
       };
     });
+  }
+
+  // The markers of what plays (POST /play/markers); none when the server has none or fails
+  markers(query:SourcesQuery & { duration:number, fileName?:string }):Observable<Marker[]> {
+    let body = { ...query, imdbId: query.imdbId || null, year: query.year || null, profileId: this.profiles.current.value?.id || null };
+    return this.http.post<{ markers:Marker[] }>(`${this.server.api}/play/markers`, body).pipe(
+      map(answer => answer.markers || []),
+      catchError(() => of([])),
+    );
+  }
+
+  // "Hidden by <plugin>: <reason>" lines for the picker (play.rank), one per plugin and reason
+  static hiddenNotes(result:PlaySources):string[] {
+    let counts = new Map<string, number>();
+    (result.hidden || []).forEach(h => {
+      let line = `Hidden by ${h.by}: ${h.reason}`;
+      counts.set(line, (counts.get(line) || 0) + 1);
+    });
+    return [...counts].map(([line, n]) => n > 1 ? `${line} (${n})` : line);
   }
 
   // The source to play without asking (the server's policy), else null

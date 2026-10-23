@@ -15,12 +15,14 @@ Content-Type: application/json
 ```
 
 ```json
-{ "sources": [
+{ "request": "8c1f…",
+  "sources": [
     { "id": "f_3c1…", "type": "file", "provider": "library", "label": "Breaking Bad - S01E01.mkv", "ref": "f_3c1…",
       "quality": "1080p", "size": 1460000000, "playable": "audio-converted", "badges": ["on-server", "best"],
       "notes": ["Sound converted by the server"] },
     { "id": "torrent:9f2…", "type": "torrent", "provider": "eztv", "label": "Breaking.Bad.S01E01.720p…", "infoHash": "9f2…",
       "magnet": "magnet:?xt=…", "seeds": 120, "quality": "720p", "playable": "yes", "badges": [], "notes": [] } ],
+  "hidden": [],
   "policy": { "autoplay": null },
   "errors": [] }
 ```
@@ -28,10 +30,20 @@ Content-Type: application/json
 - `tmdbId`, `imdbId`, `title`, `year` are the movie's, or the **show's** for an episode; `title` is matched against release names (TMDB's English name).
 - `type`: `file` (a file of the server's media library), `download` (a file of a torrent the server keeps for this title; `progress` 1 = all on disk), `torrent` (from a provider). **A source with a `ref` plays through `/media/{ref}` directly** (skip steps 2–4: no `POST /torrents`, no polling; the lease is taken by the first `GET /media/{ref}`, kept with `POST /media/{ref}/keepalive`, released with `DELETE /media/{ref}`). A `torrent` plays from its `magnet` (steps 2–5).
 - `playable`: `yes`, `audio-converted` (Dolby / DTS sound the server re-encodes, see [audio](#choosing-direct-play-or-the-transcoded-stream)), `maybe` (HEVC / 10-bit / 4K: depends on the hardware), `no`; `notes` say why in words. Like the release fields below, these are judged for a Chromium player.
-- `badges` you may show (ignore unknown ones): `best` (the first), `on-server`, `downloading`, `pack`, `hdr`.
+- `badges` you may show (ignore unknown ones): `best` (the first), `on-server`, `downloading`, `pack`, `hdr`, `plugin` (from a plugin of the server), `cached` (a service a plugin links plays this torrent at once: say "Cached on <`resolver.label`>").
+- Plugins on the server ([plugins](plugins.md)) may add sources: torrents, and `type: 'plugin'` streams that play by their `ref` like a file (the server proxies them; there's no URL to see). `hidden` lists what a plugin hid, with `by` (its name) and `reason`: show "Hidden by <by>: <reason>" under the choices; they can't be played.
 - With `profileId`, the profile's setting `player.preferLocalFiles` (default on) puts the files on the server that play first, and **`policy.autoplay`** names the source to start without asking (a lone file on the server that plays); otherwise show the sources and let the user pick. A kids profile gets no file of an adults-only folder.
 - A provider that fails or takes longer than 10 s only drops its own sources (`errors: [{handler, message}]`); the answer comes anyway.
 - To resume, prefer the source the progress names (`fileId` → the source `f_<fileId>`; `infoHash` → that torrent).
+
+**Then start it**: send the chosen source (picked, autoplayed or resumed) to `POST /play/start` `{ "request": <the answer's request>, "source": <its id> }` and play what comes back:
+
+- `{ "action": "play", "source": … }`: play this source (the same one, or, for a `cached` torrent, a `plugin` stream with a `ref`).
+- `{ "action": "ask", "question", "yes", "no", "by" }`: show the question with those two answers; on yes, send the same request again with `"confirmed": true`; on no, play nothing.
+- `{ "action": "refuse", "reason", "by" }`: show the reason, play nothing.
+- `404`: the answer is older than 30 min, or the server restarted: ask `/play/sources` again. On a server without `/play/start` (also a `404`), play the source as listed.
+
+**Markers**: once the player knows the video's length, `POST /play/markers` with the same title fields plus `duration` (seconds) and `fileName` answers `{ markers: [{ plugin, kind, start, end?, label? }] }`: between an `intro` / `recap` marker's `start` and `end` show "Skip intro" / "Skip recap" (seek to `end`); a `credits` marker is where "Up next" starts instead of the last 40 s; `chapter`s can mark the timeline. Empty when no plugin marks anything.
 
 The routes below are what the sources are built from; use them for "Find releases" lists, or on servers older than the play pipeline (a `404` for `POST /play/sources`). Titles come from public catalogs.
 

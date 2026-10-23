@@ -10,10 +10,13 @@
     "check:engines": "node scripts/check-engines.js",
     "test": "node scripts/check-engines.js && node --test 'test/**/*.test.js'",
     "install:engine": "node scripts/install-engine.js",
+    "pack:plugin": "node scripts/pack-plugin.js",
     "build:torrentd": "node ../../engines/torrentd/build.js"
   },
   "dependencies": {
+    "@jitl/quickjs-wasmfile-release-sync": "^0.32.0",
     "@playpex/protocol": "*",
+    "ajv": "^8.20.0",
     "axios": "^0.27.2",
     "better-auth": "^1.7.10",
     "bonjour-service": "^1.4.4",
@@ -24,6 +27,7 @@
     "lodash": "^4",
     "mkdirp": "^0.5.5",
     "pump": "^3.0.0",
+    "quickjs-emscripten-core": "^0.32.0",
     "range-parser": "^1.2.0",
     "read-torrent": "^1.3.1",
     "torrent-stream": "^1.2.1",
@@ -33,7 +37,6 @@
     "youtubei.js": "^18.1.0"
   },
   "devDependencies": {
-    "ajv": "^8.20.0",
     "drizzle-kit": "^0.31.11",
     "yaml": "^2.9.1"
   },

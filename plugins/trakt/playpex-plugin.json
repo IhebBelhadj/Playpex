@@ -1,0 +1,176 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "trakt",
+  "name": "Trakt",
+  "description": "Scrobbles what you watch to Trakt and keeps your watch list, watched history and ratings in sync.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "homepage": "https://trakt.tv",
+  "api": {
+    "server": "^1",
+    "nav": "^1",
+    "ui": "^1"
+  },
+  "audience": "everyone",
+  "icon": "assets/trakt.svg",
+  "listing": {
+    "summary": "Scrobbles what you watch to Trakt and keeps your watch list, history and ratings in sync.",
+    "license": "See licence.md",
+    "categories": [
+      "tracking",
+      "notifications"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "api.trakt.tv"
+    ],
+    "storage": "5MB",
+    "secrets": [
+      "traktClientId",
+      "traktClientSecret"
+    ],
+    "hooks": [
+      "metadata.title"
+    ],
+    "events": [
+      "playback",
+      "watchlist"
+    ],
+    "schedule": true,
+    "write": [
+      "watchlist",
+      "watched",
+      "ratings"
+    ],
+    "link": [
+      "trakt"
+    ],
+    "notify": true
+  },
+  "link": [
+    {
+      "name": "trakt",
+      "label": "Trakt",
+      "scope": "profile",
+      "deviceCode": {
+        "codeUrl": "https://api.trakt.tv/oauth/device/code",
+        "tokenUrl": "https://api.trakt.tv/oauth/device/token",
+        "refreshUrl": "https://api.trakt.tv/oauth/token",
+        "clientIdSecret": "traktClientId",
+        "clientSecretSecret": "traktClientSecret"
+      }
+    }
+  ],
+  "contributes": {
+    "slots": [
+      {
+        "slot": "core.movies.rows",
+        "data": "movieRows",
+        "order": 60
+      },
+      {
+        "slot": "core.shows.rows",
+        "data": "showRows",
+        "order": 60
+      }
+    ],
+    "settings": [
+      {
+        "key": "scrobble",
+        "scope": "profile",
+        "type": "switch",
+        "label": "Scrobble what I watch",
+        "default": true,
+        "group": "Scrobbling"
+      },
+      {
+        "key": "sync",
+        "scope": "profile",
+        "type": "choice",
+        "label": "Sync",
+        "group": "Sync",
+        "options": [
+          [
+            "all",
+            "Watch list, history and ratings"
+          ],
+          [
+            "watchlist",
+            "Watch list only"
+          ],
+          [
+            "off",
+            "Nothing"
+          ]
+        ],
+        "default": "all"
+      },
+      {
+        "key": "notifyImports",
+        "scope": "profile",
+        "type": "switch",
+        "label": "Tell me what a sync added",
+        "group": "Sync",
+        "default": true,
+        "visibleIf": {
+          "key": "sync",
+          "equals": "all"
+        }
+      },
+      {
+        "key": "syncNow",
+        "scope": "profile",
+        "type": "action",
+        "label": "Sync now",
+        "group": "Sync",
+        "data": "syncNow",
+        "enabledIf": {
+          "key": "sync",
+          "equals": "all"
+        }
+      },
+      {
+        "key": "interval",
+        "scope": "server",
+        "type": "choice",
+        "label": "Sync every",
+        "group": "Sync",
+        "level": "advanced",
+        "options": [
+          [
+            "15m",
+            "15 minutes"
+          ],
+          [
+            "1h",
+            "Hour"
+          ],
+          [
+            "6h",
+            "6 hours"
+          ]
+        ],
+        "default": "1h"
+      },
+      {
+        "key": "traktClientId",
+        "scope": "server",
+        "type": "secret",
+        "label": "Trakt client id",
+        "group": "Trakt app",
+        "level": "advanced"
+      },
+      {
+        "key": "traktClientSecret",
+        "scope": "server",
+        "type": "secret",
+        "label": "Trakt client secret",
+        "group": "Trakt app",
+        "level": "advanced"
+      }
+    ]
+  }
+}

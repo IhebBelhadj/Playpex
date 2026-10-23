@@ -115,6 +115,8 @@ tags:
   - name: settings
     description: User settings (per device and per profile), keys in @playpex/protocol settings.js
   - name: trailers
+  - name: plugins
+    description: 'What clients render of plugins (docs/plugins-plan.md §4.9): their screens and contributions, the answers of their data handlers, their assets. Setup is the dashboard''s'
 
 paths:
   /server:
@@ -786,6 +788,158 @@ paths:
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
 
+  # ── plugins (admin; docs/plugins-plan.md §6.3) ──────────────────────────────
+  /admin/plugins:
+    get:
+      tags: [plugins]
+      operationId: listAdminPlugins
+      summary: Installed plugins and the developer copies that run, with the install settings
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The plugins
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugins' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/packages:
+    post:
+      tags: [plugins]
+      operationId: stagePluginPackage
+      summary: Read a package (an upload, or a URL) and show what it is before installing it
+      description: |
+        A `.ppx` / `.zip` (≤ 20 MB, ≤ 64 MB unpacked, ≤ 2000 files) holding `playpex-plugin.json` at its root or in
+        one folder (a GitHub source zip). A URL is a direct link, or a GitHub repository / release page
+        (`https://github.com/<owner>/<repo>[/releases[/latest|/tag/<tag>]]`: the release's `.ppx` / `.zip` asset, else
+        its source zip; a repository without releases: its default branch). The manifest is checked like the
+        loader does. Nothing runs yet: the answer is kept 15 min; install it by its `token`. `installable` false:
+        unsigned (or signed by a key not in `plugins.publisherKeys`) outside developer mode, or a developer copy
+        of the same id runs (`reason`).
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, contentMediaType: application/zip }
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, description: 'http(s): a package, or a GitHub repository / release page' }
+      responses:
+        '200':
+          description: What it is
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginPackagePreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '502': { $ref: '#/components/responses/Error' }
+  /admin/plugins/packages/{token}/install:
+    post:
+      tags: [plugins]
+      operationId: installPluginPackage
+      summary: Install a previewed package
+      description: |
+        Into `<config>/plugins/<id>/`; the version it replaces is kept (`.previous/<id>/`) and comes back when the
+        new one doesn't start (400). 403 when it isn't installable any more (trust settings changed), 404 for an
+        unknown or expired token, 409 when a developer copy of that id runs.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The installed plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugin' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Error' }
+  /admin/plugins/packages/{token}:
+    delete:
+      tags: [plugins]
+      operationId: discardPluginPackage
+      summary: Forget a previewed package
+      security:
+        - adminSession: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Done
+          content:
+            application/json:
+              schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/plugins/{pluginId}:
+    parameters:
+      - { name: pluginId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [plugins]
+      operationId: updateAdminPlugin
+      summary: Switch an installed plugin on or off (off stops it and hides it from clients; its data stays)
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+      responses:
+        '200':
+          description: The plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugin' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [plugins]
+      operationId: removeAdminPlugin
+      summary: Remove an installed plugin
+      description: Its files, and (unless `data=keep`) its store, secrets and settings. Library folders it recognised go back to TMDB.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: data, in: query, required: false, schema: { type: string, enum: [keep, delete] } }
+      responses:
+        '200':
+          description: Done
+          content:
+            application/json:
+              schema: { type: object, required: [ok], properties: { ok: { type: boolean } } }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/reload:
+    post:
+      tags: [plugins]
+      operationId: reloadDeveloperPlugin
+      summary: Load a developer copy again from its folder (after its author changed it)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPlugin' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ── media library (admin; docs/media-server-plan.md §5) ────────────────────
   /admin/library:
     get:
@@ -831,7 +985,12 @@ paths:
     patch:
       tags: [media-library]
       operationId: updateLibraryFolder
-      summary: Change a folder's kind, audience or DLNA flag (a new kind rescans it, matching unmatched files again)
+      summary: Change a folder's kind, audience, DLNA flag or information provider
+      description: |
+        A new kind rescans it, matching unmatched files again. A new `matcher` (a plugin of `matchers` with
+        `library.match`, or null for Playpex's own TMDB matching) rescans it matching every file again but
+        those the admin matched; the plugin answering nothing for a file leaves it to Playpex's rules.
+        400 for a matcher that isn't a running plugin with `library.match`.
       security:
         - adminSession: []
       requestBody:
@@ -844,6 +1003,7 @@ paths:
                 kind: { $ref: '#/components/schemas/LibraryFolderKind' }
                 audience: { $ref: '#/components/schemas/LibraryAudience' }
                 dlna: { type: boolean }
+                matcher: { type: [string, 'null'], description: 'A plugin id from `matchers`, or null (TMDB)' }
       responses:
         '200':
           description: The folder
@@ -1765,7 +1925,11 @@ paths:
         files on this server that play come first, and `policy.autoplay` names the source to start
         without asking when it is the only one. A provider that fails or takes longer than its timeout
         (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
-        Play a source with a `ref` through `/media/{ref}` (no `POST /torrents`); a torrent through its `magnet`.
+        Plugins (docs/plugins-plan.md §4.3) add sources (`plugin` HTTPS sources the server proxies, and
+        torrents), mark torrents a service serves at once (badge `cached`, ranked before other torrents),
+        reorder and hide sources (`hidden`, with the reason to show). Before playing the chosen source, ask
+        `POST /play/start` with this answer's `request`; then play a source with a `ref` through
+        `/media/{ref}` (no `POST /torrents`), a torrent through its `magnet`.
       requestBody:
         required: true
         content:
@@ -1778,6 +1942,207 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlaySources' }
         '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /play/start:
+    post:
+      tags: [play]
+      operationId: playStart
+      summary: What to play of the source the user chose (or the autoplay one)
+      description: |
+        Runs the plugins' `play.before` (one may ask a question first, or refuse) and, for a `cached`
+        torrent, its service's `play.resolve` (the torrent becomes a `plugin` source with a `ref`; if the
+        service fails, the torrent itself comes back with a note). `ask`: show the question with `yes` /
+        `no`, and on yes ask again with `confirmed: true`. `refuse`: show the reason, play nothing. Without
+        plugins the answer is always `play` with the source as listed. 404 when the sources answer is
+        older than 30 min or the server restarted (ask `/play/sources` again).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request, source]
+              properties:
+                request: { type: string, description: 'The sources answer''s `request`' }
+                source: { type: string, description: 'The chosen source''s `id`' }
+                confirmed: { type: boolean, description: 'The user said yes to the question of an `ask` answer' }
+      responses:
+        '200':
+          description: Play it, ask first, or refused
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayStart' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /play/markers:
+    post:
+      tags: [play]
+      operationId: playMarkers
+      summary: Intros, recaps, credits and chapters of what plays (plugins' `player.markers`)
+      description: |
+        Ask once the video's duration is known. Intro / recap: show "Skip intro" / "Skip recap" between
+        `start` and `end` (seek to `end`); credits: start Up next at `start` instead of the last 40 s;
+        chapters: marks on the timeline. Empty without plugins. Seconds of the file that plays.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/PlaySourcesRequest'
+                - type: object
+                  required: [duration]
+                  properties:
+                    duration: { type: number, exclusiveMinimum: 0, description: 'Seconds' }
+                    fileName: { type: string, description: 'The file''s name, when known' }
+                    size: { type: integer, minimum: 0, description: 'The file''s size in bytes, when known' }
+      responses:
+        '200':
+          description: The markers, by start
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [markers]
+                properties:
+                  markers:
+                    type: array
+                    items:
+                      type: object
+                      required: [plugin, kind, start]
+                      properties:
+                        plugin: { type: string }
+                        kind: { type: string, enum: [intro, recap, credits, chapter] }
+                        start: { type: number }
+                        end: { type: number, description: 'Credits may leave it out (until the end)' }
+                        label: { type: string }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plugins/meta:
+    post:
+      tags: [plugins]
+      operationId: pluginTitleMeta
+      summary: What plugins add to a title page (`metadata.title`)
+      description: |
+        Up to 3 items per plugin: `text`, `chip`, `score` (0–10, `votes`, `label`), `seal`
+        (`$defs/metaItem` of `@playpex/protocol/plugin-api.schema.json`). Plugins that fail or take longer
+        than 3 s are left out. A kids profile gets nothing from `audience: adults` plugins.
+      parameters:
+        - $ref: '#/components/parameters/Profile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: object
+                  description: '`$defs/titleRef`: kind movie / show / episode (tmdbId = the show''s) / video'
+                  required: [kind]
+                  properties:
+                    kind: { type: string, enum: [movie, show, episode, video] }
+                    tmdbId: { type: integer, minimum: 1 }
+                    imdbId: { type: string }
+                    season: { type: integer, minimum: 0 }
+                    episode: { type: integer, minimum: 1 }
+                    title: { type: string }
+                    year: { type: integer }
+                profile: { type: string }
+      responses:
+        '200':
+          description: Each plugin's items
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginTitleMeta' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plugins:
+    get:
+      tags: [plugins]
+      operationId: listPlugins
+      summary: The plugins a client renders for a profile
+      description: |
+        Enabled plugins and what they add (docs/plugins-plan.md §4.9, author guide docs/plugins/): menu sections,
+        screens (core templates), slot contributions, accent. Never permissions, settings, links or states: setup
+        is the dashboard's. A kids profile (`?profile=`) gets no `audience: adults` plugin. Refetch on the
+        `plugin.changed` event. Asset paths in a plugin (`assets/…`) are served at `<api>{assets}<path under assets/>`.
+      parameters:
+        - $ref: '#/components/parameters/Profile'
+      responses:
+        '200':
+          description: The plugins
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [plugins]
+                properties:
+                  plugins:
+                    type: array
+                    items: { $ref: '#/components/schemas/ClientPlugin' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plugins/{pluginId}/data/{name}:
+    post:
+      tags: [plugins]
+      operationId: callPluginData
+      summary: A plugin's data handler, for a screen, a slot, a card or an action
+      description: |
+        Runs the plugin's handler in its sandbox with the caller's context (profile, device, locale). The answer's
+        `data` is the model its template or slot expects (`$defs/templates`, `$defs/slots` of
+        `@playpex/protocol/plugin-api.schema.json`); `effects` are what the client performs (open, play,
+        toast, refresh, confirm, download), already checked against the plugin's permissions. A handler that
+        fails, takes longer than 10 s or answers out of schema → 502 `PLUGIN_FAILED`. Rate limited per device
+        and plugin (429 `TOO_MANY_ATTEMPTS`).
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' } }
+        - { name: name, in: path, required: true, schema: { type: string, pattern: '^[a-z][A-Za-z0-9]{0,39}$' } }
+        - $ref: '#/components/parameters/Profile'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                args: { type: object, description: 'The handler''s arguments (a screen''s params, a call''s args, a page number)' }
+                profile: { type: string, description: 'The profile (or ?profile=)' }
+      responses:
+        '200':
+          description: The handler's answer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, effects]
+                properties:
+                  data: { description: 'The model of the template / slot / call' }
+                  effects:
+                    type: array
+                    items: { type: object, required: [type], properties: { type: { type: string, enum: [open, play, toast, refresh, confirm, download] } } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/Error' }
+        '502': { $ref: '#/components/responses/Error' }
+  /plugins/{pluginId}/assets/{path}:
+    get:
+      tags: [plugins]
+      operationId: getPluginAsset
+      summary: A file of a plugin's assets/ (an icon, an image)
+      description: SVG, PNG, JPEG or WebP only, `X-Content-Type-Options nosniff`, a CSP that runs no script.
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: path, in: path, required: true, description: 'Path under assets/ (may contain /)', schema: { type: string } }
+      responses:
+        '200':
+          description: The file
+          content:
+            image/svg+xml: {}
+            image/png: {}
+            image/jpeg: {}
+            image/webp: {}
         '404': { $ref: '#/components/responses/NotFound' }
   /library/home:
     get:
@@ -2532,7 +2897,7 @@ components:
       in: path
       required: true
       description: A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN)
-      schema: { type: string, pattern: '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$' }
+      schema: { type: string, pattern: '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32})$' }
     Profile:
       name: profile
       in: query
@@ -2698,6 +3063,49 @@ components:
         application/octet-stream: {}
 
   schemas:
+    ClientPlugin:
+      type: object
+      description: A plugin as clients render it (its manifest's `contributes`, docs/plugins/manifest.md)
+      required: [id, name, version, audience, icon, assets, sections, screens, slots, chrome]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        audience: { type: string, enum: [everyone, adults] }
+        icon: { type: [string, 'null'], description: 'assets/… of the package' }
+        assets: { type: string, description: 'Where its assets are, under the API prefix: /plugins/<id>/assets/' }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [screen, menu]
+            properties:
+              screen: { type: string }
+              menu: { type: object, required: [label, icon], properties: { label: { type: string }, icon: { type: string }, order: { type: integer } } }
+        screens:
+          type: array
+          items:
+            type: object
+            required: [name, template]
+            properties:
+              name: { type: string }
+              template: { type: string, enum: [catalog, title, releases, list] }
+              data: { type: string }
+              title: { type: string }
+              params: { type: array, items: { type: string } }
+        slots:
+          type: array
+          items:
+            type: object
+            required: [slot, data]
+            properties:
+              slot: { type: string }
+              data: { type: string }
+              order: { type: integer }
+        chrome:
+          oneOf:
+            - { type: 'null' }
+            - { type: object, properties: { accent: { type: string, enum: [adult] } } }
     Error:
       type: object
       required: [error, code]
@@ -2725,6 +3133,7 @@ components:
             - BUSY                     # 503
             - UPSTREAM                 # 502
             - PROBE_FAILED             # 502
+            - PLUGIN_FAILED            # 502
             - PROVIDER_NOT_CONFIGURED  # 503
             - TRANSCODER_UNAVAILABLE   # 503
 
@@ -2928,13 +3337,14 @@ components:
         dlna: { type: boolean }
     LibraryFolder:
       type: object
-      required: [id, path, kind, audience, dlna, builtin, status, addedAt, lastScanAt, counts, scanning, queued]
+      required: [id, path, kind, audience, dlna, matcher, builtin, status, addedAt, lastScanAt, counts, scanning, queued]
       properties:
         id: { type: string }
         path: { type: string }
         kind: { $ref: '#/components/schemas/LibraryFolderKind' }
         audience: { $ref: '#/components/schemas/LibraryAudience' }
         dlna: { type: boolean }
+        matcher: { type: [string, 'null'], description: 'Its information provider: a plugin''s id (`library.match`), null = Playpex (TMDB)' }
         builtin: { type: boolean, description: 'The download directory: added by the server, not removable' }
         status: { type: string, description: 'ok · scanning · missing (unreachable: its files are kept 7 days) · error: <message>' }
         addedAt: { type: string, format: date-time }
@@ -2981,10 +3391,19 @@ components:
             error: { type: string }
     LibraryView:
       type: object
-      required: [folders, scan]
+      required: [folders, scan, matchers]
       properties:
         folders: { type: array, items: { $ref: '#/components/schemas/LibraryFolder' } }
         scan: { $ref: '#/components/schemas/LibraryScanStatus' }
+        matchers:
+          type: array
+          description: Running plugins that recognise library files (`library.match`), for a folder's `matcher`
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
     LibraryItem:
       type: object
       description: What a file is. For an episode, `tmdbId` is the episode's, `imdbId` the show's.
@@ -3245,12 +3664,20 @@ components:
       type: object
       required: [id, type, provider, label, playable, badges, notes]
       properties:
-        id: { type: string, description: 'Stable for a source: the media ref of a file or a download''s file, `torrent:<infoHash>` of a torrent' }
-        type: { type: string, enum: [file, download, torrent], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider' }
+        id: { type: string, description: 'Stable for a source: the media ref of a file, a download''s file or a plugin''s source, `torrent:<infoHash>` of a torrent' }
+        type: { type: string, enum: [file, download, torrent, plugin], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider or a plugin; plugin: a plugin''s HTTPS source, proxied by the server (play its `ref`)' }
         provider: { type: string, description: 'library, downloads, yts, eztv, therarbg… (unknown values may come with plugins)' }
         handler: { type: string, description: 'The collect handler that found it' }
         label: { type: string, description: 'A file''s or a release''s name' }
-        ref: { type: string, description: 'file, download: the media ref to play (GET /media/{ref})' }
+        ref: { type: string, description: 'file, download, plugin: the media ref to play (GET /media/{ref})' }
+        plugin: { type: string, description: 'The plugin that found it' }
+        resolver:
+          type: object
+          description: 'torrent: a plugin''s service has it and plays it at once (POST /play/start resolves it)'
+          required: [plugin, label]
+          properties:
+            plugin: { type: string }
+            label: { type: string, description: 'Real-Debrid…: "Cached on <label>"' }
         infoHash: { type: string, description: 'download, torrent' }
         path: { type: string, description: 'download: the file''s path in its torrent' }
         magnet: { type: string, description: 'torrent: with the server''s tracker list' }
@@ -3270,13 +3697,26 @@ components:
         badges:
           type: array
           items: { type: string }
-          description: 'Flags clients may show: best (the first), on-server, downloading, pack, hdr. Ignore those you don''t know'
+          description: 'Flags clients may show: best (the first), on-server, downloading, pack, hdr, plugin (from a plugin), cached (a service plays it at once). Ignore those you don''t know'
         notes: { type: array, items: { type: string }, description: 'Why it may not play, in words (English)' }
     PlaySources:
       type: object
-      required: [sources, policy, errors]
+      required: [request, sources, hidden, policy, errors]
       properties:
+        request: { type: string, description: 'For POST /play/start (kept 30 min)' }
         sources: { type: array, items: { $ref: '#/components/schemas/PlaySource' } }
+        hidden:
+          type: array
+          description: 'Sources a plugin''s `play.rank` hid: show "Hidden by <by>: <reason>" (they can''t be played from here)'
+          items:
+            type: object
+            required: [id, label, plugin, by, reason]
+            properties:
+              id: { type: string }
+              label: { type: string }
+              plugin: { type: string }
+              by: { type: string, description: 'The plugin''s name' }
+              reason: { type: string }
         policy:
           type: object
           required: [autoplay]
@@ -3290,6 +3730,122 @@ components:
             properties:
               handler: { type: string }
               message: { type: string }
+    PluginTitleMeta:
+      type: object
+      required: [meta]
+      properties:
+        meta:
+          type: array
+          items:
+            type: object
+            required: [plugin, name, items]
+            properties:
+              plugin: { type: string }
+              name: { type: string }
+              items:
+                type: array
+                description: '`$defs/metaItem`: text (`text`, `small`), chip (`text`, `icon`: a core icon name or a path under its assets/), score (`value` 0–10, `votes`, `label`), seal (`text`)'
+                items: { type: object, required: [kind], properties: { kind: { type: string, enum: [text, chip, score, seal] } } }
+    PluginPermission:
+      type: object
+      required: [key, text, personal]
+      properties:
+        key: { type: string }
+        text: { type: string, description: 'In words, for the admin' }
+        personal: { type: boolean, description: 'Granted per profile (later steps)' }
+    AdminPlugin:
+      type: object
+      required: [id, name, version, origin, enabled, state, error, permissions, hooks, previous]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        description: { type: [string, 'null'] }
+        publisher: { type: ['object', 'null'], properties: { name: { type: string }, url: { type: string } } }
+        audience: { type: [string, 'null'], enum: [everyone, adults, null] }
+        icon: { type: [string, 'null'], description: 'Under the API prefix: /plugins/<id>/assets/…' }
+        origin: { type: string, enum: [upload, url, dev], description: 'dev: a developer copy from <config>/plugins-dev/' }
+        source: { type: [string, 'null'], description: 'The uploaded file''s name, the URL, or the developer folder' }
+        signer: { type: [string, 'null'], description: 'The trusted publisher key''s fingerprint; null = unsigned' }
+        enabled: { type: boolean }
+        state: { type: string, enum: [loading, enabled, failed, disabled, removed] }
+        error: { type: [string, 'null'] }
+        permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
+        hooks: { type: array, items: { type: string } }
+        registered: { type: ['object', 'null'] }
+        stats: { type: ['object', 'null'] }
+        previous: { type: boolean, description: 'The version it replaced is kept' }
+        installedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    AdminPlugins:
+      type: object
+      required: [plugins, developerMode, publisherKeys, devDir, pluginsDir]
+      properties:
+        plugins: { type: array, items: { $ref: '#/components/schemas/AdminPlugin' } }
+        developerMode: { type: boolean, description: 'Setting plugins.developerMode: unsigned packages install; plugins-dev folders load (restart)' }
+        publisherKeys:
+          type: array
+          description: Setting plugins.publisherKeys
+          items: { type: object, required: [key, fingerprint], properties: { key: { type: string }, fingerprint: { type: string } } }
+        devDir: { type: string }
+        pluginsDir: { type: string }
+    PluginPackagePreview:
+      type: object
+      required: [token, id, name, version, permissions, hooks, origin, source, size, fileCount, change, current, signer, installable, reason, expiresAt]
+      properties:
+        token: { type: string }
+        id: { type: string }
+        name: { type: string }
+        version: { type: string }
+        description: { type: [string, 'null'] }
+        publisher: { type: ['object', 'null'], properties: { name: { type: string }, url: { type: string } } }
+        audience: { type: string }
+        icon: { type: [string, 'null'], description: 'A data: URL of its icon (≤ 256 KB)' }
+        permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
+        hooks: { type: array, items: { type: string } }
+        origin: { type: string, enum: [upload, url] }
+        source: { type: string }
+        resolved: { type: [string, 'null'], description: 'What a URL led to (a GitHub release asset, a source zip)' }
+        root: { type: [string, 'null'], description: 'The folder of the zip the plugin was found in' }
+        size: { type: integer }
+        fileCount: { type: integer }
+        changelog: { type: [string, 'null'] }
+        current: { type: [string, 'null'], description: 'The installed version, if any' }
+        change: { type: string, enum: [install, update, downgrade, reinstall] }
+        conflict: { type: [string, 'null'] }
+        signer:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [key, fingerprint, trusted]
+              properties:
+                key: { type: string }
+                fingerprint: { type: string }
+                trusted: { type: boolean }
+        installable: { type: boolean }
+        reason: { type: [string, 'null'], description: 'Why it can''t be installed now' }
+        expiresAt: { type: string, format: date-time }
+    PlayStart:
+      oneOf:
+        - type: object
+          required: [action, source]
+          properties:
+            action: { const: play }
+            source: { $ref: '#/components/schemas/PlaySource' }
+        - type: object
+          required: [action, question, yes, no, by]
+          properties:
+            action: { const: ask }
+            question: { type: string }
+            yes: { type: string }
+            no: { type: string }
+            by: { type: string, description: 'The plugin''s name' }
+        - type: object
+          required: [action, reason, by]
+          properties:
+            action: { const: refuse }
+            reason: { type: string }
+            by: { type: string }
     ServerLibraryEntry:
       type: object
       description: A movie or a show on this server, from its files' matches
@@ -3993,7 +4549,7 @@ components:
     Settings:
       type: object
       description: Every server setting (plan §5.3); secrets (`providers.*ApiKey`) masked as `••••<last 4>`
-      required: [general, network, security, storage, streaming, downloads, dlna, providers, transcoding]
+      required: [general, network, security, storage, streaming, downloads, dlna, plugins, providers, transcoding]
       properties:
         general:
           type: object
@@ -4046,6 +4602,12 @@ components:
           properties:
             enabled: { type: boolean, description: 'The DLNA / UPnP AV media server (no authentication: read-only, DLNA folders of audience everyone, LAN addresses only); only with network.lanSharing. Applied at once' }
             port: { type: integer, minimum: 1024, maximum: 65535, description: 'Its own HTTP listener (default 28472); applied at once' }
+        plugins:
+          type: object
+          required: [developerMode, publisherKeys]
+          properties:
+            developerMode: { type: boolean, description: 'Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart)' }
+            publisherKeys: { type: array, items: { type: string }, description: 'ed25519:<base64> public keys whose signed packages install without developer mode' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey, thePornDbApiKey]

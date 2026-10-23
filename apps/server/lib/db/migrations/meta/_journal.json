@@ -64,6 +64,27 @@
       "when": 1792747176377,
       "tag": "0008_progress_file",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792761474391,
+      "tag": "0009_plugins",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792766945649,
+      "tag": "0010_folder_matcher",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792768516341,
+      "tag": "0011_plugins_installed",
+      "breakpoints": true
     }
   ]
 }

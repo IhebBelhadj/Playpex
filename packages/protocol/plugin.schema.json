@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://playpex.dev/schemas/plugin.schema.json",
+  "title": "Playpex plugin manifest (playpex-plugin.json)",
+  "description": "The manifest of a .ppx package (docs/plugins-plan.md §3, author guide docs/plugins/manifest.md). Structure only: the rules between fields (hooks need their permissions, http sources need hosts, links need their secrets…) are checked by checkManifest() in plugins.js after this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "version", "publisher"],
+  "allOf": [
+    {
+      "if": { "required": ["type"], "properties": { "type": { "const": "repository" } } },
+      "then": {
+        "description": "A repository package (§6.1): adds a repository to the server, runs nothing",
+        "required": ["repository"],
+        "properties": {
+          "api": false, "audience": false, "permissions": false, "link": false, "contributes": false,
+          "requires": false, "exports": false, "migratesFrom": false
+        }
+      },
+      "else": {
+        "required": ["api", "audience", "permissions"],
+        "properties": { "repository": false }
+      }
+    }
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "type": {
+      "description": "plugin (default): a manifest + server.js; repository: only adds the repository it names",
+      "enum": ["plugin", "repository"]
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "key"],
+      "properties": {
+        "url": { "description": "The signed index (index.json; its signature at <url>.sig)", "type": "string", "maxLength": 2048, "pattern": "^https://" },
+        "key": { "$ref": "#/$defs/key" }
+      }
+    },
+    "id": {
+      "description": "The namespace of everything the plugin defines: screens plugin.<id>.*, paths p/<id>/*, settings plugin.<id>.*, keys <id>:*",
+      "$ref": "#/$defs/id"
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "description": { "type": "string", "maxLength": 300 },
+    "version": {
+      "description": "Semantic version, no build metadata",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "publisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "url": { "type": "string", "pattern": "^https://" },
+        "key": { "description": "The key an uploaded package's signature is checked with", "$ref": "#/$defs/key" }
+      }
+    },
+    "listing": {
+      "description": "What the dashboard's catalog and plugin page show (Kodi's xbmc.addon.metadata)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "disclaimer": { "type": "string", "maxLength": 1000 },
+        "license": { "type": "string", "maxLength": 40 },
+        "source": { "type": "string", "pattern": "^https://" },
+        "categories": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["catalog", "sources", "resolvers", "subtitles", "metadata", "library", "tracking", "notifications", "tools"] }
+        },
+        "screenshots": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/asset" } },
+        "fanart": { "$ref": "#/$defs/asset" }
+      }
+    },
+    "requires": {
+      "description": "Plugins this one works with (§6.2), installed with it from the repositories; not code: plugins bundle their libraries",
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "version"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "version": { "$ref": "#/$defs/versionRange" },
+          "optional": { "type": "boolean" }
+        }
+      }
+    },
+    "exports": {
+      "description": "Data handlers plugins that require this one may call (playpex.plugins.call), in this plugin's sandbox with its own permissions",
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "migratesFrom": {
+      "description": "Deprecated plugins this one replaces: their settings are copied over when the admin switches",
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "api": {
+      "description": "Version ranges of the APIs the plugin is written against: SERVER_PLUGIN_API (the host API, hooks, events), NAV_API and UI_API (the TV's templates and effects). Ranges: N, ^N, N.x, >=N, >=N <M, *",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["server"],
+      "properties": {
+        "server": { "$ref": "#/$defs/range" },
+        "nav": { "$ref": "#/$defs/range" },
+        "ui": { "$ref": "#/$defs/range" }
+      }
+    },
+    "audience": {
+      "description": "everyone, or adults: never offered to kids profiles (none of its screens, contributions, settings, events or requests), never over DLNA",
+      "enum": ["everyone", "adults"]
+    },
+    "icon": { "$ref": "#/$defs/asset" },
+    "homepage": { "type": "string", "pattern": "^https://" },
+    "permissions": { "$ref": "#/$defs/permissions" },
+    "link": {
+      "description": "Account linking flows (§4.8); each name must also be in permissions.link",
+      "type": "array",
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/link" }
+    },
+    "contributes": { "$ref": "#/$defs/contributes" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+    "key": {
+      "description": "An ed25519 public key: ed25519:<base64 of the 32 raw bytes>",
+      "type": "string",
+      "pattern": "^ed25519:[A-Za-z0-9+/]{43}=$"
+    },
+    "versionRange": {
+      "description": "A range of a plugin's semantic versions: 1.2.3 (exact), ^1 / ^1.2 / ^1.2.3, ~1.2 / ~1.2.3, 1.x, >=1.2.0, >=1.2.0 <2.0.0, *",
+      "type": "string",
+      "pattern": "^(\\*|[\\^~]?\\d+(\\.\\d+){0,2}|\\d+\\.x|>=\\d+\\.\\d+\\.\\d+( <\\d+\\.\\d+\\.\\d+)?)$"
+    },
+    "label": {
+      "description": "Text people read: plain, or @<key> of i18n/<locale>.json",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "equals"],
+      "properties": {
+        "key": { "$ref": "#/$defs/name" },
+        "equals": { "type": ["string", "number", "boolean"] }
+      }
+    },
+    "range": {
+      "type": "string",
+      "pattern": "^(\\*|\\^?[1-9]\\d*|[1-9]\\d*\\.x|>=[1-9]\\d*( <[1-9]\\d*)?)$"
+    },
+    "name": {
+      "description": "A name inside the plugin: a data handler, a screen, a job, a link, a secret",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+    },
+    "asset": {
+      "description": "A file of the package under assets/ (served at /api/v1/plugins/<id>/assets/*)",
+      "type": "string",
+      "pattern": "^assets/[A-Za-z0-9_-][A-Za-z0-9_./-]{0,120}\\.(svg|png|jpg|jpeg|webp)$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "host": {
+      "description": "A host name, exact or *.<domain> (any sub-domain, not the domain itself); no scheme, port or path",
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
+    },
+    "size": {
+      "description": "A size: <n>KB or <n>MB",
+      "type": "string",
+      "pattern": "^[1-9]\\d{0,5}(KB|MB)$"
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "network": {
+          "description": "Hosts http.request may reach (HTTPS only; resolved addresses must be public)",
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/host" }
+        },
+        "rateLimit": {
+          "description": "Stricter limits than the host's defaults, per host (never looser)",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "perSecond": { "type": "number", "exclusiveMinimum": 0 },
+            "burst": { "type": "integer", "minimum": 1 },
+            "inFlight": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "storage": { "$ref": "#/$defs/size" },
+        "secrets": {
+          "description": "Values the admin enters (API keys, client ids), given to this plugin only",
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "play": { "description": "May answer play effects (the core's player)", "type": "boolean" },
+        "sources": {
+          "description": "Kinds of Source its play.collect may return",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["magnet", "http"] }
+        },
+        "hooks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["play.collect", "play.rank", "play.before", "play.resolve", "releases.providers", "subtitles.providers", "metadata.title",
+              "player.markers", "library.match"]
+          }
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["playback", "downloads", "library", "watchlist"] }
+        },
+        "schedule": { "type": "boolean" },
+        "write": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["watchlist", "watched", "ratings", "downloads"] }
+        },
+        "link": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "library": { "description": "May read the library's metadata (never paths)", "type": "boolean" },
+        "files": { "description": "Sees the relative paths of library files (library.match); never their content or full path", "type": "boolean" },
+        "notify": { "description": "May send notifications to the profiles' clients (notify.send)", "type": "boolean" }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "label", "scope"],
+      "oneOf": [{ "required": ["deviceCode"] }, { "required": ["custom"] }],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "label": { "$ref": "#/$defs/label" },
+        "scope": { "description": "profile: an account per profile; server: one for the server. Linked from the dashboard either way", "enum": ["profile", "server"] },
+        "custom": {
+          "description": "A data handler starting a link the plugin runs itself: answers a code to show (and a poll handler) or a form to fill; the dashboard shows it",
+          "$ref": "#/$defs/name"
+        },
+        "deviceCode": {
+          "description": "An RFC 8628 device flow the host runs",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["codeUrl", "tokenUrl", "clientIdSecret"],
+          "properties": {
+            "codeUrl": { "type": "string", "pattern": "^https://" },
+            "tokenUrl": { "type": "string", "pattern": "^https://" },
+            "refreshUrl": { "type": "string", "pattern": "^https://" },
+            "scope": { "type": "string", "maxLength": 200 },
+            "clientIdSecret": { "$ref": "#/$defs/name" },
+            "clientSecretSecret": { "$ref": "#/$defs/name" }
+          }
+        }
+      }
+    },
+    "contributes": {
+      "description": "Plain data: the core reads it without running plugin code. `data` names the handler in server.js that answers",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "description": "Menu entries opening one of its screens",
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["screen", "menu"],
+            "properties": {
+              "screen": { "$ref": "#/$defs/name" },
+              "menu": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "icon"],
+                "properties": {
+                  "label": { "$ref": "#/$defs/label", "type": "string", "maxLength": 20 },
+                  "icon": { "$ref": "#/$defs/asset" },
+                  "order": { "type": "integer", "minimum": 0, "maximum": 1000 }
+                }
+              }
+            }
+          }
+        },
+        "screens": {
+          "description": "Screens rendered by core templates: plugin.<id>.<name>, path p/<id>/<name>",
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "template"],
+            "properties": {
+              "name": { "$ref": "#/$defs/name" },
+              "template": { "enum": ["catalog", "title", "releases", "list"] },
+              "data": { "$ref": "#/$defs/name" },
+              "title": { "type": "string", "maxLength": 40 },
+              "params": {
+                "description": "Path parameters, in order: p/<id>/<name>/:a/:b",
+                "type": "array",
+                "maxItems": 3,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/name" }
+              }
+            }
+          }
+        },
+        "slots": {
+          "description": "Contributions to core screens (at most 3 per slot)",
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot", "data"],
+            "properties": {
+              "slot": {
+                "enum": ["core.movie.actions", "core.show.actions", "core.episode.actions", "core.movie.rows", "core.show.rows",
+                  "core.movies.rows", "core.shows.rows", "core.title.meta", "core.watchlist.rows", "core.search.filters"]
+              },
+              "data": { "$ref": "#/$defs/name" },
+              "order": { "type": "integer", "minimum": 0, "maximum": 1000 }
+            }
+          }
+        },
+        "settings": {
+          "description": "Options the dashboard renders (Plugins › <name>: Settings for server scope, Profiles for profile scope; clients never show them); keys plugin.<id>.<key>",
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/setting" }
+        },
+        "chrome": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "accent": { "description": "A theme of the UI system for its screens", "enum": ["adult"] }
+          }
+        }
+      }
+    },
+    "setting": {
+      "type": "object",
+      "required": ["key", "scope", "type", "label"],
+      "properties": {
+        "key": { "$ref": "#/$defs/name" },
+        "scope": { "enum": ["profile", "server"] },
+        "type": { "enum": ["switch", "choice", "slider", "text", "secret", "action"] },
+        "label": { "$ref": "#/$defs/label" },
+        "description": { "type": "string", "maxLength": 200 },
+        "group": { "description": "Settings of a group are shown together under its title", "$ref": "#/$defs/label" },
+        "level": { "description": "advanced: behind \"Show advanced\"", "enum": ["basic", "advanced"] },
+        "visibleIf": { "$ref": "#/$defs/condition" },
+        "enabledIf": { "$ref": "#/$defs/condition" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "switch" },
+            "default": { "type": "boolean" }
+          },
+          "required": ["default"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "choice" },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 20,
+              "items": {
+                "type": "array",
+                "prefixItems": [{ "type": "string", "minLength": 1, "maxLength": 40 }, { "$ref": "#/$defs/label" }],
+                "items": false,
+                "minItems": 2
+              }
+            },
+            "default": { "type": "string" }
+          },
+          "required": ["options", "default"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "slider" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "type": "number", "exclusiveMinimum": 0 },
+            "unit": { "type": "string", "maxLength": 10 },
+            "default": { "type": "number" }
+          },
+          "required": ["min", "max", "default"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "enum": ["text", "secret"] },
+            "maxLength": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "default": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A button: calls the data handler; its answer's effects (a toast) are shown by the dashboard",
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "action" },
+            "data": { "$ref": "#/$defs/name" },
+            "confirm": { "description": "Asked before calling", "type": "string", "maxLength": 200 }
+          },
+          "required": ["data"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

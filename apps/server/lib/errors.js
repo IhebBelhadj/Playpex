@@ -22,7 +22,7 @@ function fail(res, code, message, extra) {
 // unexpected is logged and answered 500
 function failed(res, err) {
   if (err.code === 'BUSY' || err.code === 'NOT_FOUND' || err.code === 'INVALID' || err.code === 'CONFLICT' ||
-    err.code === 'FORBIDDEN') {
+    err.code === 'FORBIDDEN' || err.code === 'UPSTREAM') {
     return fail(res, err.code, err.message);
   }
   if (err.code === 'UNAVAILABLE') {

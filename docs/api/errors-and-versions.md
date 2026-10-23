@@ -27,6 +27,7 @@ Branch on `code`, show `error`. Some list routes add an empty list next to it (`
 | `NOT_SUPPORTED` | 501 | this kind of server can't do it (desktop-only routes) |
 | `UPSTREAM` | 502 | a provider (YTS, EZTV, IMDb, a subtitle site…) failed or timed out: try again later or another provider |
 | `PROBE_FAILED` | 502 | ffprobe couldn't read the file: play it directly |
+| `PLUGIN_FAILED` | 502 | a plugin's handler failed, timed out or answered out of schema ([plugins](plugins.md)): show the screen's empty state |
 | `BUSY` | 503 | a server limit (torrents, transcodes), or the server is in recovery mode |
 | `PROVIDER_NOT_CONFIGURED` | 503 | the provider needs an API key the server doesn't have (admin: Settings › Providers) |
 | `TRANSCODER_UNAVAILABLE` | 503 | no ffmpeg on the server: play directly |

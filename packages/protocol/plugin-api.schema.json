@@ -1,0 +1,2313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://playpex.dev/schemas/plugin-api.schema.json",
+  "title": "Playpex plugin API (SERVER_PLUGIN_API 1): what crosses the sandbox",
+  "description": "Values the host hands to a plugin's handlers and what it accepts back (docs/plugins-plan.md §4–§5, author guide docs/plugins/). The host validates every answer of a plugin against these before using it; an answer that doesn't match counts as the handler failing. Hook i/o is under $defs/hooks/<name>/{input,output}.",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "text": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "httpsUrl": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^https://"
+    },
+    "infoHash": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40}$"
+    },
+    "magnet": {
+      "type": "string",
+      "maxLength": 8192,
+      "pattern": "^magnet:\\?"
+    },
+    "quality": {
+      "enum": [
+        "2160p",
+        "1080p",
+        "720p",
+        "480p",
+        "SD"
+      ]
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "maxLength": 80
+      }
+    },
+    "imdbId": {
+      "type": "string",
+      "pattern": "^tt\\d{5,10}$"
+    },
+    "context": {
+      "description": "Who a call is for. No tokens, no names of other profiles. profile is null for jobs and server-scope calls",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "device",
+        "locale"
+      ],
+      "properties": {
+        "profile": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "kids"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kids": {
+                  "type": "boolean"
+                }
+              }
+            }
+          ]
+        },
+        "device": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "locale": {
+          "type": "string",
+          "maxLength": 35
+        }
+      }
+    },
+    "titleRef": {
+      "description": "Which title: a movie, a show, an episode of one (tmdbId is the show's), or another video of the library",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "movie",
+            "show",
+            "episode",
+            "video"
+          ]
+        },
+        "tmdbId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "imdbId": {
+          "$ref": "#/$defs/imdbId"
+        },
+        "season": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "episode": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1800,
+          "maximum": 3000
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "episode"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "season",
+              "episode"
+            ]
+          }
+        }
+      ]
+    },
+    "source": {
+      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: an HTTPS file proxied by the server as a media ref r_…, the client never sees the URL",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ],
+          "properties": {
+            "kind": {
+              "const": "magnet"
+            },
+            "magnet": {
+              "$ref": "#/$defs/magnet"
+            },
+            "infoHash": {
+              "$ref": "#/$defs/infoHash"
+            },
+            "fileIndex": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fileName": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "label": {
+              "$ref": "#/$defs/text"
+            },
+            "quality": {
+              "$ref": "#/$defs/quality"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "seeds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "peers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "codec": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "audio": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "notes": {
+              "$ref": "#/$defs/notes"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "magnet"
+              ]
+            },
+            {
+              "required": [
+                "infoHash"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "url"
+          ],
+          "properties": {
+            "kind": {
+              "const": "http"
+            },
+            "url": {
+              "$ref": "#/$defs/httpsUrl"
+            },
+            "headers": {
+              "description": "Sent by the server with every request of this stream (a token): never to the client. Host, Cookie, Connection, Range, Content-Length and Transfer-Encoding are the server's (FORBIDDEN_HEADERS in plugins.js)",
+              "type": "object",
+              "maxProperties": 8,
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9-]{1,64}$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 2048
+              }
+            },
+            "label": {
+              "$ref": "#/$defs/text"
+            },
+            "quality": {
+              "$ref": "#/$defs/quality"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "container": {
+              "type": "string",
+              "maxLength": 10
+            },
+            "codec": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "audio": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "notes": {
+              "$ref": "#/$defs/notes"
+            }
+          }
+        }
+      ]
+    },
+    "rankedSource": {
+      "description": "What play.rank sees of each source (the core's and plugins'): no magnet, path, URL or ref",
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "provider",
+        "label",
+        "playable"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "file",
+            "download",
+            "torrent",
+            "plugin"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "quality": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/quality"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "codec": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audio": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "seeds": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "playable": {
+          "enum": [
+            "yes",
+            "audio-converted",
+            "maybe",
+            "no"
+          ]
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "seeds"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "magnet": {
+          "$ref": "#/$defs/magnet"
+        },
+        "infoHash": {
+          "$ref": "#/$defs/infoHash"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "seeds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quality": {
+          "$ref": "#/$defs/quality"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "magnet"
+          ]
+        },
+        {
+          "required": [
+            "infoHash"
+          ]
+        }
+      ]
+    },
+    "subtitle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "language",
+        "label",
+        "url"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "language": {
+          "description": "ISO 639-1 / 639-2",
+          "type": "string",
+          "pattern": "^[a-z]{2,3}(-[A-Za-z]{2,4})?$"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "url": {
+          "description": "Fetched by the core (its host must be in permissions.network), converted to WebVTT",
+          "$ref": "#/$defs/httpsUrl"
+        },
+        "format": {
+          "enum": [
+            "srt",
+            "vtt",
+            "ass",
+            "ssa",
+            "sub"
+          ]
+        },
+        "hearingImpaired": {
+          "type": "boolean"
+        },
+        "downloads": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "start"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "intro",
+            "recap",
+            "credits",
+            "chapter"
+          ]
+        },
+        "start": {
+          "description": "seconds",
+          "type": "number",
+          "minimum": 0
+        },
+        "end": {
+          "description": "seconds; credits may leave it out (until the end)",
+          "type": "number",
+          "minimum": 0
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 60
+        }
+      }
+    },
+    "metaItem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "small": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "chip"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "icon": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "score"
+            },
+            "source": {
+              "const": "provider"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "votes": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "seal"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 20
+            }
+          }
+        }
+      ]
+    },
+    "intent": {
+      "description": "A screen to open: plugin.<own id>.<name> or a core screen a plugin may open (core.movie, core.show, core.episode, core.search)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "screen"
+      ],
+      "properties": {
+        "screen": {
+          "type": "string",
+          "pattern": "^(plugin\\.[a-z][a-z0-9-]{1,31}\\.[a-z][A-Za-z0-9]{0,39}|core\\.(movie|show|episode|search))$"
+        },
+        "params": {
+          "type": "object",
+          "maxProperties": 8,
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number"
+            ]
+          }
+        }
+      }
+    },
+    "call": {
+      "description": "A data handler of the same plugin, called with these args when the user selects (actions, cards) or scrolls near the end (paged rows)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+        },
+        "args": {
+          "type": "object"
+        }
+      }
+    },
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "title"
+      ],
+      "properties": {
+        "key": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "variant": {
+          "enum": [
+            "poster",
+            "still",
+            "portrait",
+            "compact"
+          ]
+        },
+        "image": {
+          "description": "A full HTTPS URL, or assets/… of the package",
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "subtitle": {
+          "$ref": "#/$defs/text"
+        },
+        "badges": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "oneOf": [
+              {
+                "enum": [
+                  "watched",
+                  "upcoming",
+                  "tv"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "progress": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rating": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "source": {
+                  "const": "provider"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10
+                }
+              }
+            }
+          ]
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
+        "call": {
+          "$ref": "#/$defs/call"
+        },
+        "info": {
+          "description": "The title info shown while the card has the focus (catalog template)",
+          "$ref": "#/$defs/titleInfo"
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "title"
+      ],
+      "properties": {
+        "key": {
+          "description": "Starts with <pluginId>:",
+          "type": "string",
+          "maxLength": 100
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "variant": {
+          "enum": [
+            "poster",
+            "still",
+            "portrait",
+            "compact"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/card"
+          }
+        },
+        "page": {
+          "description": "Paged: the core calls this handler with args.page = 1, 2… and expects a rowPage",
+          "$ref": "#/$defs/call"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "items"
+          ]
+        },
+        {
+          "required": [
+            "page"
+          ]
+        }
+      ]
+    },
+    "rowPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "last"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/card"
+          }
+        },
+        "last": {
+          "type": "boolean"
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "icon"
+      ],
+      "properties": {
+        "key": {
+          "description": "Starts with <pluginId>:",
+          "type": "string",
+          "maxLength": 100
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "icon": {
+          "description": "A core icon name, or assets/… of the package",
+          "type": "string",
+          "maxLength": 200
+        },
+        "on": {
+          "type": "boolean"
+        },
+        "progress": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
+        "call": {
+          "$ref": "#/$defs/call"
+        }
+      }
+    },
+    "titleInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "eyebrow": {
+          "$ref": "#/$defs/text"
+        },
+        "meta": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/metaItem"
+          }
+        },
+        "genres": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "overview": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "overviewFallback": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "credits": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "names"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "names": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "string",
+                  "maxLength": 80
+                }
+              }
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "backdrop": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        }
+      }
+    },
+    "playRequest": {
+      "description": "What the play effect hands to the core: one source plays at once, several open the source picker. tracking none: no resume point, progress, history, watched mark, Up next, playback events or download title (forced for audience adults)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "sources"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "subtitle": {
+          "$ref": "#/$defs/text"
+        },
+        "ref": {
+          "$ref": "#/$defs/titleRef"
+        },
+        "artwork": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "poster": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "backdrop": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/source"
+          }
+        },
+        "tracking": {
+          "enum": [
+            "full",
+            "none"
+          ]
+        }
+      }
+    },
+    "effect": {
+      "description": "What the core does for a plugin on a client: a plugin never runs code there (§5.3)",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "intent"
+          ],
+          "properties": {
+            "type": {
+              "const": "open"
+            },
+            "intent": {
+              "$ref": "#/$defs/intent"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "request"
+          ],
+          "properties": {
+            "type": {
+              "const": "play"
+            },
+            "request": {
+              "$ref": "#/$defs/playRequest"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "text"
+          ],
+          "properties": {
+            "type": {
+              "const": "toast"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "tone": {
+              "enum": [
+                "info",
+                "success",
+                "error"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "target"
+          ],
+          "properties": {
+            "type": {
+              "const": "refresh"
+            },
+            "target": {
+              "description": "screen (the plugin's open screen) or a slot name",
+              "type": "string",
+              "maxLength": 60
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "question",
+            "then"
+          ],
+          "properties": {
+            "type": {
+              "const": "confirm"
+            },
+            "question": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "yes": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "no": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "then": {
+              "$ref": "#/$defs/effectOrCall"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "request"
+          ],
+          "properties": {
+            "type": {
+              "const": "download"
+            },
+            "request": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "title",
+                "source"
+              ],
+              "properties": {
+                "title": {
+                  "$ref": "#/$defs/text"
+                },
+                "ref": {
+                  "$ref": "#/$defs/titleRef"
+                },
+                "source": {
+                  "$ref": "#/$defs/source"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "effectOrCall": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/effect"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "call"
+          ],
+          "properties": {
+            "type": {
+              "const": "call"
+            },
+            "call": {
+              "$ref": "#/$defs/call"
+            }
+          }
+        }
+      ]
+    },
+    "dataAnswer": {
+      "description": "What a data handler answers: the model its template / slot / action expects, and effects to perform after it",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "effects": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/effect"
+          }
+        }
+      }
+    },
+    "templates": {
+      "description": "The data each screen template expects (P1 may add fields; never removes)",
+      "type": "object",
+      "properties": {
+        "catalog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rows"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/text"
+            },
+            "rows": {
+              "type": "array",
+              "maxItems": 30,
+              "items": {
+                "$ref": "#/$defs/row"
+              }
+            },
+            "search": {
+              "type": "boolean"
+            },
+            "filters": {
+              "$ref": "#/$defs/filterGroups"
+            },
+            "empty": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "title": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "info"
+          ],
+          "properties": {
+            "info": {
+              "$ref": "#/$defs/titleInfo"
+            },
+            "actions": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "$ref": "#/$defs/action"
+              }
+            },
+            "rows": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "$ref": "#/$defs/row"
+              }
+            }
+          }
+        },
+        "releases": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "releases",
+            "last"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/text"
+            },
+            "releases": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "$ref": "#/$defs/release"
+              }
+            },
+            "last": {
+              "type": "boolean"
+            },
+            "filters": {
+              "$ref": "#/$defs/filterGroups"
+            },
+            "empty": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "items"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/text"
+            },
+            "items": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "label"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "label": {
+                    "$ref": "#/$defs/text"
+                  },
+                  "meta": {
+                    "$ref": "#/$defs/text"
+                  },
+                  "icon": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "intent": {
+                    "$ref": "#/$defs/intent"
+                  },
+                  "call": {
+                    "$ref": "#/$defs/call"
+                  }
+                }
+              }
+            },
+            "empty": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        }
+      }
+    },
+    "filterGroups": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "label",
+          "options"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "label"
+              ],
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "event": {
+      "description": "One event delivered to a plugin (§4.4): at most once, in order; dropped counts events lost to a full queue before this one",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "time",
+        "context",
+        "data"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "playback.started",
+            "playback.progress",
+            "playback.paused",
+            "playback.ended",
+            "playback.finished",
+            "download.added",
+            "download.completed",
+            "download.removed",
+            "library.changed",
+            "watchlist.added",
+            "watchlist.removed",
+            "watched.set",
+            "watched.cleared",
+            "rating.set"
+          ]
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "context": {
+          "$ref": "#/$defs/context"
+        },
+        "by": {
+          "description": "user, or plugin:<id> when another plugin made the change",
+          "type": "string",
+          "pattern": "^(user|plugin:[a-z][a-z0-9-]{1,31})$"
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^playback\\."
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/events/playback"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^download\\."
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/events/download"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "const": "library.changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/events/library"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^(watchlist|watched|rating)\\."
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "$ref": "#/$defs/events/watchlist"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "events": {
+      "playback": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "position",
+          "duration",
+          "source"
+        ],
+        "properties": {
+          "title": {
+            "$ref": "#/$defs/titleRef"
+          },
+          "position": {
+            "type": "number",
+            "minimum": 0
+          },
+          "duration": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "source": {
+            "description": "Never the magnet, path or ref",
+            "enum": [
+              "file",
+              "download",
+              "torrent",
+              "plugin"
+            ]
+          }
+        }
+      },
+      "download": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "state"
+        ],
+        "properties": {
+          "title": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/titleRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "library": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "added",
+          "removed"
+        ],
+        "properties": {
+          "added": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/titleRef"
+            }
+          },
+          "removed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/titleRef"
+            }
+          }
+        }
+      },
+      "watchlist": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "$ref": "#/$defs/titleRef"
+          },
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          }
+        }
+      }
+    },
+    "hooks": {
+      "play.collect": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            }
+          }
+        },
+        "output": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      },
+      "play.rank": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title",
+            "sources"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/rankedSource"
+              }
+            }
+          }
+        },
+        "output": {
+          "description": "order: ids first in this order, the rest after in their order; hide: dropped, with the reason the picker shows",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "order": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "string"
+              }
+            },
+            "hide": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "reason"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 60
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "play.before": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title",
+            "source"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "source": {
+              "$ref": "#/$defs/rankedSource"
+            }
+          }
+        },
+        "output": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action"
+              ],
+              "properties": {
+                "action": {
+                  "const": "continue"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action",
+                "question"
+              ],
+              "properties": {
+                "action": {
+                  "const": "ask"
+                },
+                "question": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "yes": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "no": {
+                  "type": "string",
+                  "maxLength": 20
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action",
+                "reason"
+              ],
+              "properties": {
+                "action": {
+                  "const": "refuse"
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              }
+            }
+          ]
+        }
+      },
+      "play.resolve": {
+        "input": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "mode",
+                "hashes"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "check"
+                },
+                "hashes": {
+                  "type": "array",
+                  "maxItems": 200,
+                  "items": {
+                    "$ref": "#/$defs/infoHash"
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "mode",
+                "title",
+                "source"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "resolve"
+                },
+                "title": {
+                  "$ref": "#/$defs/titleRef"
+                },
+                "source": {
+                  "$ref": "#/$defs/source"
+                }
+              }
+            }
+          ]
+        },
+        "output": {
+          "description": "check: which hashes it can serve ({ <hash>: { cached, label } }); resolve: an http source for the chosen one, or null",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "hashes"
+              ],
+              "properties": {
+                "hashes": {
+                  "type": "object",
+                  "maxProperties": 200,
+                  "propertyNames": {
+                    "pattern": "^[0-9a-f]{40}$"
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "cached"
+                    ],
+                    "properties": {
+                      "cached": {
+                        "type": "boolean"
+                      },
+                      "label": {
+                        "type": "string",
+                        "maxLength": 40
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source"
+              ],
+              "properties": {
+                "source": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/$defs/source"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "releases.providers": {
+        "input": {
+          "type": "object",
+          "required": [
+            "kind",
+            "page"
+          ],
+          "properties": {
+            "kind": {
+              "description": "movie, show, episode (the core's Find releases) or a kind of the plugin's own releases screens",
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+            },
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "filters": {
+              "type": "object"
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "releases",
+            "last"
+          ],
+          "properties": {
+            "releases": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "$ref": "#/$defs/release"
+              }
+            },
+            "last": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "subtitles.providers": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title",
+            "languages"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "languages": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "fileName": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            }
+          }
+        },
+        "output": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/subtitle"
+          }
+        }
+      },
+      "metadata.title": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "meta": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "$ref": "#/$defs/metaItem"
+              }
+            }
+          }
+        }
+      },
+      "player.markers": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title",
+            "duration"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 0
+            },
+            "fileName": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            }
+          }
+        },
+        "output": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/marker"
+          }
+        }
+      },
+      "library.match": {
+        "input": {
+          "type": "object",
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/libraryFile"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity"
+          ],
+          "properties": {
+            "identity": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/identity"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "slots": {
+      "description": "What a slot contribution's data handler answers in data, by the kind of slot (SLOTS in plugins.js)",
+      "actions": {
+        "type": "array",
+        "maxItems": 4,
+        "items": {
+          "$ref": "#/$defs/action"
+        }
+      },
+      "rows": {
+        "type": "array",
+        "maxItems": 4,
+        "items": {
+          "$ref": "#/$defs/row"
+        }
+      },
+      "meta": {
+        "type": "array",
+        "maxItems": 3,
+        "items": {
+          "$ref": "#/$defs/metaItem"
+        }
+      },
+      "searchFilter": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "chip",
+          "rows"
+        ],
+        "properties": {
+          "chip": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "label"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 20
+              }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/$defs/row"
+            }
+          }
+        }
+      }
+    },
+    "libraryFile": {
+      "description": "What library.match sees of a file: its path relative to the library folder, the core's parse of it and the ids its nfo / tags gave; never the folder's path or the file's content",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relPath",
+        "folderKind"
+      ],
+      "properties": {
+        "relPath": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "folderKind": {
+          "enum": [
+            "movies",
+            "shows",
+            "mixed",
+            "other"
+          ]
+        },
+        "parse": {
+          "type": "object",
+          "description": "lib/library/parse.js's answer: kind, title, year, season, episode, episodeEnd, resolution, source, codec"
+        },
+        "ids": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tmdbId": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "imdbId": {
+              "$ref": "#/$defs/imdbId"
+            }
+          }
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "identity": {
+      "description": "Which title a library file is, on the core's kinds",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "tmdbId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "movie"
+            },
+            "tmdbId": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "showTmdbId",
+            "season",
+            "episode"
+          ],
+          "properties": {
+            "kind": {
+              "const": "episode"
+            },
+            "showTmdbId": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "season": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "episode": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "episodeEnd": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "notification": {
+      "description": "notify.send's message: a toast on the profiles' clients (kept 24 h for clients not connected; one per key, the newest wins)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "tone": {
+          "enum": [
+            "info",
+            "success",
+            "error"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 60
+        }
+      }
+    },
+    "linkStart": {
+      "description": "What a custom link handler answers (the dashboard shows it): a code to enter elsewhere and the handler to poll, or a form to fill",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "url",
+            "poll"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "url": {
+              "$ref": "#/$defs/httpsUrl"
+            },
+            "qr": {
+              "type": "boolean"
+            },
+            "poll": {
+              "type": "string",
+              "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+            },
+            "expiresIn": {
+              "type": "integer",
+              "minimum": 30
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "form",
+            "submit"
+          ],
+          "properties": {
+            "form": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "label"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "secret": {
+                    "type": "boolean"
+                  },
+                  "help": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            },
+            "submit": {
+              "type": "string",
+              "pattern": "^[a-z][A-Za-z0-9]{0,39}$"
+            },
+            "help": {
+              "type": "string",
+              "maxLength": 300
+            }
+          }
+        }
+      ]
+    },
+    "linkPoll": {
+      "description": "A poll / submit handler's answer",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "pending",
+            "done",
+            "failed"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

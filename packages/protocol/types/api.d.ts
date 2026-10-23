@@ -582,6 +582,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed plugins and the developer copies that run, with the install settings */
+        get: operations["listAdminPlugins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a package (an upload, or a URL) and show what it is before installing it
+         * @description A `.ppx` / `.zip` (≤ 20 MB, ≤ 64 MB unpacked, ≤ 2000 files) holding `playpex-plugin.json` at its root or in
+         *     one folder (a GitHub source zip). A URL is a direct link, or a GitHub repository / release page
+         *     (`https://github.com/<owner>/<repo>[/releases[/latest|/tag/<tag>]]`: the release's `.ppx` / `.zip` asset, else
+         *     its source zip; a repository without releases: its default branch). The manifest is checked like the
+         *     loader does. Nothing runs yet: the answer is kept 15 min; install it by its `token`. `installable` false:
+         *     unsigned (or signed by a key not in `plugins.publisherKeys`) outside developer mode, or a developer copy
+         *     of the same id runs (`reason`).
+         */
+        post: operations["stagePluginPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/packages/{token}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install a previewed package
+         * @description Into `<config>/plugins/<id>/`; the version it replaces is kept (`.previous/<id>/`) and comes back when the
+         *     new one doesn't start (400). 403 when it isn't installable any more (trust settings changed), 404 for an
+         *     unknown or expired token, 409 when a developer copy of that id runs.
+         */
+        post: operations["installPluginPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/packages/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget a previewed package */
+        delete: operations["discardPluginPackage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove an installed plugin
+         * @description Its files, and (unless `data=keep`) its store, secrets and settings. Library folders it recognised go back to TMDB.
+         */
+        delete: operations["removeAdminPlugin"];
+        options?: never;
+        head?: never;
+        /** Switch an installed plugin on or off (off stops it and hides it from clients; its data stays) */
+        patch: operations["updateAdminPlugin"];
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/reload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Load a developer copy again from its folder (after its author changed it) */
+        post: operations["reloadDeveloperPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/library": {
         parameters: {
             query?: never;
@@ -636,7 +758,13 @@ export interface paths {
         delete: operations["removeLibraryFolder"];
         options?: never;
         head?: never;
-        /** Change a folder's kind, audience or DLNA flag (a new kind rescans it, matching unmatched files again) */
+        /**
+         * Change a folder's kind, audience, DLNA flag or information provider
+         * @description A new kind rescans it, matching unmatched files again. A new `matcher` (a plugin of `matchers` with
+         *     `library.match`, or null for Playpex's own TMDB matching) rescans it matching every file again but
+         *     those the admin matched; the plugin answering nothing for a file leaves it to Playpex's rules.
+         *     400 for a matcher that isn't a running plugin with `library.match`.
+         */
         patch: operations["updateLibraryFolder"];
         trace?: never;
     };
@@ -1593,9 +1721,150 @@ export interface paths {
          *     files on this server that play come first, and `policy.autoplay` names the source to start
          *     without asking when it is the only one. A provider that fails or takes longer than its timeout
          *     (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
-         *     Play a source with a `ref` through `/media/{ref}` (no `POST /torrents`); a torrent through its `magnet`.
+         *     Plugins (docs/plugins-plan.md §4.3) add sources (`plugin` HTTPS sources the server proxies, and
+         *     torrents), mark torrents a service serves at once (badge `cached`, ranked before other torrents),
+         *     reorder and hide sources (`hidden`, with the reason to show). Before playing the chosen source, ask
+         *     `POST /play/start` with this answer's `request`; then play a source with a `ref` through
+         *     `/media/{ref}` (no `POST /torrents`), a torrent through its `magnet`.
          */
         post: operations["playSources"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/play/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What to play of the source the user chose (or the autoplay one)
+         * @description Runs the plugins' `play.before` (one may ask a question first, or refuse) and, for a `cached`
+         *     torrent, its service's `play.resolve` (the torrent becomes a `plugin` source with a `ref`; if the
+         *     service fails, the torrent itself comes back with a note). `ask`: show the question with `yes` /
+         *     `no`, and on yes ask again with `confirmed: true`. `refuse`: show the reason, play nothing. Without
+         *     plugins the answer is always `play` with the source as listed. 404 when the sources answer is
+         *     older than 30 min or the server restarted (ask `/play/sources` again).
+         */
+        post: operations["playStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/play/markers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Intros, recaps, credits and chapters of what plays (plugins' `player.markers`)
+         * @description Ask once the video's duration is known. Intro / recap: show "Skip intro" / "Skip recap" between
+         *     `start` and `end` (seek to `end`); credits: start Up next at `start` instead of the last 40 s;
+         *     chapters: marks on the timeline. Empty without plugins. Seconds of the file that plays.
+         */
+        post: operations["playMarkers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What plugins add to a title page (`metadata.title`)
+         * @description Up to 3 items per plugin: `text`, `chip`, `score` (0–10, `votes`, `label`), `seal`
+         *     (`$defs/metaItem` of `@playpex/protocol/plugin-api.schema.json`). Plugins that fail or take longer
+         *     than 3 s are left out. A kids profile gets nothing from `audience: adults` plugins.
+         */
+        post: operations["pluginTitleMeta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The plugins a client renders for a profile
+         * @description Enabled plugins and what they add (docs/plugins-plan.md §4.9, author guide docs/plugins/): menu sections,
+         *     screens (core templates), slot contributions, accent. Never permissions, settings, links or states: setup
+         *     is the dashboard's. A kids profile (`?profile=`) gets no `audience: adults` plugin. Refetch on the
+         *     `plugin.changed` event. Asset paths in a plugin (`assets/…`) are served at `<api>{assets}<path under assets/>`.
+         */
+        get: operations["listPlugins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{pluginId}/data/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A plugin's data handler, for a screen, a slot, a card or an action
+         * @description Runs the plugin's handler in its sandbox with the caller's context (profile, device, locale). The answer's
+         *     `data` is the model its template or slot expects (`$defs/templates`, `$defs/slots` of
+         *     `@playpex/protocol/plugin-api.schema.json`); `effects` are what the client performs (open, play,
+         *     toast, refresh, confirm, download), already checked against the plugin's permissions. A handler that
+         *     fails, takes longer than 10 s or answers out of schema → 502 `PLUGIN_FAILED`. Rate limited per device
+         *     and plugin (429 `TOO_MANY_ATTEMPTS`).
+         */
+        post: operations["callPluginData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{pluginId}/assets/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A file of a plugin's assets/ (an icon, an image)
+         * @description SVG, PNG, JPEG or WebP only, `X-Content-Type-Options nosniff`, a CSP that runs no script.
+         */
+        get: operations["getPluginAsset"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2242,6 +2511,43 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description A plugin as clients render it (its manifest's `contributes`, docs/plugins/manifest.md) */
+        ClientPlugin: {
+            id: string;
+            name: string;
+            version: string;
+            /** @enum {string} */
+            audience: "everyone" | "adults";
+            /** @description assets/… of the package */
+            icon: string | null;
+            /** @description Where its assets are, under the API prefix: /plugins/<id>/assets/ */
+            assets: string;
+            sections: {
+                screen: string;
+                menu: {
+                    label: string;
+                    icon: string;
+                    order?: number;
+                };
+            }[];
+            screens: {
+                name: string;
+                /** @enum {string} */
+                template: "catalog" | "title" | "releases" | "list";
+                data?: string;
+                title?: string;
+                params?: string[];
+            }[];
+            slots: {
+                slot: string;
+                data: string;
+                order?: number;
+            }[];
+            chrome: null | {
+                /** @enum {string} */
+                accent?: "adult";
+            };
+        };
         Error: {
             /** @description Message for people (may change) */
             error: string;
@@ -2251,7 +2557,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -2474,6 +2780,8 @@ export interface components {
             kind: components["schemas"]["LibraryFolderKind"];
             audience: components["schemas"]["LibraryAudience"];
             dlna: boolean;
+            /** @description Its information provider: a plugin's id (`library.match`), null = Playpex (TMDB) */
+            matcher: string | null;
             /** @description The download directory: added by the server, not removable */
             builtin: boolean;
             /** @description ok · scanning · missing (unreachable: its files are kept 7 days) · error: <message> */
@@ -2516,6 +2824,11 @@ export interface components {
         LibraryView: {
             folders: components["schemas"]["LibraryFolder"][];
             scan: components["schemas"]["LibraryScanStatus"];
+            /** @description Running plugins that recognise library files (`library.match`), for a folder's `matcher` */
+            matchers: {
+                id: string;
+                name: string;
+            }[];
         };
         /** @description What a file is. For an episode, `tmdbId` is the episode's, `imdbId` the show's. */
         LibraryItem: {
@@ -2740,21 +3053,29 @@ export interface components {
             profileId?: string | null;
         };
         PlaySource: {
-            /** @description Stable for a source: the media ref of a file or a download's file, `torrent:<infoHash>` of a torrent */
+            /** @description Stable for a source: the media ref of a file, a download's file or a plugin's source, `torrent:<infoHash>` of a torrent */
             id: string;
             /**
-             * @description file: in the library; download: a file of the server's download of this title; torrent: from a provider
+             * @description file: in the library; download: a file of the server's download of this title; torrent: from a provider or a plugin; plugin: a plugin's HTTPS source, proxied by the server (play its `ref`)
              * @enum {string}
              */
-            type: "file" | "download" | "torrent";
+            type: "file" | "download" | "torrent" | "plugin";
             /** @description library, downloads, yts, eztv, therarbg… (unknown values may come with plugins) */
             provider: string;
             /** @description The collect handler that found it */
             handler?: string;
             /** @description A file's or a release's name */
             label: string;
-            /** @description file, download: the media ref to play (GET /media/{ref}) */
+            /** @description file, download, plugin: the media ref to play (GET /media/{ref}) */
             ref?: string;
+            /** @description The plugin that found it */
+            plugin?: string;
+            /** @description torrent: a plugin's service has it and plays it at once (POST /play/start resolves it) */
+            resolver?: {
+                plugin: string;
+                /** @description Real-Debrid…: "Cached on <label>" */
+                label: string;
+            };
             /** @description download, torrent */
             infoHash?: string;
             /** @description download: the file's path in its torrent */
@@ -2779,13 +3100,24 @@ export interface components {
              * @enum {string}
              */
             playable: "yes" | "audio-converted" | "maybe" | "no";
-            /** @description Flags clients may show: best (the first), on-server, downloading, pack, hdr. Ignore those you don't know */
+            /** @description Flags clients may show: best (the first), on-server, downloading, pack, hdr, plugin (from a plugin), cached (a service plays it at once). Ignore those you don't know */
             badges: string[];
             /** @description Why it may not play, in words (English) */
             notes: string[];
         };
         PlaySources: {
+            /** @description For POST /play/start (kept 30 min) */
+            request: string;
             sources: components["schemas"]["PlaySource"][];
+            /** @description Sources a plugin's `play.rank` hid: show "Hidden by <by>: <reason>" (they can't be played from here) */
+            hidden: {
+                id: string;
+                label: string;
+                plugin: string;
+                /** @description The plugin's name */
+                by: string;
+                reason: string;
+            }[];
             policy: {
                 /** @description The id of the source to play without asking, else null: show the sources */
                 autoplay: string | null;
@@ -2794,6 +3126,132 @@ export interface components {
                 handler: string;
                 message: string;
             }[];
+        };
+        PluginTitleMeta: {
+            meta: {
+                plugin: string;
+                name: string;
+                /** @description `$defs/metaItem`: text (`text`, `small`), chip (`text`, `icon`: a core icon name or a path under its assets/), score (`value` 0–10, `votes`, `label`), seal (`text`) */
+                items: {
+                    /** @enum {string} */
+                    kind: "text" | "chip" | "score" | "seal";
+                }[];
+            }[];
+        };
+        PluginPermission: {
+            key: string;
+            /** @description In words, for the admin */
+            text: string;
+            /** @description Granted per profile (later steps) */
+            personal: boolean;
+        };
+        AdminPlugin: {
+            id: string;
+            name: string;
+            version: string;
+            description?: string | null;
+            publisher?: {
+                name?: string;
+                url?: string;
+            } | null;
+            /** @enum {string|null} */
+            audience?: "everyone" | "adults" | null;
+            /** @description Under the API prefix: /plugins/<id>/assets/… */
+            icon?: string | null;
+            /**
+             * @description dev: a developer copy from <config>/plugins-dev/
+             * @enum {string}
+             */
+            origin: "upload" | "url" | "dev";
+            /** @description The uploaded file's name, the URL, or the developer folder */
+            source?: string | null;
+            /** @description The trusted publisher key's fingerprint; null = unsigned */
+            signer?: string | null;
+            enabled: boolean;
+            /** @enum {string} */
+            state: "loading" | "enabled" | "failed" | "disabled" | "removed";
+            error: string | null;
+            permissions: components["schemas"]["PluginPermission"][];
+            hooks: string[];
+            registered?: Record<string, never> | null;
+            stats?: Record<string, never> | null;
+            /** @description The version it replaced is kept */
+            previous: boolean;
+            /** Format: date-time */
+            installedAt?: string | null;
+            /** Format: date-time */
+            updatedAt?: string | null;
+        };
+        AdminPlugins: {
+            plugins: components["schemas"]["AdminPlugin"][];
+            /** @description Setting plugins.developerMode: unsigned packages install; plugins-dev folders load (restart) */
+            developerMode: boolean;
+            /** @description Setting plugins.publisherKeys */
+            publisherKeys: {
+                key: string;
+                fingerprint: string;
+            }[];
+            devDir: string;
+            pluginsDir: string;
+        };
+        PluginPackagePreview: {
+            token: string;
+            id: string;
+            name: string;
+            version: string;
+            description?: string | null;
+            publisher?: {
+                name?: string;
+                url?: string;
+            } | null;
+            audience?: string;
+            /** @description A data: URL of its icon (≤ 256 KB) */
+            icon?: string | null;
+            permissions: components["schemas"]["PluginPermission"][];
+            hooks: string[];
+            /** @enum {string} */
+            origin: "upload" | "url";
+            source: string;
+            /** @description What a URL led to (a GitHub release asset, a source zip) */
+            resolved?: string | null;
+            /** @description The folder of the zip the plugin was found in */
+            root?: string | null;
+            size: number;
+            fileCount: number;
+            changelog?: string | null;
+            /** @description The installed version, if any */
+            current: string | null;
+            /** @enum {string} */
+            change: "install" | "update" | "downgrade" | "reinstall";
+            conflict?: string | null;
+            signer: null | {
+                key: string;
+                fingerprint: string;
+                trusted: boolean;
+            };
+            installable: boolean;
+            /** @description Why it can't be installed now */
+            reason: string | null;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        PlayStart: {
+            /** @constant */
+            action: "play";
+            source: components["schemas"]["PlaySource"];
+        } | {
+            /** @constant */
+            action: "ask";
+            question: string;
+            yes: string;
+            no: string;
+            /** @description The plugin's name */
+            by: string;
+        } | {
+            /** @constant */
+            action: "refuse";
+            reason: string;
+            by: string;
         };
         /** @description A movie or a show on this server, from its files' matches */
         ServerLibraryEntry: {
@@ -3482,6 +3940,12 @@ export interface components {
                 enabled: boolean;
                 /** @description Its own HTTP listener (default 28472); applied at once */
                 port: number;
+            };
+            plugins: {
+                /** @description Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart) */
+                developerMode: boolean;
+                /** @description ed25519:<base64> public keys whose signed packages install without developer mode */
+                publisherKeys: string[];
             };
             providers: {
                 tmdbApiKey: string;
@@ -4792,6 +5256,195 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
         };
     };
+    listAdminPlugins: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plugins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugins"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    stagePluginPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file: string;
+                };
+                "application/json": {
+                    /** @description http(s): a package, or a GitHub repository / release page */
+                    url: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What it is */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            502: components["responses"]["Error"];
+        };
+    };
+    installPluginPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The installed plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Error"];
+        };
+    };
+    discardPluginPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    removeAdminPlugin: {
+        parameters: {
+            query?: {
+                data?: "keep" | "delete";
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateAdminPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    reloadDeveloperPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlugin"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getMediaLibrary: {
         parameters: {
             query?: never;
@@ -4872,6 +5525,8 @@ export interface operations {
                     kind?: components["schemas"]["LibraryFolderKind"];
                     audience?: components["schemas"]["LibraryAudience"];
                     dlna?: boolean;
+                    /** @description A plugin id from `matchers`, or null (TMDB) */
+                    matcher?: string | null;
                 };
             };
         };
@@ -6273,6 +6928,225 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    playStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The sources answer's `request` */
+                    request: string;
+                    /** @description The chosen source's `id` */
+                    source: string;
+                    /** @description The user said yes to the question of an `ask` answer */
+                    confirmed?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Play it, ask first, or refused */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayStart"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    playMarkers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaySourcesRequest"] & {
+                    /** @description Seconds */
+                    duration: number;
+                    /** @description The file's name, when known */
+                    fileName?: string;
+                    /** @description The file's size in bytes, when known */
+                    size?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The markers, by start */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        markers: {
+                            plugin: string;
+                            /** @enum {string} */
+                            kind: "intro" | "recap" | "credits" | "chapter";
+                            start: number;
+                            /** @description Credits may leave it out (until the end) */
+                            end?: number;
+                            label?: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    pluginTitleMeta: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description `$defs/titleRef`: kind movie / show / episode (tmdbId = the show's) / video */
+                    title: {
+                        /** @enum {string} */
+                        kind: "movie" | "show" | "episode" | "video";
+                        tmdbId?: number;
+                        imdbId?: string;
+                        season?: number;
+                        episode?: number;
+                        title?: string;
+                        year?: number;
+                    };
+                    profile?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Each plugin's items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginTitleMeta"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPlugins: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plugins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        plugins: components["schemas"]["ClientPlugin"][];
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    callPluginData: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The handler's arguments (a screen's params, a call's args, a page number) */
+                    args?: Record<string, never>;
+                    /** @description The profile (or ?profile=) */
+                    profile?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The handler's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The model of the template / slot / call */
+                        data: unknown;
+                        effects: {
+                            /** @enum {string} */
+                            type: "open" | "play" | "toast" | "refresh" | "confirm" | "download";
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    getPluginAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                /** @description Path under assets/ (may contain /) */
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/svg+xml": unknown;
+                    "image/png": unknown;
+                    "image/jpeg": unknown;
+                    "image/webp": unknown;
+                };
+            };
             404: components["responses"]["NotFound"];
         };
     };

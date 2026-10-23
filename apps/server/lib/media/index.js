@@ -6,10 +6,12 @@
 // library's rows (a file on disk, `folder.path + rel_path`, whose realpath
 // must stay inside the folder's: no route ever takes a path from a client).
 //
-//   Media = { ref, kind: 'torrent' | 'file', key, name, path, size,
-//             infoHash (torrent), fullPath, folder, mtime, subtitles (file) }
+//   Media = { ref, kind: 'torrent' | 'file' | 'remote', key, name, path, size,
+//             infoHash (torrent), fullPath, folder, mtime, subtitles (file),
+//             pluginId (remote: a plugin's http source, lib/plugins/remote.js) }
 //   key: what leases hold (lib/sessions.js): the info hash of a torrent (its
-//   leases are shared by every file and route), the ref of a disk file.
+//   leases are shared by every file and route), the ref of a disk file or of
+//   a remote source.
 //
 // ffmpeg / ffprobe read a disk file, or a finished file of a stopped
 // download, from its path; a torrent file still downloading through our own
@@ -111,6 +113,9 @@ function resolve(ref) {
   if (!parsed) {
     return Promise.reject(notFound());
   }
+  if (parsed.kind === 'remote') {
+    return require('../plugins/remote').media(ref);
+  }
   var found = parsed.kind === 'torrent' ? Promise.resolve(fromTorrent(parsed)) : fromLibrary(parsed);
   return found.then(function (media) {
     if (!media) {
@@ -147,6 +152,9 @@ function open(media, range) {
       end: range ? range.end : Math.max(0, media.size - 1)
     }));
   }
+  if (media.kind === 'remote') {
+    return require('../plugins/remote').open(media, range);
+  }
   return torrents.prepareStream(media.infoHash, media.path).then(function () {
     torrents.prefetchTail(media.infoHash, media.path);
     return torrents.stream(media.infoHash, media.path, range ? { start: range.start, end: range.end } : null);
@@ -161,7 +169,8 @@ function open(media, range) {
  * @returns {Promise<string>}
  */
 function input(media, localPort, deviceId) {
-  var disk = media.kind === 'file' ? Promise.resolve(media.fullPath) : torrents.diskPath(media.infoHash, media.path);
+  var disk = media.kind === 'file' ? Promise.resolve(media.fullPath) :
+    media.kind === 'torrent' ? torrents.diskPath(media.infoHash, media.path) : Promise.resolve(null);
   return disk.then(function (full) {
     if (full) {
       return 'file:' + full;

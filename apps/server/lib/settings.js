@@ -83,6 +83,15 @@ function defaults() {
       enabled: false,
       port: 28472         // its own HTTP listener (read-only media, no auth)
     },
+    plugins: {
+      // unsigned plugin packages install (at once), and the folders of
+      // <config>/plugins-dev/<id>/ load (authors testing their own; after a
+      // restart); docs/plugins-plan.md §6.3 decision C
+      developerMode: false,
+      // publisher keys (`ed25519:…`) whose signed packages install without
+      // developer mode (lib/plugins/install.js)
+      publisherKeys: []
+    },
     providers: {
       tmdbApiKey: '',
       openSubtitlesApiKey: '',
@@ -115,7 +124,7 @@ var ENV = {
 
 // Applied on the next start only
 var RESTART = ['general.port', 'network.lanSharing', 'security.pairingRequestMinutes', 'storage.downloadDir',
-  'downloads.engine', 'downloads.peerPort', 'downloads.portForwarding'];
+  'downloads.engine', 'downloads.peerPort', 'downloads.portForwarding', 'plugins.developerMode'];
 
 // Never returned in full by publicView()
 var SECRETS = ['providers.tmdbApiKey', 'providers.openSubtitlesApiKey', 'providers.wyzieApiKey',
@@ -191,7 +200,21 @@ function coerce(key, value, fromEnv) {
     if (!Array.isArray(value) || value.some(function (v) { return typeof v !== 'string'; })) {
       return { error: key + ' must be a list of strings' };
     }
-    return { value: value.map(function (v) { return v.trim(); }).filter(Boolean) };
+    var list = value.map(function (v) { return v.trim(); }).filter(Boolean);
+    if (key === 'plugins.publisherKeys') {
+      var bad = list.filter(function (k) {
+        try {
+          require('@playpex/protocol/signing').publicKey(k);
+          return false;
+        } catch (e) {
+          return true;
+        }
+      });
+      if (bad.length) {
+        return { error: 'publisherKeys: not an ed25519 public key (ed25519:<base64>): ' + bad[0].slice(0, 60) };
+      }
+    }
+    return { value: list };
   }
   if (typeof value !== 'string') {
     return { error: key + ' must be a string' };

@@ -397,6 +397,38 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
 
 // ── up next ─────────────────────────────────────────────────────────────────
 
+// "Skip intro": where Up next sits, never both at once (an intro is early)
+.skip {
+  position: absolute;
+  right: $inset-x;
+  bottom: from-bottom(64);
+  display: flex;
+  align-items: center;
+  gap: dp(12);
+  padding: dp(12) dp(22);
+  border: none;
+  border-radius: var(--px-radius-l);
+  background: var(--px-color-focus);
+  color: var(--px-color-on-focus);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-lead);
+  box-shadow: var(--px-shadow-capsule);
+  cursor: pointer;
+  transition: bottom var(--px-dur-slow);
+
+  .controlsShown & {
+    bottom: dp(300);
+  }
+
+  .skipKey {
+    padding: dp(2) dp(8);
+    border-radius: var(--px-radius-s);
+    background: var(--px-surface-2);
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-small);
+  }
+}
+
 .upNext {
   position: absolute;
   right: $inset-x;

@@ -95,7 +95,7 @@ module.exports = function libraryService(repositories, options) {
       });
     },
 
-    // { kind?, audience?, dlna?, status?, lastScanAt?, path? (the server's own changes) }
+    // { kind?, audience?, dlna?, matcher? (a plugin id, null = TMDB), status?, lastScanAt?, path? (the server's own changes) }
     updateFolder: function (id, patch) {
       return Promise.resolve().then(function () {
         patch = patch || {};
@@ -108,8 +108,12 @@ module.exports = function libraryService(repositories, options) {
         if (patch.dlna !== undefined && typeof patch.dlna !== 'boolean') {
           throw errors.invalid('dlna must be true or false');
         }
+        if (patch.matcher !== undefined && patch.matcher !== null &&
+          !(typeof patch.matcher === 'string' && /^[a-z][a-z0-9-]{1,31}$/.test(patch.matcher))) {
+          throw errors.invalid('matcher must be a plugin id, or null (TMDB)');
+        }
         var fields = {};
-        ['kind', 'audience', 'dlna', 'status', 'lastScanAt', 'path'].forEach(function (key) {
+        ['kind', 'audience', 'dlna', 'matcher', 'status', 'lastScanAt', 'path'].forEach(function (key) {
           if (patch[key] !== undefined) {
             fields[key] = patch[key];
           }

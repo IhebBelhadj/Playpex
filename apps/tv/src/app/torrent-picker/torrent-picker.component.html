@@ -4,7 +4,7 @@
   <px-option *ngFor="let option of request.options" (pxSelect)="pick(option)">
     <span class="main">
       <span class="quality">{{option.quality}}</span>
-      <span class="tag" *ngFor="let tag of option.tags" [class.onServer]="tag == 'On this server'">{{tag}}</span>
+      <span class="tag" *ngFor="let tag of option.tags" [class.onServer]="tag == 'On this server' || tag.startsWith('Cached on ')">{{tag}}</span>
       <span class="tag recommended" *ngIf="option.recommended">Best match</span>
     </span>
     <span class="meta">
@@ -15,4 +15,5 @@
     <span class="name" *ngIf="option.name">{{option.name}}</span>
     <span class="warning" *ngFor="let warning of option.warnings">{{warning}}</span>
   </px-option>
+  <p class="hidden" *ngFor="let note of request.footnotes">{{note}}</p>
 </px-dialog>
