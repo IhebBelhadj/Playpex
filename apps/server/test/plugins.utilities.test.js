@@ -94,7 +94,9 @@ test('names: the core\'s reading of release names', function () {
     call('names.matches', ['Breaking.Brad.S01E02.720p', { kind: 'episode', tmdbId: 1396, title: 'Breaking Bad', season: 1, episode: 2 }]),
     call('names.matches', ['Breaking.Bad.S01.1080p', { kind: 'episode', tmdbId: 1396, title: 'Breaking Bad', season: 1, episode: 2 }]),
     call('names.matches', ['Heat.1995.1080p', { kind: 'movie', tmdbId: 949, title: 'Heat', year: 1995 }]),
-    call('names.rank', [[{ name: 'A 2160p HEVC', seeds: 500, id: 1 }, { name: 'B 1080p x264 AAC', seeds: 20, id: 2 }]])
+    call('names.rank', [[{ name: 'A 2160p HEVC', seeds: 500, id: 1 }, { name: 'B 1080p x264 AAC', seeds: 20, id: 2 }]]),
+    call('names.matches', [['Breaking.Bad.S01E02.720p', 'Breaking.Brad.S01E02.720p', 'Breaking.Bad.S01.1080p'],
+      { kind: 'episode', tmdbId: 1396, title: 'Breaking Bad', season: 1, episode: 2 }])
   ]).then(function (r) {
     assert.deepEqual(r[0].value, {
       title: 'Severance', year: null, season: 2, episode: 10, episodeEnd: null, pack: false,
@@ -105,6 +107,7 @@ test('names: the core\'s reading of release names', function () {
     assert.equal(r[3].value, 'pack');
     assert.equal(r[4].value, 'movie');
     assert.deepEqual(r[5].value.map(function (i) { return i.id; }), [2, 1]);
+    assert.deepEqual(r[6].value, ['episode', null, 'pack'], 'a list of names answers a list');
   });
 });
 
@@ -113,6 +116,8 @@ test('names: bad arguments', function () {
     call('names.parse', [42]),
     call('names.parse', ['x'.repeat(2000)]),
     call('names.matches', ['Heat', { kind: 'film', title: 'Heat' }]),
+    call('names.matches', [['Heat', 42], { kind: 'movie', title: 'Heat' }]),
+    call('names.matches', [new Array(1001).fill('Heat'), { kind: 'movie', title: 'Heat' }]),
     call('names.rank', [[{ seeds: 3 }]]),
     call('names.rank', ['nope'])
   ]).then(function (r) {

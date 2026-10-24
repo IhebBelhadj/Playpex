@@ -1,0 +1,36 @@
+{
+  "$schema": "../../../packages/protocol/plugin.schema.json",
+  "id": "yts",
+  "name": "YTS",
+  "description": "Movie torrents from YTS for Play (by IMDb id) and a \"Find releases\" list of its most downloaded movies.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Movie torrents from YTS: small x264 encodes with AAC sound, found by IMDb id.",
+    "disclaimer": "Streaming copyrighted content via torrents may be illegal where you live. Educational project.",
+    "license": "See licence.md",
+    "categories": [
+      "sources"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "movies-api.accel.li",
+      "yts.lt",
+      "yts.ag"
+    ],
+    "sources": [
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers"
+    ]
+  }
+}

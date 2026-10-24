@@ -8,7 +8,7 @@
 //
 //   names.parse ({ name })            lib/media/names#parse
 //   names.describe ({ name })         { quality, codec, audio, playable }
-//   names.matches ({ name, title })   'episode' | 'pack' | 'movie' | null for a titleRef
+//   names.matches ({ name, title })   'episode' | 'pack' | 'movie' | null for a titleRef (a list of names: a list)
 //   names.rank ({ items })            the items in the core's streaming order
 //   html.select ({ html, selector, fields? })   the matches' text / attributes, or the fields of each
 //   torrent.info (bytes)              a .torrent's { infoHash, name, size, pieceLength, files }
@@ -172,12 +172,24 @@ module.exports = function utilities(plugin) {
       var name = nameOf(args);
       return limited('names', function () { return names.describe(name); });
     },
+    // a list of names (≤ RANK_MAX) answers a list, for one call's share
     'names.matches': function (args) {
-      var name = nameOf(args), problem = schemas.apiProblem('titleRef', args.title);
+      var list = Array.isArray(args.name), problem = schemas.apiProblem('titleRef', args.title), all;
+      try {
+        all = list ? args.name.map(function (name) { return nameOf({ name: name }); }) : [nameOf(args)];
+      } catch (err) {
+        return Promise.reject(err);
+      }
+      if (all.length > RANK_MAX) {
+        return Promise.reject(invalid('name: at most ' + RANK_MAX + ' names'));
+      }
       if (problem) {
         return Promise.reject(invalid('title: ' + problem));
       }
-      return limited('names', function () { return names.matches(name, args.title); });
+      return limited('names', function () {
+        var found = all.map(function (name) { return names.matches(name, args.title); });
+        return list ? found : found[0];
+      });
     },
     'names.rank': function (args) {
       var items = args.items;

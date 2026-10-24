@@ -4,7 +4,8 @@
 // through lib/plugins' hooks:
 //   play.collect  a collect handler like the core's: a plugin's `magnet`
 //                 sources become torrents, its `http` sources media refs
-//                 r_… (lib/plugins/remote.js) of type `plugin`
+//                 r_… (lib/plugins/remote.js) of type `plugin`; every
+//                 plugin's torrents ranked together, like the core's sites
 //   play.resolve  check: which collected torrents a resolver (debrid) can
 //                 serve at once (badge `cached`, ranked before the others);
 //                 resolve: the chosen one as an http source, at start()
@@ -20,6 +21,7 @@ var crypto = require('crypto'),
   remote = require('../plugins/remote'),
   effects = require('../plugins/effects'),
   trackers = require('../trackers'),
+  names = require('../media/names'),
   log = require('../logger').child('play');
 
 var HOOKS = protocol.HOOKS,
@@ -133,6 +135,41 @@ function fromPlugin(plugin, src, context) {
   };
 }
 
+/**
+ * Every plugin's torrents as one list, as the core ranked its own sites'
+ * (lib/episodes.js): one per info hash (the best seeded, every plugin naming
+ * it), packs marked, in the streaming order of lib/media/names.js#compare;
+ * a plugin reorders them with play.rank. Streams keep their order, first.
+ */
+function ranked(sources, ref) {
+  var streams = [], byHash = {}, torrents = [];
+  sources.forEach(function (s) {
+    if (s.type !== 'torrent') {
+      return streams.push(s);
+    }
+    var kept = byHash[s.infoHash];
+    if (!kept) {
+      byHash[s.infoHash] = s;
+      return torrents.push(s);
+    }
+    if ((s.seeds || 0) > (kept.seeds || 0)) {
+      torrents[torrents.indexOf(kept)] = s;
+      byHash[s.infoHash] = s;
+    }
+  });
+  var keyed = torrents.map(function (s, i) {
+    var pack = names.matches(s.label, ref) === 'pack';
+    if (pack && s.badges.indexOf('pack') === -1) {
+      s.badges = s.badges.concat('pack');
+    }
+    return { s: s, i: i, key: Object.assign(names.describe(s.label), { seeds: s.seeds || 0, pack: pack }) };
+  });
+  keyed.sort(function (x, y) {
+    return names.compare(x.key, y.key) || x.i - y.i;
+  });
+  return streams.concat(keyed.map(function (x) { return x.s; }));
+}
+
 // The pipeline's collect handler for every plugin with play.collect
 var collector = {
   id: 'plugins',
@@ -156,7 +193,7 @@ var collector = {
           }
         });
       });
-      return { sources: sources, errors: errors };
+      return { sources: ranked(sources, titleRef(title)), errors: errors };
     });
   }
 };
@@ -341,5 +378,7 @@ module.exports = {
   markers: markers,
   requestId: requestId,
   // tests
-  hashOf: hashOf
+  hashOf: hashOf,
+  ranked: ranked,
+  collector: collector
 };

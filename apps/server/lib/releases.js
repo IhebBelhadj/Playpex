@@ -140,6 +140,10 @@ function pluginProviders(kind) {
         if (c.quality) {
           input.filters = { quality: c.quality };
         }
+        // the title the list is about (EZTV lists one show's torrents)
+        if (c.imdb) {
+          input.title = { kind: HOOK_KINDS[kind], imdbId: 'tt' + c.imdb.replace(/^tt/, '') };
+        }
         return plugins.runHook('releases.providers', input, NO_ADULTS, { only: p.id }).then(function (r) {
           if (!r.results.length) {
             throw new Error(p.name + ': ' + (r.errors[0] ? r.errors[0].message : 'no answer'));

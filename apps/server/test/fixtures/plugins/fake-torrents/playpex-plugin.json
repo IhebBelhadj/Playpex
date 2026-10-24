@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../../../../packages/protocol/plugin.schema.json",
+  "id": "fake-torrents",
+  "name": "Fake torrents",
+  "description": "Test plugin: made-up torrents for any movie or episode, so the play pipeline and the release lists are tested without a torrent site.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Made-up torrents for tests.",
+    "categories": [
+      "sources"
+    ]
+  },
+  "permissions": {
+    "sources": [
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers"
+    ]
+  }
+}

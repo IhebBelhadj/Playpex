@@ -74,6 +74,7 @@ var p = await playpex.names.parse('Severance.S02E10.2160p.ATVP.WEB-DL.DDP5.1.Atm
 // { title: 'Severance', year: null, season: 2, episode: 10, episodeEnd: null, pack: false,
 //   resolution: '2160p', source: 'web-dl', codec: 'hevc', audio: 'eac3', hdr: true }
 var kind = await playpex.names.matches(release.name, input.title);   // 'episode' | 'pack' | 'movie' | null
+var kinds = await playpex.names.matches(results.map(function (r) { return r.name; }), input.title);   // one call for a list
 var best = await playpex.names.rank(releases);                        // [{ name, seeds, … }] in the core's order
 var rows = await playpex.html.select(page, 'table.list tr', { name: 'a.title', link: 'a.title@href', seeds: 'td.seeds' });
 var info = await playpex.torrent.info(r.body);                        // a .torrent's bytes (responseType 'bytes')
@@ -83,7 +84,7 @@ var info = await playpex.torrent.info(r.body);                        // a .torr
 |---|---|
 | `names.parse(name)` | `{ title, year, season, episode, episodeEnd, pack, resolution, source, codec, audio, hdr }` (`codec` `h264` · `hevc` · `av1` · `xvid`; `audio` `aac` · `ac3` · `eac3` · `truehd` · `dts` · `opus` · `mp3` · `flac`; null = the name doesn't say). A path (`Show/Season 2/03.mkv`) is read like the library reads one |
 | `names.describe(name)` | `{ quality, codec, audio, playable }`: how it plays in the TV app's Chromium (`audio` `supported` · `unsupported` (Dolby / DTS) · `unknown`; `playable` false for HEVC, 10-bit, XviD, 4K) |
-| `names.matches(name, titleRef)` | an episode → `episode` (exactly it: "Breaking Brad", ranges and other shows refused), `pack` (its season), null; a show → `episode` / `pack` when the name is one of its; a movie → `movie` (title, year ± 1) or null |
+| `names.matches(name, titleRef)` | an episode → `episode` (exactly it: "Breaking Brad", ranges and other shows refused), `pack` (its season), null; a show → `episode` / `pack` when the name is one of its; a movie → `movie` (title, year ± 1) or null. A list of names (≤ 1000) answers a list, for one call's share of the rate limit: match a site's whole answer at once |
 | `names.rank(items)` | the same items (≤ 1000, each with a `name`; `seeds`, `pack` read when there) in the core's streaming order: plays here → audio that decodes → ≥ 10 seeds → single files before packs → resolution → seeds |
 | `html.select(html, selector, fields?)` | for each match of the CSS selector (≤ 500): `{ text, attributes }`, or with `fields` (`{ key: 'css' \| 'css@attr' \| '@attr' \| '' }`, ≤ 30) an object of those (text trimmed, null when missing). Parsed on the host (`node-html-parser`): HTML ≤ 4 MB, without spending your 2 s of CPU |
 | `torrent.info(bytes)` | a `.torrent` file (`Uint8Array`, ≤ 4 MB) → `{ infoHash, name, size, pieceLength, files: [{ index, path, size }] }`: for sites that only offer `.torrent` downloads (answer a `magnet` source with its `infoHash`, and `fileIndex` / `fileName` for the file to play) |
@@ -107,7 +108,7 @@ playpex.hooks.on('play.collect', async function (input, ctx) {
 | `play.collect` (8 s) | `{ title }` → `Source[]` (≤ 50) |
 | `play.rank` (1 s) | `{ title, sources: RankedSource[] }` → `{ order?: [ids], hide?: [{ id, reason }] }`: listed ids first, the rest after in their order; hidden ones show "Hidden by <plugin>: <reason>" in the picker |
 | `play.before` (1 s) | `{ title, source: RankedSource }` → `{ action: 'continue' }` · `{ action: 'ask', question, yes?, no? }` · `{ action: 'refuse', reason }` |
-| `releases.providers` (10 s) | `{ kind, title?, query?, filters?, page }` → `{ releases: Release[], last }`. `kind`: `movie` / `show` / `episode` for the core's Find releases, or your own screens' kinds |
+| `releases.providers` (10 s) | `{ kind, title?, query?, filters?, page }` → `{ releases: Release[] (≤ 500), last }`. `kind`: `movie` / `show` / `episode` for the core's Find releases, or your own screens' kinds; `title` when the list is about one title (`{ kind, imdbId }`: a show's own torrents) |
 | `subtitles.providers` (8 s) | `{ title, languages, fileName?, size? }` → `Subtitle[]`; the core fetches each `url` (a declared host) and converts it to WebVTT |
 | `metadata.title` (3 s) | `{ title }` → `{ meta?: MetaItem[] }` (≤ 3: another score, a tag) |
 | `player.markers` (3 s) | `{ title, duration, fileName?, size? }` → `Marker[]`: `{ kind: intro \| recap \| credits \| chapter, start, end?, label? }` in seconds. Intro / recap: the player's "Skip"; credits: Up next starts there |
@@ -134,7 +135,7 @@ How the core uses the answers (step P3):
 | `magnet` | `magnet` or `infoHash` (+ `fileIndex` / `fileName`: the file to play, honoured by the player through the server's file choice), `label`, `quality?`, `size?`, `seeds?`, `peers?`, `codec?`, `audio?`, `notes?` | as the core's torrents: leases, paused when left, never deleted; its separate audio / subtitle files and other videos are switchable in the player |
 | `http` | `url` (HTTPS), `headers?` (sent by the server only; not `Host`, `Cookie`, `Range`…), `label`, `size?`, `container?`, codecs | the server proxies it as a media ref `r_…` with ranges passed through, the host checked on every request and redirect; **the client never sees the URL**; ffprobe and the Dolby → AAC conversion work on it. The ref lives 1 h; Resume collects again |
 
-Your sources are ranked with the core's, carry your `notes` ("From Real-Debrid") and never autoplay over a file on the server.
+Your sources are ranked with the core's, carry your `notes` ("From Real-Debrid") and never autoplay over a file on the server. **Every plugin's torrents are ranked together** by the core, as it ranks its own sites: one per info hash (the best seeded copy), packs marked, in the streaming order of `names.rank`; your own order counts only among equals, so give the 50 best (rank them with `names.rank` when you found more), not a sorted list. Reorder or hide with `play.rank`. The torrent sites the core reads today are ported as plugins in `plugins/torrents/` (YTS, EZTV, TheRARBG, The Pirate Bay): read them for a source plugin's shape.
 
 ## Events
 

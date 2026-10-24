@@ -1,0 +1,34 @@
+{
+  "$schema": "../../../packages/protocol/plugin.schema.json",
+  "id": "piratebay",
+  "name": "The Pirate Bay",
+  "description": "Movie and episode torrents from The Pirate Bay for Play, and its top 100 and search as \"Find releases\" lists.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Movie and TV torrents from The Pirate Bay (its JSON API), matched to the title.",
+    "disclaimer": "Streaming copyrighted content via torrents may be illegal where you live. Educational project.",
+    "license": "See licence.md",
+    "categories": [
+      "sources"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "apibay.org"
+    ],
+    "sources": [
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers"
+    ]
+  }
+}

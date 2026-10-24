@@ -1888,7 +1888,7 @@
           "properties": {
             "releases": {
               "type": "array",
-              "maxItems": 200,
+              "maxItems": 500,
               "items": {
                 "$ref": "#/$defs/release"
               }

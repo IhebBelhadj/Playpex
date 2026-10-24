@@ -14,6 +14,7 @@ var path = require('path'),
   mediaFiles = require('../media/files'),
   names = require('../media/names'),
   parse = require('../library/parse'),
+  episodes = require('../episodes'),
   yts = require('../providers/yts');
 
 var CONTAINERS_NEVER = ['avi', 'wmv', 'ts', 'm2ts'],

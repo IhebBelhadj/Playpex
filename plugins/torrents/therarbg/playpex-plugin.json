@@ -1,0 +1,35 @@
+{
+  "$schema": "../../../packages/protocol/plugin.schema.json",
+  "id": "therarbg",
+  "name": "TheRARBG",
+  "description": "Movie and episode torrents from TheRARBG (RARBG's successor) for Play, and its Movies and TV categories as \"Find releases\" lists.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Movie and TV torrents from TheRARBG, RARBG's community successor, matched to the title.",
+    "disclaimer": "Streaming copyrighted content via torrents may be illegal where you live. Educational project.",
+    "license": "See licence.md",
+    "categories": [
+      "sources"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "therarbg.to",
+      "therarbg.com"
+    ],
+    "sources": [
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers"
+    ]
+  }
+}
