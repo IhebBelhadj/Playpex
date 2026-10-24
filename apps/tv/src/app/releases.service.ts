@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Navigator } from './nav/navigator.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, shareReplay, catchError, distinctUntilChanged, map } from 'rxjs';
 import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
 import { Artwork } from './library.service';
+import { RemotePlugins } from './plugins/remote';
 
 // Release lists ("Find releases"): one torrent source's releases, most seeded
 // first, for movies or TV shows (server lib/releases.js,
@@ -15,7 +16,7 @@ export type ReleasesKind = 'movie' | 'tv';
 export interface ReleaseProvider {
   id: string;
   name: string;
-  paged: boolean;       // more results on request (TheRARBG, YTS…), or one list (The Pirate Bay)
+  paged: boolean;       // more results on request, or one list
   default: boolean;
 }
 
@@ -67,7 +68,7 @@ export interface ReleasesOrigin {
 export interface ReleasesState {
   provider: string | null;    // null: the server's default
   query: string;
-  imdb: string | null;        // the show's IMDb id (EZTV lists by it)
+  imdb: string | null;        // the show's IMDb id (a source may list by it)
   quality: ReleaseQuality;
   playableOnly: boolean;
   releases: Release[];
@@ -103,10 +104,18 @@ export class ReleasesService {
 
   private providers$:Partial<Record<ReleasesKind, Observable<ReleaseProvider[]>>> = {};
 
+  private plugins = inject(RemotePlugins);
+
+  /** Title pages show Find releases only while some plugin lists releases
+   *  (the server reads no torrent site: docs/providers-plan.md §5.3) */
+  readonly available$:Observable<boolean> = this.plugins.capabilities$.pipe(map(c => c.releases), distinctUntilChanged());
+
   constructor(private http:HttpClient, private navigator:Navigator, profiles:ProfilesService, private server:ServerService) {
     // what one profile searched isn't the next one's business (a preferences
     // update re-emits the same profile: keep the states then)
     profiles.current.pipe(map(p => p?.id || null), distinctUntilChanged()).subscribe(() => this.reset());
+    // the server's plugins were read again (one installed, removed…): so are their sources
+    this.plugins.capabilities$.subscribe(() => this.providers$ = {});
   }
 
   // "Find releases" on a title page: a new list searched for `query`, on the

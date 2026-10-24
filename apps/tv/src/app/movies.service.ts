@@ -119,10 +119,6 @@ export class MoviesService {
     return this.http.get(`https://api.themoviedb.org/3/person/${person_id}/combined_credits?api_key=${this.tmdb_key}&language=en-US`)
   }
 
-  getYTSMovieDetails(id){
-    return this.http.get(`${this.server.api}/movies/${id}`)
-  }
-
   // TV: details incl. imdb id (for torrents/subtitles) and trailers
   getTvDetails(tmdb_id){
     return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US&append_to_response=external_ids,videos`)

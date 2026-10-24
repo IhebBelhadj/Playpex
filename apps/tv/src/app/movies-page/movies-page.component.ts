@@ -215,24 +215,21 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
       })
   }
 
-  // TMDB genres + YTS torrents/rating/runtime/trailer
+  // TMDB genres, runtime and IMDb id, then the IMDb rating
   enrichMovie(id):Observable<any> {
+    let movie = this.selectedMovie;
     return this.moviesService.getTmdbMovieDetails(id).pipe(
       map(data => {
-        this.selectedMovie.genres = data['genres'];
-        this.moviesService.assignSelection(this.selectedMovie);
-        return data;
+        movie.genres = data['genres'];
+        movie['runtime'] = data['runtime'];
+        movie.imdb_id = data['imdb_id'];
+        this.moviesService.assignSelection(movie);
+        return movie.imdb_id;
       }),
-      switchMap(tmdbData => this.moviesService.getYTSMovieDetails(tmdbData['imdb_id']).pipe(
-        map(ytsData => {
-          this.selectedMovie['torrents'] = ytsData['data']['movie']['torrents']
-          this.selectedMovie['mpa_rating'] = ytsData['data']['movie']['mpa_rating']
-          this.selectedMovie['rating'] = ytsData['data']['movie']['rating']
-          this.selectedMovie['runtime'] = ytsData['data']['movie']['runtime']
-          this.selectedMovie['trailer'] = ytsData['data']['movie']['yt_trailer_code']
-          this.selectedMovie.imdb_id = tmdbData['imdb_id'];
-        })
-      ))
+      switchMap(imdbId => this.imdb.title(imdbId)),
+      map(rating => {
+        if (rating?.rating) movie['rating'] = rating.rating;
+      })
     )
   }
 

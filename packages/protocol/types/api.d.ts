@@ -2156,7 +2156,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** YTS `list_movies.json`, passed through (query parameters forwarded) */
+        /**
+         * Removed in API 2 (was YTS's movie list); answers 410
+         * @deprecated
+         */
         get: operations["listYtsMovies"];
         put?: never;
         post?: never;
@@ -2175,7 +2178,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** YTS `movie_details.json` for an IMDb id, passed through (torrents, rating, runtime…) */
+        /**
+         * Removed in API 2 (was YTS's movie details); answers 410. Torrents are `POST /play/sources`, the rating `/imdb/{imdbId}`
+         * @deprecated
+         */
         get: operations["getYtsMovie"];
         put?: never;
         post?: never;
@@ -2232,7 +2238,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Torrents of one episode (EZTV + TheRARBG), best streaming candidate first; season packs as fallback */
+        /**
+         * Removed in API 2 (was EZTV + TheRARBG); answers 410. An episode's torrents are `POST /play/sources`
+         * @deprecated
+         */
         get: operations["findEpisodeTorrents"];
         put?: never;
         post?: never;
@@ -2254,8 +2263,9 @@ export interface paths {
         /**
          * Every way to play a movie or an episode, best first
          * @description The play pipeline (docs/media-server-plan.md §6): library files of the title, the server's
-         *     downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
-         *     the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
+         *     downloads of it, and torrents from the server's source plugins (their `play.collect`, ranked
+         *     together; the server reads no torrent site of its own, so with none installed there are only files
+         *     on this server), the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
          *     files on this server that play come first, and `policy.autoplay` names the source to start
          *     without asking when it is the only one (or, with `player.autoplayKind` `server` / `stream`, the best
          *     of that group when it plays). `groups` sorts the sources into ways to play (server, stream,
@@ -2937,7 +2947,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -3405,11 +3415,6 @@ export interface components {
             /** @description The default audio track needs /transcode to be heard in Chromium */
             transcode: boolean;
         };
-        /** @description YTS API answer, passed through unchanged (https://yts.mx/api). A catalog API of our own replaces it later (plan §12 G). */
-        YtsResponse: {
-            status?: string;
-            data?: Record<string, never>;
-        };
         ImdbRating: {
             id: string;
             rating: number | null;
@@ -3440,30 +3445,12 @@ export interface components {
             /** @description Video codec playable (no HEVC / 10-bit / XviD / 4K) */
             playable?: boolean;
         };
-        RankedTorrent: components["schemas"]["ReleaseDescription"] & {
-            provider: string;
-            name: string;
-            /** @description Info hash, lowercase */
-            hash: string;
-            /** @description Magnet with the server's tracker list */
-            magnet: string;
-            seeds: number;
-            /** @description Bytes */
-            size?: number | null;
-            /** @description Season pack (the episode is one of its files) */
-            pack?: boolean;
-        };
-        RankedTorrents: {
-            torrents: components["schemas"]["RankedTorrent"][];
-            /** @description How many providers failed */
-            providerErrors?: number;
-        };
         PlaySourcesRequest: {
             /** @enum {string} */
             kind: "movie" | "episode";
             /** @description The movie's, or the episode's show's */
             tmdbId: number;
-            /** @description The movie's / the show's (torrent providers search by it) */
+            /** @description The movie's / the show's (source plugins search by it) */
             imdbId?: string | null;
             /** @description The movie's / the show's, to match release names */
             title: string;
@@ -3483,7 +3470,7 @@ export interface components {
              * @enum {string}
              */
             type: "file" | "download" | "torrent" | "plugin";
-            /** @description library, downloads, yts, eztv, therarbg… (unknown values may come with plugins) */
+            /** @description library, downloads, or the plugin that found it (its id) */
             provider: string;
             /** @description The collect handler that found it */
             handler?: string;
@@ -4199,7 +4186,8 @@ export interface components {
             pack?: boolean;
         };
         ReleasePage: {
-            provider: string;
+            /** @description null: no source plugin lists this kind */
+            provider: string | null;
             /** @description Last page read; ask for page + 1 next */
             page: number;
             hasMore: boolean;
@@ -4628,6 +4616,15 @@ export interface components {
                 path: string | null;
             };
             providers: components["schemas"]["ProviderHealth"][];
+            /** @description Where torrents and streams come from: the enabled plugins with `play.collect` or `releases.providers` (docs/providers-plan.md §4.4) */
+            sources: {
+                plugins: {
+                    id: string;
+                    name: string;
+                }[];
+                /** @description Show "Torrents now come from plugins": no source plugin, and `plugins.sourcesNotice` not turned off */
+                notice: boolean;
+            };
         };
         /** @description How clients on the LAN find this server (mDNS and the UDP responder) */
         DiscoveryStatus: {
@@ -4652,8 +4649,13 @@ export interface components {
             };
         };
         ProviderHealth: {
+            /** @description A service (tmdb, imdb, a subtitle provider), or `plugin:<plugin id>:<host>` */
             id: string;
             name: string;
+            /** @description A plugin's host: the plugin */
+            plugin?: string;
+            /** @description A plugin's host: the host */
+            host?: string;
             /** @description null = not used since the server started */
             ok: boolean | null;
             /** Format: date-time */
@@ -4728,6 +4730,8 @@ export interface components {
                  * @enum {string}
                  */
                 updates: "auto" | "notify" | "never";
+                /** @description The Overview's "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed */
+                sourcesNotice: boolean;
             };
             providers: {
                 tmdbApiKey: string;
@@ -5043,6 +5047,15 @@ export interface components {
         };
         /** @description Not found (`NOT_FOUND`) */
         NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Removed in a newer API version (`GONE`) */
+        Gone: {
             headers: {
                 [name: string]: unknown;
             };
@@ -8473,16 +8486,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description YTS answer, unchanged */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["YtsResponse"];
-                };
-            };
-            502: components["responses"]["Upstream"];
+            410: components["responses"]["Gone"];
         };
     };
     getYtsMovie: {
@@ -8496,16 +8500,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description YTS answer, unchanged (`data.movie`) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["YtsResponse"];
-                };
-            };
-            502: components["responses"]["Upstream"];
+            410: components["responses"]["Gone"];
         };
     };
     getImdbRating: {
@@ -8558,12 +8553,7 @@ export interface operations {
     };
     findEpisodeTorrents: {
         parameters: {
-            query: {
-                /** @description Show title, used to match release names */
-                title: string;
-                season: number;
-                episode: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 imdbId: components["parameters"]["ImdbId"];
@@ -8572,17 +8562,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Ranked torrents */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RankedTorrents"];
-                };
-            };
-            400: components["responses"]["Invalid"];
-            502: components["responses"]["Upstream"];
+            410: components["responses"]["Gone"];
         };
     };
     playSources: {
@@ -8775,6 +8755,13 @@ export interface operations {
                 content: {
                     "application/json": {
                         plugins: components["schemas"]["ClientPlugin"][];
+                        /** @description What the profile's plugins provide (docs/providers-plan.md §5.3): hide Find releases without `releases` */
+                        capabilities?: {
+                            /** @description Some plugin lists releases (`releases.providers`) */
+                            releases: boolean;
+                            /** @description Some plugin finds a title's sources (`play.collect`) */
+                            sources: boolean;
+                        };
                     };
                 };
             };
@@ -8965,7 +8952,7 @@ export interface operations {
                 /** @description 1 / true: only releases the TV app can play (video and audio) */
                 playable?: components["parameters"]["Playable"];
                 page?: components["parameters"]["Page"];
-                /** @description Optional IMDb id (EZTV lists that show) */
+                /** @description Optional IMDb id (a source may list that show's torrents) */
                 imdb?: string;
             };
             header?: never;

@@ -21,11 +21,12 @@ Branch on `code`, show `error`. Some list routes add an empty list next to it (`
 | `ORIGIN_NOT_ALLOWED` | 403 | a browser page from another origin tried to change something. Web clients must be served from an allowed origin (Settings › Network › Extra web origins) |
 | `NOT_FOUND` | 404 | unknown route, torrent, profile, file… |
 | `CONFLICT` | 409 | e.g. a duplicate profile name |
+| `GONE` | 410 | a route removed in a newer API version (API 2: `/movies*`, `/shows/{imdbId}/torrents`) |
 | `CLIENT_TOO_OLD` / `SERVER_TOO_OLD` | 426 | API versions don't overlap ([below](#versions)) |
 | `TOO_MANY_ATTEMPTS` | 429 | PIN attempts; wait 30 s |
 | `INTERNAL` | 500 | a server bug: the admin finds it in the dashboard's Logs |
 | `NOT_SUPPORTED` | 501 | this kind of server can't do it (desktop-only routes) |
-| `UPSTREAM` | 502 | a provider (YTS, EZTV, IMDb, a subtitle site…) failed or timed out: try again later or another provider |
+| `UPSTREAM` | 502 | an upstream service (TMDB, IMDb, a subtitle site, a plugin's source…) failed or timed out: try again later or another provider |
 | `PROBE_FAILED` | 502 | ffprobe couldn't read the file: play it directly |
 | `PLUGIN_FAILED` | 502 | a plugin's handler failed, timed out or answered out of schema ([plugins](plugins.md)): show the screen's empty state |
 | `BUSY` | 503 | a server limit (torrents, transcodes), or the server is in recovery mode |
@@ -42,7 +43,7 @@ Rate limits answer `429`: profile PINs with `{error, code: 'TOO_MANY_ATTEMPTS'}`
 
 ## Versions
 
-- The API version is an integer: **1** today, at `/api/v1`. `GET /server` gives the server's `apiVersion` (newest it speaks) and `minApiVersion` (oldest it still serves). Your client works with the server when its API version is in `[minApiVersion, apiVersion]`.
+- The API version is an integer: **2** today, at `/api/v1` (the prefix doesn't change with the version: say yours in the header below). `GET /server` gives the server's `apiVersion` (newest it speaks) and `minApiVersion` (oldest it still serves). Your client works with the server when its API version is in `[minApiVersion, apiVersion]`.
 - **Send your version** on every request. The header is optional (a request without it is served), but it is what the admin sees for your device, and it gets you a clear `426` instead of a confusing failure when versions stop overlapping:
   ```http
   X-Playpex-Client: playpex-android/1.4.0; api=1
@@ -50,6 +51,7 @@ Rate limits answer `429`: profile PINs with `{error, code: 'TOO_MANY_ATTEMPTS'}`
   Outside the range: `426` with `CLIENT_TOO_OLD` ("update the app") or `SERVER_TOO_OLD` ("update Playpex Media Server"). Show which one to update.
 - **What doesn't bump the version** (handle it): new routes, new optional request fields, new fields in answers, new event topics, new error codes, new enum values in informational fields. **Ignore fields you don't know.** The spec lists closed `enum`s for some strings (`Error.code`, `Session.method`, `ServerInfo.auth`, OAuth errors): configure your code generator to accept unknown values (e.g. a fallback enum case) rather than fail to decode.
 - **What bumps it**: removing or renaming a route or field, changing a field's type or meaning, a new required request field. The server then keeps serving the previous version for a while (`minApiVersion` stays lower) so clients have time to update.
+- **API 2** removed `GET /movies`, `/movies/{imdbId}` and `/shows/{imdbId}/torrents` (the server reads no torrent site of its own; torrents are `POST /play/sources`, from the server's source plugins). They answer `410 GONE`; `minApiVersion` stays 1, so API 1 clients keep everything else.
 - The server's software version (`version`, e.g. `0.9.0`) is for people; don't compare it to decide what the API can do. Use `apiVersion` and `features`.
 
 ## Limits worth knowing

@@ -36,6 +36,9 @@ import { Toasts } from '../ui/public-api';
 })
 export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
+  // Find releases: only with a plugin that lists releases
+  releasesShown$ = inject(ReleasesService).available$;
+
   private toasts = inject(Toasts);
 
   private profiles = inject(ProfilesService);

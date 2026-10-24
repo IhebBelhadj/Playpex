@@ -112,6 +112,7 @@ Plain data: the core reads it without running your code. `data` names a handler 
 
 - **sections** (≤ 2): a menu entry opening one of your screens.
 - **screens** (≤ 16): a template and the handler filling it (every template but `settings` needs `data`); `params` become path segments.
+- **releases** (with the hook `releases.providers`): `{ "kinds": ["movie"] }`: the kinds of the core's Find releases you list (`movie`, `show`; default both). The core shows you as a source only there.
 - **slots**: contributions to core screens, at most 3 per slot. Slots: `core.movie.actions`, `core.show.actions`, `core.episode.actions` (action tiles), `core.movie.rows`, `core.show.rows`, `core.movies.rows`, `core.shows.rows`, `core.watchlist.rows` (rows), `core.title.meta` (meta items), `core.search.filters` (a filter of the search page and its results). What each one hands you and expects: [tv.md](tv.md#slots).
 
 ### Settings

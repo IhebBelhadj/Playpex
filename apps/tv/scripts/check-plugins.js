@@ -9,7 +9,11 @@
 //     core's code (the TV app and its shell, the server, the protocol). What
 //     stays on purpose (adults-only library folders, the plugins' audience
 //     rule, the `adult` accent token, filters keeping adult titles out, old
-//     migrations) is the plural `adults`, or carries the marker.
+//     migrations) is the plural `adults`, or carries the marker;
+//   • torrent sites are plugins (docs/providers-plan.md §4, step 5): no torrent
+//     site's host in the core's code (the TV app, the server, the protocol, the
+//     dashboard): the sites are plugins/torrents/*. Release names may still
+//     carry a site's tag (lib/media/names.js cleans them): only hosts count.
 //
 //   npm run check:plugins                exits 1 and lists the offending lines
 //
@@ -32,6 +36,11 @@ const SKIP = [path.join(REPO, 'apps', 'server', 'lib', 'db', 'migrations'), path
 // files without comments: the lines that may name the `adult` accent token
 const ALLOWED_LINES = { 'plugin.schema.json': /"accent"|"enum": \["adult"\]|^\s*"adult"\s*$/ };
 const SECTION = { name: 'the 18+ section in the core (it is a plugin: plugins/velvet)', re: /\badult\b|18\+|\bxxx\b|\bporn/i };
+const SITES = {
+  name: 'a torrent site in the core (the sites are plugins: plugins/torrents)',
+  re: /\b(yts\.(mx|lt|ag|am|rs|bz)|movies-api\.accel\.li|eztvx?\.(to|wf|tf|re)|therarbg\.(to|com)|rarbg\.to|apibay\.org|thepiratebay\.org)\b|providers\/(yts|eztv|therarbg|piratebay)\b/i,
+};
+const DASHBOARD = path.join(REPO, 'apps', 'dashboard', 'src');
 
 const RULES = [
   { name: 'an admin route (the dashboard\'s, never a client\'s)', re: /['"`/]admin\/|\/admin['"`]/ },
@@ -77,12 +86,13 @@ function check(file, rules) {
     }
   });
 }
-DIRS.flatMap(d => files(d, /\.(ts|js|html)$/)).forEach(file => check(file, RULES.concat([SECTION])));
-CORE.flatMap(d => files(d, /\.(js|ts|json|ya?ml)$/)).forEach(file => check(file, [SECTION]));
+DIRS.flatMap(d => files(d, /\.(ts|js|html)$/)).forEach(file => check(file, RULES.concat([SECTION, SITES])));
+CORE.flatMap(d => files(d, /\.(js|ts|json|ya?ml)$/)).forEach(file => check(file, [SECTION, SITES]));
+files(DASHBOARD, /\.(ts|tsx)$/).forEach(file => check(file, [SITES]));
 
 if (problems.length) {
   console.error(problems.join('\n'));
-  console.error('\n' + problems.length + ' problem(s). Plugins are set up on the dashboard (docs/plugins-plan.md §6.3); the TV only renders them; the 18+ section is a plugin (§7.1b).');
+  console.error('\n' + problems.length + ' problem(s). Plugins are set up on the dashboard (docs/plugins-plan.md §6.3); the TV only renders them; the 18+ section is a plugin (§7.1b); torrent sites are plugins (docs/providers-plan.md §4).');
   process.exit(1);
 }
-console.log('No plugin set-up in the TV app, no 18+ section in the core.');
+console.log('No plugin set-up in the TV app, no 18+ section and no torrent site in the core.');

@@ -57,7 +57,16 @@ function answerError(res, err) {
 
 router.get('/', function (req, res) {
   profileOf(req).then(function (profile) {
-    res.json({ plugins: plugins.clientView(profile, localeOf(req)) });
+    var ctx = { profile: profile };
+    res.json({
+      plugins: plugins.clientView(profile, localeOf(req)),
+      // what the profile's plugins provide (docs/providers-plan.md §5.3): Find
+      // releases shows only with a release provider
+      capabilities: {
+        releases: plugins.withHook('releases.providers', ctx).length > 0,
+        sources: plugins.withHook('play.collect', ctx).length > 0
+      }
+    });
   }).catch(function (err) { answerError(res, err); });
 });
 

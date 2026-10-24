@@ -565,7 +565,7 @@ function RepositoryCard({ repository: r }: { repository: Repository }) {
   )
 }
 
-function AddRepositoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+export function AddRepositoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const refresh = useRefreshPlugins()
   const [url, setUrl] = useState('')
   const [preview, setPreview] = useState<RepositoryPreview | null>(null)

@@ -8,7 +8,7 @@
 // Bumped only on breaking API changes. Clients may send
 // `X-Playpex-Client: <name>/<version>; api=<n>`; the server answers 426 when
 // it can't serve that version (CLIENT_TOO_OLD / SERVER_TOO_OLD).
-var API_VERSION = 1;
+var API_VERSION = 2;
 var MIN_API_VERSION = 1;
 
 var API_PREFIX = '/api/v1';
@@ -71,12 +71,13 @@ var ERROR_CODES = {
   ORIGIN_NOT_ALLOWED: 403,       // state-changing request from a web origin that isn't allowed
   NOT_FOUND: 404,
   CONFLICT: 409,
+  GONE: 410,                     // a route removed in a newer API version (API 2: /movies*, /shows/{imdbId}/torrents)
   CLIENT_TOO_OLD: 426,
   SERVER_TOO_OLD: 426,
   TOO_MANY_ATTEMPTS: 429,
   INTERNAL: 500,
   NOT_SUPPORTED: 501,            // this server's host can't do it (desktop-only routes on a headless server)
-  UPSTREAM: 502,                 // a provider (YTS, EZTV, TMDB, a subtitle site…) failed
+  UPSTREAM: 502,                 // an upstream service (TMDB, IMDb, a subtitle site…) failed
   PROBE_FAILED: 502,             // ffprobe couldn't read the file
   PLUGIN_FAILED: 502,            // a plugin's handler failed, timed out or answered out of schema
   BUSY: 503,                     // a server limit is reached (torrents, transcodes); try again later

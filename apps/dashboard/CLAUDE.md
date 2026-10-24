@@ -32,6 +32,9 @@ src/components/layout.tsx  RequireAdmin (→ /setup or /login?next=), AppLayout 
                         banner, pairing toasts), useOverview, usePairingRequests
 src/components/desktop.tsx useHost (GET /admin/host), DesktopCard (Settings › Desktop app, shown only when the
                         server runs in the desktop app), UpdateNotice (Overview: a downloaded update, install)
+src/components/sources-notice.tsx SourcesNotice (Overview, while `overview.sources.notice`: no source plugin, the server reads
+                        no torrent site: Add a repository (AddRepositoryDialog of plugin-repositories.tsx), Browse plugins,
+                        Don't show again = PUT /admin/settings {plugins: {sourcesNotice: false}}; docs/providers-plan.md §4.4)
 src/components/dlna.tsx   DlnaPanel (Settings › DLNA, under its two settings: GET /admin/dlna every 10 s: status, the folders'
                         switches (PATCH /admin/library/folders/{id} {dlna}; adults-only ones disabled), "Seen by")
 src/components/common.tsx  PageHeader, Stat, Empty, QueryError, Loading, Spinner, Dot, Confirm (AlertDialog), Mono

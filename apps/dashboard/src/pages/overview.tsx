@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Copy, Cpu, Film, HardDrive, Server } from 'lucide-r
 import { toast } from 'sonner'
 import { Dot, Loading, PageHeader, QueryError, Stat } from '@/components/common'
 import { UpdateNotice, useHost } from '@/components/desktop'
+import { SourcesNotice } from '@/components/sources-notice'
 import { useOverview } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -166,7 +167,9 @@ function Services({ data }: { data: Overview }) {
         <CardTitle className="flex items-center gap-2">
           <Film className="size-4" /> Transcoding & providers
         </CardTitle>
-        <CardDescription>Since the server started. Providers are checked when clients use them.</CardDescription>
+        <CardDescription>
+          Since the server started. Providers are checked when clients use them; a plugin&apos;s sites show once it has asked them something.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
@@ -220,6 +223,7 @@ export function OverviewPage() {
     <>
       <PageHeader title="Overview" description={data.server.name} />
       <UpdateNotice host={host.data} streams={data.activity.sessions} />
+      {data.sources.notice && <SourcesNotice />}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Sessions" value={data.activity.sessions} hint={`${data.activity.torrents} torrents running`} />
         <Stat label="Peers" value={data.network.peers} hint={`${data.activity.eventClients} live connections`} />

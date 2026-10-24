@@ -162,9 +162,23 @@ function overview() {
         source: ff.source || null,
         path: ff.ffmpeg || null
       },
-      providers: health.list()
+      providers: health.list(),
+      // where torrents and streams come from: plugins only (docs/providers-plan.md §4.4)
+      sources: sourcesView()
     };
   });
+}
+
+// The enabled plugins answering Play or Find releases, and whether the
+// Overview shows its "add a source" notice (none, not dismissed)
+function sourcesView() {
+  var plugins = require('./plugins'),
+    seen = {};
+  plugins.withHook('play.collect', null).concat(plugins.withHook('releases.providers', null)).forEach(function (p) {
+    seen[p.id] = p;
+  });
+  var list = Object.keys(seen).sort().map(function (id) { return seen[id]; });
+  return { plugins: list, notice: !list.length && settings.get('plugins.sourcesNotice') !== false };
 }
 
 module.exports = {

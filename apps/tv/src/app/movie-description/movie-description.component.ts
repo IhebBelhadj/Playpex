@@ -9,8 +9,9 @@ import { MetaItem, TitleInfoModel, TitleMetaContext } from '../ui/public-api';
 import { profileContext } from '../slot-contexts';
 
 // The focused / opened title's info block (<px-title-info>): a movie's year,
-// the qualities YTS has, IMDb; a show's year, seasons, TMDB score; genres and
-// overview. Pushes the backdrop to BackgroundService.
+// IMDb; a show's year, seasons, TMDB score; genres and overview. Plugins and
+// the server add to its meta line (slot core.title.meta: "On this server", …).
+// Pushes the backdrop to BackgroundService.
 @Component({
   selector: 'movie-description',
   templateUrl: './movie-description.component.html',
@@ -22,7 +23,6 @@ export class MovieDescriptionComponent implements OnInit {
 
   selectedMovie;
   movieDetails;
-  availableQualities;
   year;
   fullDescription = false;
   shortDescription = "";
@@ -76,15 +76,6 @@ export class MovieDescriptionComponent implements OnInit {
     this.selectedMovie = movie;
 
     this.shortDescription = (this.selectedMovie.overview || '').slice(0 , 255);
-    this.availableQualities = [];
-    if (movie['torrents']) {
-
-      movie['torrents'].forEach(torrent => {
-        if(! this.availableQualities.includes(torrent['quality']))
-          this.availableQualities.push(torrent['quality'])
-      });
-    }
-
     this.genres = [];
     if (movie['genres']) {
       movie['genres'].forEach(el => {
@@ -106,7 +97,6 @@ export class MovieDescriptionComponent implements OnInit {
   private titleInfo(movie):TitleInfoModel {
     let meta:MetaItem[] = [];
     if (this.year) meta.push({ kind: 'text', text: this.year });
-    (this.availableQualities || []).forEach(q => meta.push({ kind: 'chip', text: q }));
     if (movie.rating) meta.push({ kind: 'score', source: 'imdb', value: movie.rating });
     if (movie.media_type == 'tv') {
       let seasons = movie.number_of_seasons;

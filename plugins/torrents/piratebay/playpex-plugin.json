@@ -30,5 +30,13 @@
       "play.collect",
       "releases.providers"
     ]
+  },
+  "contributes": {
+    "releases": {
+      "kinds": [
+        "movie",
+        "show"
+      ]
+    }
   }
 }

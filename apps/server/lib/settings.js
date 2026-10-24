@@ -94,7 +94,11 @@ function defaults() {
       // updates from repositories (docs/plugins-plan.md §6.4): auto installs
       // those asking for no new permissions (the rest wait for the admin),
       // notify only lists them, never doesn't look; a plugin can override it
-      updates: 'auto'
+      updates: 'auto',
+      // the Overview's notice "Torrents now come from plugins" while no
+      // source plugin is installed (docs/providers-plan.md §4.4); false once
+      // the admin dismisses it
+      sourcesNotice: true
     },
     providers: {
       tmdbApiKey: '',

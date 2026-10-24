@@ -13,9 +13,10 @@ var fs = require('fs'),
 
 var FILE = path.join(paths.config, 'server.json');
 
-// Bumped only on breaking API changes; clients send theirs (plan §6.1)
-var API_VERSION = 1,
-  MIN_API_VERSION = 1;
+// Bumped only on breaking API changes; clients send theirs (plan §6.1).
+// The protocol's, so the server's answers and its version checks agree
+var API_VERSION = require('@playpex/protocol').API_VERSION,
+  MIN_API_VERSION = require('@playpex/protocol').MIN_API_VERSION;
 
 var id = null;
 

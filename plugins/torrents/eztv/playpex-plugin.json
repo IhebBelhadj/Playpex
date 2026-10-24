@@ -32,5 +32,12 @@
       "play.collect",
       "releases.providers"
     ]
+  },
+  "contributes": {
+    "releases": {
+      "kinds": [
+        "show"
+      ]
+    }
   }
 }

@@ -16,6 +16,7 @@ import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
 import { PlaySource, PlaySourcesService, SourcesQuery } from '../play-sources.service';
 import { ReleasesService } from '../releases.service';
+import { ImdbService } from '../imdb.service';
 import { Navigator, useScreen } from '../nav/public-api';
 import { tmdbImageBase } from '../ui/public-api';
 
@@ -26,6 +27,9 @@ import { tmdbImageBase } from '../ui/public-api';
 })
 export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
 
+  // Find releases: only with a plugin that lists releases
+  releasesShown$ = inject(ReleasesService).available$;
+
   private toasts = inject(Toasts);
 
   private profiles = inject(ProfilesService);
@@ -33,6 +37,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   private downloads = inject(DownloadsService);
 
   private sources = inject(PlaySourcesService);
+
+  private imdb = inject(ImdbService);
   // the server's download of this movie: the Download tile
   download:Download | null = null;
   downloadTile:DownloadTile = DownloadsService.tile(null);
@@ -46,7 +52,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   similar;
   trailer;
   playingTrailer = false;
-  canPlay = false;
   findingTorrents = false;    // Play is looking up sources
   selectedMovie;
   // what plugins' actions and rows on this page get (ui/slots)
@@ -159,7 +164,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.selectedMovie = data;
       this.moviesService.assignSelection(this.selectedMovie);
       this.slotContext = { movie: titleRef(data), profile: profileContext(this.profiles.current.value) };
-      this.getPlayData();
+      this.loadRating();
       this.loadLibraryState();
       this.watchDownload();
     };
@@ -233,21 +238,16 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     setTimeout(() => this.screen.ready(), 0);
   }
 
-  getPlayData(){
-    this.moviesService
-      .getYTSMovieDetails(this.selectedMovie['imdb_id'])
-      .subscribe(yts_data=>{
-        if(!yts_data) return;
-        this.selectedMovie['torrents'] = yts_data['data']['movie']['torrents']
-        this.selectedMovie['mpa_rating'] = yts_data['data']['movie']['mpa_rating']
-        this.selectedMovie['rating'] = yts_data['data']['movie']['rating']
-        this.selectedMovie['runtime'] = yts_data['data']['movie']['runtime']
-
-
-        this.moviesService.assignSelection(this.selectedMovie)
-        this.canPlay = true;
-
-    })
+  // The IMDb rating for the description (TMDB's details hold the runtime);
+  // Play needs nothing more than the title's ids
+  loadRating(){
+    let movie = this.selectedMovie;
+    if (!movie['imdb_id'] || movie['rating']) return;
+    this.subscriptions.push(this.imdb.title(movie['imdb_id']).subscribe(rating => {
+      if (!rating?.rating || this.selectedMovie !== movie) return;
+      movie['rating'] = rating.rating;
+      this.moviesService.assignSelection(movie);
+    }));
   }
 
   private movieRef():MediaRef {
@@ -386,8 +386,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   onPlay(){
-    // resuming the saved release doesn't need the YTS data
-    if (!this.selectedMovie || (!this.canPlay && !this.resume?.infoHash)) return;
+    if (!this.selectedMovie) return;
     this.play();
   }
 

@@ -5,6 +5,8 @@ import type { Schema } from '@playpex/protocol';
 // templates and primitives. No plugin code runs here (docs/plugins-plan.md §5.1).
 
 export type ClientPlugin = Schema<'ClientPlugin'>;
+/** GET /plugins `capabilities`: what the profile's plugins provide */
+export interface PluginCapabilities { releases:boolean; sources:boolean; }
 export type PluginScreenDecl = ClientPlugin['screens'][number];
 
 export interface PluginIntent {

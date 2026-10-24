@@ -1,20 +1,25 @@
 'use strict';
 
 // The torrent sites as plugins (plugins/torrents/*, docs/providers-plan.md
-// step 4) against the core's own providers, on recorded answers of the sites
-// (test/fixtures/providers, scripts/record-providers.js; no network):
+// steps 4–5) on recorded answers of the sites (test/fixtures/providers,
+// scripts/record-providers.js; no network), against what the core's own
+// providers answered on the same recordings before they left the core
+// (test/fixtures/providers/expected.json):
 //   • Play: each plugin's server.js in Node with a stub `playpex` (its
 //     http.request answering the recordings, names.* the core's), run through
 //     the core's play collector (lib/play/plugins.js: merged by hash, ranked
 //     together) → the same torrents, in the same order, as the core's yts /
-//     episodes handlers;
+//     episodes handlers gave;
 //   • Find releases: lib/releases.js#browse through `plugin:<id>` → the same
-//     list as the core's provider of that name;
+//     list as the core's provider of that name gave;
 //   • all four together: no failures, movies get TheRARBG / The Pirate Bay
 //     torrents the core never had, all matched to the title;
 //   • loaded by a real server (QuickJS sandbox) from their folders: enabled,
 //     listed as release providers, their failures only in `errors`; packed
 //     into a signed repository by npm run pack:repository.
+//
+// After recording again (the sites changed): PLAYPEX_UPDATE_EXPECTED=1 writes
+// what the plugins answer into expected.json; review that diff before keeping it.
 
 var test = require('node:test'),
   assert = require('node:assert/strict'),
@@ -30,9 +35,7 @@ process.env.PLAYPEX_CACHE_DIR = path.join(tmp, 'cache');
 process.env.PLAYPEX_LOG_DIR = path.join(tmp, 'logs');
 process.env.PLAYPEX_DISCOVERY = '0';
 
-var axios = require('axios').default,
-  recorded = require('./helpers/recorded'),
-  schemas = require('../lib/plugins/schemas'),
+var recorded = require('./helpers/recorded'),
   plugins = require('../lib/plugins'),
   names = require('../lib/media/names'),
   play = require('../lib/play'),
@@ -43,13 +46,12 @@ var axios = require('axios').default,
 var DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'torrents'),
   IDS = ['eztv', 'piratebay', 'therarbg', 'yts'],
   CTX = { profile: { id: 'p1', kids: false }, device: null, locale: 'en' },
-  answers = Object.assign({}, recorded.load('play'), recorded.load('releases'));
+  answers = Object.assign({}, recorded.load('play'), recorded.load('releases')),
+  EXPECTED = path.join(recorded.DIR, 'expected.json'),
+  expected = JSON.parse(fs.readFileSync(EXPECTED, 'utf8')),
+  update = process.env.PLAYPEX_UPDATE_EXPECTED === '1';
 
 // ── the plugins in Node ─────────────────────────────────────────────────────
-
-function out(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 function load(id) {
   var p = recorded.plugin(path.join(DIR, id), recorded.request(answers));
@@ -62,86 +64,40 @@ function load(id) {
 var loaded = {};
 IDS.forEach(function (id) { loaded[id] = load(id); });
 
-// lib/plugins as the host would answer with these plugins (only `enabled` ones),
-// every answer checked against the hook's schema
-var enabled = IDS.slice(),
-  real = { get: plugins.get, withHook: plugins.withHook, runHook: plugins.runHook };
-
-function hooked(name) {
-  return enabled.filter(function (id) { return loaded[id].hooks[name]; }).sort();
-}
-
-plugins.get = function (id) {
-  return loaded[id] || null;
-};
-plugins.withHook = function (name) {
-  return hooked(name).map(function (id) { return { id: id, name: loaded[id].manifest.name }; });
-};
-plugins.runHook = function (name, input, ctx, options) {
-  var problem = schemas.hookProblem(name, 'input', input);
-  assert.equal(problem, null, name + ' input: ' + problem);
-  var results = [], errors = [];
-  return Promise.all(hooked(name).filter(function (id) { return !options || !options.only || options.only === id; }).map(function (id) {
-    return Promise.resolve().then(function () {
-      return loaded[id].hooks[name](out(input), ctx);
-    }).then(function (output) {
-      output = out(output);
-      var bad = schemas.hookProblem(name, 'output', output);
-      if (bad) {
-        throw new Error('out of schema: ' + bad);
-      }
-      results.push({ plugin: id, output: output });
-    }, function (err) {
-      errors.push({ plugin: id, code: 'HANDLER_ERROR', message: err.message });
-    });
-  })).then(function () {
-    results.sort(function (a, b) { return a.plugin < b.plugin ? -1 : 1; });
-    return { results: results, errors: errors };
-  });
-};
-
-// ── the core's providers on the same answers ─────────────────────────────────
-
-axios.defaults.adapter = recorded.adapter(answers);
-
-var core = {};
-require('../lib/play/handlers').register({ use: function (h) { core[h.id] = h; } });
+// lib/plugins as the host would answer with these plugins (only enabled ones)
+var host = recorded.host(plugins, loaded);
 
 var CONTEXT = { play: play, ffmpeg: false, services: null, pluginContext: CTX };
 
-function brief(s) {
-  return { infoHash: s.infoHash, label: s.label, seeds: s.seeds, quality: s.quality, playable: s.playable, pack: s.badges.indexOf('pack') !== -1 };
-}
-
-function coreSources(title) {
-  var handler = title.kind === 'movie' ? core.yts : core.episodes;
-  return Promise.resolve(handler.run(title, CONTEXT)).then(function (r) {
-    assert.ok(Array.isArray(r) || !r.errors.length, 'the core read every recording: ' + JSON.stringify(r.errors));
-    return Array.isArray(r) ? r : r.sources;
-  });
-}
-
 function pluginSources(title, only) {
-  enabled = only;
+  host.enable(only);
   return playPlugins.collector.run(title, CONTEXT).then(function (r) {
-    enabled = IDS.slice();
+    host.enable();
     assert.deepEqual(r.errors, [], 'no plugin failed');
     return r.sources;
   }, function (err) {
-    enabled = IDS.slice();
+    host.enable();
     throw err;
   });
 }
 
 // ── Play ────────────────────────────────────────────────────────────────────
 
+function onlyFor(title) {
+  return title.kind === 'movie' ? ['yts'] : ['eztv', 'therarbg'];
+}
+
 recorded.PLAY.forEach(function (c) {
-  var only = c.title.kind === 'movie' ? ['yts'] : ['eztv', 'therarbg'];
+  var only = onlyFor(c.title);
   test('Play, ' + c.name + ': ' + only.join(' + ') + ' as plugins give the core\'s torrents in its order', function () {
-    return Promise.all([coreSources(c.title), pluginSources(c.title, only)]).then(function (r) {
-      assert.ok(r[0].length > 0, 'the recording has torrents');
-      assert.deepEqual(r[1].map(brief), r[0].map(brief));
-      r[1].forEach(function (s) {
+    return pluginSources(c.title, only).then(function (sources) {
+      if (update) {
+        expected.play[c.name] = sources.map(recorded.brief);
+      }
+      var core = expected.play[c.name];
+      assert.ok(core && core.length > 0, 'expected.json has torrents for ' + c.name);
+      assert.deepEqual(sources.map(recorded.brief), core);
+      sources.forEach(function (s) {
         assert.equal(s.type, 'torrent');
         assert.ok(s.handler.indexOf('plugin:') === 0 && only.indexOf(s.plugin) !== -1, s.handler);
       });
@@ -151,21 +107,22 @@ recorded.PLAY.forEach(function (c) {
 
 test('Play, every plugin: matched to the title, each torrent once, at most 50 a plugin, more for movies than YTS alone', function () {
   return Promise.all(recorded.PLAY.map(function (c) {
-    return Promise.all([coreSources(c.title), pluginSources(c.title, IDS)]).then(function (r) {
+    return pluginSources(c.title, IDS).then(function (sources) {
+      var core = expected.play[c.name];
       IDS.forEach(function (id) {
-        assert.ok(r[1].filter(function (s) { return s.plugin === id; }).length <= 50, c.name + ': ' + id + ' keeps its best 50');
+        assert.ok(sources.filter(function (s) { return s.plugin === id; }).length <= 50, c.name + ': ' + id + ' keeps its best 50');
       });
-      var hashes = r[1].map(function (s) { return s.infoHash; }),
+      var hashes = sources.map(function (s) { return s.infoHash; }),
         ref = playPlugins.titleRef(c.title);
       assert.equal(new Set(hashes).size, hashes.length, c.name + ': one source per torrent');
-      r[0].forEach(function (s) {
+      core.forEach(function (s) {
         assert.ok(hashes.indexOf(s.infoHash) !== -1, c.name + ': the core\'s ' + s.label + ' is there');
       });
       // YTS finds a movie by its IMDb id ("Dune: Part One" is TMDB's "Dune"): the others by name
-      r[1].filter(function (s) { return s.plugin !== 'yts'; }).forEach(function (s) {
+      sources.filter(function (s) { return s.plugin !== 'yts'; }).forEach(function (s) {
         assert.ok(names.matches(s.label, ref), c.name + ': ' + s.label + ' is the title');
       });
-      return { name: c.name, core: r[0].length, plugins: r[1].length, from: new Set(r[1].map(function (s) { return s.plugin; })) };
+      return { name: c.name, core: core.length, plugins: sources.length, from: new Set(sources.map(function (s) { return s.plugin; })) };
     });
   })).then(function (counts) {
     var dune = counts[0];
@@ -176,37 +133,60 @@ test('Play, every plugin: matched to the title, each torrent once, at most 50 a 
 
 // ── Find releases ───────────────────────────────────────────────────────────
 
-function listed(r) {
-  return r.torrents.map(function (t) {
-    return { hash: t.hash, name: t.name, seeds: t.seeds, peers: t.peers, size: t.size, added: t.added, quality: t.quality,
-      playable: t.playable, audio: t.audio, season: t.season, episode: t.episode, pack: t.pack };
-  });
-}
-
-recorded.RELEASES.forEach(function (c) {
+recorded.RELEASES.forEach(function (c, i) {
   test('Find releases, ' + JSON.stringify(c) + ': the plugin lists what the core did', function () {
-    return Promise.all([releases.browse(c), releases.browse(Object.assign({}, c, { provider: 'plugin:' + c.provider }))]).then(function (r) {
-      assert.equal(r[0].provider, c.provider);
-      assert.equal(r[1].provider, 'plugin:' + c.provider);
-      assert.ok(r[0].torrents.length > 0, 'the recording has releases');
-      assert.deepEqual(listed(r[1]), listed(r[0]));
-      assert.equal(r[1].page, r[0].page);
-      assert.equal(r[1].hasMore, r[0].hasMore);
+    return releases.browse(Object.assign({}, c, { provider: 'plugin:' + c.provider })).then(function (r) {
+      if (update) {
+        expected.releases[i] = { case: c, page: r.page, hasMore: r.hasMore, torrents: recorded.listed(r) };
+      }
+      var core = expected.releases[i];
+      assert.deepEqual(core.case, c, 'expected.json is for these cases');
+      assert.equal(r.provider, 'plugin:' + c.provider);
+      assert.ok(core.torrents.length > 0, 'the recording has releases');
+      assert.deepEqual(recorded.listed(r), core.torrents);
+      assert.equal(r.page, core.page);
+      assert.equal(r.hasMore, core.hasMore);
     });
   });
 });
 
-test('Find releases: the plugins are sources of both kinds where their site has them', function () {
-  assert.deepEqual(releases.providers('movie').map(function (p) { return p.id; }),
-    ['piratebay', 'therarbg', 'yts', 'plugin:eztv', 'plugin:piratebay', 'plugin:therarbg', 'plugin:yts']);
+test('Find releases: only plugins are sources, for the kinds they list (contributes.releases.kinds)', function () {
+  function ids(kind) {
+    return releases.providers(kind).map(function (p) { return p.id; });
+  }
+  // the core's defaults again: The Pirate Bay first
+  assert.deepEqual(ids('movie'), ['plugin:piratebay', 'plugin:therarbg', 'plugin:yts'], 'EZTV has no movies');
+  assert.deepEqual(ids('tv'), ['plugin:eztv', 'plugin:piratebay', 'plugin:therarbg'], 'YTS has no shows');
+  assert.equal(releases.providers('movie')[0].default, true);
+  // the hooks still answer nothing for a kind they don't list
   return Promise.all([
-    releases.browse({ kind: 'movie', provider: 'plugin:eztv' }),
-    releases.browse({ kind: 'tv', provider: 'plugin:yts' })
+    loaded.eztv.hooks['releases.providers']({ kind: 'movie', page: 1 }),
+    loaded.yts.hooks['releases.providers']({ kind: 'show', page: 1 })
   ]).then(function (r) {
-    assert.deepEqual(r[0].torrents, [], 'EZTV has no movies');
-    assert.deepEqual(r[1].torrents, [], 'YTS has no shows');
+    // (arrays of the plugins' vm realm)
+    assert.equal(r[0].releases.length, 0);
+    assert.equal(r[1].releases.length, 0);
   });
 });
+
+test('Find releases with no source plugin: no provider, an empty list', function () {
+  host.enable([]);
+  var none = releases.providers('tv');
+  return releases.browse({ kind: 'movie' }).then(function (r) {
+    host.enable();
+    assert.deepEqual(none, []);
+    assert.deepEqual(r, { provider: null, page: 1, hasMore: false, torrents: [] });
+  }, function (err) {
+    host.enable();
+    throw err;
+  });
+});
+
+if (update) {
+  test.after(function () {
+    fs.writeFileSync(EXPECTED, JSON.stringify(expected, null, 1) + '\n');
+  });
+}
 
 // ── a real server: the sandbox, packaging ───────────────────────────────────
 
@@ -229,7 +209,7 @@ test('loaded by a real server: enabled, listed, failures only in errors; packed 
     });
   }
   // the real host this time, with no web: every name fails to resolve
-  Object.assign(plugins, real);
+  host.restore();
   return server.start({
     port: 0, console: false, torrents: { engine: 'fake', discovery: false }, library: false,
     plugins: {
@@ -255,8 +235,7 @@ test('loaded by a real server: enabled, listed, failures only in errors; packed 
     all.forEach(function (p) { assert.equal(p.state, 'enabled', p.id + ': ' + p.error); });
     return call('GET', '/releases/providers?kind=tv');
   }).then(function (r) {
-    assert.deepEqual(r.json.map(function (p) { return p.id; }).filter(function (id) { return /^plugin:/.test(id); }),
-      ['plugin:eztv', 'plugin:piratebay', 'plugin:therarbg', 'plugin:yts']);
+    assert.deepEqual(r.json.map(function (p) { return p.id; }), ['plugin:eztv', 'plugin:piratebay', 'plugin:therarbg']);
     return call('POST', '/play/sources', { kind: 'episode', tmdbId: 95396, imdbId: 'tt11280740', title: 'Severance', season: 1, episode: 1 });
   }).then(function (r) {
     assert.equal(r.status, 200);

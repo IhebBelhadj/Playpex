@@ -18,6 +18,7 @@
 // files (names.*, html.select, torrent.info) ./utilities.js.
 
 var http = require('./http'),
+  health = require('../health'),
   protocol = require('@playpex/protocol/plugins'),
   writes = require('./writes'),
   core = require('./core'),
@@ -44,6 +45,9 @@ function interpolate(text, vars) {
   });
 }
 
+// http.request failures that never reached the site
+var REFUSED = ['INVALID', 'HTTPS_ONLY', 'PORT_NOT_ALLOWED', 'HOST_NOT_ALLOWED', 'PERMISSION_DENIED'];
+
 function count(stats, key) {
   stats.host[key] = (stats.host[key] || 0) + 1;
 }
@@ -67,8 +71,15 @@ function createHost(plugin, services) {
         host = new URL(args && args.url).hostname;
       } catch (e) {}
       count(plugin.stats, 'http ' + (host || '?'));
-      return http.request(plugin, args, bytes).catch(function (err) {
+      return http.request(plugin, args, bytes).then(function (r) {
+        health.plugin(plugin, host, null, r.value.status);
+        return r;
+      }, function (err) {
         count(plugin.stats, 'http.' + (err.code || 'error'));
+        // refused before asking (a host it may not use, a bad request): not the site's health
+        if (host && REFUSED.indexOf(err.code) === -1) {
+          health.plugin(plugin, host, err);
+        }
         throw err;
       });
     },

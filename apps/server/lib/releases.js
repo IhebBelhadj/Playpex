@@ -1,16 +1,13 @@
 'use strict';
 
-// "Find releases" lists: one torrent source's releases for a kind of media,
-// most seeded first, with a quality filter, a "playable" filter, keywords and
-// paging for paged sources. Kinds: 'movie', 'tv'.
-// Routes: /api/releases/{providers,browse}. Plugins with `releases.providers` are more
-// sources of the kinds movie and tv (`plugin:<id>`, after the core's; hook
-// kinds `movie` / `show`); never `audience: adults` ones (no profile here).
+// "Find releases" lists: one source's releases for a kind of media, most
+// seeded first, with a quality filter, a "playable" filter, keywords and
+// paging. Kinds: 'movie', 'tv'. Routes: /api/releases/{providers,browse}.
+// The sources are plugins with `releases.providers` (`plugin:<id>`; hook kinds
+// `movie` / `show`), never `audience: adults` ones (no profile here): the core
+// reads no torrent site (docs/providers-plan.md §4). No such plugin → no
+// source, and browse answers an empty list.
 
-var piratebay = require('./providers/piratebay');
-var therarbg = require('./providers/therarbg');
-var eztv = require('./providers/eztv');
-var yts = require('./providers/yts');
 var names = require('./media/names');
 var trackers = require('./trackers');
 
@@ -18,86 +15,15 @@ var describe = names.describe;
 
 var QUALITIES = ['2160p', '1080p', '720p', 'SD'];
 
-// A filtered page of a paged provider can come out nearly empty: read on until
-// MIN_RESULTS are kept or MAX_PAGES_PER_CALL pages are read
+// A filtered page can come out nearly empty: read on until MIN_RESULTS are
+// kept or MAX_PAGES_PER_CALL pages are read
 var MIN_RESULTS = 20;
 var MAX_PAGES_PER_CALL = 3;
 
-// The Pirate Bay subcategories. Top-100 lists by quality filter; keywords search
-// the parent category and keep the subcategories of the kind.
-function pirateBayLists(all, sd, hd, uhd) {
-  return function (quality) {
-    return quality === '2160p' ? [uhd] : (quality === '1080p' || quality === '720p') ? [hd] :
-      quality === 'SD' ? [sd] : all;
-  };
-}
-
-var movieLists = pirateBayLists(['201', '207', '211'], '201', '207', '211');
-var tvLists = pirateBayLists(['205', '208', '212'], '205', '208', '212');
-
-// kind → its sources; the first one is the default.
-// list(context) → Promise<{ results: [release], hasMore }>
-// context: { q, quality ('' or one of QUALITIES), page, imdb }
-var PROVIDERS = {
-  movie: [
-    {
-      id: 'piratebay',
-      name: 'The Pirate Bay',
-      paged: false,
-      // 201 Movies, 207 HD - Movies, 211 UHD/4k - Movies (not 202 DVDR images, 209 3D)
-      list: function (c) {
-        return piratebay.browse(c.q, { lists: movieLists(c.quality), searchCategory: '200', categories: ['201', '207', '211'] });
-      }
-    },
-    {
-      id: 'therarbg',
-      name: 'TheRARBG',
-      paged: true,
-      list: function (c) {
-        return therarbg.browse(c.q, 'Movies', c.page);
-      }
-    },
-    {
-      id: 'yts',
-      name: 'YTS',
-      paged: true,
-      list: function (c) {
-        return yts.browse(c.q, c.quality, c.page);
-      }
-    }
-  ],
-  tv: [
-    {
-      id: 'piratebay',
-      name: 'The Pirate Bay',
-      paged: false,
-      // 205 TV shows, 208 HD - TV shows, 212 UHD/4k - TV shows
-      list: function (c) {
-        return piratebay.browse(c.q, { lists: tvLists(c.quality), searchCategory: '200', categories: ['205', '208', '212'] });
-      }
-    },
-    {
-      id: 'therarbg',
-      name: 'TheRARBG',
-      paged: true,
-      list: function (c) {
-        return therarbg.browse(c.q, 'TV', c.page);
-      }
-    },
-    {
-      id: 'eztv',
-      name: 'EZTV',
-      paged: true,
-      // with an IMDb id: that show's torrents (keywords filter them); else the latest uploads
-      list: function (c) {
-        return eztv.browse(c.q, c.imdb, c.page);
-      }
-    }
-  ]
-};
+var KINDS = ['movie', 'tv'];
 
 function isKind(kind) {
-  return Object.prototype.hasOwnProperty.call(PROVIDERS, kind);
+  return KINDS.indexOf(kind) !== -1;
 }
 
 var HOOK_KINDS = { movie: 'movie', tv: 'show' },
@@ -127,7 +53,12 @@ function pluginProviders(kind) {
   if (!HOOK_KINDS[kind]) {
     return [];
   }
-  return plugins.withHook('releases.providers', NO_ADULTS).map(function (p) {
+  return plugins.withHook('releases.providers', NO_ADULTS).filter(function (p) {
+    // contributes.releases.kinds: the kinds it lists (default both)
+    var loaded = plugins.get(p.id),
+      kinds = loaded && loaded.manifest.contributes && loaded.manifest.contributes.releases && loaded.manifest.contributes.releases.kinds;
+    return !kinds || kinds.indexOf(HOOK_KINDS[kind]) !== -1;
+  }).map(function (p) {
     return {
       id: 'plugin:' + p.id,
       name: p.name,
@@ -140,7 +71,7 @@ function pluginProviders(kind) {
         if (c.quality) {
           input.filters = { quality: c.quality };
         }
-        // the title the list is about (EZTV lists one show's torrents)
+        // the title the list is about (a site may list one show's torrents)
         if (c.imdb) {
           input.title = { kind: HOOK_KINDS[kind], imdbId: 'tt' + c.imdb.replace(/^tt/, '') };
         }
@@ -160,7 +91,7 @@ function pluginProviders(kind) {
 }
 
 function all(kind) {
-  return PROVIDERS[kind].concat(pluginProviders(kind));
+  return pluginProviders(kind);
 }
 
 function providers(kind) {
@@ -172,8 +103,8 @@ function providers(kind) {
   });
 }
 
-// release → what the list shows (fields the provider set itself, like YTS's
-// title/year, win over the parsed ones)
+// release → what the list shows (fields the provider set itself, title/year,
+// win over the parsed ones)
 function decorate(kind, torrent) {
   var presented = names.release(torrent.name, kind);
   var own = {};
@@ -196,6 +127,9 @@ function browse(options) {
   var provider = list.filter(function (p) {
     return p.id === options.provider;
   })[0] || list[0];
+  if (!provider) {
+    return Promise.resolve({ provider: null, page: 1, hasMore: false, torrents: [] });
+  }
   var quality = QUALITIES.indexOf(options.quality) !== -1 ? options.quality : '';
   var page = Math.max(1, options.page || 1);
 
@@ -242,7 +176,7 @@ function browse(options) {
 }
 
 module.exports = {
-  KINDS: Object.keys(PROVIDERS),
+  KINDS: KINDS,
   isKind: isKind,
   providers: providers,
   browse: browse

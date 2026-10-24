@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import type { PlaySource } from './play-sources.service';
 
-// One choice in the picker, normalized from YTS (movies), the server's
-// episode search (EZTV / TheRARBG) or the play pipeline's sources
+// One choice in the picker, normalized from the play pipeline's sources
 export interface TorrentOption {
   quality: string;          // "1080p"
   tags: string[];           // "x265", "BluRay", "Season pack", …
@@ -53,50 +52,6 @@ export class TorrentPickerService {
     return this.requests.asObservable();
   }
 
-  // YTS torrent: {hash, quality, type, video_codec, bit_depth, audio_channels, seeds, peers, size}
-  static fromYts(torrent): TorrentOption {
-    let hevc = /x265|hevc/i.test(torrent['video_codec'] || '');
-    let tenBit = torrent['bit_depth'] == '10';
-    let tags = [
-      torrent['type'] ? capitalize(torrent['type']) : null,
-      torrent['video_codec'],
-      tenBit ? '10-bit' : null,
-      torrent['audio_channels'] ? torrent['audio_channels'] + ' ch' : null,
-    ].filter(Boolean);
-
-    return {
-      quality : torrent['quality'],
-      tags,
-      size : torrent['size'],
-      seeds : torrent['seeds'],
-      peers : torrent['peers'],
-      warnings : (hevc || tenBit || torrent['quality'] == '2160p') ? ['May not play (x265 / 10-bit / 4K)'] : [],
-      torrent,
-    };
-  }
-
-  // Server episode torrent (lib/episodes.js): {name, quality, codec, audio, playable, pack, seeds, size, magnet}
-  static fromEpisode(torrent , index:number): TorrentOption {
-    let warnings = [];
-    if (!torrent['playable']) warnings.push('May not play (x265 / 10-bit / 4K)');
-    if (torrent['audio'] == 'unsupported') warnings.push('Probably no sound (Dolby / DTS audio)');
-
-    return {
-      quality : torrent['quality'],
-      tags : [
-        torrent['codec'],
-        torrent['pack'] ? 'Season pack' : null,
-        torrent['scenes'] ? 'Split scenes' : null,
-      ].filter(Boolean),
-      size : torrent['size'] ? formatBytes(torrent['size']) : undefined,
-      seeds : torrent['seeds'],
-      name : torrent['name'],
-      warnings,
-      recommended : index == 0,     // the server ranks them best first
-      torrent,
-    };
-  }
-
   // A play source (POST /play/sources): a file on the server, a download, a torrent
   static fromSource(source:PlaySource): TorrentOption {
     let onServer = source.badges.includes('on-server');
@@ -123,10 +78,6 @@ export class TorrentPickerService {
       torrent : source,
     };
   }
-}
-
-function capitalize(text:string){
-  return text.length <= 3 ? text.toUpperCase() : text[0].toUpperCase() + text.slice(1);
 }
 
 export function formatBytes(bytes:number){

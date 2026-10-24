@@ -91,7 +91,7 @@ var info = await playpex.torrent.info(r.body);                        // a .torr
 
 ## Hooks
 
-Named stages of core features. Each has an input / output schema (`$defs/hooks/<name>` in `plugin-api.schema.json`), a timeout (`HOOKS` in `plugins.js`) and one failure rule: **a handler that throws, times out or answers out of schema is skipped**, the feature works without it. The core's own sources (library, downloads, YTS, EZTV, TheRARBG) are handlers of the same stages; a plugin can't remove them.
+Named stages of core features. Each has an input / output schema (`$defs/hooks/<name>` in `plugin-api.schema.json`), a timeout (`HOOKS` in `plugins.js`) and one failure rule: **a handler that throws, times out or answers out of schema is skipped**, the feature works without it. The core's own sources (the library, the server's downloads) are handlers of the same stages; a plugin can't remove them. The core reads no torrent site: torrents and streams come only from plugins.
 
 ```js
 playpex.hooks.on('play.collect', async function (input, ctx) {
@@ -121,7 +121,7 @@ How the core uses the answers (step P3):
 - **`play.rank`** sees every source (the core's and other plugins'); hidden ones are listed to the user as "Hidden by <your name>: <reason>". Plugins run in id order, each on the previous one's result.
 - **`play.before`** runs when the user picks a source: the first `refuse` (by plugin id) wins, else the first `ask`; the user's yes runs the hooks again with the question answered.
 - **`play.resolve`**: `check` gets every torrent of the Play (≤ 200 hashes, 3 s); the first resolver (by id) to say `cached` serves it. `resolve` runs only when the user picks that torrent; `null`, a failure or a source you may not use plays the torrent itself.
-- **`releases.providers`**: listed in the core's movie and TV "Find releases" as a source named after your plugin (hook kinds `movie` and `show`); answer `{ releases: [], last: true }` for a kind you don't serve. Not for `audience: adults` plugins (those lists have no profile).
+- **`releases.providers`**: listed in the core's movie and TV "Find releases" as a source named after your plugin (hook kinds `movie` and `show`), only for the kinds of your manifest's `contributes.releases.kinds` (`["movie"]`, `["show"]`; default both); answer `{ releases: [], last: true }` for a kind you don't serve. The sources are listed by plugin id, the first the default. With no such plugin the TV hides Find releases. Not for `audience: adults` plugins (those lists have no profile).
 - **`subtitles.providers`**: listed in the player's subtitle sources; `languages` is the 639-1 codes asked, or empty for all. Formats: `srt`, `vtt`, `ass` / `ssa` (converted to WebVTT); `sub` isn't read yet.
 - **`player.markers`**: asked once the player knows the length; markers past the duration are dropped.
 - **`library.match`** runs only for folders whose "information provider" is your plugin; `parse` is the core's own reading of the name, `ids` what its nfo / name tags gave.
@@ -135,7 +135,7 @@ How the core uses the answers (step P3):
 | `magnet` | `magnet` or `infoHash` (+ `fileIndex` / `fileName`: the file to play, honoured by the player through the server's file choice), `label`, `quality?`, `size?`, `seeds?`, `peers?`, `codec?`, `audio?`, `notes?` | as the core's torrents: leases, paused when left, never deleted; its separate audio / subtitle files and other videos are switchable in the player |
 | `http` | `url` (HTTPS), `headers?` (sent by the server only; not `Host`, `Cookie`, `Range`…), `label`, `size?`, `container?`, codecs | the server proxies it as a media ref `r_…` with ranges passed through, the host checked on every request and redirect; **the client never sees the URL**; ffprobe and the Dolby → AAC conversion work on it. The ref lives 1 h; Resume collects again |
 
-Your sources are ranked with the core's, carry your `notes` ("From Real-Debrid") and never autoplay over a file on the server. **Every plugin's torrents are ranked together** by the core, as it ranks its own sites: one per info hash (the best seeded copy), packs marked, in the streaming order of `names.rank`; your own order counts only among equals, so give the 50 best (rank them with `names.rank` when you found more), not a sorted list. Reorder or hide with `play.rank`. The torrent sites the core reads today are ported as plugins in `plugins/torrents/` (YTS, EZTV, TheRARBG, The Pirate Bay): read them for a source plugin's shape.
+Your sources are ranked with the core's, carry your `notes` ("From Real-Debrid") and never autoplay over a file on the server. **Every plugin's torrents are ranked together** by the core, as it ranks its own sites: one per info hash (the best seeded copy), packs marked, in the streaming order of `names.rank`; your own order counts only among equals, so give the 50 best (rank them with `names.rank` when you found more), not a sorted list. Reorder or hide with `play.rank`. The torrent sites the core used to read are plugins in `plugins/torrents/` (YTS, EZTV, TheRARBG, The Pirate Bay; their own repository): read them for a source plugin's shape.
 
 ## Events
 

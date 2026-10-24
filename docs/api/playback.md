@@ -50,14 +50,13 @@ Content-Type: application/json
 
 **Markers**: once the player knows the video's length, `POST /play/markers` with the same title fields plus `duration` (seconds) and `fileName` answers `{ markers: [{ plugin, kind, start, end?, label? }] }`: between an `intro` / `recap` marker's `start` and `end` show "Skip intro" / "Skip recap" (seek to `end`); a `credits` marker is where "Up next" starts instead of the last 40 s; `chapter`s can mark the timeline. Empty when no plugin marks anything.
 
-The routes below are what the sources are built from; use them for "Find releases" lists, or on servers older than the play pipeline (a `404` for `POST /play/sources`). Titles come from public catalogs.
+The server reads no torrent site of its own (API 2): a title's torrents come from the **source plugins** its admin installed, through `POST /play/sources`. With none, the sources are only files on the server and its downloads, and `GET /plugins` answers `capabilities: { releases: false, sources: false }`: say so ("Nothing to play this from yet", sources are added on the server's dashboard) and hide "Find releases". The routes below are the rest a title page uses. Titles come from public catalogs.
 
 | What | Where | Notes |
 |---|---|---|
 | Titles, posters, seasons, episodes, cast | **TMDB**, called by the client with its own key | The server will proxy it later (plan §12 G: `/api/v1/catalog/*`, the key in server settings). Until then each client needs a TMDB key. Movies need TMDB's `imdb_id`, shows their `external_ids.imdb_id` |
-| A movie's torrents, rating, runtime | `GET /movies/{imdbId}` | YTS `movie_details.json` passed through: `data.movie.torrents[]` (`hash`, `quality`, `type`, `size`, `seeds`…), `rating`, `runtime`. YTS gives hashes, not magnets: post the bare `hash` as the `link` (or a magnet built from it); the server adds its own public tracker list to every torrent |
-| An episode's torrents | `GET /shows/{imdbId}/torrents?title=&season=&episode=` | EZTV + TheRARBG merged, **ranked best first** (playable video, then supported audio, seeders, single episode before season pack, 1080p first). `title` = the show's English name without the year (TMDB `name` with `language=en-US`), used to match release names. Each torrent has `magnet`, `hash`, `seeds`, `size`, `quality`, `codec`, `audio`, `playable`, `pack` |
-| "Find releases" lists (most seeded first) | `GET /releases/providers?kind=movie\|tv`, `GET /releases/browse?kind=&provider=&q=&quality=&playable=1&page=&imdb=` | one provider's list with filters and paging; `imdb` (optional) lets EZTV list one show |
+| A movie's runtime | TMDB `movie/{id}` (`runtime`) | `GET /movies/{imdbId}` (YTS) and `GET /shows/{imdbId}/torrents` were removed in API 2: they answer `410 GONE` |
+| "Find releases" lists (most seeded first) | `GET /releases/providers?kind=movie\|tv`, `GET /releases/browse?kind=&provider=&q=&quality=&playable=1&page=&imdb=` | one source plugin's list with filters and paging (`plugin:<id>`); `imdb` (optional) lets a source list one show. No source: `[]` and `{ provider: null, torrents: [] }` |
 | IMDb ratings | `GET /imdb/{imdbId}`, `GET /imdb/{imdbId}/episodes` | series, season means, episodes |
 
 Release fields that help you choose: `playable: false` = video a typical player can't decode (HEVC 10-bit, XviD, 4K on Chromium); `audio: 'unsupported'` = Dolby / DTS audio (see [audio](#choosing-direct-play-or-the-transcoded-stream)). These are guesses from the release name, made for a Chromium player: a client that decodes HEVC or AC-3 can ignore them.
@@ -233,4 +232,4 @@ Saving where the user stopped is per **profile** ([profiles](profiles.md#playbac
 
 ## Trailers
 
-`/youtube/{videoId}` exists but is **broken** past the first ~1 MB (YouTube's proof-of-origin checks). Play trailers with YouTube's own player (IFrame API, the YouTube app or SDK) using `yt_trailer_code` (YTS) or TMDB's `videos`.
+`/youtube/{videoId}` exists but is **broken** past the first ~1 MB (YouTube's proof-of-origin checks). Play trailers with YouTube's own player (IFrame API, the YouTube app or SDK) using TMDB's `videos`.

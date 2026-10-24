@@ -502,7 +502,9 @@ test('release lists from releases.providers', function (t) {
   }
   return call('GET', '/releases/providers?kind=movie').then(function (r) {
     var mine = r.json.filter(function (p) { return p.id === 'plugin:sourcer'; })[0];
-    assert.deepEqual(mine, { id: 'plugin:sourcer', name: 'Sourcer', paged: true, default: false });
+    // the only source: the core reads no torrent site
+    assert.deepEqual(r.json, [{ id: 'plugin:sourcer', name: 'Sourcer', paged: true, default: true }]);
+    assert.deepEqual(mine, r.json[0]);
     return call('GET', '/releases/browse?kind=movie&provider=plugin:sourcer&q=Film');
   }).then(function (r) {
     assert.equal(r.status, 200, r.text);

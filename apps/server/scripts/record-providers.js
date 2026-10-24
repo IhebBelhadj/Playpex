@@ -1,15 +1,17 @@
 'use strict';
 
 // Records the torrent sites' answers for the providers' parity test
-// (test/providers.parity.test.js): runs the core's providers on the cases of
-// test/helpers/recorded.js against the real sites and writes what they
+// (test/providers.parity.test.js): runs the torrent plugins
+// (plugins/torrents/*) on the cases of test/helpers/recorded.js against the
+// real sites (their http.request through axios) and writes what the sites
 // answered, cut down to the fields anyone reads, to
 // test/fixtures/providers/{play,releases}.json.
 //
 //   node apps/server/scripts/record-providers.js
 //
-// Record again when a site changes its answers; the test then compares the
-// plugins (plugins/torrents/*) with the core on the new answers.
+// Record again when a site changes its answers, then let the test write what
+// the plugins answer now (PLAYPEX_UPDATE_EXPECTED=1 node --test
+// test/providers.parity.test.js) and review expected.json's diff.
 
 var fs = require('fs'),
   os = require('os'),
@@ -22,8 +24,9 @@ process.env.PLAYPEX_LOG_DIR = path.join(tmp, 'logs');
 
 var axios = require('axios').default,
   recorded = require('../test/helpers/recorded'),
-  yts = require('../lib/providers/yts'),
-  episodes = require('../lib/episodes'),
+  plugins = require('../lib/plugins'),
+  play = require('../lib/play'),
+  playPlugins = require('../lib/play/plugins'),
   releases = require('../lib/releases');
 
 function pick(item, keys) {
@@ -44,7 +47,7 @@ function ytsMovie(m) {
   return out;
 }
 
-// Each site's answer with only what the providers read (magnets cut to their hash)
+// Each site's answer with only what the plugins read (magnets cut to their hash)
 function trim(host, data) {
   if (/yts|accel/.test(host)) {
     var d = data && data.data || {}, out = {};
@@ -106,8 +109,6 @@ function write(name) {
   answers = {};
 }
 
-// The plugins (plugins/torrents/*) ask what the core didn't (The Pirate Bay
-// and TheRARBG for movies): they run here too, on the real sites
 var PLUGINS = path.join(__dirname, '..', '..', '..', 'plugins', 'torrents');
 
 function fetch(o) {
@@ -116,32 +117,30 @@ function fetch(o) {
   });
 }
 
-var plugins = fs.readdirSync(PLUGINS).filter(function (id) {
+var loaded = {};
+fs.readdirSync(PLUGINS).filter(function (id) {
   return fs.existsSync(path.join(PLUGINS, id, 'playpex-plugin.json'));
-}).map(function (id) {
-  return recorded.plugin(path.join(PLUGINS, id), fetch);
+}).forEach(function (id) {
+  loaded[id] = recorded.plugin(path.join(PLUGINS, id), fetch);
 });
+recorded.host(plugins, loaded);
 
-function play(c) {
-  var t = c.title;
-  return (t.kind === 'movie' ? yts.releases(t.imdbId) :
-    episodes.findEpisodeTorrents(t.imdbId, t.title, t.season, t.episode)).then(function (r) {
-    console.log('  ' + c.name + ': ' + (r.torrents || r).length + ' torrents');
-    return Promise.all(plugins.map(function (p) {
-      return Promise.resolve(p.hooks['play.collect']({ title: t })).then(function (found) {
-        console.log('    ' + p.id + ': ' + found.length);
-      });
-    }));
+var CONTEXT = { play: play, ffmpeg: false, services: null, pluginContext: { profile: { id: 'p1', kids: false }, device: null, locale: 'en' } };
+
+// every plugin, so the test can run any of them on this title
+function playCase(c) {
+  return playPlugins.collector.run(c.title, CONTEXT).then(function (r) {
+    console.log('  ' + c.name + ': ' + r.sources.length + ' torrents' + (r.errors.length ? ', errors: ' + JSON.stringify(r.errors) : ''));
   });
 }
 
 function list(c) {
-  return releases.browse(c).then(function (r) {
+  return releases.browse(Object.assign({}, c, { provider: 'plugin:' + c.provider })).then(function (r) {
     console.log('  ' + JSON.stringify(c) + ': ' + r.torrents.length + ' releases');
   });
 }
 
-recorded.PLAY.reduce(function (p, c) { return p.then(function () { return play(c); }); }, Promise.resolve())
+recorded.PLAY.reduce(function (p, c) { return p.then(function () { return playCase(c); }); }, Promise.resolve())
   .then(function () { write('play'); })
   .then(function () {
     return recorded.RELEASES.reduce(function (p, c) { return p.then(function () { return list(c); }); }, Promise.resolve());

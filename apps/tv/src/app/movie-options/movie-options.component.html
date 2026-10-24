@@ -5,8 +5,8 @@
     <px-action key="play" icon="play" [label]="resumeLabel || 'Play'" busyLabel="Finding torrents…"
       [busy]="findingTorrents" (pxSelect)="onPlay()"></px-action>
     <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="onTrailer()"></px-action>
-    <!-- every source's releases of this movie, not only YTS' -->
-    <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
+    <!-- every source plugin's releases of this movie (none: no button) -->
+    <px-action *ngIf="releasesShown$ | async" key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
     <!-- kept on the server (Downloads): progress, then "On this server" -->
     <px-action key="download" icon="download" onIcon="tick" [on]="downloadTile.on" [label]="downloadTile.label"
       [progress]="downloadTile.progress" (pxSelect)="onDownload()"></px-action>

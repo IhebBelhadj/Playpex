@@ -62,7 +62,7 @@ export class PlaybackService {
 
   constructor(private navigator:Navigator) { }
 
-  // A movie torrent's magnet: its own, else built from the YTS hash
+  // A movie torrent's magnet: its own, else built from its info hash (a resume's)
   static movieMagnet(movie, torrent):string {
     let magnet = torrent.magnet;
     if (!magnet) {
@@ -88,10 +88,9 @@ export class PlaybackService {
     else this.navigator.open(intent);
   }
 
-  // Movie from MoviesService.selectedmovie, enriched with YTS `torrents`;
-  // `torrent` is one of them (defaults to the first)
-  // `torrent` needs only `hash` (+ `quality`): resuming passes the saved info hash.
-  playMovie(movie, torrent = movie['torrents'][0], startAt?:number) {
+  // Movie from MoviesService.selectedmovie; `torrent` needs only `hash`
+  // (+ `quality`): resuming passes the saved info hash.
+  playMovie(movie, torrent, startAt?:number) {
     this.playMovieFrom(movie, { magnet: PlaybackService.movieMagnet(movie, torrent) }, startAt);
   }
 

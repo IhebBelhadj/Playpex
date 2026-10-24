@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Playpex Media Server API
-  version: '1'
+  version: '2'
   summary: The API every Playpex client talks to (TV app, future Android TV / mobile / web clients).
   description: |
     Source of truth for the Playpex protocol (docs/server-separation-plan.md §6). TypeScript types are
@@ -9,7 +9,14 @@ info:
     server's contract test (`npm test -w apps/server`) checks real answers against it.
 
     **Base URL**: `http://<server>:<port>/api/v1`. The default port is 28470 (the server's settings
-    can change it).
+    can change it). The prefix names the URL space, not the API version: API 2 is served there too,
+    and a client says which version it speaks in `X-Playpex-Client` (`api=<n>`).
+
+    **API 2** (docs/providers-plan.md §4.1, decision C) removed `GET /movies`, `/movies/{imdbId}` and
+    `/shows/{imdbId}/torrents`: the server reads no torrent site of its own. A title's torrents come from
+    the server's source plugins through `POST /play/sources`; its runtime and certification from TMDB, its
+    rating from `/imdb/{imdbId}`. The removed routes answer `410 GONE`; everything else serves API 1
+    clients as before (`minApiVersion` 1).
 
     **Finding a server** (not HTTP; constants in `@playpex/protocol` `DISCOVERY`; plan §5.7). A server
     sharing on the LAN answers both ways below; use both and merge what you find by `id`. Then confirm
@@ -99,11 +106,11 @@ tags:
   - name: sessions
     description: What every device is playing (leases on torrents)
   - name: catalog
-    description: Movie / show data from providers (YTS, IMDb)
+    description: Movie / show data (IMDb ratings)
   - name: play
     description: 'What can play a title: files on this server, downloads, torrents, ranked (the play pipeline)'
   - name: releases
-    description: Torrent search and release lists (EZTV, TheRARBG, The Pirate Bay, YTS)
+    description: Release lists from the server's source plugins (`releases.providers`)
   - name: subtitles
   - name: profiles
   - name: library
@@ -2545,28 +2552,20 @@ paths:
     get:
       tags: [catalog]
       operationId: listYtsMovies
-      summary: YTS `list_movies.json`, passed through (query parameters forwarded)
+      deprecated: true
+      summary: Removed in API 2 (was YTS's movie list); answers 410
       responses:
-        '200':
-          description: YTS answer, unchanged
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/YtsResponse' }
-        '502': { $ref: '#/components/responses/Upstream' }
+        '410': { $ref: '#/components/responses/Gone' }
   /movies/{imdbId}:
     parameters:
       - $ref: '#/components/parameters/ImdbId'
     get:
       tags: [catalog]
       operationId: getYtsMovie
-      summary: YTS `movie_details.json` for an IMDb id, passed through (torrents, rating, runtime…)
+      deprecated: true
+      summary: Removed in API 2 (was YTS's movie details); answers 410. Torrents are `POST /play/sources`, the rating `/imdb/{imdbId}`
       responses:
-        '200':
-          description: YTS answer, unchanged (`data.movie`)
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/YtsResponse' }
-        '502': { $ref: '#/components/responses/Upstream' }
+        '410': { $ref: '#/components/responses/Gone' }
   /imdb/{imdbId}:
     parameters:
       - $ref: '#/components/parameters/ImdbId'
@@ -2605,19 +2604,10 @@ paths:
     get:
       tags: [releases]
       operationId: findEpisodeTorrents
-      summary: Torrents of one episode (EZTV + TheRARBG), best streaming candidate first; season packs as fallback
-      parameters:
-        - { name: title, in: query, required: true, description: 'Show title, used to match release names', schema: { type: string } }
-        - { name: season, in: query, required: true, schema: { type: integer, minimum: 0 } }
-        - { name: episode, in: query, required: true, schema: { type: integer, minimum: 1 } }
+      deprecated: true
+      summary: Removed in API 2 (was EZTV + TheRARBG); answers 410. An episode's torrents are `POST /play/sources`
       responses:
-        '200':
-          description: Ranked torrents
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RankedTorrents' }
-        '400': { $ref: '#/components/responses/Invalid' }
-        '502': { $ref: '#/components/responses/Upstream' }
+        '410': { $ref: '#/components/responses/Gone' }
   /play/sources:
     post:
       tags: [play]
@@ -2625,8 +2615,9 @@ paths:
       summary: Every way to play a movie or an episode, best first
       description: |
         The play pipeline (docs/media-server-plan.md §6): library files of the title, the server's
-        downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
-        the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
+        downloads of it, and torrents from the server's source plugins (their `play.collect`, ranked
+        together; the server reads no torrent site of its own, so with none installed there are only files
+        on this server), the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
         files on this server that play come first, and `policy.autoplay` names the source to start
         without asking when it is the only one (or, with `player.autoplayKind` `server` / `stream`, the best
         of that group when it plays). `groups` sorts the sources into ways to play (server, stream,
@@ -2812,6 +2803,13 @@ paths:
                   plugins:
                     type: array
                     items: { $ref: '#/components/schemas/ClientPlugin' }
+                  capabilities:
+                    type: object
+                    description: 'What the profile''s plugins provide (docs/providers-plan.md §5.3): hide Find releases without `releases`'
+                    required: [releases, sources]
+                    properties:
+                      releases: { type: boolean, description: 'Some plugin lists releases (`releases.providers`)' }
+                      sources: { type: boolean, description: 'Some plugin finds a title''s sources (`play.collect`)' }
         '404': { $ref: '#/components/responses/NotFound' }
   /plugins/{pluginId}/data/{name}:
     post:
@@ -2954,7 +2952,7 @@ paths:
         - $ref: '#/components/parameters/Quality'
         - $ref: '#/components/parameters/Playable'
         - $ref: '#/components/parameters/Page'
-        - { name: imdb, in: query, description: 'Optional IMDb id (EZTV lists that show)', schema: { type: string } }
+        - { name: imdb, in: query, description: 'Optional IMDb id (a source may list that show''s torrents)', schema: { type: string } }
       responses:
         '200':
           description: A page of releases
@@ -3583,6 +3581,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    Gone:
+      description: Removed in a newer API version (`GONE`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     Upstream:
       description: A provider failed (`UPSTREAM`)
       content:
@@ -3682,6 +3685,7 @@ components:
             - ORIGIN_NOT_ALLOWED       # 403
             - NOT_FOUND                # 404
             - CONFLICT                 # 409
+            - GONE                     # 410
             - CLIENT_TOO_OLD           # 426
             - SERVER_TOO_OLD           # 426
             - TOO_MANY_ATTEMPTS        # 429
@@ -4170,12 +4174,6 @@ components:
         transcode: { type: boolean, description: 'The default audio track needs /transcode to be heard in Chromium' }
 
     # ── catalog
-    YtsResponse:
-      type: object
-      description: YTS API answer, passed through unchanged (https://yts.mx/api). A catalog API of our own replaces it later (plan §12 G).
-      properties:
-        status: { type: string }
-        data: { type: object }
     ImdbRating:
       type: object
       required: [id, rating, votes]
@@ -4218,32 +4216,13 @@ components:
         codec: { type: [string, 'null'] }
         audio: { type: [string, 'null'], description: '"unsupported" for Dolby / DTS' }
         playable: { type: boolean, description: 'Video codec playable (no HEVC / 10-bit / XviD / 4K)' }
-    RankedTorrent:
-      allOf:
-        - $ref: '#/components/schemas/ReleaseDescription'
-        - type: object
-          required: [provider, name, hash, magnet, seeds]
-          properties:
-            provider: { type: string }
-            name: { type: string }
-            hash: { type: string, description: 'Info hash, lowercase' }
-            magnet: { type: string, description: 'Magnet with the server''s tracker list' }
-            seeds: { type: integer }
-            size: { type: [number, 'null'], description: 'Bytes' }
-            pack: { type: boolean, description: 'Season pack (the episode is one of its files)' }
-    RankedTorrents:
-      type: object
-      required: [torrents]
-      properties:
-        torrents: { type: array, items: { $ref: '#/components/schemas/RankedTorrent' } }
-        providerErrors: { type: integer, description: 'How many providers failed' }
     PlaySourcesRequest:
       type: object
       required: [kind, tmdbId, title]
       properties:
         kind: { type: string, enum: [movie, episode] }
         tmdbId: { type: integer, minimum: 1, description: 'The movie''s, or the episode''s show''s' }
-        imdbId: { type: [string, 'null'], pattern: '^tt\\d{5,10}$', description: 'The movie''s / the show''s (torrent providers search by it)' }
+        imdbId: { type: [string, 'null'], pattern: '^tt\\d{5,10}$', description: 'The movie''s / the show''s (source plugins search by it)' }
         title: { type: string, maxLength: 200, description: 'The movie''s / the show''s, to match release names' }
         year: { type: [integer, 'null'] }
         season: { type: integer, minimum: 0, description: 'Episodes' }
@@ -4255,7 +4234,7 @@ components:
       properties:
         id: { type: string, description: 'Stable for a source: the media ref of a file, a download''s file or a plugin''s source, `torrent:<infoHash>` of a torrent' }
         type: { type: string, enum: [file, download, torrent, plugin], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider or a plugin; plugin: a plugin''s HTTPS source, proxied by the server (play its `ref`)' }
-        provider: { type: string, description: 'library, downloads, yts, eztv, therarbg… (unknown values may come with plugins)' }
+        provider: { type: string, description: 'library, downloads, or the plugin that found it (its id)' }
         handler: { type: string, description: 'The collect handler that found it' }
         label: { type: string, description: 'A file''s or a release''s name' }
         ref: { type: string, description: 'file, download, plugin: the media ref to play (GET /media/{ref})' }
@@ -4902,7 +4881,7 @@ components:
       type: object
       required: [provider, page, hasMore, torrents]
       properties:
-        provider: { type: string }
+        provider: { type: [string, 'null'], description: 'null: no source plugin lists this kind' }
         page: { type: integer, description: 'Last page read; ask for page + 1 next' }
         hasMore: { type: boolean }
         torrents: { type: array, items: { $ref: '#/components/schemas/ReleaseTorrent' } }
@@ -5257,7 +5236,7 @@ components:
         password: { type: string, minLength: 8, maxLength: 128 }
     Overview:
       type: object
-      required: [server, process, system, network, activity, downloads, disks, ffmpeg, providers]
+      required: [server, process, system, network, activity, downloads, disks, ffmpeg, providers, sources]
       properties:
         server:
           type: object
@@ -5357,6 +5336,20 @@ components:
         providers:
           type: array
           items: { $ref: '#/components/schemas/ProviderHealth' }
+        sources:
+          type: object
+          description: 'Where torrents and streams come from: the enabled plugins with `play.collect` or `releases.providers` (docs/providers-plan.md §4.4)'
+          required: [plugins, notice]
+          properties:
+            plugins:
+              type: array
+              items:
+                type: object
+                required: [id, name]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+            notice: { type: boolean, description: 'Show "Torrents now come from plugins": no source plugin, and `plugins.sourcesNotice` not turned off' }
     DiscoveryStatus:
       type: object
       description: 'How clients on the LAN find this server (mDNS and the UDP responder)'
@@ -5385,8 +5378,10 @@ components:
       type: object
       required: [id, name, ok, lastSuccess, lastFailure, lastError, failures]
       properties:
-        id: { type: string }
+        id: { type: string, description: 'A service (tmdb, imdb, a subtitle provider), or `plugin:<plugin id>:<host>`' }
         name: { type: string }
+        plugin: { type: string, description: 'A plugin''s host: the plugin' }
+        host: { type: string, description: 'A plugin''s host: the host' }
         ok: { type: [boolean, 'null'], description: 'null = not used since the server started' }
         lastSuccess: { type: [string, 'null'], format: date-time }
         lastFailure: { type: [string, 'null'], format: date-time }
@@ -5450,11 +5445,12 @@ components:
             port: { type: integer, minimum: 1024, maximum: 65535, description: 'Its own HTTP listener (default 28472); applied at once' }
         plugins:
           type: object
-          required: [developerMode, publisherKeys, updates]
+          required: [developerMode, publisherKeys, updates, sourcesNotice]
           properties:
             developerMode: { type: boolean, description: 'Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart)' }
             publisherKeys: { type: array, items: { type: string }, description: 'ed25519:<base64> public keys whose signed packages install without developer mode' }
             updates: { type: string, enum: [auto, notify, never], description: 'Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn''t look; a plugin may override it' }
+            sourcesNotice: { type: boolean, description: 'The Overview''s "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey]

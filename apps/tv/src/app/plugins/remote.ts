@@ -12,7 +12,7 @@ import { ServerService } from '../server.service';
 import { CONTRIBUTIONS, defineContribution, SlotKind, SlotName, SLOTS } from '../ui/public-api';
 import { PluginClient } from './plugin-client.service';
 import { PluginNotifications } from './plugin-notifications.service';
-import { ClientPlugin, PLUGIN_SCOPE, PLUGIN_SCREEN, PluginAction, PluginMetaItem, PluginRow, PluginScope } from './plugin-models';
+import { ClientPlugin, PluginCapabilities, PLUGIN_SCOPE, PLUGIN_SCREEN, PluginAction, PluginMetaItem, PluginRow, PluginScope } from './plugin-models';
 import { PluginCatalogComponent } from './templates/plugin-catalog.component';
 import { PluginListComponent } from './templates/plugin-list.component';
 import { PluginReleasesComponent } from './templates/plugin-releases.component';
@@ -53,6 +53,9 @@ export class RemotePlugins {
 
   /** The plugins shown to the current profile */
   readonly plugins$ = new BehaviorSubject<ClientPlugin[]>([]);
+  /** What they provide (docs/providers-plan.md §5.3): no `releases` → no Find releases.
+   *  Until the server answers, and from a server that doesn't say (API 1): all */
+  readonly capabilities$ = new BehaviorSubject<PluginCapabilities>({ releases: true, sources: true });
   private defined = new Map<string, Defined>();
   private started = false;
 
@@ -81,27 +84,32 @@ export class RemotePlugins {
       changed.pipe(debounceTime(300)),
     ).pipe(
       switchMap(() => this.fetch()),
-    ).subscribe(list => this.apply(list));
+    ).subscribe(answer => this.answered(answer));
   }
 
   /** Again now (development tools) */
   reload():Observable<ClientPlugin[]> {
-    return this.fetch().pipe(map(list => {
-      this.apply(list);
-      return list;
+    return this.fetch().pipe(map(answer => {
+      this.answered(answer);
+      return answer.plugins;
     }));
+  }
+
+  private answered(answer:{ plugins:ClientPlugin[], capabilities:PluginCapabilities }) {
+    this.capabilities$.next(answer.capabilities);
+    this.apply(answer.plugins);
   }
 
   scope(plugin:ClientPlugin):PluginScope {
     return { id: plugin.id, name: plugin.name, adults: plugin.audience == 'adults', play: !!plugin.play };
   }
 
-  private fetch():Observable<ClientPlugin[]> {
+  private fetch():Observable<{ plugins:ClientPlugin[], capabilities:PluginCapabilities }> {
     let profile = this.profiles.current.value?.id;
     // plugins render for a profile only
-    if (!profile) return of([]);
-    return this.http.get<{ plugins:ClientPlugin[] }>(`${this.server.api}/plugins`, { params: { profile } }).pipe(
-      map(answer => answer.plugins || []),
+    if (!profile) return of({ plugins: [], capabilities: this.capabilities$.value });
+    return this.http.get<{ plugins:ClientPlugin[], capabilities?:PluginCapabilities }>(`${this.server.api}/plugins`, { params: { profile } }).pipe(
+      map(answer => ({ plugins: answer.plugins || [], capabilities: answer.capabilities || { releases: true, sources: true } })),
       // a server without plugins (older), or not reachable: keep what's shown
       catchError(() => of(null)),
       filter(Boolean),

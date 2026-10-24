@@ -5,17 +5,15 @@
 //   library    files of the item in the library (lib/library matched them)
 //   downloads  the server's downloads of the title: their `title` (a Download
 //              of a title page, a player's keepalive), else their name
-//   yts        movie torrents (YTS by IMDb id)
-//   episodes   episode torrents (EZTV + TheRARBG, ranked by lib/media/names.js)
+// Torrents come from plugins only (lib/play/plugins.js: their play.collect,
+// ranked together): the core reads no torrent site (docs/providers-plan.md §4).
 
 var path = require('path'),
   torrents = require('../torrents/client'),
   refs = require('../media/refs'),
   mediaFiles = require('../media/files'),
   names = require('../media/names'),
-  parse = require('../library/parse'),
-  episodes = require('../episodes'),
-  yts = require('../providers/yts');
+  parse = require('../library/parse');
 
 var CONTAINERS_NEVER = ['avi', 'wmv', 'ts', 'm2ts'],
   VIDEO_NEVER = ['mpeg4', 'msmpeg4v3', 'msmpeg4v2', 'mpeg2video', 'mpeg1video', 'vc1', 'wmv3'];
@@ -153,68 +151,9 @@ var downloads = {
   }
 };
 
-// A provider's torrent as a Source
-function torrentSource(t, provider, context) {
-  var verdict = context.play.playableByName(t.name, context.ffmpeg),
-    badges = [];
-  if (t.pack) {
-    badges.push('pack');
-  }
-  return {
-    id: 'torrent:' + t.hash,
-    type: 'torrent',
-    provider: provider || String(t.provider || '').toLowerCase(),
-    label: t.name,
-    infoHash: t.hash,
-    magnet: t.magnet,
-    size: t.size || null,
-    quality: verdict.description.quality,
-    codec: verdict.description.codec,
-    audio: verdict.description.audio,
-    seeds: t.seeds,
-    peers: t.peers === undefined ? null : t.peers,
-    playable: verdict.playable,
-    notes: verdict.notes,
-    badges: badges
-  };
-}
-
-var movieTorrents = {
-  id: 'yts',
-  order: 30,
-  kinds: ['movie'],
-  network: true,
-  run: function (title, context) {
-    if (!title.imdbId) {
-      return [];
-    }
-    return yts.releases(title.imdbId).then(function (list) {
-      // ranked like episodes (YTS lists 720p first)
-      return list.map(function (t) {
-        return Object.assign({}, t, names.describe(t.name), { pack: false });
-      }).sort(names.compare).map(function (t) { return torrentSource(t, 'yts', context); });
-    });
-  }
-};
-
-var episodeTorrents = {
-  id: 'episodes',
-  order: 30,
-  kinds: ['episode'],
-  network: true,
-  run: function (title, context) {
-    return episodes.findEpisodeTorrents(title.imdbId, title.title, title.season, title.episode).then(function (r) {
-      return {
-        sources: r.torrents.map(function (t) { return torrentSource(t, null, context); }),
-        errors: r.providerErrors ? [r.providerErrors + ' torrent provider(s) unreachable'] : []
-      };
-    });
-  }
-};
-
 module.exports = {
   register: function (play) {
-    [library, downloads, movieTorrents, episodeTorrents].forEach(play.use);
+    [library, downloads].forEach(play.use);
   },
   qualityOf: qualityOf,
   // tests

@@ -1063,7 +1063,28 @@ test('provider lists and parameter checks', function () {
     call('GET', '/subtitles/providers', undefined, { expect: 200 }),
     call('GET', '/subtitles/search', undefined, { expect: 400 }),
     call('GET', '/imdb/xyz', undefined, { expect: 400 }),
-    call('GET', '/shows/tt0903747/torrents?title=Breaking%20Bad', undefined, { expect: 400 })
+    // with no source plugin: no release source, an empty list
+    call('GET', '/releases/browse?kind=movie', undefined, { expect: 200 }).then(function (res) {
+      assert.deepEqual(res.body, { provider: null, page: 1, hasMore: false, torrents: [] });
+    })
+  ]);
+});
+
+test('API 2: the routes of the torrent sites are gone (410), the plugins\' capabilities say what is there', function () {
+  return Promise.all([
+    call('GET', '/movies?limit=2', undefined, { expect: 410 }),
+    call('GET', '/movies/tt0133093', undefined, { expect: 410 }),
+    call('GET', '/shows/tt0903747/torrents?title=Breaking%20Bad&season=1&episode=1', undefined, { expect: 410 }).then(function (res) {
+      assert.equal(res.body.code, 'GONE');
+    }),
+    call('GET', '/plugins', undefined, { expect: 200 }).then(function (res) {
+      assert.deepEqual(res.body.capabilities, { releases: false, sources: false });
+    }),
+    call('GET', '/admin/overview', undefined, { admin: true, expect: 200 }).then(function (res) {
+      assert.deepEqual(res.body.sources, { plugins: [], notice: true });
+      assert.equal(res.body.providers.filter(function (p) { return /yts|eztv|rarbg|pirate/i.test(p.id); }).length, 0,
+        'the core lists no torrent site');
+    })
   ]);
 });
 
@@ -1077,14 +1098,8 @@ test('provider-backed routes', { skip: !NETWORK && 'set PLAYPEX_TEST_NETWORK=1' 
     });
   }
   return Promise.all([
-    either('GET', '/movies/tt0133093'),
-    either('GET', '/movies?limit=2'),
     either('GET', '/imdb/tt0903747'),
     either('GET', '/imdb/tt0903747/episodes'),
-    either('GET', '/shows/tt0903747/torrents?title=Breaking%20Bad&season=1&episode=1'),
-    either('GET', '/releases/browse?kind=movie&provider=yts'),
-    either('GET', '/releases/browse?kind=tv&provider=eztv&imdb=tt0903747'),
-    either('GET', '/releases/browse?kind=movie&provider=therarbg&quality=1080p'),
     either('GET', '/subtitles/search?imdb_id=tt0133093&languages=en')
   ]);
 });

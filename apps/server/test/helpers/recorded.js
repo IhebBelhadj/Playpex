@@ -1,10 +1,11 @@
 'use strict';
 
 // Recorded answers of the torrent sites (test/fixtures/providers/*.json), for
-// the providers' parity test: the core's providers read them through an axios
-// adapter, the plugins through a stub `playpex.http.request`. Both ask the same
-// questions, so an answer is found by its request: host + path + its query
-// parameters sorted (however the caller wrote them).
+// the providers' parity test: the plugins (plugins/torrents/*) read them
+// through a stub `playpex.http.request`; an answer is found by its request:
+// host + path + its query parameters sorted (however the caller wrote them).
+// expected.json holds what the core's own providers answered on these
+// recordings before they left the core (docs/providers-plan.md step 5).
 //
 //   key(url, params?)   the request's key
 //   load(name)          { <key>: <answer body> } of a fixture file
@@ -12,6 +13,10 @@
 //   request(answers)    a playpex.http.request answering them
 //   plugin(dir, request)   a plugin's server.js in Node: { id, manifest, permissions, hooks },
 //                          with a stub `playpex` (that http.request, the core's names.*)
+//   host(plugins, loaded)  lib/plugins answering with those plugins (get, withHook,
+//                          runHook; answers checked against the hooks' schemas):
+//                          { enable(ids), restore() }
+//   brief(source), listed(page)   what is compared of a Play source / a release list
 
 var fs = require('fs'),
   path = require('path'),
@@ -120,8 +125,73 @@ function plugin(dir, request) {
   return { id: manifest.id, manifest: manifest, permissions: manifest.permissions, hooks: hooks };
 }
 
+function out(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function host(plugins, loaded) {
+  var schemas = require('../../lib/plugins/schemas'),
+    ids = Object.keys(loaded),
+    enabled = ids.slice(),
+    real = { get: plugins.get, withHook: plugins.withHook, runHook: plugins.runHook };
+
+  function hooked(name) {
+    return enabled.filter(function (id) { return loaded[id].hooks[name]; }).sort();
+  }
+
+  plugins.get = function (id) {
+    return loaded[id] || null;
+  };
+  plugins.withHook = function (name) {
+    return hooked(name).map(function (id) { return { id: id, name: loaded[id].manifest.name }; });
+  };
+  plugins.runHook = function (name, input, ctx, options) {
+    var problem = schemas.hookProblem(name, 'input', input);
+    if (problem) {
+      return Promise.reject(new Error(name + ' input: ' + problem));
+    }
+    var results = [], errors = [];
+    return Promise.all(hooked(name).filter(function (id) { return !options || !options.only || options.only === id; }).map(function (id) {
+      return Promise.resolve().then(function () {
+        return loaded[id].hooks[name](out(input), ctx);
+      }).then(function (output) {
+        output = out(output);
+        var bad = schemas.hookProblem(name, 'output', output);
+        if (bad) {
+          throw new Error('out of schema: ' + bad);
+        }
+        results.push({ plugin: id, output: output });
+      }, function (err) {
+        errors.push({ plugin: id, code: 'HANDLER_ERROR', message: err.message });
+      });
+    })).then(function () {
+      results.sort(function (a, b) { return a.plugin < b.plugin ? -1 : 1; });
+      return { results: results, errors: errors };
+    });
+  };
+  return {
+    enable: function (list) { enabled = (list || ids).slice(); },
+    restore: function () { Object.assign(plugins, real); }
+  };
+}
+
+function brief(s) {
+  return { infoHash: s.infoHash, label: s.label, seeds: s.seeds, quality: s.quality, playable: s.playable, pack: s.badges.indexOf('pack') !== -1 };
+}
+
+// through JSON, as expected.json keeps it (no undefined fields)
+function listed(r) {
+  return out(r.torrents.map(function (t) {
+    return { hash: t.hash, name: t.name, seeds: t.seeds, peers: t.peers, size: t.size, added: t.added, quality: t.quality,
+      playable: t.playable, audio: t.audio, season: t.season, episode: t.episode, pack: t.pack };
+  }));
+}
+
 module.exports = {
   plugin: plugin,
+  host: host,
+  brief: brief,
+  listed: listed,
   DIR: DIR,
   PLAY: PLAY,
   RELEASES: RELEASES,

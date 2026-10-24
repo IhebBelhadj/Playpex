@@ -33,6 +33,9 @@ import { formatDate } from '@angular/common';
 })
 export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
+  // Find releases: only with a plugin that lists releases
+  releasesShown$ = inject(ReleasesService).available$;
+
   private toasts = inject(Toasts);
   private serverLibrary = inject(ServerLibraryService);
 
@@ -284,8 +287,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.engine.find('row:episodes')?.focusRemembered('key');
   }
 
-  // Every source's releases of this show (EZTV by its IMDb id, the others by
-  // name), most seeded first; an episode played from there still counts as
+  // Every source plugin's releases of this show (by its IMDb id or its name),
+  // most seeded first; an episode played from there still counts as
   // this show's (progress, subtitles)
   findReleases(){
     if (!this.show) return;

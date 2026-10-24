@@ -362,6 +362,14 @@
           "maxItems": 32,
           "items": { "$ref": "#/$defs/setting" }
         },
+        "releases": {
+          "description": "With the hook releases.providers: which kinds of the core's Find releases it lists (movie, show; default both); a kind it doesn't list never shows it as a source",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kinds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["movie", "show"] } }
+          }
+        },
         "chrome": {
           "type": "object",
           "additionalProperties": false,

@@ -54,14 +54,6 @@ export class TorrentService {
     return this.http.post(`${this.server.api}/torrents/`+hash+'/deselect', null)
   }
 
-  // TV episode torrents from EZTV + TheRARBG, best streaming candidate first.
-  // Results may include season packs (`pack: true`).
-  findEpisodeTorrents(imdbId:string , title:string , season:number , episode:number){
-    return this.http.get<{torrents:any[], providerErrors:number}>(`${this.server.api}/shows/${imdbId}/torrents` , {
-      params : { title, season, episode }
-    })
-  }
-
   // Releases this device's lease: the server stops the torrent (and deletes
   // its data) once no device holds it any more
   removeTorrent(hash){

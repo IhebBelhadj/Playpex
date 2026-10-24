@@ -6,11 +6,9 @@ var _ = require('lodash'),
   express = require('express'),
   multipart = require('connect-multiparty'),
   youtube = require('./youtube'),
-  episodes = require('./episodes'),
   mediaFiles = require('./media/files'),
   releases = require('./releases'),
   imdb = require('./imdb'),
-  yts = require('./providers/yts'),
   subtitles = require('./subtitles'),
   fs = require('fs'),
   torrents = require('./torrents/client'),
@@ -341,52 +339,18 @@ v1.use('/media', media.router);
 
 
 
-//YTS movie API (torrents, rating, runtime), via lib/providers/yts.js
-// (mirror list there: yts.mx stopped answering in 2026)
+//Removed in API 2 (docs/providers-plan.md §4.1, decision C): the core reads no
+// torrent site; a title's torrents are POST /play/sources (plugins'
+// play.collect), its runtime and rating TMDB's and /imdb/{id}. API 1 clients
+// get 410 GONE here and everything else as before.
 
-var ytsGet = yts.get;
+function gone(req, res) {
+  fail(res, 'GONE', 'Removed in API 2: torrents come from the server\'s source plugins (POST /play/sources)');
+}
 
-v1.get('/movies', function (req, res) {
-  ytsGet('list_movies.json', req.query)
-  .then(function (response) {
-    res.json(response.data)
-  })
-  .catch(function (err) {
-    log.warn('yts list: ' + err.message);
-    fail(res, 'UPSTREAM', err.message);
-  })
-});
-
-v1.get('/movies/:imdb_id', function (req, res) {
-  ytsGet('movie_details.json', { imdb_id: req.params.imdb_id })
-  .then(function (response) {
-    res.json(response.data)
-  })
-  .catch(function (err) {
-    log.warn('yts details: ' + err.message);
-    fail(res, 'UPSTREAM', err.message);
-  })
-});
-
-//TV episode torrents (EZTV + TheRARBG), best match first
-
-v1.get('/shows/:imdb_id/torrents', function (req, res) {
-  var season = parseInt(req.query.season, 10),
-      episode = parseInt(req.query.episode, 10);
-
-  if (!(season >= 0) || !(episode >= 1)) {
-    return fail(res, 'INVALID', 'season and episode are required');
-  }
-
-  episodes.findEpisodeTorrents(req.params.imdb_id, req.query.title, season, episode)
-    .then(function (result) {
-      res.json(result);
-    })
-    .catch(function (error) {
-      log.warn('episode torrents: ' + error.message);
-      fail(res, 'UPSTREAM', error.message);
-    });
-});
+v1.get('/movies', gone);
+v1.get('/movies/:imdb_id', gone);
+v1.get('/shows/:imdb_id/torrents', gone);
 
 //IMDb ratings (lib/imdb.js): a title's, and a series' seasons and episodes
 // GET /api/imdb/:id → { id, rating, votes }
@@ -416,7 +380,7 @@ v1.get('/imdb/:id/episodes', imdbRoute(imdb.episodes));
 // seeded first (lib/releases.js)
 // GET /api/releases/providers?kind=movie|tv → [{ id, name, paged, default }]
 // GET /api/releases/browse?kind=&provider=&q=&quality=2160p|1080p|720p|SD&playable=1&page=&imdb=tt…
-//   → { provider, page, hasMore, torrents }; `imdb` is optional context (EZTV lists that show)
+//   → { provider, page, hasMore, torrents }; `imdb` is optional context (a source may list that show)
 
 v1.get('/releases/providers', function (req, res) {
   var kind = String(req.query.kind || '');

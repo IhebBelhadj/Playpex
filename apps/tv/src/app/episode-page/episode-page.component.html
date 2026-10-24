@@ -14,7 +14,7 @@
     <!-- kept on the server (Downloads): progress, then "On this server" -->
     <px-action key="download" icon="download" onIcon="tick" [on]="downloadTile.on" [label]="downloadTile.label"
       [progress]="downloadTile.progress" (pxSelect)="onDownload()"></px-action>
-    <px-action key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
+    <px-action *ngIf="releasesShown$ | async" key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>
     <px-action key="watched" icon="mark" onIcon="tick" [on]="watched"
       [label]="watched ? 'Watched' : 'Mark as watched'" (pxSelect)="toggleWatched()"></px-action>
     <!-- plugins' actions (ui/slots) -->
