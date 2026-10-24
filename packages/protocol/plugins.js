@@ -85,7 +85,9 @@ var LIMITS = {
   schedule: { minIntervalMs: 5 * 60 * 1000, jitter: 0.1, maxRunMs: 5 * 60 * 1000 },
   eventQueue: 100,
   sourceRefTtlMs: 60 * 60 * 1000,
-  notifications: { perHour: 10, keepMs: 24 * 60 * 60 * 1000 }
+  notifications: { perHour: 10, keepMs: 24 * 60 * 60 * 1000 },
+  // tmdb.* / imdb.* through the server's own clients (its key, its 6 h cache), per plugin and service
+  core: { perSecond: 10, burst: 20, inFlight: 4, maxWaitMs: 10000 }
 };
 
 // Request headers an http source can't set: the server's own

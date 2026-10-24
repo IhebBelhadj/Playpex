@@ -634,28 +634,28 @@ function packRepository(folders, out, pair, id, name, host) {
   return url(host, id + '/index.json');
 }
 
-test('the 18+ plugin: refused by the official repository, installed from its own', { skip: skip() }, function () {
-  var ADULT = path.join(__dirname, '..', '..', '..', 'plugins', 'adult'),
+test('the 18+ plugin (Velvet): refused by the official repository, installed from its own', { skip: skip() }, function () {
+  var ADULT = path.join(__dirname, '..', '..', '..', 'plugins', 'velvet'),
     HELLO = path.join(__dirname, '..', '..', '..', 'plugins', 'hello'),
     grownUp, kid;
   // the official index rebuilt by the tool with both plugins in it
   packRepository([HELLO, ADULT], path.join(tmp, 'built-official'), keys.official, 'playpex', 'Playpex', HOSTS[0]);
-  var adultIndex = packRepository([ADULT], path.join(tmp, 'built-adult'), keys.third, 'playpex-adult', 'Playpex 18+', HOSTS[1]);
+  var adultIndex = packRepository([ADULT], path.join(tmp, 'built-adult'), keys.third, 'velvet', 'Velvet', HOSTS[1]);
   return refresh('playpex').then(function () {
     return repository('playpex');
   }).then(function (official) {
     assert.equal(official.error, null);
-    assert.deepEqual(official.refused.map(function (x) { return x.id; }), ['adult'], 'left out of the official repository');
-    return call('POST', '/admin/plugins/catalog/install', { repository: 'playpex', id: 'adult' });
+    assert.deepEqual(official.refused.map(function (x) { return x.id; }), ['velvet'], 'left out of the official repository');
+    return call('POST', '/admin/plugins/catalog/install', { repository: 'playpex', id: 'velvet' });
   }).then(function (r) {
     assert.equal(r.status, 404);
     return call('POST', '/admin/plugins/repositories', { url: adultIndex, key: keys.third.publicKey });
   }).then(function (r) {
     assert.equal(ok(r).plugins, 1);
-    return installFrom('playpex-adult', 'adult');
+    return installFrom('velvet', 'velvet');
   }).then(function (p) {
     assert.equal(p.origin, 'repository');
-    assert.equal(p.repository.id, 'playpex-adult');
+    assert.equal(p.repository.id, 'velvet');
     assert.equal(p.audience, 'adults');
     return Promise.all([call('POST', '/profiles', { name: 'Grown' }), call('POST', '/profiles', { name: 'Child', isKid: true })]);
   }).then(function (r) {
@@ -663,7 +663,7 @@ test('the 18+ plugin: refused by the official repository, installed from its own
     kid = r[1].json.id;
     return Promise.all([call('GET', '/plugins?profile=' + grownUp), call('GET', '/plugins?profile=' + kid)]);
   }).then(function (r) {
-    assert.ok(r[0].json.plugins.some(function (p) { return p.id === 'adult'; }), 'an adult profile has its section');
-    assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'adult'; }), 'a kids profile never');
+    assert.ok(r[0].json.plugins.some(function (p) { return p.id === 'velvet'; }), 'an adult profile has its section');
+    assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'velvet'; }), 'a kids profile never');
   });
 });

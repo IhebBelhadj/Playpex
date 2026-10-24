@@ -22,6 +22,9 @@ export interface PlaybackRequest {
   // file on the server (`source`)
   magnet?: string;
   source?: PlaybackSource;
+  // a torrent's file to play, named by the plugin that found it
+  // (PlaySource.file): the server chooses with it (GET /torrents/{hash}'s `chosen`)
+  file?: { name?: string | null, index?: number | null };
   imdbId?: string;          // movie or show IMDb id ("tt…"), used for subtitles
   season?: number;          // set for TV episodes: picks the episode file
   episode?: number;         //   inside season packs and looks up episode subtitles
@@ -70,9 +73,9 @@ export class PlaybackService {
   }
 
   // What a play source gives the player: its file, else its torrent
-  static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource } {
+  static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource, file?:PlaybackRequest['file'] } {
     if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path } };
-    return { magnet: source.magnet || source.infoHash };
+    return { magnet: source.magnet || source.infoHash, ...(source.file ? { file: source.file } : {}) };
   }
 
   // The player, over the current screen (Back returns to it). `replace`: in

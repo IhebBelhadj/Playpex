@@ -1,0 +1,43 @@
+<px-panel *ngIf="request" id="playChooser" edge="end" [width]="620" [title]="heading" (back)="back()" (closed)="cancel()">
+  <div class="viewport" pxGrid="play-chooser" align="nearest">
+
+    <ng-container *ngIf="!request.lanes.length">
+      <div class="empty">
+        <p class="emptyTitle">{{ emptyTitle }}</p>
+        <p class="emptyText">{{ emptyText }}</p>
+      </div>
+      <button class="choice more focusable" pxItem pxItemKey="close" (pxSelect)="close()">Close</button>
+    </ng-container>
+
+    <ng-container *ngIf="request.lanes.length && !expanded">
+      <section class="lane" *ngFor="let lane of request.lanes">
+        <h3 class="laneName">{{ lane.name }}</h3>
+        <ng-container *ngFor="let line of lane.lines; trackBy: byLine">
+          <ng-container *ngTemplateOutlet="choice; context: { $implicit: line, full: false }"></ng-container>
+        </ng-container>
+        <button class="choice more focusable" *ngIf="lane.more" pxItem [pxItemKey]="'more:' + lane.group" (pxSelect)="expand(lane)">{{ lane.more }}</button>
+      </section>
+    </ng-container>
+
+    <ng-container *ngIf="expanded">
+      <ng-container *ngFor="let line of expanded.all; trackBy: byLine">
+        <ng-container *ngTemplateOutlet="choice; context: { $implicit: line, full: true }"></ng-container>
+      </ng-container>
+    </ng-container>
+
+  </div>
+  <p class="footnote" *ngFor="let note of request.footnotes">{{ note }}</p>
+</px-panel>
+
+<ng-template #choice let-line let-full="full">
+  <button class="choice focusable" pxItem [pxItemKey]="line.source.id" (pxSelect)="pick(line)">
+    <span class="top">
+      <span class="quality">{{ line.quality }}</span>
+      <span class="detail">{{ line.detail }}</span>
+      <span class="ready" *ngIf="line.ready">{{ line.ready }}</span>
+      <span class="caution" *ngIf="line.caution">{{ line.caution }}</span>
+    </span>
+    <span class="name" *ngIf="full && line.name">{{ line.name }}</span>
+    <span class="progress" *ngIf="line.progress !== null"><span [style.width.%]="line.progress * 100"></span></span>
+  </button>
+</ng-template>

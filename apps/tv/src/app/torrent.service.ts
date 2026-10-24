@@ -37,8 +37,11 @@ export class TorrentService {
     return this.http.delete(`${this.server.api}/media/${ref}` , { params : this.server.deviceParams() })
   }
 
-  getTorrent(hash:string){
-    return this.http.get(`${this.server.api}/torrents/`+hash);
+  // `hint`: what to play of it (an episode, a plugin's file): the answer's `chosen`
+  getTorrent(hash:string , hint?:{ season?:number, episode?:number, fileIndex?:number | null, fileName?:string | null }){
+    let params = {};
+    Object.entries(hint || {}).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') params[k] = String(v); });
+    return this.http.get(`${this.server.api}/torrents/`+hash , { params });
   }
 
   // Swarm stats: {metadata, peers: {total, unchocked}, traffic: {down, up}, speed: {down, up}, eta}

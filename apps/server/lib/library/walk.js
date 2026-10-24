@@ -204,3 +204,5 @@ function walk(root, roots) {
 }
 
 module.exports = walk;
+// a sidecar's language and flags (lib/media/files.js reads a torrent's the same way)
+module.exports.describeSub = describeSub;

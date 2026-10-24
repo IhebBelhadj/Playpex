@@ -1907,6 +1907,16 @@ paths:
       tags: [torrents]
       operationId: getTorrent
       summary: A torrent the server keeps (running or not); only `infoHash` until its metadata has arrived
+      description: |
+        With its files, `chosen` is the file the server would play: the plugin's (`fileIndex` /
+        `fileName`, a source's `file`), an episode's (`season` + `episode`: its `SxxEyy` file, also
+        inside a season pack; a torrent with one video: that one), else the largest video that isn't
+        an extra or a sample. Clients play it instead of guessing from names.
+      parameters:
+        - { name: season, in: query, required: false, schema: { type: integer, minimum: 0 } }
+        - { name: episode, in: query, required: false, schema: { type: integer, minimum: 0 } }
+        - { name: fileIndex, in: query, required: false, description: "A plugin's file hint (PlaySource.file.index)", schema: { type: integer, minimum: 0 } }
+        - { name: fileName, in: query, required: false, description: "A plugin's file hint (PlaySource.file.name)", schema: { type: string, maxLength: 500 } }
       responses:
         '200':
           description: The torrent
@@ -2193,15 +2203,20 @@ paths:
       tags: [media]
       operationId: transcodeMedia
       summary: The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
-      description: Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
+      description: |
+        Not byte-seekable; to seek, request again with a new `t` (from /keyframe). The audio is the
+        file's own track `audio`, or a separate audio file of the same torrent (`audioRef`: the `ref`
+        of a `file` track of GET /media/{ref}/tracks), read while it downloads.
       parameters:
         - { name: t, in: query, required: false, schema: { type: number, minimum: 0, default: 0 } }
         - { name: audio, in: query, required: false, description: 'Audio track index (ProbeResult.audio[].index)', schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: audioRef, in: query, required: false, description: "A separate audio file's media ref (MediaTrack.ref, source file); 400 when it isn't one of this video's", schema: { type: string } }
       responses:
         '200':
           description: Matroska stream
           content:
             video/x-matroska: {}
+        '400': { $ref: '#/components/responses/Invalid' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '503':
@@ -2246,6 +2261,93 @@ paths:
               schema: { type: string }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/tracks:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [media]
+      operationId: listMediaTracks
+      summary: Everything the player can switch for this file (docs/providers-plan.md §6)
+      description: |
+        `video`: the file itself (`current`) and a torrent's other videos (an episode of the pack,
+        an extra). `audio`: the file's own streams (ffprobe; none listed without ffmpeg) and a
+        torrent's audio files that go with the video; `play` `direct` (the client switches it
+        natively), `convert` (GET …/transcode with `audio` or `audioRef`), `none`. `subtitles`: the
+        file's own streams (GET …/subtitles/embedded/{index}: a file on disk only, `available: false`
+        while a torrent's file downloads), a torrent's subtitle files or a disk file's sidecars (GET
+        …/subtitles/file/{track}); `play` `text`, `image` (PGS / VobSub: listed, can't be shown yet),
+        `none`. Takes the device's lease like the other media routes.
+      responses:
+        '200':
+          description: The tracks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaTracks' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/subtitles/embedded/{index}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+      - { name: index, in: path, required: true, description: 'MediaTrack.index of a subtitle track with source embedded', schema: { type: integer, minimum: 0 } }
+    get:
+      tags: [media]
+      operationId: getEmbeddedSubtitle
+      summary: One of the file's own text subtitle streams as WebVTT (ffmpeg reads the whole file)
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt:
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: "`CONFLICT`: a torrent's file still downloading (ready when it finishes)"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '501':
+          description: '`NOT_SUPPORTED`: a picture subtitle (PGS, VobSub)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: '`PROBE_FAILED`: ffmpeg could not read it'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: '`TRANSCODER_UNAVAILABLE`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /media/{ref}/subtitles/file/{track}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+      - { name: track, in: path, required: true, description: 'The track id without its `s:` (`f3` for `s:f3`)', schema: { type: string, pattern: '^f\d+$' } }
+    get:
+      tags: [media]
+      operationId: getMediaSubtitleFile
+      summary: "A subtitle file of the track list as WebVTT: a disk file's sidecar, or a torrent's file (fetched now, ≤ 10 MB)"
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt:
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501':
+          description: '`NOT_SUPPORTED`: a VobSub (picture) file'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /media/{ref}/keepalive:
     parameters:
       - $ref: '#/components/parameters/MediaRef'
@@ -2526,7 +2628,10 @@ paths:
         downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
         the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
         files on this server that play come first, and `policy.autoplay` names the source to start
-        without asking when it is the only one. A provider that fails or takes longer than its timeout
+        without asking when it is the only one (or, with `player.autoplayKind` `server` / `stream`, the best
+        of that group when it plays). `groups` sorts the sources into ways to play (server, stream,
+        torrent: docs/providers-plan.md §5), each with its best source and how soon it plays: a client's
+        Play shows those groups, not a flat list. A provider that fails or takes longer than its timeout
         (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
         Plugins (docs/plugins-plan.md §4.3) add sources (`plugin` HTTPS sources the server proxies, and
         torrents), mark torrents a service serves at once (badge `cached`, ranked before other torrents),
@@ -3025,7 +3130,7 @@ paths:
       operationId: updateProfileSettings
       summary: Change some of the profile's settings
       description: |
-        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, or
+        Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `player.autoplayKind`, `player.audioLanguage`, `player.subtitleLanguage`, `player.subtitleForcedOnly`, or
         `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
         refuses the whole patch (`INVALID`, with `errors`). Publishes `settings.changed`.
       requestBody:
@@ -3629,7 +3734,40 @@ components:
         interested: { type: boolean, description: 'Running and still downloading' }
         ready: { type: boolean, description: 'Files can be streamed now (running and checked, or completed on disk)' }
         files: { type: array, items: { $ref: '#/components/schemas/TorrentFile' } }
+        chosen: { type: [string, 'null'], description: "The path of the file to play (GET /torrents/{infoHash}'s query: an episode, a plugin's hint); null: no video fits" }
         progress: { type: array, items: { type: number }, description: 'Piece runs in percent, alternating downloaded / missing, starting with downloaded' }
+    MediaTrack:
+      type: object
+      required: [id]
+      description: 'One track of GET /media/{ref}/tracks (video, audio or subtitles: the fields that apply)'
+      properties:
+        id: { type: string, description: "'v:0' this file, 'v:f<i>' another video of the torrent, 'a:<n>' / 's:<n>' the file's own n-th audio / subtitle stream, 'a:f<i>' / 's:f<i>' a separate file (the i-th of the torrent, or of a disk file's sidecars)" }
+        source: { type: string, enum: [embedded, file] }
+        ref: { type: string, description: "A video's, or a separate file's in a torrent: its media ref" }
+        name: { type: string, description: 'Its path in the torrent / folder' }
+        size: { type: [number, 'null'] }
+        current: { type: boolean, description: 'Video: the file this list is for' }
+        kind: { type: string, enum: [episode, extra, video], description: "Another video: an episode of the pack, an extra or sample, another film" }
+        index: { type: integer, description: 'Embedded: the stream index among its kind (transcode ?audio=, subtitles/embedded/{index})' }
+        language: { type: [string, 'null'], description: 'ISO 639-1 when known' }
+        languageName: { type: [string, 'null'] }
+        codec: { type: [string, 'null'] }
+        channels: { type: [integer, 'null'] }
+        title: { type: [string, 'null'] }
+        default: { type: boolean }
+        forced: { type: boolean }
+        sdh: { type: boolean }
+        play: { type: string, enum: [direct, convert, text, image, none] }
+        available: { type: boolean, description: 'Subtitles: can be fetched now' }
+        note: { type: string }
+    MediaTracks:
+      type: object
+      required: [video, audio, subtitles, probed]
+      properties:
+        video: { type: array, items: { $ref: '#/components/schemas/MediaTrack' } }
+        audio: { type: array, items: { $ref: '#/components/schemas/MediaTrack' } }
+        subtitles: { type: array, items: { $ref: '#/components/schemas/MediaTrack' } }
+        probed: { type: boolean, description: "false: the file's own streams aren't known (no ffmpeg, or ffprobe failed)" }
     KeepaliveRequest:
       type: object
       description: What the player plays, all optional (shown in the server's Activity)
@@ -4150,12 +4288,40 @@ components:
           items: { type: string }
           description: 'Flags clients may show: best (the first), on-server, downloading, pack, hdr, plugin (from a plugin), cached (a service plays it at once). Ignore those you don''t know'
         notes: { type: array, items: { type: string }, description: 'Why it may not play, in words (English)' }
+        group: { $ref: '#/components/schemas/PlayGroupName' }
+        readiness: { $ref: '#/components/schemas/PlayReadiness' }
+        file:
+          type: object
+          description: 'torrent: the file of the torrent the plugin that found it named (its name and / or index in the torrent''s file list); play that one when the torrent''s files are known'
+          properties:
+            name: { type: [string, 'null'] }
+            index: { type: [integer, 'null'], minimum: 0 }
+    PlayGroupName:
+      type: string
+      enum: [server, stream, torrent]
+      description: 'The way to play: server (a file of the library or of a download: on this server), stream (a plugin''s stream, or a torrent a plugin''s service plays at once), torrent'
+    PlayReadiness:
+      type: string
+      enum: [instant, seconds, slow, unknown]
+      description: 'How soon it plays: instant (on disk, a stream), seconds (a torrent with a healthy swarm, a download running), slow (few people sharing), unknown'
+    PlayGroup:
+      type: object
+      required: [group, best, count, readiness]
+      properties:
+        group: { $ref: '#/components/schemas/PlayGroupName' }
+        best: { type: string, description: 'The id of its best source (its first in `sources`)' }
+        count: { type: integer, minimum: 1 }
+        readiness: { $ref: '#/components/schemas/PlayReadiness' }
     PlaySources:
       type: object
-      required: [request, sources, hidden, policy, errors]
+      required: [request, sources, groups, hidden, policy, errors]
       properties:
         request: { type: string, description: 'For POST /play/start (kept 30 min)' }
         sources: { type: array, items: { $ref: '#/components/schemas/PlaySource' } }
+        groups:
+          type: array
+          description: 'The ways to play, in this order when present: server, stream, torrent (a group with no source is left out). Show each group''s best first'
+          items: { $ref: '#/components/schemas/PlayGroup' }
         hidden:
           type: array
           description: 'Sources a plugin''s `play.rank` hid: show "Hidden by <by>: <reason>" (they can''t be played from here)'
@@ -4885,6 +5051,8 @@ components:
             infoHash: { type: [string, 'null'], description: 'The release being played, to resume the same one' }
             filePath: { type: [string, 'null'] }
             fileId: { type: [string, 'null'], description: 'Or a library file being played (the id of its `f_` media ref)' }
+            audioTrack: { type: [string, 'null'], maxLength: 32, description: 'The audio track chosen in the player (a MediaTrack id), kept to resume with it' }
+            subtitleTrack: { type: [string, 'null'], maxLength: 32, description: "The subtitle track chosen (a MediaTrack id, 'off', or a client's own id)" }
     ProgressRow:
       type: object
       required: [profileId, mediaType, tmdbId, season, episode, positionS, durationS, finished, updatedAt]
@@ -4902,6 +5070,8 @@ components:
         infoHash: { type: [string, 'null'] }
         filePath: { type: [string, 'null'] }
         fileId: { type: [string, 'null'] }
+        audioTrack: { type: [string, 'null'] }
+        subtitleTrack: { type: [string, 'null'] }
         finished: { type: boolean }
         updatedAt: { type: string, format: date-time }
     SaveProgressResult:
@@ -4926,6 +5096,8 @@ components:
                 infoHash: { type: [string, 'null'] }
                 filePath: { type: [string, 'null'] }
                 fileId: { type: [string, 'null'], description: 'A library file: resume with the source `f_<fileId>`' }
+                audioTrack: { type: [string, 'null'], description: 'The tracks chosen last time (MediaTrack ids)' }
+                subtitleTrack: { type: [string, 'null'] }
                 updatedAt: { type: string, format: date-time }
         finished: { type: boolean }
     EpisodeProgress:

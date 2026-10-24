@@ -1,6 +1,6 @@
 'use strict';
 
-// The 18+ plugin (plugins/adult, docs/plugins-plan.md step P5). Two parts:
+// The 18+ plugin Velvet (plugins/velvet, docs/plugins-plan.md step P5). Two parts:
 //   • its server.js in Node with a stub `playpex` and canned answers of TMDB,
 //     The Pirate Bay and TheRARBG (no network): every screen's answer against
 //     the template schemas, the layout switch, title torrents matched and ranked,
@@ -16,7 +16,7 @@ var test = require('node:test'),
   http = require('http'),
   vm = require('vm');
 
-var tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'playpex-plugin-adult-'));
+var tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'playpex-plugin-velvet-'));
 process.env.PLAYPEX_CONFIG_DIR = path.join(tmp, 'config');
 process.env.PLAYPEX_CACHE_DIR = path.join(tmp, 'cache');
 process.env.PLAYPEX_LOG_DIR = path.join(tmp, 'logs');
@@ -25,7 +25,7 @@ process.env.PLAYPEX_DISCOVERY = '0';
 var server = require('..'),
   schemas = require('../lib/plugins/schemas');
 
-var DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'adult'),
+var DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'velvet'),
   HASH_A = 'a'.repeat(40), HASH_B = 'b'.repeat(40), HASH_C = 'c'.repeat(40), HASH_D = 'd'.repeat(40);
 
 // ── the plugin in Node ──────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ test('the poster layout: home rows, paged; studio filters; a search row', functi
     valid('rowPage', r.data);
     assert.deepEqual(r.data.items.map(function (c) { return c.title; }), ['Heatwave'], 'adult titles with a poster only');
     assert.equal(r.data.last, false);
-    assert.deepEqual(r.data.items[0].intent, { screen: 'plugin.adult.title', params: { provider: 'tmdb', id: '1' } });
+    assert.deepEqual(r.data.items[0].intent, { screen: 'plugin.velvet.title', params: { provider: 'tmdb', id: '1' } });
     return Promise.all([
       p.handlers.browse({ filters: { studio: ['97168'] } }, CTX),
       p.handlers.browse({ query: 'heat' }, CTX)
@@ -147,7 +147,7 @@ test('a title: its details, Play and Find releases, performers, more from its st
     assert.deepEqual(r.data.info.credits.map(function (c) { return c.label; }), ['Starring', 'Director']);
     assert.deepEqual(r.data.actions.map(function (a) { return a.label; }), ['Play', 'Find releases']);
     assert.deepEqual(r.data.rows.map(function (row) { return row.title; }), ['Starring', 'More from Vixen']);
-    assert.deepEqual(r.data.rows[0].items[0].intent, { screen: 'plugin.adult.find', params: { q: 'Jane Doe' } });
+    assert.deepEqual(r.data.rows[0].items[0].intent, { screen: 'plugin.velvet.find', params: { q: 'Jane Doe' } });
   });
 });
 
@@ -171,18 +171,18 @@ test('the layout: the View filter switches screens in place and is kept per prof
   p.secrets.tmdbApiKey = 'k';
   return p.handlers.browse({ filters: { view: ['list'] } }, CTX).then(function (r) {
     valid('effect', r.effects[0]);
-    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.adult.releases', replace: true });
+    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.velvet.releases', replace: true });
     assert.equal(p.store['layout:p1'], 'list');
     return Promise.all([p.handlers.browse({}, CTX), p.handlers.releases({ params: {}, filters: {}, page: 1 }, CTX)]);
   }).then(function (r) {
-    assert.equal(r[0].effects[0].intent.screen, 'plugin.adult.releases', 'the section opens the list now');
+    assert.equal(r[0].effects[0].intent.screen, 'plugin.velvet.releases', 'the section opens the list now');
     valid('templates/properties/releases', r[1].data);
     assert.equal(r[1].effects, undefined);
     assert.deepEqual(r[1].data.releases.map(function (x) { return x.title; }), ['Top film'], 'The Pirate Bay\'s top 100 by default');
     assert.equal(r[1].data.filters[0].key, 'view');
     return p.handlers.releases({ params: {}, filters: { view: ['posters'] } }, CTX);
   }).then(function (r) {
-    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.adult.browse', replace: true });
+    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.velvet.browse', replace: true });
     assert.equal(p.store['layout:p1'], 'posters');
   });
 });
@@ -251,7 +251,7 @@ test('on a real server: for adult profiles only; its catalog asks for a key', fu
     var until = Date.now() + 15000;
     return (function poll() {
       return call('GET', '/plugins?profile=' + r[0].json.id).then(function (list) {
-        return list.json.plugins.some(function (p) { return p.id === 'adult'; }) || Date.now() > until ? r :
+        return list.json.plugins.some(function (p) { return p.id === 'velvet'; }) || Date.now() > until ? r :
           new Promise(function (ok) { setTimeout(ok, 100); }).then(poll);
       });
     })();
@@ -261,16 +261,16 @@ test('on a real server: for adult profiles only; its catalog asks for a key', fu
     return Promise.all([
       call('GET', '/plugins?profile=' + adult),
       call('GET', '/plugins?profile=' + kid),
-      call('POST', '/plugins/adult/data/browse?profile=' + adult, { args: {} }),
-      call('POST', '/plugins/adult/data/browse?profile=' + kid, { args: {} })
+      call('POST', '/plugins/velvet/data/browse?profile=' + adult, { args: {} }),
+      call('POST', '/plugins/velvet/data/browse?profile=' + kid, { args: {} })
     ]);
   }).then(function (r) {
-    var mine = r[0].json.plugins.filter(function (p) { return p.id === 'adult'; })[0];
+    var mine = r[0].json.plugins.filter(function (p) { return p.id === 'velvet'; })[0];
     assert.ok(mine, 'listed for an adult profile');
     assert.equal(mine.audience, 'adults');
     assert.deepEqual(mine.screens.map(function (s) { return s.name; }), ['browse', 'title', 'releases', 'find']);
     assert.equal(mine.sections[0].menu.label, '18+');
-    assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'adult'; }), 'never for a kids profile');
+    assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'velvet'; }), 'never for a kids profile');
     assert.equal(r[2].status, 200, r[2].text);
     assert.match(r[2].json.data.empty, /API key/);
     assert.equal(r[3].status, 403);

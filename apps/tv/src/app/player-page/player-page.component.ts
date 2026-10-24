@@ -2,7 +2,7 @@ import type { SettingValues } from '@playpex/protocol/settings';
 import { SettingsService } from '../settings.service';
 import { NotificationService } from './../notification.service';
 import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.service';
-import { PlaybackRequest } from './../playback.service';
+import { PlaybackRequest, PlaybackService } from './../playback.service';
 import { TorrentService } from './../torrent.service';
 import { Component, OnInit, OnDestroy, ElementRef, NgZone, inject } from '@angular/core';
 import { repeat, switchMap, filter, catchError } from "rxjs/operators";
@@ -20,6 +20,7 @@ import { FocusEngine } from '../movement/movement';
 import { tmdbImageBase } from '../ui/public-api';
 import { EpisodePlaybackService, NextEpisode } from '../episode-playback.service';
 import { Marker, PlaySourcesService } from '../play-sources.service';
+import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.service';
 import { environment } from '../../environments/environment';
 
 const SAVE_EVERY_MS = 15000;
@@ -77,7 +78,8 @@ const PICTURE_MODES:{ key:PictureMode, label:string, fit:string, help:string }[]
 // only where they mean time: Left / Right with the controls hidden or on the
 // timeline scrub (held: faster), and any arrow with the controls hidden shows
 // them. Settings (subtitles, their size and timing, audio, video, stats) are
-// a px-panel layer docked at the right edge, with tabs.
+// a px-panel layer docked at the right edge, with tabs; "Audio & subtitles"
+// another (the file's tracks, docs/providers-plan.md §6, §10.3): two columns.
 const PLAY_BUTTON = '.buttons [data-px-key="play"]';
 
 @Component({
@@ -154,6 +156,30 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   subtitleDelay = 0;          // seconds, positive = later
   private appliedCueShift = 0; // seconds taken off the cues' file times so far
 
+  // the file's tracks (GET /media/{ref}/tracks): its audio and subtitle
+  // streams, the torrent's files that go with it, its other videos. An audio
+  // track Chromium decodes is switched natively (audioTracks, enabled by the
+  // shell: only those it decodes are listed, in order), another one through
+  // the server's /transcode (?audio= / ?audioRef=)
+  tracks:MediaTracks | null = null;
+  tracksOpen = false;
+  audioTrack:MediaTrack | null = null;
+  subtitleTrack:MediaTrack | null = null;
+  readonly trackLabel = MediaTracksService.label;
+  readonly trackDetail = MediaTracksService.detail;
+  readonly trackUsable = MediaTracksService.usable;
+  private nativeAudio = -1;               // the audioTracks position to enable, -1: the file's own choice
+  private audioIndex = 0;                 // /transcode ?audio=
+  private audioRef:string | null = null;  // /transcode ?audioRef= (a separate audio file)
+  private probedDuration = 0;
+  private seekAfterLoad:number | null = null;   // a switch back to direct play: where to continue
+  // the tracks saved with the resume point (this release), and what the user chose here
+  private savedTracks:{ audio:string | null, subtitle:string | null, fileId?:string | null, infoHash:string | null, filePath:string | null } | null = null;
+  private chosenAudio:string | null = null;
+  private chosenSubtitle:string | null = null;
+  private stateKnown:Promise<void>;
+  private markStateKnown:() => void;
+
   // markers from the server's plugins (player.markers): Skip intro / recap, credits
   markers:Marker[] = [];
   private markersAsked = false;
@@ -218,7 +244,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private episodes:EpisodePlaybackService,
     private settings:SettingsService,
     private sources:PlaySourcesService,
-  ) { }
+    private mediaTracks:MediaTracksService,
+    private playbackService:PlaybackService,
+  ) {
+    this.stateKnown = new Promise(resolve => this.markStateKnown = resolve);
+  }
 
   ngOnInit(): void {
     this.playback = this.screen.payload;
@@ -232,22 +262,35 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.screen.onSelect(() => this.select());
     this.screen.onBack(() => this.back());
 
-    if (this.playback.startAt !== undefined) {
+    let asked = this.playback.startAt !== undefined;
+    if (asked) {
       // chosen on the detail page: resume at this point, or 0 = from the beginning
       this.resumeAt = this.playback.startAt || null;
       this.resumeDecided = true;
     }
-    else if (this.playback.tmdbId && this.playback.tracking != 'none') {
+    // the saved state: where to resume (unless asked), and the tracks chosen last time
+    if (this.playback.tmdbId && this.playback.tracking != 'none') {
       this.stateSub = this.library.state(this.libraryKey()).subscribe({
         next: state => {
-          this.resumeAt = state.resume ? state.resume.positionS : null;
-          this.resumeDecided = true;
-          this.applyResume();
+          let r = state.resume;
+          if (r) this.savedTracks = { audio: r.audioTrack || null, subtitle: r.subtitleTrack || null, fileId: r.fileId, infoHash: r.infoHash, filePath: r.filePath };
+          if (!asked) {
+            this.resumeAt = r ? r.positionS : null;
+            this.resumeDecided = true;
+            this.applyResume();
+          }
+          this.markStateKnown();
         },
-        error: () => this.resumeDecided = true,
+        error: () => {
+          this.resumeDecided = true;
+          this.markStateKnown();
+        },
       });
     }
-    else this.resumeDecided = true;
+    else {
+      this.resumeDecided = true;
+      this.markStateKnown();
+    }
 
     // this device's settings (SettingsService: the server's, the defaults until it answers)
     this.subtitleSize = this.settings.value('subtitles.size');
@@ -284,7 +327,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.torrentHash = source.infoHash;   // a download's: its stats
       if (!source.infoHash) this.stages = ['Opening the file on the server'];
       this.startKeepalive();
-      this.probeFile().then(() => this.setupPlayer());
+      this.probeFile().then(() => this.loadTracks()).then(() => this.setupPlayer());
       return;
     }
 
@@ -316,14 +359,18 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // The torrent's files, polled every 4 s until its metadata is there
   private waitForFiles(hash:string) {
     let reps = 0;
-    this.playerSub = this.torrentService.getTorrent(hash).pipe(repeat({ delay: 4000 })).subscribe({
+    let p = this.playback;
+    let hint = { season: p.season || undefined, episode: p.season ? p.episode : undefined, fileIndex: p.file?.index, fileName: p.file?.name };
+    this.playerSub = this.torrentService.getTorrent(hash, hint).pipe(repeat({ delay: 4000 })).subscribe({
       error: e => this.cantStart(e),
       next: data => {
         reps += 1;
 
         if (data['files']) {
           this.playerSub.unsubscribe();
-          let file = this.playback.season
+          // the server's choice (`chosen`); an older server: guessed from the names here
+          let file = 'chosen' in data ? data['files'].find(f => f['path'] == data['chosen'])
+            : this.playback.season
             ? this.pickEpisodeFile(data['files'] , this.playback.season , this.playback.episode)
             : this.pickVideoFile(data['files']);
           if (!file) {
@@ -335,7 +382,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           this.filePath = file['path'];
           this.ref = file['ref'] || null;
           this.link = this.ref ? `${API_PREFIX}/media/${this.ref}` : file['link'];
-          this.probeFile().then(() => this.setupPlayer());
+          this.probeFile().then(() => this.loadTracks()).then(() => this.setupPlayer());
           return;
         }
 
@@ -510,6 +557,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   probeFile():Promise<void> {
     let url = this.server.media(this.mediaPath('probe'));
     return fetch(url).then(r => r.ok ? r.json() : null).then(info => {
+      this.probedDuration = info?.duration || 0;
       if (!info?.transcode) return;
       this.transcoding = true;
       this.knownDuration = info.duration || 0;
@@ -522,7 +570,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   streamUrl(start:number){
-    return this.server.media(this.mediaPath('transcode') , { t: start });
+    let audio = this.audioRef ? { audioRef: this.audioRef } : this.audioIndex ? { audio: this.audioIndex } : {};
+    return this.server.media(this.mediaPath('transcode') , { t: start, ...audio });
   }
 
   position(){
@@ -584,6 +633,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       fileId: this.ref?.startsWith('f_') ? this.ref.slice(2) : null,
       infoHash: this.torrentHash || null,
       filePath: this.filePath || null,
+      // the tracks the user chose here, else those of last time (this release)
+      audioTrack: this.chosenAudio ?? this.savedTracksHere()?.audio ?? null,
+      subtitleTrack: this.chosenSubtitle ?? this.savedTracksHere()?.subtitle ?? null,
     }).subscribe({ error: () => {} });
   }
 
@@ -762,9 +814,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     // fires again each time the transcoded stream restarts
     on('loadedmetadata', () => {
+      this.applyNativeAudio();
+      if (this.seekAfterLoad !== null) {
+        this.moviePlayer.currentTime = this.seekAfterLoad;
+        this.seekAfterLoad = null;
+      }
       this.updateTimeline();
       this.askMarkers();
     });
+    this.applyInitialSubtitles();
     on('timeupdate', () => {
       this.checkAudio();
       this.updateTimeline();
@@ -992,7 +1050,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.controlsIdle);
     if (!this.controlsVisible) return;
     this.controlsIdle = setTimeout(() => this.zone.run(() => {
-      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.pointer.visible) return;
+      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.tracksOpen || this.pointer.visible) return;
       this.hideControls();
     }), CONTROLS_IDLE_MS);
   }
@@ -1015,7 +1073,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (this.host.nativeElement.querySelector(':is(.controls, .statsPanel, .upNext):hover')) return;
 
     this.pointer.hide();
-    if (this.playerReady && !this.settingsOpen && !this.moviePlayer.paused) this.hideControls();
+    if (this.playerReady && !this.settingsOpen && !this.tracksOpen && !this.moviePlayer.paused) this.hideControls();
   }
 
   onVideoClick(){
@@ -1145,6 +1203,138 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.episodes.playNext(this.upNext);
   }
 
+  // ── tracks ────────────────────────────────────────────────────────────────
+
+  // The tracks saved with the resume point, when they are this release's
+  private savedTracksHere() {
+    let saved = this.savedTracks;
+    if (!saved || !this.ref) return null;
+    let same = this.ref.startsWith('f_') ? saved.fileId == this.ref.slice(2)
+      : !!saved.infoHash && saved.infoHash == this.torrentHash && saved.filePath == this.filePath;
+    return same ? saved : null;
+  }
+
+  // Before the first frame: the file's tracks, and the audio to start with
+  // (saved here last time, else the profile's language, else the file's
+  // default). A track Chromium decodes plays directly; another one converted.
+  loadTracks():Promise<void> {
+    if (this.destroyed || !this.ref) return Promise.resolve();
+    let state = Promise.race([this.stateKnown, new Promise<void>(resolve => setTimeout(resolve, 3000))]);
+    return Promise.all([this.mediaTracks.tracks(this.ref).toPromise(), state]).then(([tracks]) => {
+      if (this.destroyed || !tracks) return;
+      this.tracks = tracks;
+      let audio = tracks.audio.filter(t => MediaTracksService.usable(t));
+      let saved = this.savedTracksHere()?.audio;
+      let language = this.settings.value('player.audioLanguage');
+      let start = audio.find(t => t.id == saved)
+        || (language != 'original' ? audio.find(t => t.language == language) : undefined)
+        || audio.find(t => t.source == 'embedded' && t.default) || audio.find(t => t.source == 'embedded');
+      if (start) this.useAudio(start);
+    }).catch(() => {});
+  }
+
+  // How `track` will play: natively, or through /transcode (no stream restarted here)
+  private useAudio(track:MediaTrack) {
+    this.audioTrack = track;
+    let direct = this.tracks.audio.filter(t => t.source == 'embedded' && t.play == 'direct');
+    if (track.play == 'direct') {
+      this.transcoding = false;
+      this.offset = 0;
+      this.nativeAudio = direct.indexOf(track);
+      return;
+    }
+    this.transcoding = true;
+    this.knownDuration = this.knownDuration || this.probedDuration || this.moviePlayer?.duration || 0;
+    this.nativeAudio = -1;
+    this.audioIndex = track.source == 'embedded' ? track.index : 0;
+    this.audioRef = track.source == 'file' ? track.ref : null;
+  }
+
+  private applyNativeAudio() {
+    let list = (this.moviePlayer as any)?.audioTracks;
+    if (this.transcoding || this.nativeAudio < 0 || !list || list.length <= this.nativeAudio) return;
+    for (let i = 0; i < list.length; i++) list[i].enabled = i == this.nativeAudio;
+  }
+
+  // The user picks an audio track: at once, from where the video is
+  selectAudio(track:MediaTrack) {
+    if (!MediaTracksService.usable(track) || track === this.audioTrack || !this.moviePlayer) return;
+    let at = this.position(), wasTranscoding = this.transcoding;
+    this.chosenAudio = track.id;
+    this.useAudio(track);
+    if (!this.transcoding && !wasTranscoding) {
+      this.applyNativeAudio();
+    }
+    else if (!this.transcoding) {
+      // back to the file itself, where it was
+      this.seekAfterLoad = at;
+      this.moviePlayer.src = this.server.media(this.link);
+      this.moviePlayer.play()?.catch(() => {});
+      this.applyCueShift();
+    }
+    else {
+      // the converted stream from the keyframe before here (seekTo restarts it)
+      if (!wasTranscoding) this.offset = 0;
+      this.seekTo(at);
+    }
+    this.saveProgress();
+  }
+
+  // Subtitles to start with: saved here last time, else the profile's language
+  private applyInitialSubtitles() {
+    if (!this.tracks || this.selectedSubtitle || this.subtitleTrack) return;
+    let saved = this.savedTracksHere()?.subtitle;
+    let usable = this.tracks.subtitles.filter(t => MediaTracksService.usable(t));
+    if (saved == 'off') return;
+    let pick = usable.find(t => t.id == saved);
+    let language = this.settings.value('player.subtitleLanguage');
+    if (!pick && !saved && language != 'off') {
+      let forcedOnly = this.settings.value('player.subtitleForcedOnly');
+      let ofLanguage = usable.filter(t => t.language == language && (!forcedOnly || t.forced));
+      pick = ofLanguage.find(t => !t.forced) || ofLanguage[0];
+    }
+    if (pick) this.showTrack(pick, false);
+  }
+
+  // A subtitle track of the file (its own stream, or a file of the torrent / folder)
+  showTrack(track:MediaTrack, chosen = true) {
+    if (!MediaTracksService.usable(track) || !this.moviePlayer) return;
+    if (chosen) this.chosenSubtitle = track.id;
+    this.subtitleTrack = track;
+    this.selectedSubtitle = null;
+    this.addTrack(this.mediaTracks.subtitleUrl(this.link, track), track.language || '', MediaTracksService.label(track));
+  }
+
+  // Another video of the torrent (an extra, another episode of the pack):
+  // played over this one (Back returns here), remembered nowhere
+  playVideo(track:MediaTrack) {
+    if (!track.ref || track.current) return;
+    this.saveProgress();
+    let name = (track.name || '').split('/').pop();
+    this.playbackService.play({
+      title: this.playback.title,
+      subtitle: name,
+      source: { ref: track.ref, infoHash: this.torrentHash, path: track.name },
+      imdbId: this.playback.imdbId,
+      tracking: 'none',
+    });
+  }
+
+  openTracks() {
+    if (!this.tracks) return this.openSettings('subtitles');
+    this.tracksOpen = true;
+  }
+
+  // From the tracks panel: the subtitle sources' search (Settings › Subtitles)
+  findSubtitles() {
+    this.tracksOpen = false;
+    setTimeout(() => this.openSettings('subtitles'));
+  }
+
+  get otherVideos():MediaTrack[] {
+    return this.tracks ? this.tracks.video.filter(v => !v.current) : [];
+  }
+
   // ── settings ──────────────────────────────────────────────────────────────
 
   // the CC button: on Subtitles; "•••": the tab used last
@@ -1228,12 +1418,20 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   showSubtitle(subtitle:Subtitle){
     if (!subtitle || !this.moviePlayer) return;
     this.selectedSubtitle = subtitle;
+    this.subtitleTrack = null;
+    // a subtitle from a provider can't be found again later: nothing saved
+    this.chosenSubtitle = null;
+    this.addTrack(this.subtitlesService.fileUrl(subtitle), subtitle.language, subtitle.languageName);
+  }
+
+  // One <track> at a time, its cues shifted like the others
+  private addTrack(src:string, language:string, label:string) {
     this.moviePlayer.querySelectorAll('track').forEach(track => track.remove());
     let track = document.createElement('track');
     track.kind = 'subtitles';
-    track.srclang = subtitle.language;
-    track.label = subtitle.languageName;
-    track.src = this.subtitlesService.fileUrl(subtitle);
+    track.srclang = language;
+    track.label = label;
+    track.src = src;
     track.default = true;
     this.moviePlayer.appendChild(track);
     track.addEventListener('load', () => {
@@ -1245,6 +1443,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   hideSubtitles() {
     this.selectedSubtitle = null;
+    this.subtitleTrack = null;
+    this.chosenSubtitle = 'off';
     this.moviePlayer?.querySelectorAll('track').forEach(track => track.remove());
   }
 

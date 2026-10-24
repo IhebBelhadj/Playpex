@@ -65,7 +65,8 @@ export interface Library {
 }
 
 export interface PlaybackState {
-  resume: { positionS: number, durationS: number, infoHash: string | null, filePath: string | null, fileId?: string | null } | null;
+  resume: { positionS: number, durationS: number, infoHash: string | null, filePath: string | null, fileId?: string | null,
+    audioTrack?: string | null, subtitleTrack?: string | null } | null;
   finished: boolean;
 }
 
@@ -107,7 +108,8 @@ export class LibraryService {
     return this.call(base => this.http.get<EpisodeProgress[]>(`${base}/progress/${ref.mediaType}/${ref.tmdbId}/episodes`));
   }
 
-  saveProgress(key:EpisodeKey, body:Artwork & { positionS:number, durationS:number, infoHash?:string | null, filePath?:string | null, fileId?:string | null }) {
+  saveProgress(key:EpisodeKey, body:Artwork & { positionS:number, durationS:number, infoHash?:string | null, filePath?:string | null, fileId?:string | null,
+    audioTrack?:string | null, subtitleTrack?:string | null }) {
     return this.call(base => this.http.put(`${base}/progress/${key.mediaType}/${key.tmdbId}`, { ...body, season: key.season, episode: key.episode }));
   }
 

@@ -144,7 +144,7 @@ export interface PluginTitleRef {
 // A play effect's source as the server sends it: an http stream already
 // turned into a media ref (`media`), never its URL
 export type PluginSource =
-  | { kind:'magnet', magnet?:string, infoHash?:string, label:string, quality?:string, size?:number, seeds?:number, peers?:number, codec?:string, notes?:string[] }
+  | { kind:'magnet', magnet?:string, infoHash?:string, fileIndex?:number, fileName?:string, label:string, quality?:string, size?:number, seeds?:number, peers?:number, codec?:string, notes?:string[] }
   | { kind:'media', ref:string, label:string, quality?:string, size?:number, codec?:string, notes?:string[] };
 
 export interface PluginPlayRequest {

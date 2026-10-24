@@ -31,6 +31,7 @@ import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filt
 import { RouteReuseStrategy, RouterModule } from "@angular/router";
 
 import { TorrentPickerComponent } from './torrent-picker/torrent-picker.component';
+import { PlayChooserComponent } from './play-chooser/play-chooser.component';
 import { ProfilePickerComponent } from './profile-picker/profile-picker.component';
 import { ProfileEditorComponent } from './profile-editor/profile-editor.component';
 import { PinPadComponent } from './pin-pad/pin-pad.component';
@@ -75,6 +76,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     ...PLUGIN_TEMPLATES,
     ShowOptionsComponent,
     TorrentPickerComponent,
+    PlayChooserComponent,
     ProfilePickerComponent,
     ProfileEditorComponent,
     PinPadComponent,

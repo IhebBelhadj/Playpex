@@ -13,11 +13,15 @@
 // NOT_RUNNING, CALL_FAILED, INVALID… (NOT_AVAILABLE: a part of the API a later step brings;
 // none left since P4b). Writes are ./writes.js, schedules ./scheduler.js,
 // notifications ./notifications.js, link status ./links.js (plan step P3b);
-// plugins.call runs another plugin's exported data handler (P4b).
+// plugins.call runs another plugin's exported data handler (P4b); core data
+// (tmdb.*, imdb.*, library.find) ./core.js; release names, HTML and .torrent
+// files (names.*, html.select, torrent.info) ./utilities.js.
 
 var http = require('./http'),
   protocol = require('@playpex/protocol/plugins'),
   writes = require('./writes'),
+  core = require('./core'),
+  utilities = require('./utilities'),
   scheduler = require('./scheduler'),
   notifications = require('./notifications');
 
@@ -189,7 +193,7 @@ function createHost(plugin, services) {
     }
   };
 
-  Object.assign(API, writes(plugin, services));
+  Object.assign(API, writes(plugin, services), core(plugin, services), utilities(plugin));
 
   return function host(api, args, bytes) {
     args = args || {};

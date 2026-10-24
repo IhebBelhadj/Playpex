@@ -110,6 +110,7 @@ function fromPlugin(plugin, src, context) {
       peers: src.peers == null ? null : src.peers,
       playable: verdict.playable,
       notes: verdict.notes.concat(src.notes || []),
+      file: src.fileName || src.fileIndex != null ? { name: src.fileName || null, index: src.fileIndex == null ? null : src.fileIndex } : undefined,
       badges: ['plugin']
     };
   }

@@ -472,6 +472,7 @@ export declare const LIMITS: {
   eventQueue: number;
   sourceRefTtlMs: number;
   notifications: { perHour: number; keepMs: number };
+  core: { perSecond: number; burst: number; inFlight: number; maxWaitMs: number };
 };
 export declare const FORBIDDEN_HEADERS: readonly string[];
 export declare function parseSize(value: string): number | null;

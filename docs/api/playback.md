@@ -19,9 +19,12 @@ Content-Type: application/json
   "sources": [
     { "id": "f_3c1…", "type": "file", "provider": "library", "label": "Breaking Bad - S01E01.mkv", "ref": "f_3c1…",
       "quality": "1080p", "size": 1460000000, "playable": "audio-converted", "badges": ["on-server", "best"],
-      "notes": ["Sound converted by the server"] },
+      "notes": ["Sound converted by the server"], "group": "server", "readiness": "instant" },
     { "id": "torrent:9f2…", "type": "torrent", "provider": "eztv", "label": "Breaking.Bad.S01E01.720p…", "infoHash": "9f2…",
-      "magnet": "magnet:?xt=…", "seeds": 120, "quality": "720p", "playable": "yes", "badges": [], "notes": [] } ],
+      "magnet": "magnet:?xt=…", "seeds": 120, "quality": "720p", "playable": "yes", "badges": [], "notes": [],
+      "group": "torrent", "readiness": "seconds" } ],
+  "groups": [ { "group": "server", "best": "f_3c1…", "count": 1, "readiness": "instant" },
+              { "group": "torrent", "best": "torrent:9f2…", "count": 1, "readiness": "seconds" } ],
   "hidden": [],
   "policy": { "autoplay": null },
   "errors": [] }
@@ -32,7 +35,9 @@ Content-Type: application/json
 - `playable`: `yes`, `audio-converted` (Dolby / DTS sound the server re-encodes, see [audio](#choosing-direct-play-or-the-transcoded-stream)), `maybe` (HEVC / 10-bit / 4K: depends on the hardware), `no`; `notes` say why in words. Like the release fields below, these are judged for a Chromium player.
 - `badges` you may show (ignore unknown ones): `best` (the first), `on-server`, `downloading`, `pack`, `hdr`, `plugin` (from a plugin of the server), `cached` (a service a plugin links plays this torrent at once: say "Cached on <`resolver.label`>").
 - Plugins on the server ([plugins](plugins.md)) may add sources: torrents, and `type: 'plugin'` streams that play by their `ref` like a file (the server proxies them; there's no URL to see). `hidden` lists what a plugin hid, with `by` (its name) and `reason`: show "Hidden by <by>: <reason>" under the choices; they can't be played.
-- With `profileId`, the profile's setting `player.preferLocalFiles` (default on) puts the files on the server that play first, and **`policy.autoplay`** names the source to start without asking (a lone file on the server that plays); otherwise show the sources and let the user pick. A kids profile gets no file of an adults-only folder.
+- **Show ways to play, not a list of releases**: `groups` sorts the sources by kind, in this order when present: `server` (a library file or a download: on this server), `stream` (a plugin's stream, or a torrent a plugin's service plays at once), `torrent`. Each group names its `best` source (its first in `sources`) and `count`; each source has its `group` and its `readiness`, how soon it plays: `instant` (on disk, a stream), `seconds` (a healthy swarm, a download running), `slow` (few people sharing), `unknown`. Playpex TV shows one lane per group with its best line first ("Plays now", "Starts in seconds", "Few people sharing: may be slow"), the rest one step further; a group with nothing is left out, and with no group at all there is nothing to play this from (say that sources come from the server's admin: plugins on its dashboard).
+- A `torrent` a plugin found may name the file of the torrent to play (`file: { name, index }`): play that one once the torrent's files are known.
+- With `profileId`, the profile's setting `player.preferLocalFiles` (default on) puts the files on the server that play first, and **`policy.autoplay`** names the source to start without asking (a lone file on the server that plays, or, with `player.autoplayKind` `server` / `stream`, the best of that group when it plays); otherwise show the groups and let the user pick. A kids profile gets no file of an adults-only folder.
 - A provider that fails or takes longer than 10 s only drops its own sources (`errors: [{handler, message}]`); the answer comes anyway.
 - To resume, prefer the source the progress names (`fileId` → the source `f_<fileId>`; `infoHash` → that torrent).
 
@@ -88,9 +93,21 @@ Until the metadata arrives the answer is only `{ "infoHash": "…" }`. Then it h
 
 Each entry of `files[]`: `{ name, path, ref, link, length, offset, selected }`. `ref` is the file's **media ref**: everything you do with the file goes through `/media/{ref}` ([next section](#5-streaming)).
 
-- **A movie**: the largest file with a video container you can play. The TV app prefers `mp4` > `m4v` > `mkv` > `webm`, then size.
-- **An episode**: match `SxxEyy` in `path` (also `s2e5`, `2x05`; regex used by the TV app, with `S` and `E` replaced by the season and episode numbers: `(s0*S[ ._-]*e0*E|\b0*Sx0*E)(?!\d)`, case-insensitive). Season packs hold every episode of the season; a torrent with a single video file is that episode.
+**Let the server choose**: poll with what you play, and take the file whose `path` is **`chosen`**:
+
+```http
+GET /api/v1/torrents/{infoHash}?season=2&episode=5          (an episode: its file, also inside a season pack)
+GET /api/v1/torrents/{infoHash}?fileIndex=3&fileName=…      (a source's `file` hint, from the plugin that found it)
+GET /api/v1/torrents/{infoHash}                              (a film: the largest video that isn't an extra or a sample)
+```
+
+`chosen` is `null` when no video fits (an episode not in the torrent); it is missing on servers older than this. Then choose yourself:
+
+- **A movie**: the largest file with a video container you can play (`mp4` > `m4v` > `mkv` > `webm`, then size).
+- **An episode**: match `SxxEyy` in `path` (also `s2e5`, `2x05`: `(s0*S[ ._-]*e0*E|\b0*Sx0*E)(?!\d)` with `S` and `E` the numbers, case-insensitive). Season packs hold every episode of the season; a torrent with a single video file is that episode.
 - Skip samples, `.nfo`, `.txt`, images. `.avi` (XviD) rarely plays in browsers.
+
+The torrent's other files (separate audio tracks, subtitle files, extras) are listed by the file's [tracks](#tracks-audio-subtitles-other-videos).
 
 ## 5. Streaming
 
@@ -134,7 +151,29 @@ Many releases carry Dolby (AC-3, E-AC-3), DTS or TrueHD audio. If your player de
 
 **Subtitle files next to a file on disk** (a library file: `Movie.en.srt`, `Subs/French.srt`, RARBG's `Subs/<name>/2_English.srt`): `GET /api/v1/media/{ref}/subtitles` → `{ subtitles: [{ index, language, languageName, forced, sdh }] }` (empty for a torrent's file), then `GET /api/v1/media/{ref}/subtitles/{index}` → WebVTT, like the providers' files. They need no provider and no network; offer them first.
 
-Subtitles embedded in the file (MKV) are not extracted by the server (the library's probe lists them, for later).
+Subtitles inside the file (MKV) and subtitle files of a torrent: see [tracks](#tracks-audio-subtitles-other-videos).
+
+## Tracks: audio, subtitles, other videos
+
+`GET /api/v1/media/{ref}/tracks` lists everything a player can switch for a file (it takes the lease like the other media routes; the file's own streams need ffmpeg on the server, `probed: false` otherwise):
+
+```jsonc
+{ "video": [ { "id": "v:0", "ref": "t_…_1a", "name": "Movie/Movie.mkv", "current": true },
+             { "id": "v:f3", "ref": "t_…_9f", "name": "Movie/Extras/Making of.mkv", "kind": "extra" } ],
+  "audio": [ { "id": "a:0", "source": "embedded", "index": 0, "language": "en", "codec": "eac3", "channels": 6, "default": true, "play": "convert" },
+             { "id": "a:1", "source": "embedded", "index": 1, "language": "fr", "codec": "aac", "channels": 2, "play": "direct" },
+             { "id": "a:f2", "source": "file", "ref": "t_…_c3", "name": "Movie/Audio/Commentary.mka", "title": "Commentary", "play": "convert" } ],
+  "subtitles": [ { "id": "s:0", "source": "embedded", "index": 0, "language": "en", "codec": "subrip", "play": "text", "available": false,
+                   "note": "Ready when the download finishes" },
+                 { "id": "s:1", "source": "embedded", "index": 1, "codec": "hdmv_pgs_subtitle", "play": "image" },
+                 { "id": "s:f4", "source": "file", "ref": "t_…_77", "name": "Movie/Subs/English.srt", "language": "en", "play": "text", "available": true } ],
+  "probed": true }
+```
+
+- **Audio**: `play: direct` = a browser decodes it (AAC, MP3, Opus, Vorbis, FLAC); `convert` = through the server's ffmpeg: `GET /media/{ref}/transcode?t=&audio=<index>` for the file's own track, `?audioRef=<ref>` for a separate audio file (it streams while the torrent downloads it; 400 for a ref that isn't one of this video's files); `none` = no ffmpeg. A Chromium client switches `direct` tracks itself with `HTMLMediaElement.audioTracks` (Electron: `--enable-blink-features=AudioVideoTracks`); it lists only the tracks it decodes, in the file's order, so its position is the position among the `direct` ones, not `index`.
+- **Subtitles** as WebVTT: the file's own text streams `GET /media/{ref}/subtitles/embedded/{index}` (ffmpeg reads the whole file: a file on disk or a finished download only; `409 CONFLICT` while a torrent's file downloads, hence `available: false`), a separate file `GET /media/{ref}/subtitles/file/{track}` (`track` = the id without `s:`, `f4`; a torrent's file is fetched at once, ≤ 10 MB; a library file's sidecars are listed here too). `play: image` (PGS, VobSub) can't be turned into text: `501 NOT_SUPPORTED`.
+- **Other videos** of the torrent (`kind`: `episode` of a pack, `extra`, `video`): play one by its `ref` like any file.
+- Track ids stay the same for a file: save the chosen ones with the progress (`audioTrack`, `subtitleTrack`) to come back with them. The profile's settings `player.audioLanguage` / `player.subtitleLanguage` / `player.subtitleForcedOnly` ([settings](settings.md)) say what to start with when nothing was saved.
 
 ## Leases, keepalive and releasing
 
@@ -190,7 +229,7 @@ The server keeps every torrent it has played or been asked to download, like a t
 
 ## Progress and resume
 
-Saving where the user stopped is per **profile** ([profiles](profiles.md#playback-progress-and-resume)): `PUT /profiles/{id}/progress/{mediaType}/{tmdbId}` every ~15 s while playing and on pause / exit, with `infoHash` and `filePath` (a torrent's file) or `fileId` (a library file: the id of its `f_` ref) so a later resume can play the same release. Separate from the keepalive, which is per device and only lives as long as the lease.
+Saving where the user stopped is per **profile** ([profiles](profiles.md#playback-progress-and-resume)): `PUT /profiles/{id}/progress/{mediaType}/{tmdbId}` every ~15 s while playing and on pause / exit, with `infoHash` and `filePath` (a torrent's file) or `fileId` (a library file: the id of its `f_` ref) so a later resume can play the same release, and the `audioTrack` / `subtitleTrack` ids the user chose ([tracks](#tracks-audio-subtitles-other-videos)). Separate from the keepalive, which is per device and only lives as long as the lease.
 
 ## Trailers
 

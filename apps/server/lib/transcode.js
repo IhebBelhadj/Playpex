@@ -110,15 +110,24 @@ function keyframe(url, t) {
 }
 
 // Pipes the transcoded stream from `start` seconds into res; stops ffmpeg
-// when the player drops the connection (seek, leave).
-function stream(url, start, audioIndex, req, res) {
+// when the player drops the connection (seek, leave). `audioUrl`: the audio
+// comes from that file instead (a torrent's separate audio track: a second
+// input, its first audio stream, started at the same time; releases make
+// such tracks on the video's timeline).
+function stream(url, start, audioIndex, req, res, audioUrl) {
   var args = ['-v', 'error'];
-  if (start > 0) {
-    args.push('-noaccurate_seek', '-ss', String(start));
+  function input(from) {
+    if (start > 0) {
+      args.push('-noaccurate_seek', '-ss', String(start));
+    }
+    args.push('-i', from);
+  }
+  input(url);
+  if (audioUrl) {
+    input(audioUrl);
   }
   args.push(
-    '-i', url,
-    '-map', '0:v:0', '-map', '0:a:' + audioIndex,
+    '-map', '0:v:0', '-map', audioUrl ? '1:a:0' : '0:a:' + audioIndex,
     '-c:v', 'copy',
     '-c:a', 'aac', '-ac', '2', '-b:a', '192k',
     '-sn', '-dn',
@@ -142,4 +151,67 @@ function stream(url, start, audioIndex, req, res) {
   req.on('close', function () { child.kill('SIGKILL'); });
 }
 
-module.exports = { probe: probe, keyframe: keyframe, stream: stream };
+// Text subtitle streams ffmpeg can turn into WebVTT; image ones (PGS,
+// VobSub, DVB) can't be (docs/providers-plan.md decision F)
+var TEXT_SUBTITLES = ['subrip', 'srt', 'ass', 'ssa', 'webvtt', 'mov_text', 'text', 'microdvd', 'subviewer', 'eia_608'],
+  IMAGE_SUBTITLES = ['hdmv_pgs_subtitle', 'dvd_subtitle', 'dvb_subtitle', 'xsub', 'dvb_teletext'],
+  SUBTITLE_TIMEOUT_MS = 5 * 60 * 1000,
+  SUBTITLE_MAX_BYTES = 10 * 1024 * 1024,
+  extracted = new Map(),
+  EXTRACTED_MAX = 50;
+
+function subtitleKind(codec) {
+  return TEXT_SUBTITLES.indexOf(codec) !== -1 ? 'text' : IMAGE_SUBTITLES.indexOf(codec) !== -1 ? 'image' : 'none';
+}
+
+/**
+ * The file's subtitle stream `index` (among its subtitle streams) as WebVTT.
+ * ffmpeg reads the whole file for it (subtitle packets are spread through
+ * it): only for files on disk (lib/media). Kept by `key` (the probe's).
+ * @returns {Promise<string>}
+ */
+function subtitle(url, index, key) {
+  var cacheKey = (key || url) + '#' + index;
+  if (extracted.has(cacheKey)) {
+    return extracted.get(cacheKey);
+  }
+  var work = new Promise(function (resolve, reject) {
+    var chunks = [], size = 0, errors = '',
+      child = spawn(ffmpeg.paths().ffmpeg, ['-v', 'error', '-nostdin', '-i', url, '-map', '0:s:' + index, '-f', 'webvtt', 'pipe:1']),
+      timer = setTimeout(function () { child.kill('SIGKILL'); }, SUBTITLE_TIMEOUT_MS);
+    child.stdout.on('data', function (d) {
+      size += d.length;
+      if (size > SUBTITLE_MAX_BYTES) {
+        child.kill('SIGKILL');
+        return;
+      }
+      chunks.push(d);
+    });
+    child.stderr.on('data', function (d) { errors = (errors + d).slice(-500); });
+    child.on('error', function (e) { clearTimeout(timer); reject(e); });
+    child.on('close', function (code) {
+      clearTimeout(timer);
+      var text = Buffer.concat(chunks).toString('utf8');
+      if (code !== 0 || !/^WEBVTT/.test(text)) {
+        log.warn('subtitle extraction failed (' + code + '): ' + errors.trim().replace(/([?&]internal=)[^&\s]+/g, '$1…'));
+        return reject(new Error('ffmpeg couldn\'t read this subtitle track'));
+      }
+      resolve(text);
+    });
+  });
+  extracted.set(cacheKey, work);
+  while (extracted.size > EXTRACTED_MAX) {
+    extracted.delete(extracted.keys().next().value);
+  }
+  work.catch(function () { extracted.delete(cacheKey); });
+  return work;
+}
+
+module.exports = {
+  probe: probe,
+  keyframe: keyframe,
+  stream: stream,
+  subtitle: subtitle,
+  subtitleKind: subtitleKind,
+  PLAYABLE_AUDIO: PLAYABLE_AUDIO
+};

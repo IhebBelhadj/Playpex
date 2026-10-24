@@ -52,6 +52,42 @@ test('policy: a lone file on this server that plays starts without asking', func
   assert.equal(play.policy([T1], { preferLocal: true }).autoplay, null);
 });
 
+test('groups: server, stream, torrent in that order, each with its best, count and how soon it plays', function () {
+  var stream = source('r_1', 'plugin', { plugin: 'p' }),
+    cached = source('torrent:f', 'torrent', { infoHash: 'f', seeds: 2, resolver: { plugin: 'p', label: 'Debrid' } }),
+    quiet = source('torrent:g', 'torrent', { infoHash: 'g', seeds: null }),
+    paused = source('t_h_1', 'download', { infoHash: 'h', progress: 0.2, state: 'paused' }),
+    running = source('t_i_1', 'download', { infoHash: 'i', progress: 0.2, state: 'downloading' }),
+    list = [T3, FILE, stream, T1, cached, quiet, paused, running].map(function (s) { return Object.assign({}, s); }),
+    found = play.groups(list);
+  assert.deepEqual(found, [
+    { group: 'server', best: 'f_1', count: 3, readiness: 'instant' },
+    { group: 'stream', best: 'r_1', count: 2, readiness: 'instant' },
+    { group: 'torrent', best: 'torrent:e', count: 3, readiness: 'slow' }
+  ]);
+  var by = {};
+  list.forEach(function (s) { by[s.id] = s.group + ' ' + s.readiness; });
+  assert.deepEqual(by, {
+    'torrent:e': 'torrent slow', f_1: 'server instant', r_1: 'stream instant', 'torrent:c': 'torrent seconds',
+    'torrent:f': 'stream instant', 'torrent:g': 'torrent unknown', t_h_1: 'server unknown', t_i_1: 'server seconds'
+  });
+  assert.deepEqual(play.groups([]), []);
+});
+
+test('policy: player.autoplayKind plays the best of that group when it plays', function () {
+  var stream = source('r_1', 'plugin', { plugin: 'p' }),
+    risky = source('r_2', 'plugin', { plugin: 'p', playable: 'maybe' });
+  function autoplay(list, kind) {
+    list = list.map(function (s) { return Object.assign({}, s); });
+    return play.policy(list, { preferLocal: false, autoplayKind: kind }, play.groups(list)).autoplay;
+  }
+  assert.equal(autoplay([stream, T1], 'stream'), 'r_1');
+  assert.equal(autoplay([stream, T1], 'ask'), null);
+  assert.equal(autoplay([stream, T1], 'server'), null, 'no such group');
+  assert.equal(autoplay([risky, T1], 'stream'), null, 'its best may not play');
+  assert.equal(autoplay([FILE, DONE, T1], 'server'), 'f_1', 'two files: the best one');
+});
+
 test('titleOf: the request is checked', function () {
   assert.throws(function () { play.titleOf({ kind: 'show', tmdbId: 1, title: 'x' }); }, /kind/);
   assert.throws(function () { play.titleOf({ kind: 'movie', tmdbId: 0, title: 'x' }); }, /tmdbId/);

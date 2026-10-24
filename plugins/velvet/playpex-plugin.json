@@ -1,8 +1,8 @@
 {
   "$schema": "../../packages/protocol/plugin.schema.json",
-  "id": "adult",
-  "name": "18+",
-  "description": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders. Never in the official repository.",
+  "id": "velvet",
+  "name": "Velvet",
+  "description": "Adult films (18+): a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders. Never in the official repository.",
   "version": "1.0.0",
   "publisher": {
     "name": "Playpex"

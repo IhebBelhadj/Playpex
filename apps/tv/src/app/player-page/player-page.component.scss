@@ -702,3 +702,110 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
   font-size: var(--px-text-label);
   color: var(--px-color-text-muted);
 }
+
+// ── audio & subtitles panel (inside px-panel edge="end") ────────────────────
+
+// Two columns side by side (a pxRow of two one-column pxGrids): ←/→ between
+// them, ↑/↓ inside; each column scrolls on its own
+.tracksBody {
+  display: flex;
+  gap: dp(24);
+  flex: 1;
+  min-height: 0;
+  margin: 0 dp(-8);
+  padding: 0 dp(8);
+  overflow: visible;
+}
+
+.trackColumn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.columnName {
+  flex: none;
+  margin: 0 0 dp(12) dp(14);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-soft);
+}
+
+.trackList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: dp(4);
+  margin: 0 dp(-8);
+  padding: dp(4) dp(8);
+  scrollbar-width: none;
+}
+
+.trackRow {
+  display: flex;
+  flex-direction: column;
+  gap: dp(2);
+  flex: none;
+  padding: dp(10) dp(14) dp(10) dp(36);
+  border: none;
+  border-radius: var(--px-radius-m);
+  background: none;
+  color: var(--px-color-text-secondary);
+  text-align: left;
+  position: relative;
+
+  .trackName {
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .trackDetail {
+    font-family: var(--px-font-light);
+    font-size: var(--px-text-small);
+    color: var(--px-color-text-muted);
+  }
+
+  // the one playing: "on", amber
+  &.selected {
+    color: var(--px-color-text);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: dp(14);
+      top: dp(19);
+      width: dp(8);
+      height: dp(8);
+      border-radius: 50%;
+      background: var(--px-color-on);
+    }
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .trackDetail {
+      color: var(--px-color-on-focus-muted);
+    }
+  }
+
+  // listed, not playable here (picture subtitles, no ffmpeg)
+  &.unusable {
+    color: var(--px-color-text-dim);
+  }
+}
+
+.tracksFoot {
+  flex: none;
+  margin: dp(16) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+}

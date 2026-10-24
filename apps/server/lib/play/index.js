@@ -4,7 +4,7 @@
 // title", answered in one place for every client (POST /play/sources).
 //
 //   request ─► collect ─► dedupe ─► resolve check ─► rank ─► play.rank ─► policy
-//           ─► { request, sources, hidden, policy, errors }
+//           ─► groups ─► { request, sources, groups, hidden, policy, errors }
 //   start { request, source, confirmed? } ─► play.before ─► play.resolve
 //           ─► { action: 'play', source } | { action: 'ask', … } | { action: 'refuse', … }
 //
@@ -14,6 +14,10 @@
 // rank: one ordering (files on this server first when the profile prefers
 //   them, then what plays here, then each kind's own order), after the same
 //   file found twice is dropped.
+// groups: the ways to play, in a fixed order (docs/providers-plan.md §5.1):
+//   server (a library file, a download), stream (a plugin's stream, a torrent
+//   a resolver plays at once), torrent; each source says its group and how
+//   soon it plays (`readiness`), each group its best source and count.
 // policy: whether a client may start the top source without asking.
 // Plugins (docs/plugins-plan.md §4.3, P3; ./plugins.js) add a collect
 // handler, mark torrents a resolver serves (`cached`), reorder and hide
@@ -24,11 +28,13 @@
 //              playable: 'yes' | 'audio-converted' | 'maybe' | 'no', badges[], notes[],
 //              ref? (file, download, plugin), infoHash? / path? (download, torrent), magnet? (torrent),
 //              seeds?, peers?, progress? (download), codec?, audio?, plugin? (a plugin's),
-//              resolver? { plugin, label } (a torrent a plugin serves at once) }
+//              resolver? { plugin, label } (a torrent a plugin serves at once),
+//              file? { name?, index? } (torrent: the file a plugin named),
+//              group: 'server' | 'stream' | 'torrent', readiness: 'instant' | 'seconds' | 'slow' | 'unknown' }
 
 var path = require('path'),
   ffmpeg = require('../ffmpeg'),
-  episodes = require('../episodes'),
+  names = require('../media/names'),
   serviceErrors = require('../services/errors'),
   invalid = serviceErrors.invalid,
   notFound = serviceErrors.notFound,
@@ -45,7 +51,8 @@ var PLAY_RANK = { yes: 3, 'audio-converted': 2, maybe: 1, no: 0 },
   DISK_QUALITY = { '2160p': 4, '1080p': 3, '720p': 2, '480p': 1, SD: 1 },
   KINDS = ['movie', 'episode'],
   IMDB_ID = /^tt\d{5,10}$/,
-  FFMPEG_CHECK_MS = 60 * 1000;
+  GROUPS = ['server', 'stream', 'torrent'],
+  HEALTHY_SEEDS = 10;
 
 /**
  * Adds a collect handler: { id, order, kinds?: ['movie' | 'episode'],
@@ -98,18 +105,6 @@ function titleOf(body) {
     episode: body.kind === 'episode' ? body.episode : null,
     profileId: body.profileId || null
   };
-}
-
-// ffmpeg converts audio Chromium can't decode; checked once a minute (it spawns them)
-var ffmpegCheck = null;
-function ffmpegAvailable() {
-  if (!ffmpegCheck || Date.now() - ffmpegCheck.at > FFMPEG_CHECK_MS) {
-    ffmpegCheck = {
-      at: Date.now(),
-      available: ffmpeg.info().then(function (i) { return i.available; }, function () { return false; })
-    };
-  }
-  return ffmpegCheck.available;
 }
 
 function withTimeout(promise, ms, id) {
@@ -201,12 +196,55 @@ function rank(sources, context) {
   return indexed.map(function (x) { return x.s; });
 }
 
-// A lone file on this server that plays: no need to ask
-function policy(sources, context) {
-  var local = sources.filter(function (s) {
-    return onDisk(s) && (s.playable === 'yes' || s.playable === 'audio-converted');
+function groupOf(s) {
+  return s.type === 'file' || s.type === 'download' ? 'server' : s.type === 'plugin' || s.resolver ? 'stream' : 'torrent';
+}
+
+// How soon it plays: on disk or a stream at once; a torrent with a healthy
+// swarm in seconds, with few people sharing slowly; a download still running
+// depends on its swarm too, which the source doesn't carry
+function readinessOf(s) {
+  if (onDisk(s) || s.type === 'plugin' || s.resolver) {
+    return 'instant';
+  }
+  if (s.type === 'download') {
+    return s.state === 'downloading' ? 'seconds' : 'unknown';
+  }
+  if (s.seeds === null || s.seeds === undefined) {
+    return 'unknown';
+  }
+  return s.seeds >= HEALTHY_SEEDS ? 'seconds' : 'slow';
+}
+
+// Each ranked source's group and readiness; each group's best (its first) and count
+function groups(sources) {
+  var found = {};
+  sources.forEach(function (s) {
+    s.group = groupOf(s);
+    s.readiness = readinessOf(s);
+    if (!found[s.group]) {
+      found[s.group] = { group: s.group, best: s.id, count: 0, readiness: s.readiness };
+    }
+    found[s.group].count++;
   });
-  return { autoplay: context.preferLocal && local.length === 1 && sources[0] === local[0] ? local[0].id : null };
+  return GROUPS.filter(function (g) { return found[g]; }).map(function (g) { return found[g]; });
+}
+
+function plays(s) {
+  return s.playable === 'yes' || s.playable === 'audio-converted';
+}
+
+// No need to ask: a lone file on this server that plays (when the profile
+// prefers them), else the best of the group the profile always plays from
+// (setting player.autoplayKind), when it plays
+function policy(sources, context, found) {
+  var local = sources.filter(function (s) { return onDisk(s) && plays(s); });
+  if (context.preferLocal && local.length === 1 && sources[0] === local[0]) {
+    return { autoplay: local[0].id };
+  }
+  var kind = (found || []).filter(function (g) { return g.group === context.autoplayKind; })[0],
+    best = kind && sources.filter(function (s) { return s.id === kind.best; })[0];
+  return { autoplay: best && plays(best) ? best.id : null };
 }
 
 function remember(answer, title, context) {
@@ -236,13 +274,14 @@ function contextOf(title, services, options) {
   options = options || {};
   var profile = title.profileId ? services.profiles.get(title.profileId) : Promise.resolve(null),
     settings = title.profileId ? services.settings.profile(title.profileId) : Promise.resolve(null);
-  return Promise.all([profile, settings, ffmpegAvailable()]).then(function (r) {
+  return Promise.all([profile, settings, ffmpeg.available()]).then(function (r) {
     return {
       services: services,
       play: module.exports,
       profile: r[0],
       kid: !!(r[0] && r[0].isKid),
       preferLocal: r[1] ? r[1]['player.preferLocalFiles'] !== false : true,
+      autoplayKind: r[1] && r[1]['player.autoplayKind'] || 'ask',
       ffmpeg: r[2],
       pluginContext: {
         profile: r[0] ? { id: r[0].id, kids: !!r[0].isKid } : null,
@@ -258,7 +297,7 @@ function contextOf(title, services, options) {
  * @param {object} body       the request (titleOf)
  * @param {object} services   lib/services
  * @param {object} [options]  { device, locale }: who asks (plugins' context)
- * @returns {Promise<{ request, sources, hidden, policy: { autoplay: string|null }, errors: [{ handler, message }] }>}
+ * @returns {Promise<{ request, sources, groups: [{ group, best, count, readiness }], hidden, policy: { autoplay: string|null }, errors: [{ handler, message }] }>}
  */
 function sources(body, services, options) {
   return Promise.resolve().then(function () {
@@ -278,7 +317,8 @@ function sources(body, services, options) {
         if (list.length) {
           list[0].badges = list[0].badges.concat('best');
         }
-        var answer = { sources: list, hidden: ranked.hidden, policy: policy(list, context), errors: errors };
+        var found = groups(list),
+          answer = { sources: list, groups: found, hidden: ranked.hidden, policy: policy(list, context, found), errors: errors };
         answer.request = remember(answer, title, context);
         return answer;
       });
@@ -347,7 +387,7 @@ function markers(body, services, options) {
  * converted by ffmpeg, else silent.
  */
 function playableByName(name, ffmpegAvailable) {
-  var d = episodes.describe(name);
+  var d = names.describe(name);
   if (d.codec === 'xvid') {
     return { playable: 'no', notes: ['Won\'t play here (XviD)'], description: d };
   }
@@ -372,6 +412,7 @@ module.exports = {
   // tests
   rank: rank,
   dedupe: dedupe,
+  groups: groups,
   policy: policy
 };
 

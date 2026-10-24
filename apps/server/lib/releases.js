@@ -11,11 +11,10 @@ var piratebay = require('./providers/piratebay');
 var therarbg = require('./providers/therarbg');
 var eztv = require('./providers/eztv');
 var yts = require('./providers/yts');
-var episodes = require('./episodes');
-var present = require('./present');
+var names = require('./media/names');
 var trackers = require('./trackers');
 
-var describe = episodes.describe;
+var describe = names.describe;
 
 var QUALITIES = ['2160p', '1080p', '720p', 'SD'];
 
@@ -172,7 +171,7 @@ function providers(kind) {
 // release → what the list shows (fields the provider set itself, like YTS's
 // title/year, win over the parsed ones)
 function decorate(kind, torrent) {
-  var presented = present.release(torrent.name, kind);
+  var presented = names.release(torrent.name, kind);
   var own = {};
   ['title', 'year'].forEach(function (key) {
     if (torrent[key] !== undefined && torrent[key] !== null && torrent[key] !== '') {

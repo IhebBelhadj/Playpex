@@ -92,6 +92,9 @@ var progress = sqliteTable('progress', {
   // or a file of the library (media_files.id; no foreign key: the position
   // outlives a file that went away)
   fileId: text('file_id'),
+  // the tracks chosen in the player (GET /media/{ref}/tracks ids: 'a:1', 's:f3', 'off')
+  audioTrack: text('audio_track'),
+  subtitleTrack: text('subtitle_track'),
   finished: integer('finished', { mode: 'boolean' }).notNull().default(false),
   updatedAt: timestamp('updated_at').notNull()
 }, function (table) {

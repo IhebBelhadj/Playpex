@@ -97,8 +97,19 @@ function info() {
   });
 }
 
+// Whether both are there, checked at most once a minute (it spawns them): the
+// play pipeline's playability, the media routes' tracks
+var check = null, CHECK_MS = 60 * 1000;
+function available() {
+  if (!check || Date.now() - check.at > CHECK_MS) {
+    check = { at: Date.now(), available: info().then(function (i) { return i.available; }, function () { return false; }) };
+  }
+  return check.available;
+}
+
 module.exports = {
   paths: paths,
   info: info,
+  available: available,
   setBundledDir: setBundledDir
 };

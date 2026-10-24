@@ -22,6 +22,13 @@ const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
 // profile's. Plugins' options are set on the server's dashboard. Every change is saved
 // at once (SettingsService; sliders once they stop).
 // Back: settings → groups → the menu, then out (the section's back policy).
+// The languages offered for tracks (ISO 639-1)
+const LANGUAGES = [
+  { key: 'en', label: 'English' }, { key: 'fr', label: 'French' }, { key: 'ar', label: 'Arabic' },
+  { key: 'es', label: 'Spanish' }, { key: 'de', label: 'German' }, { key: 'it', label: 'Italian' },
+  { key: 'pt', label: 'Portuguese' }, { key: 'ja', label: 'Japanese' },
+];
+
 @Component({
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
@@ -37,6 +44,15 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   edgesOpen = false;
   subtitleProviders:SubtitleProvider[] = [];
   readonly subtitleSizes = SUBTITLE_SIZES;
+  // player.autoplayKind: the Play chooser, or the best way of one kind at once
+  readonly autoplayKinds = [
+    { key: 'ask', label: 'Show the choices' },
+    { key: 'server', label: 'Play from this server' },
+    { key: 'stream', label: 'Play a stream' },
+  ];
+  // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
+  readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
+  readonly subtitleLanguages = [{ key: 'off', label: 'Off' }, ...LANGUAGES];
   readonly volumeText = (v:number) => v + ' %';
   readonly edgesText = (f:number) => f ? (Math.round(f * 1000) / 10) + ' %' : 'None';
 

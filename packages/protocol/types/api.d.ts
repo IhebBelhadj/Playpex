@@ -1410,7 +1410,13 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** A torrent the server keeps (running or not); only `infoHash` until its metadata has arrived */
+        /**
+         * A torrent the server keeps (running or not); only `infoHash` until its metadata has arrived
+         * @description With its files, `chosen` is the file the server would play: the plugin's (`fileIndex` /
+         *     `fileName`, a source's `file`), an episode's (`season` + `episode`: its `SxxEyy` file, also
+         *     inside a season pack; a torrent with one video: that one), else the largest video that isn't
+         *     an extra or a sample. Clients play it instead of guessing from names.
+         */
         get: operations["getTorrent"];
         put?: never;
         post?: never;
@@ -1811,7 +1817,9 @@ export interface paths {
         };
         /**
          * The file with its audio re-encoded to AAC stereo (video copied), as live Matroska from `t`
-         * @description Not byte-seekable; to seek, request again with a new `t` (from /keyframe).
+         * @description Not byte-seekable; to seek, request again with a new `t` (from /keyframe). The audio is the
+         *     file's own track `audio`, or a separate audio file of the same torrent (`audioRef`: the `ref`
+         *     of a `file` track of GET /media/{ref}/tracks), read while it downloads.
          */
         get: operations["transcodeMedia"];
         put?: never;
@@ -1861,6 +1869,107 @@ export interface paths {
         };
         /** One sidecar subtitle as WebVTT (for `<track>`) */
         get: operations["getMediaSubtitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/tracks": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Everything the player can switch for this file (docs/providers-plan.md §6)
+         * @description `video`: the file itself (`current`) and a torrent's other videos (an episode of the pack,
+         *     an extra). `audio`: the file's own streams (ffprobe; none listed without ffmpeg) and a
+         *     torrent's audio files that go with the video; `play` `direct` (the client switches it
+         *     natively), `convert` (GET …/transcode with `audio` or `audioRef`), `none`. `subtitles`: the
+         *     file's own streams (GET …/subtitles/embedded/{index}: a file on disk only, `available: false`
+         *     while a torrent's file downloads), a torrent's subtitle files or a disk file's sidecars (GET
+         *     …/subtitles/file/{track}); `play` `text`, `image` (PGS / VobSub: listed, can't be shown yet),
+         *     `none`. Takes the device's lease like the other media routes.
+         */
+        get: operations["listMediaTracks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/subtitles/embedded/{index}": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description MediaTrack.index of a subtitle track with source embedded */
+                index: number;
+            };
+            cookie?: never;
+        };
+        /** One of the file's own text subtitle streams as WebVTT (ffmpeg reads the whole file) */
+        get: operations["getEmbeddedSubtitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/subtitles/file/{track}": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description The track id without its `s:` (`f3` for `s:f3`) */
+                track: string;
+            };
+            cookie?: never;
+        };
+        /** A subtitle file of the track list as WebVTT: a disk file's sidecar, or a torrent's file (fetched now, ≤ 10 MB) */
+        get: operations["getMediaSubtitleFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2148,7 +2257,10 @@ export interface paths {
          *     downloads of it, and torrents from the providers (YTS for movies, EZTV + TheRARBG for episodes),
          *     the same file found twice kept once. With the profile's `player.preferLocalFiles` (default on),
          *     files on this server that play come first, and `policy.autoplay` names the source to start
-         *     without asking when it is the only one. A provider that fails or takes longer than its timeout
+         *     without asking when it is the only one (or, with `player.autoplayKind` `server` / `stream`, the best
+         *     of that group when it plays). `groups` sorts the sources into ways to play (server, stream,
+         *     torrent: docs/providers-plan.md §5), each with its best source and how soon it plays: a client's
+         *     Play shows those groups, not a flat list. A provider that fails or takes longer than its timeout
          *     (10 s) only drops its sources, named in `errors`. A kids profile gets no files of adults-only folders.
          *     Plugins (docs/plugins-plan.md §4.3) add sources (`plugin` HTTPS sources the server proxies, and
          *     torrents), mark torrents a service serves at once (badge `cached`, ranked before other torrents),
@@ -2561,7 +2673,7 @@ export interface paths {
         head?: never;
         /**
          * Change some of the profile's settings
-         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, or
+         * @description Profile-scoped keys only (`subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `player.autoplayKind`, `player.audioLanguage`, `player.subtitleLanguage`, `player.subtitleForcedOnly`, or
          *     `client.<clientId>.<name>`). `null` resets a key to its default. All or nothing: one bad key
          *     refuses the whole patch (`INVALID`, with `errors`). Publishes `settings.changed`.
          */
@@ -2863,8 +2975,52 @@ export interface components {
             /** @description Files can be streamed now (running and checked, or completed on disk) */
             ready?: boolean;
             files?: components["schemas"]["TorrentFile"][];
+            /** @description The path of the file to play (GET /torrents/{infoHash}'s query: an episode, a plugin's hint); null: no video fits */
+            chosen?: string | null;
             /** @description Piece runs in percent, alternating downloaded / missing, starting with downloaded */
             progress?: number[];
+        };
+        /** @description One track of GET /media/{ref}/tracks (video, audio or subtitles: the fields that apply) */
+        MediaTrack: {
+            /** @description 'v:0' this file, 'v:f<i>' another video of the torrent, 'a:<n>' / 's:<n>' the file's own n-th audio / subtitle stream, 'a:f<i>' / 's:f<i>' a separate file (the i-th of the torrent, or of a disk file's sidecars) */
+            id: string;
+            /** @enum {string} */
+            source?: "embedded" | "file";
+            /** @description A video's, or a separate file's in a torrent: its media ref */
+            ref?: string;
+            /** @description Its path in the torrent / folder */
+            name?: string;
+            size?: number | null;
+            /** @description Video: the file this list is for */
+            current?: boolean;
+            /**
+             * @description Another video: an episode of the pack, an extra or sample, another film
+             * @enum {string}
+             */
+            kind?: "episode" | "extra" | "video";
+            /** @description Embedded: the stream index among its kind (transcode ?audio=, subtitles/embedded/{index}) */
+            index?: number;
+            /** @description ISO 639-1 when known */
+            language?: string | null;
+            languageName?: string | null;
+            codec?: string | null;
+            channels?: number | null;
+            title?: string | null;
+            default?: boolean;
+            forced?: boolean;
+            sdh?: boolean;
+            /** @enum {string} */
+            play?: "direct" | "convert" | "text" | "image" | "none";
+            /** @description Subtitles: can be fetched now */
+            available?: boolean;
+            note?: string;
+        };
+        MediaTracks: {
+            video: components["schemas"]["MediaTrack"][];
+            audio: components["schemas"]["MediaTrack"][];
+            subtitles: components["schemas"]["MediaTrack"][];
+            /** @description false: the file's own streams aren't known (no ffmpeg, or ffprobe failed) */
+            probed: boolean;
         };
         /** @description What the player plays, all optional (shown in the server's Activity) */
         KeepaliveRequest: {
@@ -3371,11 +3527,37 @@ export interface components {
             badges: string[];
             /** @description Why it may not play, in words (English) */
             notes: string[];
+            group?: components["schemas"]["PlayGroupName"];
+            readiness?: components["schemas"]["PlayReadiness"];
+            /** @description torrent: the file of the torrent the plugin that found it named (its name and / or index in the torrent's file list); play that one when the torrent's files are known */
+            file?: {
+                name?: string | null;
+                index?: number | null;
+            };
+        };
+        /**
+         * @description The way to play: server (a file of the library or of a download: on this server), stream (a plugin's stream, or a torrent a plugin's service plays at once), torrent
+         * @enum {string}
+         */
+        PlayGroupName: "server" | "stream" | "torrent";
+        /**
+         * @description How soon it plays: instant (on disk, a stream), seconds (a torrent with a healthy swarm, a download running), slow (few people sharing), unknown
+         * @enum {string}
+         */
+        PlayReadiness: "instant" | "seconds" | "slow" | "unknown";
+        PlayGroup: {
+            group: components["schemas"]["PlayGroupName"];
+            /** @description The id of its best source (its first in `sources`) */
+            best: string;
+            count: number;
+            readiness: components["schemas"]["PlayReadiness"];
         };
         PlaySources: {
             /** @description For POST /play/start (kept 30 min) */
             request: string;
             sources: components["schemas"]["PlaySource"][];
+            /** @description The ways to play, in this order when present: server, stream, torrent (a group with no source is left out). Show each group's best first */
+            groups: components["schemas"]["PlayGroup"][];
             /** @description Sources a plugin's `play.rank` hid: show "Hidden by <by>: <reason>" (they can't be played from here) */
             hidden: {
                 id: string;
@@ -4145,6 +4327,10 @@ export interface components {
             filePath?: string | null;
             /** @description Or a library file being played (the id of its `f_` media ref) */
             fileId?: string | null;
+            /** @description The audio track chosen in the player (a MediaTrack id), kept to resume with it */
+            audioTrack?: string | null;
+            /** @description The subtitle track chosen (a MediaTrack id, 'off', or a client's own id) */
+            subtitleTrack?: string | null;
         };
         ProgressRow: {
             profileId: string;
@@ -4162,6 +4348,8 @@ export interface components {
             infoHash?: string | null;
             filePath?: string | null;
             fileId?: string | null;
+            audioTrack?: string | null;
+            subtitleTrack?: string | null;
             finished: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -4180,6 +4368,9 @@ export interface components {
                 filePath?: string | null;
                 /** @description A library file: resume with the source `f_<fileId>` */
                 fileId?: string | null;
+                /** @description The tracks chosen last time (MediaTrack ids) */
+                audioTrack?: string | null;
+                subtitleTrack?: string | null;
                 /** Format: date-time */
                 updatedAt?: string;
             };
@@ -7225,6 +7416,12 @@ export interface operations {
                  *     uses the client's address. Ignored for paired devices (their token names them).
                  */
                 device?: components["parameters"]["Device"];
+                season?: number;
+                episode?: number;
+                /** @description A plugin's file hint (PlaySource.file.index) */
+                fileIndex?: number;
+                /** @description A plugin's file hint (PlaySource.file.name) */
+                fileName?: string;
             };
             header?: never;
             path: {
@@ -7756,6 +7953,8 @@ export interface operations {
                 t?: number;
                 /** @description Audio track index (ProbeResult.audio[].index) */
                 audio?: number;
+                /** @description A separate audio file's media ref (MediaTrack.ref, source file); 400 when it isn't one of this video's */
+                audioRef?: string;
             };
             header?: never;
             path: {
@@ -7775,6 +7974,7 @@ export interface operations {
                     "video/x-matroska": unknown;
                 };
             };
+            400: components["responses"]["Invalid"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description `BUSY` (the server runs its maximum of transcodes; a new one from the same device and file replaces the previous) or `TRANSCODER_UNAVAILABLE` */
@@ -7845,6 +8045,157 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listMediaTracks: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tracks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaTracks"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getEmbeddedSubtitle: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description MediaTrack.index of a subtitle track with source embedded */
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebVTT */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `CONFLICT`: a torrent's file still downloading (ready when it finishes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `NOT_SUPPORTED`: a picture subtitle (PGS, VobSub) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `PROBE_FAILED`: ffmpeg could not read it */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `TRANSCODER_UNAVAILABLE` */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getMediaSubtitleFile: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description The track id without its `s:` (`f3` for `s:f3`) */
+                track: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebVTT */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description `NOT_SUPPORTED`: a VobSub (picture) file */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     keepMedia: {

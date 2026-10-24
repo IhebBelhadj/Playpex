@@ -22,7 +22,15 @@ var SETTINGS = {
   'subtitles.size': { scope: 'device', type: 'string', enum: ['small', 'medium', 'large', 'largest'], default: 'medium' },
   'subtitles.provider': { scope: 'profile', type: 'string', nullable: true, default: null },
   'player.autoplayNext': { scope: 'profile', type: 'boolean', default: true },
-  'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true }
+  'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true },
+  // Play without the chooser: never (ask), or the best way of one kind when it plays
+  'player.autoplayKind': { scope: 'profile', type: 'string', enum: ['ask', 'server', 'stream'], default: 'ask' },
+  // The tracks the player starts with (docs/providers-plan.md §6.4): a language
+  // (ISO 639-1, 'en'), or the release's own audio / no subtitles
+  'player.audioLanguage': { scope: 'profile', type: 'string', pattern: '^(original|[a-z]{2})$', default: 'original' },
+  'player.subtitleLanguage': { scope: 'profile', type: 'string', pattern: '^(off|[a-z]{2})$', default: 'off' },
+  // with a subtitle language: only forced subtitles (the lines in another language)
+  'player.subtitleForcedOnly': { scope: 'profile', type: 'boolean', default: false }
 };
 
 var SCOPES = ['device', 'profile'];
@@ -114,6 +122,9 @@ function validate(key, value, scope) {
     }
     if (def.enum && def.enum.indexOf(value) === -1) {
       return key + ' must be one of ' + def.enum.join(', ');
+    }
+    if (def.pattern && !new RegExp(def.pattern).test(value)) {
+      return key + ' must match ' + def.pattern;
     }
     return null;
   }

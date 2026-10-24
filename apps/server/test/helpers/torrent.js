@@ -3,7 +3,7 @@
 // Test torrents: random files written to a directory, and their .torrent
 // (BitTorrent v1 metainfo, made here: no tracker, no network).
 //
-//   make(dir, 'Sample', [{ path: 'a.mkv', size: 1500000 }, …], { pieceLength })
+//   make(dir, 'Sample', [{ path: 'a.mkv', size: 1500000 } or { path, data: Buffer }, …], { pieceLength })
 //     → { infoHash, magnet, torrentFile (Buffer), name, files: [{ path, size, data }] }
 //   free port: freePort() → Promise<number>
 
@@ -16,11 +16,11 @@ var fs = require('fs'),
 function make(dir, name, specs, options) {
   var pieceLength = (options && options.pieceLength) || 64 * 1024,
     files = specs.map(function (spec) {
-      var data = crypto.randomBytes(spec.size),
+      var data = spec.data || crypto.randomBytes(spec.size),
         rel = specs.length === 1 && !(options && options.folder) ? name : path.join(name, spec.path);
       fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
       fs.writeFileSync(path.join(dir, rel), data);
-      return { path: rel, size: spec.size, data: data, segments: spec.path.split('/') };
+      return { path: rel, size: data.length, data: data, segments: spec.path.split('/') };
     }),
     all = Buffer.concat(files.map(function (f) { return f.data; })),
     pieces = [];

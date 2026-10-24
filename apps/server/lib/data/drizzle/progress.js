@@ -26,6 +26,8 @@ module.exports = function progressRepository(db) {
             infoHash: record.infoHash,
             filePath: record.filePath,
             fileId: record.fileId === undefined ? null : record.fileId,
+            audioTrack: record.audioTrack === undefined ? null : record.audioTrack,
+            subtitleTrack: record.subtitleTrack === undefined ? null : record.subtitleTrack,
             finished: record.finished,
             updatedAt: record.updatedAt
           }

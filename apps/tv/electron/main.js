@@ -21,6 +21,12 @@ const INDEX = process.env.PLAYPEX_TV_INDEX || path.join(__dirname, '..', 'dist',
 const SHOT_SIZE = /^(\d+)x(\d+)$/.exec(process.env.PLAYPEX_TV_SHOTS || '');
 const CLIENT_HEADER = protocol.clientHeader('playpex-tv', app.getVersion());
 
+// <video>.audioTracks (the player switches a file's audio tracks without the
+// server; docs/providers-plan.md §6.3): behind a Blink feature. Measured in
+// Electron 44: MKV and MP4 list and switch AAC / Opus tracks (AC-3 ones are
+// left out of the list)
+app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
+
 let win = null;
 let resolving = null;     // Promise of the connection being resolved
 let picker = null;        // the /connect page's discovery, while it is open

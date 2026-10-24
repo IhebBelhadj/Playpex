@@ -83,7 +83,7 @@
 
       <div class="buttons" pxGrid>
         <div class="group">
-          <px-button variant="icon" key="subtitles" icon="caption" label="Subtitles" (pxSelect)="openSettings('subtitles')"></px-button>
+          <px-button variant="icon" key="tracks" icon="caption" label="Audio & subtitles" (pxSelect)="openTracks()"></px-button>
         </div>
         <div class="group center">
           <px-button variant="icon" key="back10" icon="leftSeek" label="10 s back" (pxSelect)="jump(-10)"></px-button>
@@ -117,6 +117,57 @@
       <dt>Dropped frames</dt><dd>{{ videoInfo?.droppedFrames || '…' }}</dd>
     </dl>
   </ng-template>
+
+  <!-- Audio & subtitles: the file's tracks in two columns (←/→ between them,
+       ↑/↓ inside); the current ones carry the amber mark. Switching is at
+       once; Back closes it. Image subtitles are listed, not focusable -->
+  <px-panel *ngIf="tracksOpen && tracks" id="playerTracks" edge="end" [width]="760" title="Audio & subtitles"
+    focus=".trackRow.selected" (closed)="tracksOpen = false">
+    <div class="tracksBody" pxRow="playerTracks">
+      <section class="trackColumn">
+        <p class="columnName">Audio</p>
+        <div class="trackList" pxGrid="trackAudio" [columns]="1" enter="selected">
+          <ng-container *ngFor="let t of tracks.audio">
+            <button *ngIf="trackUsable(t); else stillAudio" class="trackRow" pxItem [pxItemKey]="t.id"
+              [class.selected]="t === audioTrack" (pxSelect)="selectAudio(t)">
+              <span class="trackName">{{ trackLabel(t) }}</span>
+              <span class="trackDetail" *ngIf="trackDetail(t)">{{ trackDetail(t) }}</span>
+            </button>
+            <ng-template #stillAudio>
+              <div class="trackRow unusable"><span class="trackName">{{ trackLabel(t) }}</span><span class="trackDetail">{{ trackDetail(t) }}</span></div>
+            </ng-template>
+          </ng-container>
+          <p class="note" *ngIf="!tracks.audio.length">{{ tracks.probed ? 'This video has no sound track.' : "The server can't read this video's tracks (it needs ffmpeg)." }}</p>
+        </div>
+      </section>
+      <section class="trackColumn">
+        <p class="columnName">Subtitles</p>
+        <div class="trackList" pxGrid="trackSubtitles" [columns]="1" enter="selected">
+          <button class="trackRow" pxItem pxItemKey="off" [class.selected]="!subtitleTrack && !selectedSubtitle" (pxSelect)="hideSubtitles()">
+            <span class="trackName">Off</span>
+          </button>
+          <ng-container *ngFor="let t of tracks.subtitles">
+            <button *ngIf="trackUsable(t); else stillSubtitle" class="trackRow" pxItem [pxItemKey]="t.id"
+              [class.selected]="t === subtitleTrack" (pxSelect)="showTrack(t)">
+              <span class="trackName">{{ trackLabel(t) }}</span>
+              <span class="trackDetail" *ngIf="trackDetail(t)">{{ trackDetail(t) }}</span>
+            </button>
+            <ng-template #stillSubtitle>
+              <div class="trackRow unusable"><span class="trackName">{{ trackLabel(t) }}</span><span class="trackDetail">{{ trackDetail(t) }}</span></div>
+            </ng-template>
+          </ng-container>
+          <button *ngIf="selectedSubtitle" class="trackRow selected" pxItem pxItemKey="provider">
+            <span class="trackName">{{ selectedSubtitle.languageName }}</span>
+            <span class="trackDetail">{{ selectedSubtitle.name }}</span>
+          </button>
+          <button class="trackRow" pxItem pxItemKey="find" (pxSelect)="findSubtitles()">
+            <span class="trackName">Find subtitles…</span>
+          </button>
+        </div>
+      </section>
+    </div>
+    <p class="tracksFoot" *ngIf="otherVideos.length">Other videos of this torrent: Settings › Video.</p>
+  </px-panel>
 
   <!-- Settings: a layer docked at the right edge. Tabs on top (moving onto
        one shows it), its content under them: one pxStack, so Up from the
@@ -167,7 +218,8 @@
         <div class="chips" pxGrid="mute" enter="selected">
           <px-chip key="volume:mute" [label]="muted ? 'Sound off' : 'Turn sound off'" [selected]="muted" (pxSelect)="toggleMute()"></px-chip>
         </div>
-        <p class="settingHelp">{{ transcoding ? "This release's audio (Dolby or DTS) is converted by the server so it plays here." : 'The audio plays as it is in the release.' }}</p>
+        <p class="settingHelp" *ngIf="audioTrack">Playing: {{ trackLabel(audioTrack) }}. Other tracks are under Audio &amp; subtitles.</p>
+        <p class="settingHelp">{{ transcoding ? "This audio track is converted by the server so it plays here." : 'The audio plays as it is in the release.' }}</p>
       </ng-container>
 
       <!-- Video: speed, then the picture -->
@@ -186,6 +238,16 @@
           [value]="zoom" [format]="percentText" (valueChange)="zoom = $event"></px-slider>
         <px-slider key="brightness" label="Brightness" [min]="50" [max]="150" [step]="5" [origin]="100"
           [value]="brightness" [format]="percentText" (valueChange)="brightness = $event"></px-slider>
+        <!-- the torrent's other videos: an extra, another episode of the pack -->
+        <div class="setting" *ngIf="otherVideos.length">
+          <p class="settingName">Other videos in this torrent</p>
+          <div class="subList" pxGrid="otherVideos">
+            <button *ngFor="let v of otherVideos" class="subRow" pxItem [pxItemKey]="v.id" (pxSelect)="playVideo(v)">
+              <span class="subName">{{ v.name.split('/').pop() }}</span>
+              <span class="subLang">{{ v.kind == 'extra' ? 'Extra' : v.kind == 'episode' ? 'Episode' : 'Video' }}{{ v.size ? ' · ' + formatBytes(v.size) : '' }}</span>
+            </button>
+          </div>
+        </div>
       </ng-container>
 
       <!-- Stats: the numbers, and whether they stay on screen -->

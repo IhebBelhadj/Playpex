@@ -1,5 +1,5 @@
-// The 18+ section as a plugin (docs/plugins-plan.md §7). Runs in the server's
-// sandbox (docs/plugins/server.md); the TV draws it with the core's templates.
+// Velvet: a film section as a plugin. Runs in the server's sandbox
+// (docs/plugins/server.md); the TV draws it with the core's templates.
 // Educational project: streaming copyrighted content via torrents may be
 // illegal where you live.
 //
@@ -9,14 +9,13 @@
 //   title     title     { params: { provider, id } }                          one title
 //   play      call      { provider, id }                                     its torrents → the core's player
 //   releases  releases  { params: { q? }, query, filters, page }             the list layout (screens releases, find)
-//   searchFilter        { slot, context: { query } }                         the search page's "18+" chip
+//   searchFilter        { slot, context: { query } }                         the search page's chip
 //
 // The layout (posters or list) is the "View" filter of both screens, kept per
 // profile in the store: the section opens the profile's last one. Catalog
-// from TMDB (adult films through their studios) or ThePornDB, the profile's
-// choice; releases from The Pirate Bay's and TheRARBG's XXX categories, most
-// seeded first. Plays never touch the profile's library: the core sets
-// tracking 'none' for an adults plugin, and so does this one.
+// from TMDB (through studios) or a second metadata provider, the profile's
+// choice; releases from two torrent indexes' categories, most seeded first.
+// Plays never touch the profile's library (tracking 'none').
 
 var TMDB = 'https://api.themoviedb.org/3';
 var TMDB_IMG = 'https://image.tmdb.org/t/p/';
@@ -84,8 +83,8 @@ function clip(text, n) {
 
 // ── release names ───────────────────────────────────────────────────────────
 
-// "Heatwave Vol. 2 [Vixen 2026] XXX WEB-DL 1080p SPLIT SCENES MP4-P2P [XC]" →
-// title "Heatwave Vol. 2", studio "Vixen", year 2026
+// "Some Title Vol. 2 [Studio 2026] WEB-DL 1080p MP4-P2P" →
+// title "Some Title Vol. 2", studio "Studio", year 2026
 var JUNK = /\b(xxx|2160p|1080p|720p|480p|4k|uhd|web.?dl|webrip|hdrip|bluray|dvdrip|split.?scenes?|mp4|mkv|wmv|x26[45]|h\.?26[45]|hevc|p2p|[-.](xc|trb|ktr|gush|wrb|nbq|xleech))\b/i;
 
 function present(name) {
@@ -176,9 +175,9 @@ function compare(a, b) {
     (b.seeds - a.seeds);
 }
 
-// ── torrent sources (XXX categories) ────────────────────────────────────────
+// ── torrent sources (categories) ──────────────────────────────────────────────
 
-// The Pirate Bay's porn subcategories that hold films (not DVDR images, pictures, games)
+// The index's subcategories that hold films (not DVDR images, pictures, games)
 var PIRATEBAY_FILMS = ['501', '505', '506', '507'];
 
 // Names come HTML-escaped ("Laurent Sky &amp; Julia Grandi", "that&rsquo;s")
@@ -224,7 +223,7 @@ function pirateBay(keywords, category) {
   });
 }
 
-/** TheRARBG's XXX category, most seeded first, 50 a page (never the resolution in the keywords: it then ranks by name) */
+/** TheRARBG's category, most seeded first, 50 a page (never the resolution in the keywords: it then ranks by name) */
 function theRarbg(keywords, page) {
   var filters = 'order:-se:category:XXX', q = words(keywords);
   if (q) {
@@ -306,10 +305,9 @@ function notesOf(t) {
 
 // ── catalogs ────────────────────────────────────────────────────────────────
 
-// TMDB lists adult films (posters, cast) but has no adult filter or genres:
-// they're reached through their studios (production companies, checked
-// Oct 2026: each lists ≥ 40 adult titles with posters), and searches keep
-// only `adult` results
+// TMDB has no filter or genres for these titles: they're reached through
+// their studios (production companies, checked Oct 2026: each lists ≥ 40
+// titles with posters), and searches keep only flagged results
 var TMDB_STUDIOS = [
   ['8552', 'Brazzers'], ['97168', 'Vixen'], ['63844', 'Blacked'], ['72478', 'Tushy'], ['6463', 'Evil Angel'],
   ['6112', 'Digital Playground'], ['6258', 'Dorcel'], ['6316', 'Naughty America'], ['15887', 'Reality Kings'],
@@ -321,7 +319,7 @@ var TMDB_STUDIOS = [
   ['32777', 'Erotica X'], ['99678', 'Dark X'], ['111525', 'MissaX'], ['122166', 'Bellesa Films'], ['168340', 'Slayed'], ['8679', 'Kink']
 ].map(function (s) { return { id: s[0], name: s[1] }; });
 
-// ThePornDB site ids (checked Oct 2026: exact name, each with ≥ 50 movies)
+// The second provider's site ids (checked Oct 2026: exact name, each with ≥ 50 movies)
 var TPDB_SITES = [
   ['92', 'Brazzers'], ['3372', 'Vixen'], ['200', 'Blacked'], ['3417', 'Tushy'], ['4611', 'Evil Angel'], ['347', 'Digital Playground'],
   ['6551', 'Marc Dorcel'], ['130', 'Naughty America'], ['20', 'Reality Kings'], ['1052', 'Elegant Angel'], ['202', 'Blacked Raw'],
@@ -395,7 +393,7 @@ var PROVIDERS = {
       var studio = /^studio:(\d+)$/.exec(row);
       return this.discover(key, studio ? { studio: studio[1], page: page } : { sort: row, page: page });
     },
-    // TMDB ranks every regular match before the adult ones: they start after
+    // TMDB ranks every regular match before the flagged ones: they start after
     // the regular count. Our page n reads the TMDB page where they start + 2(n − 1), and the next
     search: function (key, o) {
       var self = this, q = String(o.q || '').trim(), page = Math.max(1, o.page || 1);
@@ -451,7 +449,7 @@ var PROVIDERS = {
     }
   },
 
-  // ThePornDB: covers, performers, studios ("sites"); only newest-first sorting
+  // Second provider: covers, performers, studios ("sites"); only newest-first sorting
   // (checked Oct 2026), future-dated scraped entries dropped, one site per request
   theporndb: {
     name: 'ThePornDB',
@@ -607,19 +605,19 @@ function infoOf(it, details) {
 
 function cardOf(providerId, it) {
   return {
-    key: 'adult:' + providerId + ':' + it.id,
+    key: 'velvet:' + providerId + ':' + it.id,
     title: clip(it.title, 200),
     variant: 'poster',
     image: it.poster,
     subtitle: it.year ? String(it.year) : undefined,
     rating: it.rating ? { source: 'provider', value: Math.min(10, it.rating) } : null,
-    intent: { screen: 'plugin.adult.title', params: { provider: providerId, id: it.id } },
+    intent: { screen: 'plugin.velvet.title', params: { provider: providerId, id: it.id } },
     info: infoOf(it)
   };
 }
 
 function pagedRow(key, title, args) {
-  return { key: 'adult:' + key, title: clip(title, 200), variant: 'poster', page: { data: 'rowPage', args: args } };
+  return { key: 'velvet:' + key, title: clip(title, 200), variant: 'poster', page: { data: 'rowPage', args: args } };
 }
 
 // ── the layout, per profile ─────────────────────────────────────────────────
@@ -647,7 +645,7 @@ function layoutOf(args, ctx, screen) {
 }
 
 function switchTo(screen) {
-  return [{ type: 'open', intent: { screen: 'plugin.adult.' + screen, replace: true } }];
+  return [{ type: 'open', intent: { screen: 'plugin.velvet.' + screen, replace: true } }];
 }
 
 // ── data handlers ───────────────────────────────────────────────────────────
@@ -722,9 +720,9 @@ playpex.data('title', function (args, ctx) {
     return c.provider.title(c.key, params.id).then(function (t) {
       var rows = [];
       if (t.performers.length) {
-        rows.push({ key: 'adult:cast', title: 'Starring', variant: 'portrait', items: t.performers.slice(0, 30).map(function (p, i) {
-          return { key: 'adult:performer:' + i, title: clip(p.name, 200), variant: 'portrait', image: p.photo || null,
-            intent: { screen: 'plugin.adult.find', params: { q: clip(p.name, 60) } } };
+        rows.push({ key: 'velvet:cast', title: 'Starring', variant: 'portrait', items: t.performers.slice(0, 30).map(function (p, i) {
+          return { key: 'velvet:performer:' + i, title: clip(p.name, 200), variant: 'portrait', image: p.photo || null,
+            intent: { screen: 'plugin.velvet.find', params: { q: clip(p.name, 60) } } };
         }) });
       }
       if (t.browsableStudio && t.studio) {
@@ -734,8 +732,8 @@ playpex.data('title', function (args, ctx) {
         data: {
           info: infoOf(t, t),
           actions: [
-            { key: 'adult:play', label: 'Play', icon: 'play', call: { data: 'play', args: { provider: c.id, id: t.id } } },
-            { key: 'adult:releases', label: 'Find releases', icon: 'search', intent: { screen: 'plugin.adult.find', params: { q: clip(t.title, 60) } } }
+            { key: 'velvet:play', label: 'Play', icon: 'play', call: { data: 'play', args: { provider: c.id, id: t.id } } },
+            { key: 'velvet:releases', label: 'Find releases', icon: 'search', intent: { screen: 'plugin.velvet.find', params: { q: clip(t.title, 60) } } }
           ],
           rows: rows
         }
@@ -840,17 +838,17 @@ playpex.data('releases', function (args, ctx) {
   });
 });
 
-// The search page's "18+" chip: the catalog's search for the query
+// The search page's chip: the catalog's search for the query
 playpex.data('searchFilter', function (args, ctx) {
   var q = String((args && args.context && args.context.query) || '').trim();
-  var chip = { key: 'adult:18', label: '18+' };
+  var chip = { key: 'velvet:18', label: '18+' };
   return catalogFor(ctx).then(function (c) {
     if (!c || q.length < 3) {
       return { data: { chip: chip, rows: [] } };
     }
     return c.provider.search(c.key, { q: q, page: 1 }).then(function (p) {
       return { data: { chip: chip, rows: p.items.length ? [{
-        key: 'adult:search-results', title: 'Adult movies', variant: 'poster',
+        key: 'velvet:search-results', title: 'Adult movies', variant: 'poster',
         items: p.items.slice(0, 100).map(function (it) { return cardOf(c.id, it); })
       }] : [] } };
     });

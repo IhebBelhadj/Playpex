@@ -6,7 +6,7 @@ import type { Schema } from '@playpex/protocol';
 import { NotificationService } from './notification.service';
 import { ProfilesService } from './profiles.service';
 import { ServerService } from './server.service';
-import { TorrentPickerService } from './torrent-picker.service';
+import { PlayChooserService, PlayGroupName } from './play-chooser.service';
 import { Dialogs } from './ui/public-api';
 
 export type PlaySource = Schema<'PlaySource'>;
@@ -47,7 +47,7 @@ export class PlaySourcesService {
     private dialogs:Dialogs,
     private server:ServerService,
     private profiles:ProfilesService,
-    private picker:TorrentPickerService,
+    private chooser:PlayChooserService,
     private notifications:NotificationService,
   ) { }
 
@@ -93,29 +93,27 @@ export class PlaySourcesService {
 
   /**
    * The source to play: `prefer` (the one a Resume was playing, if it's still
-   * there), else the server's autoplay (a lone file on the server), else the
-   * user's pick in the source picker. Emits once; completes empty on Back or
-   * when nothing is found (the user is told). `looked` runs when the server
-   * answered (or failed), before the picker opens.
+   * there), else the server's autoplay (a lone file on the server, or the
+   * profile's player.autoplayKind), else the user's pick in the Play chooser
+   * (docs/providers-plan.md §5.2: the ways to play by kind; empty, it says
+   * where sources come from). `kind: 'download'` + `only` (e.g. torrents): the
+   * Download action's chooser, never autoplayed. Emits once; completes empty
+   * on Back. `looked` runs when the server answered (or failed), before the
+   * chooser opens.
    */
-  choose(query:SourcesQuery, label:string, options:{ prefer?:(source:PlaySource) => boolean, looked?:() => void } = {}):Observable<PlaySource> {
-    let { prefer, looked } = options;
+  choose(query:SourcesQuery, label:string, options:{ prefer?:(source:PlaySource) => boolean, looked?:() => void,
+    kind?:'play' | 'download', only?:PlayGroupName[] } = {}):Observable<PlaySource> {
+    let { prefer, looked, kind = 'play', only } = options;
     return new Observable(subscriber => {
       let picking = null;
       let lookup = this.find(query).subscribe({
         next: result => {
           looked?.();
           let sources = result.sources;
-          if (!sources.length) {
-            let reason = result.errors.length ? ' (some providers are unreachable)' : '';
-            this.notifications.sendNotification('error', `Nothing found to play ${label}${reason}`);
-            subscriber.complete();
-            return;
-          }
-          let chosen = (prefer && sources.find(prefer)) || PlaySourcesService.autoplay(result);
-          let picked:Observable<PlaySource> = chosen ? of(chosen) :
-            this.picker.choose(label, sources.map(source => TorrentPickerService.fromSource(source)), 'Choose a source',
-              PlaySourcesService.hiddenNotes(result)).pipe(map(choice => choice.torrent as PlaySource));
+          let chosen = kind == 'play' ? (prefer && sources.find(prefer)) || PlaySourcesService.autoplay(result) : null;
+          let footnotes = PlaySourcesService.hiddenNotes(result);
+          if (result.errors.length) footnotes.push(result.errors.length == 1 ? 'One source didn\'t answer' : `${result.errors.length} sources didn't answer`);
+          let picked:Observable<PlaySource> = chosen ? of(chosen) : this.chooser.choose(label, result, { kind, only, footnotes });
           picking = picked.pipe(switchMap(source => this.start(source))).subscribe({
             next: source => subscriber.next(source),
             complete: () => subscriber.complete(),

@@ -38,6 +38,7 @@
  * @typedef {EpisodeKey & {
  *   profileId: string, title: string|null, posterPath: string|null, backdropPath: string|null,
  *   positionS: number, durationS: number, infoHash: string|null, filePath: string|null, fileId: string|null,
+ *   audioTrack: string|null, subtitleTrack: string|null,
  *   finished: boolean, updatedAt: Date }} Progress
  *
  * @typedef {EpisodeKey & {

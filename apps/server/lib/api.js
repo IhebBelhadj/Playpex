@@ -7,6 +7,7 @@ var _ = require('lodash'),
   multipart = require('connect-multiparty'),
   youtube = require('./youtube'),
   episodes = require('./episodes'),
+  mediaFiles = require('./media/files'),
   releases = require('./releases'),
   imdb = require('./imdb'),
   yts = require('./providers/yts'),
@@ -151,8 +152,21 @@ v1.post('/upload', multipart(), function (req, res) {
   });
 });
 
+// The torrent; with its files, `chosen` = the file to play (lib/media/files#choose:
+// ?season=&episode= an episode's, ?fileName= / ?fileIndex= a plugin's, else the film)
 v1.get('/torrents/:infoHash', findTorrent, function (req, res) {
-  res.send(torrents.torrent(req.infoHash));
+  var answer = torrents.torrent(req.infoHash), q = req.query, int = function (v) {
+    var n = parseInt(v, 10);
+    return /^\d{1,5}$/.test(String(v)) ? n : undefined;
+  };
+  if (answer.files) {
+    var chosen = mediaFiles.choose(answer.files.map(function (f) { return Object.assign({}, f, { size: f.length }); }), {
+      season: int(q.season), episode: int(q.episode), fileIndex: int(q.fileIndex),
+      fileName: typeof q.fileName === 'string' ? q.fileName.slice(0, 500) : undefined
+    });
+    answer.chosen = chosen ? chosen.path : null;
+  }
+  res.send(answer);
 });
 
 // Selects a file (by its index in `files`) or, out of range, every file

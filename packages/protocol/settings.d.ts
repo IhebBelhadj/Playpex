@@ -11,6 +11,12 @@ export interface SettingValues {
   'subtitles.provider': string | null;
   'player.autoplayNext': boolean;
   'player.preferLocalFiles': boolean;
+  'player.autoplayKind': 'ask' | 'server' | 'stream';
+  /** 'original' or an ISO 639-1 code */
+  'player.audioLanguage': string;
+  /** 'off' or an ISO 639-1 code */
+  'player.subtitleLanguage': string;
+  'player.subtitleForcedOnly': boolean;
 }
 
 export type SettingKey = keyof SettingValues;
@@ -26,6 +32,8 @@ export interface SettingDefinition {
   max?: number;
   step?: number;
   nullable?: boolean;
+  /** strings: a regular expression the value must match */
+  pattern?: string;
 }
 
 export declare const SETTINGS: { readonly [K in SettingKey]: SettingDefinition };

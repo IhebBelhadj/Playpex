@@ -1,0 +1,160 @@
+// The Play chooser's lanes and lines (the frame is <px-panel edge="end">)
+@use 'px' as *;
+
+// the list scrolls inside the docked frame
+.viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  margin: 0 dp(-8);
+  padding: 0 dp(8);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.lane + .lane {
+  margin-top: dp(26);
+}
+
+// says which kind, isn't a choice
+.laneName {
+  margin: 0 0 dp(10);
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+.choice {
+  --chooser-caution: var(--px-color-caution);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: dp(6);
+  width: 100%;
+  margin-bottom: dp(6);
+  padding: dp(15) dp(18);
+  border: none;
+  border-radius: var(--px-radius-s);
+  overflow: hidden;
+  background: var(--px-surface-option);
+  color: var(--px-color-text);
+  text-align: left;
+
+  &.focused {
+    --chooser-caution: var(--px-color-caution-on-focus);
+
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .detail,
+    .name {
+      color: var(--px-color-on-focus-muted);
+    }
+
+    .progress {
+      background: var(--px-color-on-focus-track);
+    }
+  }
+}
+
+// "All 41 torrents", Close: a quieter line
+.more {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  background: none;
+  color: var(--px-color-text-secondary);
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: dp(12);
+  min-width: 0;
+}
+
+.quality {
+  flex-shrink: 0;
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-lead);
+}
+
+.detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+}
+
+// how soon it plays, on the right edge, aligned down the list like a departure board
+.ready,
+.caution {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.caution {
+  color: var(--chooser-caution);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}
+
+// a download still running: how much is there
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: dp(4);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--px-color-progress);
+  }
+}
+
+.empty {
+  margin-bottom: dp(20);
+}
+
+.emptyTitle {
+  margin: 0 0 dp(8);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-heading);
+}
+
+.emptyText {
+  margin: 0;
+  max-width: dp(480);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  line-height: 1.45;
+  color: var(--px-color-text-secondary);
+}
+
+// not choices: what a plugin hid, sources that didn't answer
+.footnote {
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}

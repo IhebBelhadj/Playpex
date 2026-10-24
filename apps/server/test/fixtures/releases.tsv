@@ -1,0 +1,27 @@
+# Release-name corpus for lib/media/names.js#parse (docs/providers-plan.md §4.2: what plugins get from playpex.names.parse).
+# name <TAB> title <TAB> year <TAB> season <TAB> episode <TAB> pack <TAB> resolution <TAB> codec <TAB> audio <TAB> hdr
+# Titles compare lowercased, punctuation dropped, "&" = "and". Empty = null (pack / hdr: empty = false).
+The.Dark.Knight.2008.1080p.BluRay.x264-REFiNED	The Dark Knight	2008				1080p	h264
+Inception (2010) [1080p] [BluRay] [x264] [AAC 5.1] [YTS.MX]	Inception	2010				1080p	h264	aac
+Blade Runner 2049 2017 2160p UHD BluRay x265 10bit HDR TrueHD 7.1 Atmos-TERMiNAL	Blade Runner 2049	2017				2160p	hevc	truehd	yes
+The.Odyssey.2026.1080p.TELESYNC.HEVC.AAC2.0-SPLiCE	The Odyssey	2026				1080p	hevc	aac
+Heat.1995.REMASTERED.1080p.BluRay.DTS-HD.MA.5.1.x264-FGT	Heat	1995				1080p	h264	dts
+Oppenheimer.2023.2160p.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX	Oppenheimer	2023				2160p	hevc	eac3	yes
+Dune Part Two 2024 720p WEBRip x264 AAC	Dune Part Two	2024				720p	h264	aac
+1917.2019.1080p.BluRay.x264.AC3-EVO	1917	2019				1080p	h264	ac3
+2012.2009.720p.BluRay.x264.Opus	2012	2009				720p	h264	opus
+Amelie.2001.FRENCH.480p.DVDRip.XviD.MP3	Amelie	2001				480p	xvid	mp3
+[ www.Torrenting.com ] - Godzilla.Minus.One.2023.1080p.WEB.h264	Godzilla Minus One	2023				1080p	h264
+Charlotte's Web 2006 1080p BluRay x264	Charlottes Web	2006				1080p	h264
+Breaking Bad S01E02 720p HDTV x264 AAC	Breaking Bad		1	2		720p	h264	aac
+Breaking.Bad.S02.1080p.BluRay.x265.10bit.DTS-HD	Breaking Bad		2		yes	1080p	hevc	dts
+Lioness 2023 S03E01 1080p WEB h264-ETHEL EZTV	Lioness	2023	3	1		1080p	h264
+The.Office.US.S05E14.720p.WEB-DL.DD5.1.H.264	The Office US		5	14		720p	h264	ac3
+Show.2019.S03E05E06.2160p.WEB-DL.DDP5.1.Atmos.DV.HEVC	Show	2019	3	5		2160p	hevc	eac3	yes
+Doctor.Who.2005.6x07.A.Good.Man.Goes.To.War.720p.HDTV	Doctor Who	2005	6	7		720p
+The Office US Season 2 Complete 720p	The Office US		2		yes	720p
+Friends.Complete.Series.1080p.BluRay.x265	Friends				yes	1080p	hevc
+The.Wire.S01-S05.720p.BluRay.x264	The Wire				yes	720p	h264
+Severance S02E10 Cold Harbor 2160p ATVP WEB-DL DDP5 1 Atmos DV HDR H 265-FLUX	Severance		2	10		2160p	hevc	eac3	yes
+House.of.the.Dragon.S02E01.1080p.WEB.H264-SuccessfulCrab[TGx]	House of the Dragon		2	1		1080p	h264
+Shogun.2024.S01E01.Anjin.1080p.DSNP.WEB-DL.DDP5.1.H.264-NTb	Shogun	2024	1	1		1080p	h264	eac3

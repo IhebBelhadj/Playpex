@@ -1,7 +1,8 @@
 'use strict';
 
 // Minimal TMDB client for the server (the UI calls TMDB directly). Used as the
-// recommendations "catalog" and by the library's matching (lib/library/match.js).
+// recommendations "catalog", by the library's matching (lib/library/match.js)
+// and by plugins (`playpex.tmdb.*`, lib/plugins/core.js: `get`).
 // Key: TMDB_API_KEY (environment or the repo's .env, loaded by server.js);
 // without it every call rejects (code PROVIDER_NOT_CONFIGURED) and
 // recommendations are empty.
@@ -10,9 +11,20 @@ var axios = require('axios').default;
 var settings = require('./settings');
 
 var BASE = 'https://api.themoviedb.org/3';
-var CACHE_TTL = 6 * 60 * 60 * 1000;
+var CACHE_TTL = 6 * 60 * 60 * 1000,
+  CACHE_MAX = 2000;        // entries: plugins can ask for many different pages
 
 var cache = new Map();
+
+// Kept 6 h; past CACHE_MAX the oldest entry goes (a Map keeps insertion order)
+function remember(key, results) {
+  cache.delete(key);
+  cache.set(key, { results: results, expires: Date.now() + CACHE_TTL });
+  if (cache.size > CACHE_MAX) {
+    cache.delete(cache.keys().next().value);
+  }
+  results.catch(function () { cache.delete(key); });
+}
 
 function toCandidate(mediaType, r) {
   return {
@@ -48,8 +60,7 @@ function recommendations(ref) {
   }).then(function (res) {
     return (res.data.results || []).map(function (r) { return toCandidate(ref.mediaType, r); });
   });
-  cache.set(key, { results: results, expires: Date.now() + CACHE_TTL });
-  results.catch(function () { cache.delete(key); });
+  remember(key, results);
   return results;
 }
 
@@ -71,8 +82,7 @@ function get(path, params) {
   }).then(function (res) {
     return res.data;
   });
-  cache.set(key, { results: results, expires: Date.now() + CACHE_TTL });
-  results.catch(function () { cache.delete(key); });
+  remember(key, results);
   return results;
 }
 
@@ -92,6 +102,7 @@ function search(mediaType, query, year) {
 module.exports = {
   recommendations: recommendations,
   configured: configured,
+  get: get,
   search: search,
   movie: function (id) { return get('/movie/' + id, { append_to_response: 'external_ids' }); },
   tv: function (id) { return get('/tv/' + id, { append_to_response: 'external_ids' }); },

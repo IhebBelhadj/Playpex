@@ -271,8 +271,10 @@ function linkOf(source:PluginSource):string | null {
   return source.infoHash ? `magnet:?xt=urn:btih:${source.infoHash}&dn=${encodeURIComponent(source.label)}` : null;
 }
 
-function target(source:PluginSource):Pick<PlaybackRequest, 'magnet' | 'source'> {
-  return source.kind == 'media' ? { source: { ref: source.ref } } : { magnet: linkOf(source) };
+function target(source:PluginSource):Pick<PlaybackRequest, 'magnet' | 'source' | 'file'> {
+  if (source.kind == 'media') return { source: { ref: source.ref } };
+  let hint = source.fileIndex != null || source.fileName ? { file: { index: source.fileIndex ?? null, name: source.fileName || null } } : {};
+  return { magnet: linkOf(source), ...hint };
 }
 
 function sourceOption(source:PluginSource, index:number):TorrentOption {

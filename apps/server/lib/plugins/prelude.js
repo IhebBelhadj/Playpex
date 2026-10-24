@@ -89,6 +89,49 @@ module.exports = String.raw`(function (host, register, log) {
         return call('i18n.t', { key: key, vars: vars || null, locale: ctx && ctx.locale || null });
       }
     },
+    tmdb: {
+      get: function (path, params) { return call('tmdb.get', { path: path, params: params || null }); },
+      movie: function (id, params) { return playpex.tmdb.get('/movie/' + id, params); },
+      tv: function (id, params) { return playpex.tmdb.get('/tv/' + id, params); },
+      season: function (id, season, params) { return playpex.tmdb.get('/tv/' + id + '/season/' + season, params); },
+      episode: function (id, season, episode, params) {
+        return playpex.tmdb.get('/tv/' + id + '/season/' + season + '/episode/' + episode, params);
+      },
+      person: function (id, params) { return playpex.tmdb.get('/person/' + id, params); },
+      search: function (kind, query, params) { return playpex.tmdb.get('/search/' + kind, Object.assign({ query: query }, params)); },
+      discover: function (kind, params) { return playpex.tmdb.get('/discover/' + kind, params); },
+      trending: function (kind, window, params) { return playpex.tmdb.get('/trending/' + (kind || 'all') + '/' + (window || 'week'), params); },
+      find: function (externalId, source, params) {
+        return playpex.tmdb.get('/find/' + externalId, Object.assign({ external_source: source || 'imdb_id' }, params));
+      },
+      image: function (path, size) { return path ? 'https://image.tmdb.org/t/p/' + (size || 'w342') + path : null; }
+    },
+    imdb: {
+      title: function (id) { return call('imdb.title', { id: id }); },
+      episodes: function (id) { return call('imdb.episodes', { id: id }); }
+    },
+    library: {
+      find: function (title, ctx) { return call('library.find', { title: title, profileId: ctx && ctx.profile ? ctx.profile.id : null }); }
+    },
+    names: {
+      parse: function (name) { return call('names.parse', { name: name }); },
+      describe: function (name) { return call('names.describe', { name: name }); },
+      matches: function (name, title) { return call('names.matches', { name: name, title: title }); },
+      rank: function (items) { return call('names.rank', { items: items }); }
+    },
+    html: {
+      select: function (html, selector, fields) { return call('html.select', { html: html, selector: selector, fields: fields || null }); }
+    },
+    torrent: {
+      info: function (bytes) {
+        var b = bytes instanceof Uint8Array ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) :
+          bytes instanceof ArrayBuffer ? bytes : null;
+        if (!b) {
+          return Promise.reject(new TypeError('torrent.info needs a Uint8Array or an ArrayBuffer'));
+        }
+        return call('torrent.info', {}, b);
+      }
+    },
     log: { info: line('info'), warn: line('warn'), error: line('error') },
     hooks: { on: function (name, fn) { add('hook', name, fn); } },
     events: { on: function (name, fn) { add('event', name, fn); } },

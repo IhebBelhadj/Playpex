@@ -39,6 +39,7 @@ var fs = require('fs'),
   files = require('./files'),
   trackers = require('../trackers'),
   refs = require('../media/refs'),
+  mediaFiles = require('../media/files'),
   progressbar = require('../progressbar'),
   settings = require('../settings'),
   events = require('../events'),
@@ -603,10 +604,25 @@ function onDisk(d, file) {
   return files.present(d.row.saveDir, file);
 }
 
+// What a stream download fetches when `file` is read: a video alone (season
+// packs), plus what it already fetched of that video's audio and subtitle
+// files (the player's tracks, lib/media/files#companions); another file (a
+// track) is added to the selection
+function streamSelection(d, file) {
+  var current = d.row.selectedFiles;
+  if (mediaFiles.kindOf(file.path) !== 'video') {
+    return current && current.indexOf(file.path) === -1 ? current.concat(file.path) : current;
+  }
+  var mates = mediaFiles.companions(d.meta.files, file),
+    keep = mates.audio.concat(mates.subtitles).map(function (f) { return f.path; });
+  return [file.path].concat((current || []).filter(function (p) { return keep.indexOf(p) !== -1; }));
+}
+
 /**
  * Before streaming `filePath`: a stopped download starts again (admission:
  * BUSY), unless the file is finished on disk; a stream download fetches only
- * this file (season packs), a download adds it to its selection.
+ * this file (season packs) and the tracks of it the player asked for, a
+ * download adds it to its selection.
  * @returns {Promise<'disk'|'engine'>}
  */
 function prepareStream(hash, filePath) {
@@ -619,7 +635,7 @@ function prepareStream(hash, filePath) {
       if (disk) {
         return 'disk';
       }
-      var wanted = d.row.intent === 'stream' ? [filePath] :
+      var wanted = d.row.intent === 'stream' ? streamSelection(d, file) :
         d.row.selectedFiles && d.row.selectedFiles.indexOf(filePath) === -1 ? d.row.selectedFiles.concat(filePath) : null;
       var selecting = wanted && JSON.stringify(wanted) !== JSON.stringify(d.row.selectedFiles) ?
         select(hash, wanted) : Promise.resolve();

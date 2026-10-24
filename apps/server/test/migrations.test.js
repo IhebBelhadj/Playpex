@@ -3,7 +3,7 @@
 // Migration tests: a database made by the migrations up to some point, then
 // opened by lib/db (every migration).
 //   0004 (docs/settings-plan.md §6): profiles' preferences.adult → profile_settings
-//   0014 (docs/plugins-plan.md P5): those settings → the 18+ plugin's (its
+//   0014 (docs/plugins-plan.md P5): those settings → the 18+ plugin's (velvet) (its
 //        profile setting metadataProvider, its store's layout:<profile>)
 //
 //   npm test -w apps/server
@@ -57,12 +57,12 @@ test('0004 then 0014: profiles.preferences.adult → profile_settings → the 18
     raw.close();
     assert.deepEqual(core, [], 'no 18+ key left in the core');
     assert.deepEqual(settings.map(function (r) { return [r.plugin_id, r.scope, r.owner_id, r.key, JSON.parse(r.value)]; }), [
-      ['adult', 'profile', 'p-both', 'metadataProvider', 'theporndb']
+      ['velvet', 'profile', 'p-both', 'metadataProvider', 'theporndb']
     ]);
     assert.ok(Math.abs(settings[0].updated_at - Date.now()) < 60 * 1000, 'updated_at is epoch ms');
     assert.deepEqual(store.map(function (r) { return [r.plugin_id, r.key, JSON.parse(r.value), r.size]; }), [
-      ['adult', 'layout:p-both', 'list', Buffer.byteLength('"list"') + Buffer.byteLength('layout:p-both')],
-      ['adult', 'layout:p-layout', 'posters', Buffer.byteLength('"posters"') + Buffer.byteLength('layout:p-layout')]
+      ['velvet', 'layout:p-both', 'list', Buffer.byteLength('"list"') + Buffer.byteLength('layout:p-both')],
+      ['velvet', 'layout:p-layout', 'posters', Buffer.byteLength('"posters"') + Buffer.byteLength('layout:p-layout')]
     ]);
   }).finally(function () {
     fs.rmSync(tmp, { recursive: true, force: true });

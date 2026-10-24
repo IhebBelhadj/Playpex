@@ -3,8 +3,6 @@ import { catchError, defaultIfEmpty, map, Observable, of, switchMap } from 'rxjs
 import { MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
 import { PlaybackService, PlaybackSource } from './playback.service';
-import { TorrentService } from './torrent.service';
-import { TorrentPickerService } from './torrent-picker.service';
 import { LibraryService } from './library.service';
 import { PlayChoiceService } from './play-choice.service';
 import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.service';
@@ -12,8 +10,8 @@ import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.ser
 // Playing one episode of a show, shared by the show page and the episode page:
 // with a saved position, Resume / Play from the beginning first; then the
 // episode's sources (the server's play pipeline: files on the server, its
-// downloads, EZTV + TheRARBG torrents, best first) → a lone file on the
-// server plays at once, else the source picker → the player
+// downloads, plugins' streams and torrents) → a lone file on the
+// server plays at once, else the Play chooser → the player
 // (PlaybackService.play). Download picks among torrents only (chooseRelease).
 
 export interface EpisodeTarget {
@@ -39,8 +37,6 @@ export class EpisodePlaybackService {
 
   constructor(
     private notificationService:NotificationService,
-    private torrentService:TorrentService,
-    private torrentPicker:TorrentPickerService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
     private playback:PlaybackService,
@@ -177,44 +173,15 @@ export class EpisodePlaybackService {
   }
 
   /**
-   * The episode's releases (the server's ranking) → the torrent picker →
-   * the picked torrent (with its `magnet`); completes empty on Back or when
-   * nothing is found (the user is told). Play and Download use it.
+   * The episode's torrents (the server's play pipeline: plugins' torrent
+   * sources) → the Play chooser, torrents only → the picked one (with its
+   * `magnet`); completes empty on Back. The Download action's.
    */
-  chooseRelease(target:EpisodeTarget):Observable<any> {
-    return new Observable(subscriber => {
-      if (!target.imdbId) {
-        this.notificationService.sendNotification("error", "This show has no IMDb id, so torrents can't be looked up");
-        subscriber.complete();
-        return undefined;
-      }
-      let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episode_number);
-      this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
-      let picking = null;
-      let lookup = this.torrentService.findEpisodeTorrents(target.imdbId, target.show['name'], target.season, ep.episode_number)
-        .subscribe(result => {
-          this.resolving = null;
-          if (!result.torrents.length) {
-            let reason = result.providerErrors ? " (some providers are unreachable)" : "";
-            this.notificationService.sendNotification("error", `No torrents found for ${code}${reason}`);
-            subscriber.complete();
-            return;
-          }
-          let options = result.torrents.map((torrent, i) => TorrentPickerService.fromEpisode(torrent, i));
-          picking = this.torrentPicker.choose(`${target.show['name']} ${code}`, options).subscribe({
-            next: choice => subscriber.next(choice.torrent),
-            complete: () => subscriber.complete(),
-          });
-        }, () => {
-          this.resolving = null;
-          this.notificationService.sendNotification("error", "Couldn't reach the torrent providers. Try again later");
-          subscriber.complete();
-        });
-      return () => {
-        lookup.unsubscribe();
-        picking?.unsubscribe();
-      };
-    });
+  chooseRelease(target:EpisodeTarget):Observable<PlaySource> {
+    let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episode_number);
+    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
+    return this.sources.choose(EpisodePlaybackService.query(target), `${target.show['name']} ${code}`,
+      { kind: 'download', only: ['torrent'], looked: () => this.resolving = null });
   }
 
   private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource }, startAt?:number, replace = false) {

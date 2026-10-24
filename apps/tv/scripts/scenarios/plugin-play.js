@@ -1,7 +1,7 @@
 'use strict';
 
-// The server's plugins in Play (docs/plugins-plan.md step P3): the source
-// picker says what a plugin hid and why, a plugin's question is asked before
+// The server's plugins in Play (docs/plugins-plan.md step P3): the Play
+// chooser says what a plugin hid and why, a plugin's question is asked before
 // playing, and the player shows "Skip intro" where a plugin marked the intro
 // (OK skips to its end).
 // Needs a server in plugin developer mode with a plugin like
@@ -18,14 +18,14 @@ module.exports = async function (t) {
   await t.dev("reset({ screen: 'core.settings' })");
   await t.wait(800);
   const query = JSON.stringify({ kind: 'movie', tmdbId: 949, title: 'Heat', year: 1995 });
-  const picker = "document.querySelector('#torrentPicker')";
+  const picker = "document.querySelector('#playChooser')";
 
-  // 1. the picker: two sources, the HEVC one hidden with its reason
+  // 1. the chooser: two torrents, the HEVC one hidden with its reason
   await t.dev(`sources(${query})`);
-  t.check('the source picker opens', await t.until(picker, 8000));
+  t.check('the Play chooser opens', await t.until(picker, 8000));
   await t.wait(400);
   const text = await t.js(`${picker}.innerText`);
-  t.check('two sources offered', (await t.js(`${picker}.querySelectorAll('px-option').length`)) === 2, { text });
+  t.check('two sources offered', (await t.js(`${picker}.querySelectorAll('button.choice:not(.more)').length`)) === 2, { text });
   t.check('"Hidden by Markers Test: HEVC" is said', /Hidden by Markers Test: HEVC/.test(text), { text });
   await t.shot('picker-hidden');
   await t.key('Return');

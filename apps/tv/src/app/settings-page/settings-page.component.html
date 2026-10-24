@@ -62,6 +62,37 @@
             [on]="settings.value('player.preferLocalFiles')"
             (pxSelect)="settings.set('player.preferLocalFiles', !settings.value('player.preferLocalFiles'))"></px-switch>
         </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">When you press Play</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Show every way to play, or start the best one of a kind at once when there is one.</p>
+          <div class="chips" pxGrid="autoplayKind" enter="selected">
+            <px-chip *ngFor="let k of autoplayKinds" [key]="'play:' + k.key" [label]="k.label"
+              [selected]="k.key == settings.value('player.autoplayKind')" (pxSelect)="settings.set('player.autoplayKind', k.key)"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Audio language</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">The sound track a video starts with, when it has this language. A choice made in the player is kept for that title.</p>
+          <div class="chips" pxGrid="audioLanguage" enter="selected">
+            <px-chip *ngFor="let l of audioLanguages" [key]="'audio:' + l.key" [label]="l.label"
+              [selected]="l.key == settings.value('player.audioLanguage')" (pxSelect)="settings.set('player.audioLanguage', l.key)"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Subtitles</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Subtitles in this language turn on by themselves when the video has them.</p>
+          <div class="chips" pxGrid="subtitleLanguage" enter="selected">
+            <px-chip *ngFor="let l of subtitleLanguages" [key]="'subtitles:' + l.key" [label]="l.label"
+              [selected]="l.key == settings.value('player.subtitleLanguage')" (pxSelect)="settings.set('player.subtitleLanguage', l.key)"></px-chip>
+          </div>
+          <px-switch *ngIf="settings.value('player.subtitleLanguage') != 'off'" key="forcedOnly" label="Only forced subtitles"
+            hint="Just the lines in another language than the film's"
+            [on]="settings.value('player.subtitleForcedOnly')"
+            (pxSelect)="settings.set('player.subtitleForcedOnly', !settings.value('player.subtitleForcedOnly'))"></px-switch>
+        </section>
       </ng-container>
 
     </div>

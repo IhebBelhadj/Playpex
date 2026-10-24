@@ -1,7 +1,7 @@
 'use strict';
 
 // The plugin contract (docs/plugins-plan.md P0): the manifest schema plus
-// checkManifest() accept the reference manifests (plugins/adult, plugins/trakt)
+// checkManifest() accept the reference manifests (plugins/velvet, plugins/trakt)
 // and refuse what a manifest must never get through; the run-time schema
 // (plugin-api.schema.json) accepts the shapes the host will hand over and
 // refuses the ones it must not.
@@ -57,7 +57,7 @@ function minimal(extra) {
 }
 
 test('the reference manifests are valid', function () {
-  ['adult', 'trakt'].forEach(function (id) {
+  ['velvet', 'trakt'].forEach(function (id) {
     assert.deepEqual(problems(reference(id), { versions: { nav: 1, ui: 1 } }), [], id);
   });
 });
@@ -145,7 +145,7 @@ test('limits can only be stricter', function () {
 });
 
 test('the audience rule', function () {
-  var adult = reference('adult');
+  var adult = reference('velvet');
   adult.permissions.write = ['downloads', 'watchlist'];
   assert.notDeepEqual(problems(adult), [], 'an adults plugin writing the watch list');
   assert.notDeepEqual(problems(minimal({ contributes: { chrome: { accent: 'adult' } } })), [], 'the adult accent outside adults');
@@ -168,22 +168,22 @@ test('links match their permission, secrets and hosts', function () {
 });
 
 test('screens, sections, slots and settings hold together', function () {
-  var adult = reference('adult');
+  var adult = reference('velvet');
   adult.contributes.sections[0].screen = 'nothing';
   assert.match(problems(adult).join('\n'), /no screen named nothing/);
-  adult = reference('adult');
+  adult = reference('velvet');
   adult.contributes.screens.push({ name: 'browse', template: 'list', data: 'x' });
   assert.match(problems(adult).join('\n'), /declared twice/);
-  adult = reference('adult');
+  adult = reference('velvet');
   delete adult.contributes.screens[0].data;
   assert.match(problems(adult).join('\n'), /needs data/);
-  adult = reference('adult');
+  adult = reference('velvet');
   adult.contributes.settings[0].default = 'grid';
   assert.match(problems(adult).join('\n'), /not one of the options/);
-  adult = reference('adult');
+  adult = reference('velvet');
   adult.contributes.settings[1].scope = 'profile';
   assert.match(problems(adult).join('\n'), /scope server/);
-  adult = reference('adult');
+  adult = reference('velvet');
   adult.permissions.secrets = [];
   assert.match(problems(adult).join('\n'), /theporndbApiKey isn't in permissions.secrets/);
   var many = minimal({ contributes: { slots: [1, 2, 3, 4].map(function (n) { return { slot: 'core.movie.rows', data: 'r' + n }; }) } });
@@ -201,7 +201,7 @@ test('permissions in plain words', function () {
     personal = words.filter(function (w) { return w.personal; }).map(function (w) { return w.key; });
   assert.deepEqual(personal.sort(), ['events.playback', 'write.ratings', 'write.watched', 'write.watchlist']);
   assert.ok(words.some(function (w) { return w.text === 'Talks to api.trakt.tv'; }));
-  assert.ok(plugins.describePermissions(reference('adult')).some(function (w) { return /hidden from kids/.test(w.text); }));
+  assert.ok(plugins.describePermissions(reference('velvet')).some(function (w) { return /hidden from kids/.test(w.text); }));
 });
 
 test('host matching', function () {

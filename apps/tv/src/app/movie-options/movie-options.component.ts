@@ -11,7 +11,6 @@ import { Component, OnInit, AfterViewInit, OnDestroy, inject } from '@angular/co
 import { gsap ,Power1} from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { PlaybackService } from '../playback.service';
-import { TorrentPickerService } from '../torrent-picker.service';
 import { Download, DownloadTile, DownloadsService } from '../downloads.service';
 import { LibraryService, MediaRef, PlaybackState } from '../library.service';
 import { PlayChoiceService } from '../play-choice.service';
@@ -73,7 +72,6 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     private notificationService:NotificationService,
     private menu:MenuServiceService,
     private playback:PlaybackService,
-    private torrentPicker:TorrentPickerService,
     private library:LibraryService,
     private playChoice:PlayChoiceService,
     private releases:ReleasesService,
@@ -115,8 +113,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     });
   }
 
-  // Download: a release to keep on the server (the same picker as Play);
-  // one already there is started again, or just reported
+  // Download: a torrent to keep on the server (the Play chooser, its torrents
+  // only); one already there is started again, or just reported
   onDownload() {
     let d = this.download, movie = this.selectedMovie;
     if (d) {
@@ -130,14 +128,10 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       }
       return;
     }
-    if (!movie?.['torrents']?.length) {
-      this.notificationService.sendNotification('error', "No release found for this movie");
-      return;
-    }
-    let options = movie['torrents'].map(torrent => TorrentPickerService.fromYts(torrent));
-    this.torrentPicker.choose(movie['original_title'], options).subscribe(choice => {
+    if (!movie?.['id']) return;
+    this.sources.choose(this.sourcesQuery(), movie['original_title'], { kind: 'download', only: ['torrent'] }).subscribe(source => {
       let title = movie['original_title'] + (movie['release_date'] ? ` (${movie['release_date'].slice(0, 4)})` : '');
-      this.downloads.add(PlaybackService.movieMagnet(movie, choice.torrent), { mediaType: 'movie', tmdbId: Number(movie['id']) }, title)
+      this.downloads.add(source.magnet, { mediaType: 'movie', tmdbId: Number(movie['id']) }, title)
         .subscribe({
           next: added => this.toasts.show({
             text: added.state === 'queued' ? 'Queued on the server' : 'Downloading on the server',
@@ -341,20 +335,25 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     })
   }
 
-  // The server's sources (files on it, its downloads, YTS torrents): a lone
-  // file on the server plays at once, else the source picker
-  chooseSourceAndPlay(startAt?:number, prefer?:(source:PlaySource) => boolean){
+  // The movie as the server's play pipeline knows it
+  private sourcesQuery():SourcesQuery {
     let movie = this.selectedMovie;
-    if (this.findingTorrents) return;
-    this.findingTorrents = true;
-    let query:SourcesQuery = {
+    return {
       kind: 'movie',
       tmdbId: Number(movie['id']),
       imdbId: movie['imdb_id'],
       title: movie['title'] || movie['original_title'],
       year: PlaySourcesService.year(movie['release_date']),
     };
-    this.sources.choose(query, movie['original_title'], { prefer, looked: () => this.findingTorrents = false })
+  }
+
+  // The server's ways to play (files on it, its downloads, plugins' streams
+  // and torrents): a lone file on the server plays at once, else the Play chooser
+  chooseSourceAndPlay(startAt?:number, prefer?:(source:PlaySource) => boolean){
+    let movie = this.selectedMovie;
+    if (this.findingTorrents) return;
+    this.findingTorrents = true;
+    this.sources.choose(this.sourcesQuery(), movie['original_title'], { prefer, looked: () => this.findingTorrents = false })
       .subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
   }
 

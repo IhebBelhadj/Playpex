@@ -1,6 +1,6 @@
 # The manifest (`playpex-plugin.json`)
 
-Schema: `packages/protocol/plugin.schema.json`; the rules between fields: `checkManifest` in `packages/protocol/plugins.js`. Examples: `plugins/adult/playpex-plugin.json`, `plugins/trakt/playpex-plugin.json`.
+Schema: `packages/protocol/plugin.schema.json`; the rules between fields: `checkManifest` in `packages/protocol/plugins.js`. Examples: `plugins/velvet/playpex-plugin.json`, `plugins/trakt/playpex-plugin.json`.
 
 ```jsonc
 {

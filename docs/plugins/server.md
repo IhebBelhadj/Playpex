@@ -20,8 +20,10 @@ Every handler gets a context: `{ profile: { id, kids } | null, device: { id, nam
 | `playpex.store.get(key)` / `set(key, value)` / `delete(key)` / `list(prefix)` | `storage` | JSON values, your quota |
 | `playpex.secrets.get(name)` | `secrets` | what the admin entered, or null |
 | `playpex.settings.get(key, ctx)` | | your `contributes.settings`, for the context's profile / device |
-| `playpex.tmdb.*`, `playpex.imdb.title(id)` / `episodes(id)` | | read-only core data |
-| `playpex.library.find(titleRef)` | `library` | what's on the server for a title (metadata, never paths) |
+| `playpex.tmdb.*` | | TMDB through the server ([below](#core-data-tmdb-imdb-library)): no key or `network` entry of your own |
+| `playpex.imdb.title(id)` / `episodes(id)` | | IMDb ratings (`{ id, rating, votes }`; `episodes`: `seasons[]` with each episode's), cached 6 h |
+| `playpex.library.find(titleRef, ctx)` | `library` | what's on this server for a title, as the context's profile may see it (below); counts, never paths |
+| `playpex.names.parse / describe / matches / rank`, `playpex.html.select`, `playpex.torrent.info` | | the core's reading of release names, HTML and `.torrent` files ([below](#release-names-html-torrent-files)): no parser of your own |
 | `playpex.log.info / warn / error(message, fields?)` | | into the server log, tagged with your id |
 | `playpex.i18n.t(key, vars?)` | | your strings in `ctx.locale` |
 | `playpex.notify.send(profileIds \| 'all', { text, tone?, key? })` | `notify` | below |
@@ -35,6 +37,56 @@ Every handler gets a context: `{ profile: { id, kids } | null, device: { id, nam
 | `playpex.data(name, handler)` | | answers for the screens / slots / actions in `contributes` ([tv.md](tv.md)) |
 
 Never available: the database, other plugins (but what they export to you), devices, auth, `settings.json`, the file system, process or OS information, ports other than HTTPS.
+
+## Core data: TMDB, IMDb, library
+
+What the server already reads for itself, answered by its own clients (`apps/server/lib/plugins/core.js`): no API key to ask the admin for, no `permissions.network` entry, the server's cache (6 h) shared by every plugin. Rate limited per plugin and service (10/s, burst 20, 4 in flight: `LIMITS.core`); over it the call waits, past 10 s it fails `RATE_LIMITED`.
+
+```js
+var movie = await playpex.tmdb.movie(550, { append_to_response: 'credits,external_ids' });
+var found = await playpex.tmdb.search('tv', 'breaking bad', { first_air_date_year: 2008 });
+var poster = playpex.tmdb.image(movie.poster_path, 'w342');   // a URL, no call
+var onServer = await playpex.library.find({ kind: 'movie', tmdbId: 550 }, ctx);   // { fileCount, episodes }
+```
+
+| Call | TMDB path |
+|---|---|
+| `tmdb.get(path, params?)` | any catalog GET: `/movie`, `/tv`, `/search`, `/discover`, `/find`, `/person`, `/company`, `/collection`, `/genre`, `/configuration`, `/trending`, `/network`, `/keyword`, `/certification`, `/watch`, `/review`, `/credit` and what's under them (not `account_states` / `rating`) |
+| `tmdb.movie(id, params?)` · `tv(id, params?)` · `person(id, params?)` | `/movie/{id}` · `/tv/{id}` · `/person/{id}` |
+| `tmdb.season(id, season, params?)` · `episode(id, season, episode, params?)` | `/tv/{id}/season/{n}` · `…/episode/{n}` |
+| `tmdb.search(kind, query, params?)` · `discover(kind, params?)` | `/search/{movie\|tv\|person\|multi\|company\|collection\|keyword}` · `/discover/{movie\|tv}` |
+| `tmdb.trending(kind?, window?, params?)` | `/trending/{all\|movie\|tv\|person}/{day\|week}` (default `all`, `week`) |
+| `tmdb.find(externalId, source?, params?)` | `/find/{id}`, `external_source` `imdb_id` by default |
+| `tmdb.image(path, size?)` | `https://image.tmdb.org/t/p/{size}{path}` (default `w342`; null without a path) |
+
+- Answers are TMDB's JSON as is (`language` `en-US` unless you pass one: `{ language: ctx.locale }`).
+- `params`: plain strings, numbers and booleans (≤ 30, ≤ 500 characters each); `api_key` and session ids are refused (`INVALID`), as are paths outside the list.
+- `include_adult` is passed on only for an `audience: adults` plugin; for any other it is always `false` (your screens reach kids profiles).
+- Errors: `PROVIDER_NOT_CONFIGURED` (the server has no TMDB key: the admin sets one in the dashboard's Settings), `NOT_FOUND` (TMDB's 404), `UPSTREAM` (any other failure), `INVALID`.
+- `library.find(titleRef, ctx)` → `{ mediaType, tmdbId, fileCount, episodes: [{ season, episode, fileCount }] }`: files on this server for a movie, a show (its episodes) or one episode (`fileCount` of that episode). Pass the handler's `ctx`: a kids profile, or no profile, never counts files of adults-only folders. Needs `permissions.library`.
+
+## Release names, HTML, .torrent files
+
+What the core knows about releases, for source plugins (`apps/server/lib/plugins/utilities.js`): the same reading the server uses for its own sources, so your matching and ranking stay as good as the core's. No permission; rate limited per plugin like the core data (`LIMITS.core`). Bad arguments fail `INVALID`.
+
+```js
+var p = await playpex.names.parse('Severance.S02E10.2160p.ATVP.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX');
+// { title: 'Severance', year: null, season: 2, episode: 10, episodeEnd: null, pack: false,
+//   resolution: '2160p', source: 'web-dl', codec: 'hevc', audio: 'eac3', hdr: true }
+var kind = await playpex.names.matches(release.name, input.title);   // 'episode' | 'pack' | 'movie' | null
+var best = await playpex.names.rank(releases);                        // [{ name, seeds, … }] in the core's order
+var rows = await playpex.html.select(page, 'table.list tr', { name: 'a.title', link: 'a.title@href', seeds: 'td.seeds' });
+var info = await playpex.torrent.info(r.body);                        // a .torrent's bytes (responseType 'bytes')
+```
+
+| Call | Answers |
+|---|---|
+| `names.parse(name)` | `{ title, year, season, episode, episodeEnd, pack, resolution, source, codec, audio, hdr }` (`codec` `h264` · `hevc` · `av1` · `xvid`; `audio` `aac` · `ac3` · `eac3` · `truehd` · `dts` · `opus` · `mp3` · `flac`; null = the name doesn't say). A path (`Show/Season 2/03.mkv`) is read like the library reads one |
+| `names.describe(name)` | `{ quality, codec, audio, playable }`: how it plays in the TV app's Chromium (`audio` `supported` · `unsupported` (Dolby / DTS) · `unknown`; `playable` false for HEVC, 10-bit, XviD, 4K) |
+| `names.matches(name, titleRef)` | an episode → `episode` (exactly it: "Breaking Brad", ranges and other shows refused), `pack` (its season), null; a show → `episode` / `pack` when the name is one of its; a movie → `movie` (title, year ± 1) or null |
+| `names.rank(items)` | the same items (≤ 1000, each with a `name`; `seeds`, `pack` read when there) in the core's streaming order: plays here → audio that decodes → ≥ 10 seeds → single files before packs → resolution → seeds |
+| `html.select(html, selector, fields?)` | for each match of the CSS selector (≤ 500): `{ text, attributes }`, or with `fields` (`{ key: 'css' \| 'css@attr' \| '@attr' \| '' }`, ≤ 30) an object of those (text trimmed, null when missing). Parsed on the host (`node-html-parser`): HTML ≤ 4 MB, without spending your 2 s of CPU |
+| `torrent.info(bytes)` | a `.torrent` file (`Uint8Array`, ≤ 4 MB) → `{ infoHash, name, size, pieceLength, files: [{ index, path, size }] }`: for sites that only offer `.torrent` downloads (answer a `magnet` source with its `infoHash`, and `fileIndex` / `fileName` for the file to play) |
 
 ## Hooks
 
@@ -79,7 +131,7 @@ How the core uses the answers (step P3):
 
 | Kind | You give | How it plays |
 |---|---|---|
-| `magnet` | `magnet` or `infoHash` (+ `fileIndex` / `fileName`), `label`, `quality?`, `size?`, `seeds?`, `peers?`, `codec?`, `audio?`, `notes?` | as the core's torrents: leases, paused when left, never deleted |
+| `magnet` | `magnet` or `infoHash` (+ `fileIndex` / `fileName`: the file to play, honoured by the player through the server's file choice), `label`, `quality?`, `size?`, `seeds?`, `peers?`, `codec?`, `audio?`, `notes?` | as the core's torrents: leases, paused when left, never deleted; its separate audio / subtitle files and other videos are switchable in the player |
 | `http` | `url` (HTTPS), `headers?` (sent by the server only; not `Host`, `Cookie`, `Range`…), `label`, `size?`, `container?`, codecs | the server proxies it as a media ref `r_…` with ranges passed through, the host checked on every request and redirect; **the client never sees the URL**; ffprobe and the Dolby → AAC conversion work on it. The ref lives 1 h; Resume collects again |
 
 Your sources are ranked with the core's, carry your `notes` ("From Real-Debrid") and never autoplay over a file on the server.

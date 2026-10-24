@@ -6,18 +6,18 @@
 //   downloads  the server's downloads of the title: their `title` (a Download
 //              of a title page, a player's keepalive), else their name
 //   yts        movie torrents (YTS by IMDb id)
-//   episodes   episode torrents (EZTV + TheRARBG, lib/episodes.js's ranking)
+//   episodes   episode torrents (EZTV + TheRARBG, ranked by lib/media/names.js)
 
 var path = require('path'),
   torrents = require('../torrents/client'),
   refs = require('../media/refs'),
-  episodes = require('../episodes'),
+  mediaFiles = require('../media/files'),
+  names = require('../media/names'),
   parse = require('../library/parse'),
   yts = require('../providers/yts');
 
 var CONTAINERS_NEVER = ['avi', 'wmv', 'ts', 'm2ts'],
-  VIDEO_NEVER = ['mpeg4', 'msmpeg4v3', 'msmpeg4v2', 'mpeg2video', 'mpeg1video', 'vc1', 'wmv3'],
-  VIDEO = /\.(mkv|mp4|m4v|avi|webm|mov|ts|m2ts|wmv)$/i;
+  VIDEO_NEVER = ['mpeg4', 'msmpeg4v3', 'msmpeg4v2', 'mpeg2video', 'mpeg1video', 'vc1', 'wmv3'];
 
 // 1920 × 800 is a 1080p film in scope: read the width
 function qualityOf(width, fallback) {
@@ -88,19 +88,9 @@ var library = {
   }
 };
 
-function episodePattern(season, episode) {
-  return new RegExp('(s0*' + season + '[ ._-]*e0*' + episode + '|\\b0*' + season + 'x0*' + episode + ')(?!\\d)', 'i');
-}
-
 // The download's file for this title: the episode's (also inside a pack), else its largest video
 function fileFor(files, title) {
-  var videos = files.filter(function (f) { return VIDEO.test(f.name); });
-  if (title.kind === 'episode') {
-    var pattern = episodePattern(title.season, title.episode),
-      named = videos.filter(function (f) { return pattern.test(f.path); });
-    videos = named.length ? named : videos.length === 1 ? videos : [];
-  }
-  return videos.sort(function (a, b) { return b.size - a.size; })[0] || null;
+  return mediaFiles.choose(files, title.kind === 'episode' ? { season: title.season, episode: title.episode } : {});
 }
 
 // The download is this title: by its title, else by its name
@@ -115,7 +105,7 @@ function isTitle(download, title) {
   if (pack) {
     parsed = Object.assign({}, parsed, { kind: 'episode', title: pack[1], season: +pack[2] });
   }
-  if (!parsed.title || episodes.normalizeTitle(parsed.title) !== episodes.normalizeTitle(title.title)) {
+  if (!parsed.title || names.normalizeTitle(parsed.title) !== names.normalizeTitle(title.title)) {
     return false;
   }
   if (title.kind === 'movie') {
@@ -200,8 +190,8 @@ var movieTorrents = {
     return yts.releases(title.imdbId).then(function (list) {
       // ranked like episodes (YTS lists 720p first)
       return list.map(function (t) {
-        return Object.assign({}, t, episodes.describe(t.name), { pack: false });
-      }).sort(episodes.compare).map(function (t) { return torrentSource(t, 'yts', context); });
+        return Object.assign({}, t, names.describe(t.name), { pack: false });
+      }).sort(names.compare).map(function (t) { return torrentSource(t, 'yts', context); });
     });
   }
 };

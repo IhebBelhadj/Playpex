@@ -14,6 +14,9 @@ var express = require('express'),
   pump = require('pump'),
   media = require('../media'),
   transcode = require('../transcode'),
+  tracks = require('../media/tracks'),
+  ffmpeg = require('../ffmpeg'),
+  subtitles = require('../subtitles'),
   sessions = require('../sessions'),
   settings = require('../settings'),
   languages = require('../subtitles/languages'),
@@ -133,17 +136,27 @@ function keyframe(req, res) {
   });
 }
 
-// The file with its audio re-encoded to AAC, from ?t=<seconds>, track ?audio=<n>
+// The file with its audio re-encoded to AAC, from ?t=<seconds>, track
+// ?audio=<n>, or the torrent's audio file ?audioRef=<ref> (a file of the same
+// torrent that goes with this video: GET …/tracks)
 function transcoded(req, res) {
-  var file = req.media;
+  var file = req.media, audioFile = null;
+  if (req.query.audioRef) {
+    audioFile = tracks.audioFile(file, String(req.query.audioRef));
+    if (!audioFile) {
+      return fail(res, 'INVALID', 'audioRef must be one of this video\'s audio files (GET …/tracks)');
+    }
+  }
   if (!sessions.takeTranscodeSlot(req.lease, file, res)) {
     return fail(res, 'BUSY', 'This server already transcodes ' + settings.get('streaming.maxTranscodes') +
       ' videos; try again later');
   }
   sessions.trackStream(req.lease, req, res, file, 'audio-transcode');
   req.socket.setTimeout(3600000);
-  input(req).then(function (url) {
-    transcode.stream(url, parseFloat(req.query.t) || 0, parseInt(req.query.audio, 10) || 0, req, res);
+  var audioInput = audioFile ? media.input(media.torrentFile(file.infoHash, audioFile.path), req.socket.localPort, req.lease.deviceId) :
+    Promise.resolve(null);
+  Promise.all([input(req), audioInput]).then(function (urls) {
+    transcode.stream(urls[0], parseFloat(req.query.t) || 0, parseInt(req.query.audio, 10) || 0, req, res, urls[1]);
   }, function (err) {
     errors.failed(res, err);
   });
@@ -175,6 +188,92 @@ function subtitleFile(req, res) {
   });
 }
 
+// Everything the player can switch: { video, audio, subtitles, probed } (lib/media/tracks.js)
+function trackList(req, res) {
+  ffmpeg.available().then(function (available) {
+    return (available ? input(req) : Promise.resolve(null)).then(function (url) {
+      return tracks.list(req.media, url, available);
+    });
+  }).then(function (answer) {
+    res.json(answer);
+  }, function (err) {
+    errors.failed(res, err);
+  });
+}
+
+// One of the file's own subtitle streams (`index` among them) as WebVTT: a file
+// on disk only (409 CONFLICT while a torrent's file downloads: ffmpeg reads
+// the whole file for it); image ones (PGS, VobSub) 501 NOT_SUPPORTED
+function embeddedSubtitle(req, res) {
+  var index = parseInt(req.params.index, 10), file = req.media;
+  ffmpeg.available().then(function (available) {
+    if (!available) {
+      return fail(res, 'TRANSCODER_UNAVAILABLE', 'This server has no ffmpeg to read subtitles inside the video');
+    }
+    return Promise.all([input(req), file.kind === 'torrent' ? require('../torrents/client').diskPath(file.infoHash, file.path) : Promise.resolve(file.kind === 'file')])
+      .then(function (r) {
+        if (!r[1]) {
+          return fail(res, 'CONFLICT', 'Ready when the download finishes');
+        }
+        return transcode.probe(r[0], media.probeKey(file)).then(function (probe) {
+          var sub = (probe.subtitles || [])[index];
+          if (!sub) {
+            return fail(res, 'NOT_FOUND', 'No such subtitle track');
+          }
+          if (transcode.subtitleKind(sub.codec) !== 'text') {
+            return fail(res, 'NOT_SUPPORTED', 'This subtitle track is pictures (' + sub.codec + '): it can\'t be shown yet');
+          }
+          return transcode.subtitle(r[0], index, media.probeKey(file)).then(function (vtt) {
+            res.type('text/vtt').send(vtt);
+          });
+        });
+      });
+  }).catch(function (err) {
+    if (!res.headersSent) {
+      fail(res, err.code === 'ENOENT' ? 'TRANSCODER_UNAVAILABLE' : 'PROBE_FAILED', err.message);
+    }
+  });
+}
+
+// A subtitle file of the track list (`f<i>`) as WebVTT: a disk file's sidecar,
+// or a torrent's file that goes with the video (fetched now: selected in the
+// torrent, ≤ 10 MB)
+function subtitleTrackFile(req, res) {
+  var file = req.media, id = 's:' + req.params.track;
+  if (file.kind === 'file') {
+    var i = /^f(\d{1,4})$/.exec(req.params.track);
+    if (!i) {
+      return fail(res, 'NOT_FOUND', 'No such subtitle track');
+    }
+    return media.subtitle(file, parseInt(i[1], 10)).then(function (vtt) {
+      res.type('text/vtt').send(vtt);
+    }, function (err) {
+      errors.failed(res, err);
+    });
+  }
+  var track = tracks.fileTrack(file, id, 'subtitles');
+  if (!track) {
+    return fail(res, 'NOT_FOUND', 'No such subtitle track');
+  }
+  if (/\.(idx|sub)$/i.test(track.path)) {
+    return fail(res, 'NOT_SUPPORTED', 'This subtitle file is pictures (VobSub): it can\'t be shown yet');
+  }
+  if (track.size > 10 * 1024 * 1024) {
+    return fail(res, 'NOT_FOUND', 'This subtitle file is too large');
+  }
+  var subtitleMedia = media.torrentFile(file.infoHash, track.path);
+  media.open(subtitleMedia, null).then(function (body) {
+    var chunks = [];
+    body.on('data', function (c) { chunks.push(c); });
+    body.on('error', function (err) { errors.failed(res, err); });
+    body.on('end', function () {
+      res.type('text/vtt').send(subtitles.toVtt(Buffer.concat(chunks), track.language));
+    });
+  }, function (err) {
+    errors.failed(res, err);
+  });
+}
+
 var ref = '/:ref',
   open = [fromRef, audience, lease];
 
@@ -185,6 +284,9 @@ router.get(ref + '/transcode', open, transcoded);
 router.post(ref + '/keepalive', open, keepalive);
 router.get(ref + '/subtitles', fromRef, audience, subtitleList);
 router.get(ref + '/subtitles/:index(\\d+)', fromRef, audience, subtitleFile);
+router.get(ref + '/tracks', open, trackList);
+router.get(ref + '/subtitles/embedded/:index(\\d+)', open, embeddedSubtitle);
+router.get(ref + '/subtitles/file/:track(f\\d+)', open, subtitleTrackFile);
 // The calling device lets go (a torrent pauses 30 s after the last device let
 // go; nothing is deleted)
 router.delete(ref, fromRef, function (req, res) {

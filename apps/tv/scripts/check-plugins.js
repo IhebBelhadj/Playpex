@@ -31,7 +31,7 @@ const SKIP = [path.join(REPO, 'apps', 'server', 'lib', 'db', 'migrations'), path
   path.join(REPO, 'packages', 'protocol', 'node_modules')];
 // files without comments: the lines that may name the `adult` accent token
 const ALLOWED_LINES = { 'plugin.schema.json': /"accent"|"enum": \["adult"\]|^\s*"adult"\s*$/ };
-const SECTION = { name: 'the 18+ section in the core (it is a plugin: plugins/adult)', re: /\badult\b|18\+|\bxxx\b|\bporn/i };
+const SECTION = { name: 'the 18+ section in the core (it is a plugin: plugins/velvet)', re: /\badult\b|18\+|\bxxx\b|\bporn/i };
 
 const RULES = [
   { name: 'an admin route (the dashboard\'s, never a client\'s)', re: /['"`/]admin\/|\/admin['"`]/ },
