@@ -60,6 +60,8 @@ function register(plugin, source) {
     entry = {
       ref: refs.remote(id),
       pluginId: plugin.id,
+      // the core's own fetches (a link the admin gave, lib/links): no plugin to look up
+      principal: plugin.core ? plugin : null,
       url: source.url,
       headers: source.headers || {},
       label: source.label,
@@ -78,6 +80,9 @@ function register(plugin, source) {
 }
 
 function pluginOf(entry) {
+  if (entry.principal) {
+    return entry.principal;
+  }
   var plugin = require('./index').get(entry.pluginId);
   return plugin && plugin.state === 'enabled' ? plugin : null;
 }
@@ -180,6 +185,20 @@ function open(m, range) {
   });
 }
 
+/**
+ * What an r_ ref fetches, for a direct download (lib/downloads/direct.js):
+ * { url, headers, label, name, size, by: 'links' | the plugin's id }, or null
+ */
+function source(ref) {
+  var parsed = refs.parse(ref),
+    entry = parsed && parsed.kind === 'remote' ? entries.get(parsed.id) : null;
+  if (!entry || !pluginOf(entry) || Date.now() - entry.usedAt > TTL_MS) {
+    return null;
+  }
+  return { url: entry.url, headers: entry.headers, label: entry.label, name: entry.name, size: entry.size,
+    by: entry.principal ? entry.principal.id : entry.pluginId };
+}
+
 /** Forgets a plugin's refs (it was unloaded) */
 function forget(pluginId) {
   entries.forEach(function (e, id) {
@@ -193,6 +212,7 @@ module.exports = {
   register: register,
   media: media,
   open: open,
+  source: source,
   forget: forget,
   // tests
   reset: function () { entries.clear(); }

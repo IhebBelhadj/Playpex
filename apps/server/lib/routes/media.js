@@ -22,7 +22,8 @@ var express = require('express'),
   sessions = require('../sessions'),
   settings = require('../settings'),
   languages = require('../subtitles/languages'),
-  errors = require('../errors');
+  errors = require('../errors'),
+  protocol = require('@playpex/protocol');
 
 var fail = errors.fail,
   router = express.Router();
@@ -305,6 +306,21 @@ function subtitleTrackFile(req, res) {
 // How this client plays the file: { method: direct | hls | none, url, start,
 // duration, audio, notes } (lib/media/playback.js); ?t= (hls: from that
 // time), ?audio= (a sound track), and what the client decodes (?mkv=1 …)
+// A plugin's or a link's stream: nothing to probe; its playlist (h_), or the
+// server's Matroska remux of a continuous stream (l_)
+function streamPlayback(req, res, next) {
+  var kind = req.media.kind;
+  if (kind !== 'hls' && kind !== 'live') {
+    return next();
+  }
+  var url = protocol.API_PREFIX + '/media/' + req.media.ref + (kind === 'hls' ? '/index.m3u8' : '');
+  res.json({
+    method: kind === 'hls' ? 'hls' : 'direct', url: url, start: 0, duration: null, audio: 0,
+    notes: kind === 'live' ? ['A live stream: the server remuxes it as it comes'] : [],
+    title: null, download: null, fileId: null
+  });
+}
+
 function playback(req, res) {
   playbackLib.playback({
     media: req.media,
@@ -349,7 +365,7 @@ var ref = '/:ref',
 router.get(ref, open, stream);   // and HEAD
 router.get(ref + '/index.m3u8', open, playlist);
 router.get(ref + '/r/:token([A-Za-z0-9_.-]{1,4096})/:name([A-Za-z0-9._-]{1,64})', open, playlist);
-router.get(ref + '/playback', file, playback);
+router.get(ref + '/playback', open, streamPlayback, bytes, playback);
 router.get(ref + '/hls/:session([0-9a-f]{24})/:file([A-Za-z0-9.]{1,32})', file, playbackPart);
 router.get(ref + '/probe', file, probe);
 router.get(ref + '/keyframe', file, keyframe);

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Loading, QueryError, Spinner } from '@/components/common'
 import { RulesDialog } from '@/components/download-rules'
 import { PeersTab, PiecesTab, SpeedTab, TrackersTab } from '@/components/download-tabs'
-import { usePlayer } from '@/components/player'
+import { usePlayer } from '@/lib/player'
 import { SwarmStrip, toneOf } from '@/components/swarm-strip'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -365,8 +365,8 @@ function Files({ d, files }: { d: Download; files: DetailFile[] | null }) {
                       variant="ghost"
                       size="icon-xs"
                       aria-label={`Play ${f.name}`}
-                      title="Play here (it downloads what it plays first)"
-                      onClick={() => player.play({ ref: f.ref, title: f.name, detail: d.name ?? undefined })}
+                      title="Play (it downloads what it plays first)"
+                      onClick={() => player.play({ ref: f.ref, title: f.name, detail: d.name ?? undefined, place: 'downloads', dir: f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '' })}
                     >
                       <Play />
                     </Button>

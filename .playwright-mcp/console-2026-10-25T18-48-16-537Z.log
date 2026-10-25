@@ -1,0 +1,82 @@
+[   44941ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   45451ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   45499ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   46454ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   46501ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   46942ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   48456ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   48503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   50946ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   53505ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   54507ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   56509ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   58947ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   60531ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   61511ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   61533ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   62512ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   63458ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   63534ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   64459ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   64514ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   66461ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   69516ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   70518ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   72521ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   73949ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   77523ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   78524ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   80526ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   81462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   82465ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   84467ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[   85528ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   86529ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   88530ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   88951ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[   93533ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   93536ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   94535ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   94537ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   96538ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   96539ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[   99469ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  100470ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  101541ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  102472ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  102543ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  103956ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[  104544ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  109546ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  110548ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  112550ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  117474ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  117552ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  118476ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  118553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  118959ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[  120478ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  120556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  125557ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  126541ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  126559ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  127542ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  128560ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  129544ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  133562ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  133964ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[  134563ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  135480ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  136481ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  136565ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  138483ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  141567ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  142568ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  144570ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  148970ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-BsWC7fd5.js:54
+[  149572ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  150573ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  152575ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  153484ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  154485ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  156487ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0

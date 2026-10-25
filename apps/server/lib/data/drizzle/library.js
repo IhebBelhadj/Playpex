@@ -65,6 +65,9 @@ module.exports = function libraryRepository(db) {
         query.folderId ? orm.eq(files.folderId, query.folderId) : undefined,
         query.state ? orm.eq(files.state, query.state) : undefined,
         query.itemId ? orm.eq(files.itemId, query.itemId) : undefined,
+        query.title ? (query.title.kind === 'movie' ?
+          orm.and(orm.eq(items.kind, 'movie'), orm.eq(items.tmdbId, query.title.tmdbId)) :
+          orm.and(orm.eq(items.kind, 'episode'), orm.eq(items.showTmdbId, query.title.tmdbId))) : undefined,
         query.q ? contains(query.q) : undefined
       );
       return Promise.all([

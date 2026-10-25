@@ -1,0 +1,2 @@
+[   65287ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   65396ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-CsSywnlE.js:54

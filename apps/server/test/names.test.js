@@ -129,3 +129,30 @@ test('release: release lists keep their reading', function () {
     { title: 'Lioness', year: 2023, season: 3, episode: 1, pack: false });
   assert.deepEqual(names.release('Blade Runner 2049 2017 1080p', 'movie'), { title: 'Blade Runner 2049', year: 2017 });
 });
+
+test('searchWords / searchMatches: keywords however a name spells them', function () {
+  assert.equal(names.searchWords(' Breaking.Bad_S01 & Grey\'s '), 'Breaking Bad S01 and Greys');
+  [
+    ['Breaking.Bad.S01E01.720p', 'breaking bad', true],
+    ['Breaking Bad S01E01', 'breaking.bad', true],
+    ['Breaking.Bad.S01E01', 'breakingbad', true],
+    ['Breaking.Brad.S01', 'breaking bad', false],
+    ['Spider-Man.No.Way.Home.2021.1080p', 'spiderman', true],
+    ['Spiderman.2002.720p', 'spider man', true],
+    ['Spiderman.2002', 'spider-man 2002', true],
+    ['Greys.Anatomy.S19E01', 'grey\'s anatomy', true],
+    ['Breaking.Bad.S01E05.1080p', 'breaking bad s01', true],
+    ['Breaking.Bad.S01E05', 'breaking bad s02', false],
+    ['Big.Trouble.in.Little.China.1986', 'big buck bunny', false],
+    ['Big.Buck.Bunny.1080p', 'big buck bunny 1080p', true],
+    ['The.Office.US.S01', 'office', true],
+    ['Officer.Down.2013', 'office', false],
+    ['Amélie.2001', 'amelie', true],
+    ['Law.&.Order.S01', 'law and order', true],
+    ['It.2017', 'it', true],
+    ['Kites.2010', 'it', false],
+    ['Anything at all', '', true]
+  ].forEach(function (c) {
+    assert.equal(names.searchMatches(c[0], c[1]), c[2], c[0] + ' / ' + c[1]);
+  });
+});

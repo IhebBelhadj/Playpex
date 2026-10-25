@@ -16,6 +16,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | [Playing a torrent](playback.md) | catalog sources, what's on this server (the media library), adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
 | [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
+| [Search, links and direct downloads](search.md) | plugins' streams and files by keywords (`/search/*`), how names are matched, reading a pasted link (`/admin/links/inspect`), files downloaded over HTTP (`/downloads/direct`) |
 | [Live TV](live.md) | plugins' TV channels, their programme guide, playing a channel (`/live/*`) |
 | [Plugins](plugins.md) | rendering what the server's plugins contribute, asking their handlers, performing their effects |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |

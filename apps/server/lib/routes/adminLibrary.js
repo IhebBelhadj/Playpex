@@ -172,10 +172,10 @@ router.post('/library/scan', handle(function (s, req) {
 
 // ── files and matches ───────────────────────────────────────────────────────
 
-// ?folder=&state=&item=&q=&limit=&offset= → { files, total }, newest first
+// ?folder=&state=&item=&title=&q=&limit=&offset= → { files, total }, newest first
 router.get('/library/files', handle(function (s, req) {
   return s.library.queryFiles({
-    folderId: req.query.folder, state: req.query.state, itemId: req.query.item, q: req.query.q,
+    folderId: req.query.folder, state: req.query.state, itemId: req.query.item, title: req.query.title, q: req.query.q,
     limit: req.query.limit, offset: req.query.offset
   }).then(function (r) {
     return { files: r.files.map(function (f) { return fileView(f, f.item); }), total: r.total };

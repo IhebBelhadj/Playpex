@@ -7,7 +7,7 @@ export declare const ID: RegExp;
 
 // ── Manifest (playpex-plugin.json) ──────────────────────────────────────────
 
-export type HookName = 'play.collect' | 'play.rank' | 'play.before' | 'play.resolve' | 'releases.providers'
+export type HookName = 'play.collect' | 'play.rank' | 'play.before' | 'play.resolve' | 'releases.providers' | 'sources.search'
   | 'subtitles.providers' | 'metadata.title' | 'metadata.details' | 'player.markers' | 'library.match'
   | 'live.channels' | 'live.guide' | 'live.stream';
 export type EventFamily = 'playback' | 'downloads' | 'library' | 'watchlist';
@@ -418,6 +418,11 @@ export interface HookIO {
     input: { kind: string; title?: PluginTitleRef; query?: string; filters?: Record<string, unknown>; page: number };
     output: { releases: Release[]; last: boolean };
   };
+  /** keywords → its sources (of the kinds it declared), each with what it is; `last`: no more pages */
+  'sources.search': {
+    input: { query: string; kind: 'movie' | 'show' | 'any'; page: number };
+    output: { results: SearchResult[]; last: boolean };
+  };
   'subtitles.providers': { input: { title: PluginTitleRef; languages: string[]; fileName?: string; size?: number }; output: PluginSubtitle[] };
   'metadata.title': { input: { title: PluginTitleRef }; output: { meta?: PluginMetaItem[] } };
   'metadata.details': { input: { title: PluginTitleRef; details: TitleDetails }; output: MetadataAdditions };
@@ -428,6 +433,17 @@ export interface HookIO {
   'live.guide': { input: { channels: string[]; from: string; to: string }; output: { programmes: Programme[] } };
   /** an hls or live source, or null: it can't play now */
   'live.stream': { input: { channel: Channel }; output: { source: PluginSource | null } };
+}
+
+/** One answer of sources.search: a source and what it is */
+export interface SearchResult {
+  source: PluginSource;
+  title?: string;
+  year?: number;
+  season?: number;
+  episode?: number;
+  /** https */
+  poster?: string;
 }
 
 /** The core's details of a title, as metadata.details gets them */

@@ -1,0 +1,22 @@
+[   80305ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[   81245ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54
+[   81308ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  123854ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54
+[  124080ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  125082ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  207259ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54
+[  207357ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  208360ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  209261ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54
+[  210252ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  210318ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  210362ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  211254ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  211320ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  213256ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/downloads:0
+[  213262ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54
+[  213321ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/pairing:0
+[  215364ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  216365ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  218367ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/api/v1/admin/overview:0
+[  221263ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-OtTx-Wm8.js:54

@@ -450,7 +450,9 @@ function scanFolder(job) {
 // ── lifecycle ───────────────────────────────────────────────────────────────
 
 function onEvent(topic, data) {
-  if (!running || topic !== 'download.updated' || !data || ['seeding', 'completed'].indexOf(data.state) === -1) {
+  var finished = data && ((topic === 'download.updated' && ['seeding', 'completed'].indexOf(data.state) !== -1) ||
+    (topic === 'direct.updated' && data.state === 'completed'));   // a file fetched over HTTP (lib/downloads/direct.js)
+  if (!running || !finished) {
     return;
   }
   clearTimeout(downloadTimer);

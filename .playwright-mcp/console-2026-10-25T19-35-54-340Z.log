@@ -1,0 +1,1 @@
+[   48718ms] [ERROR] WebSocket connection to 'ws://localhost:28490/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:28490/assets/index-CnlhhFTQ.js:54

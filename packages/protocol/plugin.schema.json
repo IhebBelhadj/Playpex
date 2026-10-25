@@ -229,7 +229,7 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "enum": ["play.collect", "play.rank", "play.before", "play.resolve", "releases.providers", "subtitles.providers", "metadata.title",
+            "enum": ["play.collect", "play.rank", "play.before", "play.resolve", "releases.providers", "sources.search", "subtitles.providers", "metadata.title",
               "metadata.details", "player.markers", "library.match", "live.channels", "live.guide", "live.stream"]
           }
         },

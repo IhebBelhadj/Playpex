@@ -34,7 +34,10 @@ const INVALIDATES: [string, string[]][] = [
   ['download.added', ['downloads', 'overview']],
   ['download.removed', ['downloads', 'storage', 'overview']],
   // a plugin loaded, stopped or was removed (its library.match: the folders' information providers)
-  ['plugin.changed', ['admin-plugins', 'admin-plugin', 'admin-plugin-settings', 'admin-plugin-channels', 'library']],
+  ['plugin.changed', ['admin-plugins', 'admin-plugin', 'admin-plugin-settings', 'admin-plugin-channels', 'library', 'search-providers', 'release-providers', 'live']],
+  // a scan or the admin changed what the library holds: its titles, the files of one, the places' rows
+  // (a finished direct download becomes a library file: its Play)
+  ['library.changed', ['library-home', 'library-title', 'storage-browse', 'direct-downloads']],
 ]
 
 export function EventsProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {

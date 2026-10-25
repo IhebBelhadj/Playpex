@@ -2,26 +2,23 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   ArrowDownWideNarrow,
   ChevronRight,
-  Clapperboard,
   Copy,
   Download,
   File as FileIcon,
   FileVideo,
   Folder,
   HardDrive,
+  Info,
   MoreHorizontal,
   Play,
   Search,
   Subtitles,
   Trash2,
-  Tv,
-  Wand2,
 } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, QueryError } from '@/components/common'
-import { usePlayer } from '@/components/player'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -37,29 +34,22 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api, errorMessage, unwrap, type Schemas } from '@/lib/api'
-import { ago, bytes, dateTime } from '@/lib/format'
+import { ago, bytes, clock, dateTime } from '@/lib/format'
+import { episodeCode, tmdbImage } from '@/lib/media'
+import { usePlayer } from '@/lib/player'
 import { cn } from '@/lib/utils'
 
-// Storage as the server's files (docs/dashboard-plan.md §6, step 6): every
-// place Playpex keeps media (the download folder, the library's folders) one
-// level at a time, what each file is to Playpex, its actions (play, open it in
-// the Library, its download, delete), the disk under the place and its largest
-// folders. The URL keeps the place, the folder and the search (?place=&path=&q=).
-// Folder settings stay on the Library page; Storage is files and space.
+// A place of the Library as the server's files (docs/dashboard-plan.md §6):
+// one level at a time, each file with what it is to Playpex (its title, its
+// poster, its quality and length; a folder holding one title shows it too),
+// its actions (play, its details and match, its download, delete), the disk
+// under the place and its largest folders.
 
-type Place = Schemas['StoragePlaces']['places'][number]
+export type Place = Schemas['StoragePlaces']['places'][number]
 type Entry = Schemas['StorageEntry']
 
-const KIND_ICON: Record<Place['kind'], typeof Folder> = {
-  downloads: Download,
-  movies: Clapperboard,
-  shows: Tv,
-  mixed: Folder,
-  other: Folder,
-}
-
 const WHAT_TONE: Record<string, string> = {
-  matched: 'text-foreground',
+  matched: 'text-muted-foreground',
   unmatched: 'text-warning',
   ignored: 'text-muted-foreground',
   missing: 'text-destructive',
@@ -69,6 +59,9 @@ const WHAT_TONE: Record<string, string> = {
   other: 'text-muted-foreground',
 }
 
+const VIDEO = /\.(mkv|mp4|m4v|avi|mov|webm|ts|m2ts|wmv|mpg|mpeg)$/i
+const SUBTITLE = /\.(srt|ass|ssa|vtt|sub|idx|sup)$/i
+
 function copy(text: string) {
   navigator.clipboard.writeText(text).then(
     () => toast.success('Path copied'),
@@ -76,116 +69,29 @@ function copy(text: string) {
   )
 }
 
-export function StoragePage() {
-  const [params, setParams] = useSearchParams()
-  const places = useQuery({
-    queryKey: ['storage-places'],
-    queryFn: () => unwrap(api.GET('/admin/storage/places')),
-    // sizes arrive once a place is measured
-    refetchInterval: (q) => (q.state.data?.places.some((p) => p.measuring) ? 2000 : 30_000),
-  })
-  const list = places.data?.places ?? []
-  const current = list.find((p) => p.id === params.get('place')) ?? list.find((p) => p.status === 'online') ?? null
-  const path = params.get('path') ?? ''
-  const go = (place: string, to = '', q: string | null = null) =>
-    setParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('place', place)
-      if (to) next.set('path', to)
-      else next.delete('path')
-      if (q) next.set('q', q)
-      else next.delete('q')
-      return next
-    })
-
-  if (places.isPending) return <Loading />
-  if (places.error) return <QueryError error={places.error} />
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-auto text-xl font-semibold tracking-tight">Storage</h1>
-        <Button variant="outline" asChild>
-          <Link to="/library">Library folders</Link>
-        </Button>
-        <CleanUp />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
-        {/* places: a rail on desktop, a select on phones */}
-        <nav aria-label="Places" className="hidden flex-col gap-1 md:flex">
-          <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">This server</p>
-          {list.map((p) => (
-            <PlaceItem key={p.id} place={p} active={current?.id === p.id} onClick={() => go(p.id)} />
-          ))}
-        </nav>
-        <div className="md:hidden">
-          <Select value={current?.id ?? ''} onValueChange={(v) => go(v)}>
-            <SelectTrigger className="w-full" aria-label="Place">
-              <SelectValue placeholder="Choose a place" />
-            </SelectTrigger>
-            <SelectContent>
-              {list.map((p) => (
-                <SelectItem key={p.id} value={p.id} disabled={p.status === 'offline'}>
-                  {p.name} {p.bytes !== null ? `· ${bytes(p.bytes)}` : ''} {p.status === 'offline' ? '(offline)' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {current ? (
-          current.status === 'offline' ? (
-            <Empty icon={<HardDrive />} title={`${current.name} is offline`}>
-              <span className="font-mono text-xs break-all">{current.root}</span> isn’t there: a drive unplugged or a share not mounted. Its files stay in
-              the library while it’s away.
-            </Empty>
-          ) : (
-            <Browser key={current.id} place={current} path={path} q={params.get('q') ?? ''} onGo={(to, q) => go(current.id, to, q)} />
-          )
-        ) : (
-          <Empty icon={<HardDrive />} title="No places">
-            Add a library folder, or download something: its folder shows here.
-          </Empty>
-        )}
-      </div>
-    </div>
-  )
+/** "Heat (1995)" / "Breaking Bad · S02E04 · Down" / "Breaking Bad (2008) · 12 episodes" */
+function mediaLine(m: NonNullable<Entry['media']>): string {
+  const name = m.title ?? `TMDB ${m.tmdbId}`
+  if (m.season !== null && m.episode !== null) return [name, episodeCode(m.season, m.episode), m.episodeTitle].filter(Boolean).join(' · ')
+  return `${name}${m.year ? ` (${m.year})` : ''}${m.episodes ? ` · ${m.episodes} ${m.episodes === 1 ? 'episode' : 'episodes'}` : ''}`
 }
 
-function PlaceItem({ place, active, onClick }: { place: Place; active: boolean; onClick: () => void }) {
-  const Icon = KIND_ICON[place.kind]
-  const used = place.disk ? 1 - place.disk.free / place.disk.total : null
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'true' : undefined}
-      className={cn(
-        'group flex flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted',
-        active && 'bg-muted shadow-[inset_2px_0_0_var(--primary)]',
-      )}
-    >
-      <span className="flex items-center gap-2 text-sm">
-        <Icon className={cn('size-4 shrink-0', active ? 'text-foreground' : 'text-muted-foreground')} />
-        <span className={cn('min-w-0 flex-1 truncate', active ? 'font-medium' : 'text-muted-foreground group-hover:text-foreground')}>{place.name}</span>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {place.status === 'offline' ? 'offline' : place.measuring ? 'measuring…' : bytes(place.bytes)}
-        </span>
-      </span>
-      {used !== null && place.status === 'online' && (
-        <span className="flex items-center gap-2 pl-6" title={`${bytes(place.disk!.free)} free of ${bytes(place.disk!.total)}`}>
-          <span className="h-1 flex-1 overflow-hidden rounded-full bg-(--strip-track)">
-            <span className={cn('block h-full rounded-full', used > 0.9 ? 'bg-destructive' : 'bg-muted-foreground/50')} style={{ width: `${used * 100}%` }} />
-          </span>
-          <span className="text-[11px] text-muted-foreground tabular-nums">{bytes(place.disk!.free)} free</span>
-        </span>
-      )}
-    </button>
-  )
-}
-
-function Browser({ place, path, q, onGo }: { place: Place; path: string; q: string; onGo: (path: string, q?: string | null) => void }) {
+export function PlaceBrowser({
+  place,
+  path,
+  q,
+  onGo,
+  onOpenFile,
+  header,
+}: {
+  place: Place
+  path: string
+  q: string
+  onGo: (path: string, q?: string | null) => void
+  onOpenFile: (fileId: string) => void
+  /** the place's own line: its library folder's facts and actions */
+  header?: ReactNode
+}) {
   const client = useQueryClient()
   const navigate = useNavigate()
   const player = usePlayer()
@@ -202,28 +108,34 @@ function Browser({ place, path, q, onGo }: { place: Place; path: string; q: stri
     mutationFn: (e: Entry) => unwrap(api.DELETE('/admin/storage/entries', { body: { place: place.id, path: e.path } })),
     onSuccess: (r, e) => {
       toast.success(`Deleted ${e.name}`, { description: `${bytes(r.freedBytes)} freed` })
-      client.invalidateQueries({ queryKey: ['storage-browse'] })
-      client.invalidateQueries({ queryKey: ['storage-places'] })
-      client.invalidateQueries({ queryKey: ['downloads'] })
-      client.invalidateQueries({ queryKey: ['library'] })
+      for (const key of ['storage-browse', 'storage-places', 'downloads', 'library', 'library-home', 'library-files']) client.invalidateQueries({ queryKey: [key] })
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
   const crumbs = useMemo(() => (path ? path.split('/') : []), [path])
   const full = (rel: string) => (rel ? `${place.root}/${rel}` : place.root)
+  const dirOf = (rel: string) => (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '')
+  const play = (e: Entry) =>
+    player.play({ ref: e.ref!, title: e.media ? mediaLine(e.media) : e.name, detail: place.name, place: place.id, dir: dirOf(e.path) })
+
+  const open = (e: Entry) => {
+    if (e.type === 'folder') onGo(e.path)
+    else if (e.fileId) onOpenFile(e.fileId)
+    else if (e.ref) play(e)
+  }
 
   const actions = (e: Entry): ReactNode[] => {
     const items: ReactNode[] = []
     if (e.ref)
       items.push(
-        <DropdownMenuItem key="play" onSelect={() => player.play({ ref: e.ref!, title: e.name, detail: place.name })}>
-          <Play /> Play here
+        <DropdownMenuItem key="play" onSelect={() => play(e)}>
+          <Play /> Play
         </DropdownMenuItem>,
       )
     if (e.fileId)
       items.push(
-        <DropdownMenuItem key="library" onSelect={() => navigate(`/library?file=${e.fileId}`)}>
-          <Wand2 /> {e.what?.kind === 'unmatched' ? 'Match in the Library' : 'Open in the Library'}
+        <DropdownMenuItem key="details" onSelect={() => onOpenFile(e.fileId!)}>
+          <Info /> {e.what?.kind === 'unmatched' ? 'Match…' : 'Details and match'}
         </DropdownMenuItem>,
       )
     if (e.download)
@@ -255,6 +167,7 @@ function Browser({ place, path, q, onGo }: { place: Place; path: string; q: stri
   const data = listing.data
   return (
     <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
+      {header}
       {/* where: the place and its folders, a search, the order */}
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
         <nav aria-label="Folder" className="flex min-w-0 flex-1 items-center gap-0.5 text-sm">
@@ -333,30 +246,28 @@ function Browser({ place, path, q, onGo }: { place: Place; path: string; q: stri
             <thead className="text-xs text-muted-foreground">
               <tr className="[&>th]:border-b [&>th]:px-2 [&>th]:py-2 [&>th]:font-medium [&>th]:whitespace-nowrap">
                 <th className="pl-3 text-left">Name</th>
-                <th className="text-right">Size</th>
                 <th className="hidden text-left md:table-cell">What it is</th>
+                <th className="hidden text-right sm:table-cell">Length</th>
+                <th className="text-right">Size</th>
                 <th className="hidden text-right lg:table-cell">Modified</th>
-                <th className="w-10" />
+                <th className="w-20" />
               </tr>
             </thead>
             <tbody>
               {data.parent !== null && !q && (
                 <tr className="cursor-pointer hover:bg-muted/50 [&>td]:border-b" onClick={() => onGo(data.parent ?? '')}>
-                  <td className="py-1.5 pl-3 text-muted-foreground" colSpan={5}>
+                  <td className="py-1.5 pl-3 text-muted-foreground" colSpan={6}>
                     <span className="flex items-center gap-2">
-                      <Folder className="size-4" /> ..
+                      <span className="flex w-7 justify-center">
+                        <Folder className="size-4" />
+                      </span>
+                      ..
                     </span>
                   </td>
                 </tr>
               )}
               {data.entries.map((e) => (
-                <EntryRow
-                  key={e.path}
-                  entry={e}
-                  showPath={!!q}
-                  onOpen={() => (e.type === 'folder' ? onGo(e.path) : e.ref ? player.play({ ref: e.ref, title: e.name, detail: place.name }) : undefined)}
-                  actions={actions(e)}
-                />
+                <EntryRow key={e.path} entry={e} showPath={!!q} onOpen={() => open(e)} onPlay={e.ref ? () => play(e) : undefined} actions={actions(e)} />
               ))}
             </tbody>
           </table>
@@ -395,37 +306,82 @@ function Browser({ place, path, q, onGo }: { place: Place; path: string; q: stri
   )
 }
 
-const VIDEO = /\.(mkv|mp4|m4v|avi|mov|webm|ts|m2ts|wmv|mpg|mpeg)$/i
-const SUBTITLE = /\.(srt|ass|ssa|vtt|sub|idx|sup)$/i
-
-function EntryRow({ entry: e, showPath, onOpen, actions }: { entry: Entry; showPath: boolean; onOpen: () => void; actions: ReactNode[] }) {
+// A row's picture: a poster when it is (or holds) one title, else what kind of entry it is
+function Thumb({ entry: e }: { entry: Entry }) {
+  const poster = tmdbImage(e.media?.posterPath, 'w92')
+  if (poster)
+    return <img src={poster} alt="" loading="lazy" className="aspect-2/3 w-7 shrink-0 rounded-[3px] bg-muted object-cover ring-1 ring-border" />
   const Icon = e.type === 'folder' ? Folder : VIDEO.test(e.name) ? FileVideo : SUBTITLE.test(e.name) ? Subtitles : FileIcon
-  const clickable = e.type === 'folder' || !!e.ref
+  return (
+    <span className="flex w-7 shrink-0 justify-center">
+      <Icon className={cn('size-4', e.type === 'folder' ? 'text-primary' : 'text-muted-foreground')} />
+    </span>
+  )
+}
+
+function EntryRow({
+  entry: e,
+  showPath,
+  onOpen,
+  onPlay,
+  actions,
+}: {
+  entry: Entry
+  showPath: boolean
+  onOpen: () => void
+  onPlay?: () => void
+  actions: ReactNode[]
+}) {
+  const clickable = e.type === 'folder' || !!e.ref || !!e.fileId
+  // a second line: the title it is, or how many a folder holds
+  const sub = e.media
+    ? mediaLine(e.media)
+    : e.type === 'folder' && e.titles
+      ? `${e.titles} titles`
+      : e.what && e.what.kind !== 'matched'
+        ? e.what.text
+        : null
   return (
     <tr
       className={cn('group/row hover:bg-muted/50 [&>td]:border-b', clickable && 'cursor-pointer')}
       onClick={clickable ? onOpen : undefined}
       onKeyDown={(ev) => {
-        if (clickable && (ev.key === 'Enter' || ev.key === ' ')) {
+        if (clickable && ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ')) {
           ev.preventDefault()
           onOpen()
         }
       }}
       tabIndex={clickable ? 0 : undefined}
     >
-      <td className="max-w-0 py-1.5 pl-3 pr-2 [width:100%]">
+      <td className="max-w-0 py-1.5 pr-2 pl-3 [width:100%]">
         <div className="flex min-w-0 items-center gap-2">
-          <Icon className={cn('size-4 shrink-0', e.type === 'folder' ? 'text-primary' : 'text-muted-foreground')} />
+          <Thumb entry={e} />
           <div className="min-w-0">
             <div className="truncate" title={e.name}>
               {e.name}
             </div>
             {showPath && <div className="truncate text-xs text-muted-foreground">{e.path.includes('/') ? e.path.slice(0, e.path.lastIndexOf('/')) : '/'}</div>}
-            {e.what && <div className={cn('truncate text-xs md:hidden', WHAT_TONE[e.what.kind])}>{e.what.text}</div>}
+            {sub && <div className={cn('truncate text-xs md:hidden', e.what ? WHAT_TONE[e.what.kind] : 'text-muted-foreground')}>{sub}</div>}
           </div>
-          {e.type === 'file' && e.ref && <Play className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-0 group-hover/row:opacity-100" aria-hidden />}
         </div>
       </td>
+      <td className="hidden max-w-72 min-w-40 px-2 whitespace-nowrap md:table-cell">
+        {e.media ? (
+          <span className="block truncate" title={mediaLine(e.media)}>
+            {mediaLine(e.media)}
+            {e.quality && <span className="ml-1.5 text-xs text-muted-foreground">{e.quality}</span>}
+          </span>
+        ) : e.type === 'folder' && e.titles ? (
+          <span className="text-muted-foreground">{e.titles} titles</span>
+        ) : e.what ? (
+          <span className={cn('block truncate', WHAT_TONE[e.what.kind])} title={e.what.text}>
+            {e.what.text}
+          </span>
+        ) : e.download ? (
+          <span className="block truncate text-muted-foreground">{e.download.active ? 'A download, running' : 'A download'}</span>
+        ) : null}
+      </td>
+      <td className="hidden px-2 text-right whitespace-nowrap text-muted-foreground sm:table-cell">{e.duration ? clock(e.duration) : ''}</td>
       <td className="px-2 text-right whitespace-nowrap tabular-nums">
         {e.bytes === null ? <span className="text-xs text-muted-foreground">measuring…</span> : bytes(e.bytes)}
         {e.type === 'folder' && e.items !== null && (
@@ -434,20 +390,15 @@ function EntryRow({ entry: e, showPath, onOpen, actions }: { entry: Entry; showP
           </div>
         )}
       </td>
-      <td className="hidden max-w-64 px-2 md:table-cell">
-        {e.what ? (
-          <span className={cn('block truncate', WHAT_TONE[e.what.kind])} title={e.what.text}>
-            {e.what.kind === 'matched' && <span className="mr-1 text-up">✓</span>}
-            {e.what.text}
-          </span>
-        ) : e.download ? (
-          <span className="text-muted-foreground">{e.download.active ? 'A download, running' : 'A download'}</span>
-        ) : null}
-      </td>
       <td className="hidden px-2 text-right whitespace-nowrap text-muted-foreground lg:table-cell" title={dateTime(e.modifiedAt)}>
         {ago(e.modifiedAt)}
       </td>
-      <td className="pr-2 text-right" onClick={(ev) => ev.stopPropagation()}>
+      <td className="pr-2 text-right whitespace-nowrap" onClick={(ev) => ev.stopPropagation()}>
+        {onPlay && (
+          <Button variant="ghost" size="icon-sm" aria-label={`Play ${e.name}`} title="Play" className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100" onClick={onPlay}>
+            <Play />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${e.name}`} className="opacity-60 group-hover/row:opacity-100 aria-expanded:opacity-100">
@@ -544,7 +495,7 @@ function Largest({ place, onGo }: { place: Place; onGo: (path: string) => void }
 }
 
 // Today's "Clear": the download folder's entries no running torrent uses
-function CleanUp() {
+export function CleanUp() {
   const client = useQueryClient()
   const storage = useQuery({ queryKey: ['storage'], queryFn: () => unwrap(api.GET('/admin/storage')), refetchInterval: 30_000 })
   const clear = useMutation({

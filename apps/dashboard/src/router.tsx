@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter, Navigate, useLocation } from 'react-router'
 import { Spinner } from '@/components/common'
 import { AppLayout, RequireAdmin } from '@/components/layout'
 import { AboutPage } from '@/pages/about'
@@ -11,11 +11,12 @@ import { OverviewPage } from '@/pages/overview'
 import { ProfilesPage } from '@/pages/profiles'
 import { SettingsPage } from '@/pages/settings'
 import { SetupPage } from '@/pages/setup'
-import { StoragePage } from '@/pages/storage'
 import { DownloadsPage } from '@/pages/downloads'
+import { SearchPage } from '@/pages/search'
 import { LibraryPage } from '@/pages/library'
 import { PluginPage } from '@/pages/plugin'
 import { PluginsPage } from '@/pages/plugins'
+import { WatchPage } from '@/pages/watch'
 
 // Paths are served by the server's SPA fallback (lib/api.js): any GET without
 // a dot outside /api answers index.html. /link is pairing's verification_uri.
@@ -23,6 +24,12 @@ import { PluginsPage } from '@/pages/plugins'
 // loaded on demand (Markdown renderer, API reference) so the admin pages don't
 // carry it.
 const docs = () => import('@/pages/docs')
+
+// Storage became the Library's places (?place=&path=&q= kept)
+function StorageRedirect() {
+  const location = useLocation()
+  return <Navigate to={`/library${location.search}`} replace />
+}
 
 export const router = createBrowserRouter([
   { path: '/setup', element: <SetupPage /> },
@@ -41,6 +48,15 @@ export const router = createBrowserRouter([
       { path: ':page', lazy: async () => ({ Component: (await docs()).DocPage }) },
     ],
   },
+  // the player: a page of its own, the whole window
+  {
+    path: '/watch/:ref',
+    element: (
+      <RequireAdmin>
+        <WatchPage />
+      </RequireAdmin>
+    ),
+  },
   {
     element: (
       <RequireAdmin>
@@ -54,8 +70,9 @@ export const router = createBrowserRouter([
       { path: 'link', element: <LinkPage /> },
       { path: 'logs', element: <LogsPage /> },
       { path: 'downloads', element: <DownloadsPage /> },
+      { path: 'search', element: <SearchPage /> },
       { path: 'library', element: <LibraryPage /> },
-      { path: 'storage', element: <StoragePage /> },
+      { path: 'storage', element: <StorageRedirect /> },
       { path: 'plugins', element: <PluginsPage /> },
       { path: 'plugins/:pluginId', element: <PluginPage /> },
       { path: 'settings', element: <SettingsPage /> },

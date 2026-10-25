@@ -1,0 +1,34 @@
+- generic [ref=f6e2]:
+  - generic [ref=f6e3]:
+    - complementary [ref=f6e4]:
+      - generic [ref=f6e6]:
+        - generic [ref=f6e7]: Playpex
+        - generic [ref=f6e8]: Media Server
+      - navigation [ref=f6e10]:
+        - link "Overview" [ref=f6e11] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=f6e18] [cursor=pointer]:
+          - /url: /activity
+        - link "Devices" [ref=f6e22] [cursor=pointer]:
+          - /url: /devices
+        - link "Library" [ref=f6e27] [cursor=pointer]:
+          - /url: /library
+        - link "Downloads" [ref=f6e34] [cursor=pointer]:
+          - /url: /downloads
+        - link "Search" [ref=f6e39] [cursor=pointer]:
+          - /url: /search
+        - link "Plugins" [ref=f6e44] [cursor=pointer]:
+          - /url: /plugins
+        - link "Logs" [ref=f6e48] [cursor=pointer]:
+          - /url: /logs
+        - link "Settings" [ref=f6e53] [cursor=pointer]:
+          - /url: /settings
+        - link "Profiles" [ref=f6e58] [cursor=pointer]:
+          - /url: /profiles
+        - link "About" [ref=f6e65] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=f6e69]:
+        - generic [ref=f6e72]: tester
+        - button "Sign out" [ref=f6e73]
+    - main [ref=f6e74]
+  - region "Notifications alt+T"

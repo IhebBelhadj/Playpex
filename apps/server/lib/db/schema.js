@@ -214,6 +214,33 @@ var downloads = sqliteTable('downloads', {
   ];
 });
 
+// ── direct downloads (lib/downloads/direct.js, docs/search-plan.md decision C) ─
+// Files fetched over HTTP (not torrents): a link the admin gave (`by` links) or
+// a plugin's source (`by` its id: fetched as the plugin, with its headers).
+var DIRECT_STATES = ['queued', 'downloading', 'paused', 'completed', 'error'],
+  DIRECT_KINDS = ['file', 'hls'];
+
+var directDownloads = sqliteTable('direct_downloads', {
+  id: text('id').primaryKey(),                     // UUID
+  name: text('name').notNull(),                    // its file name in save_dir
+  kind: text('kind', { enum: DIRECT_KINDS }).notNull(),
+  state: text('state', { enum: DIRECT_STATES }).notNull(),
+  url: text('url').notNull(),
+  headers: text('headers', { mode: 'json' }),      // a plugin source's (a token): never to a client
+  by: text('by').notNull(),                        // 'links' or a plugin id
+  saveDir: text('save_dir').notNull(),
+  sizeBytes: integer('size_bytes'),                // null: unknown
+  doneBytes: integer('done_bytes').notNull().default(0),
+  error: text('error'),
+  addedAt: timestamp('added_at').notNull(),
+  completedAt: timestamp('completed_at')
+}, function (table) {
+  return [
+    check('direct_downloads_state_check', sql`${table.state} IN ('queued', 'downloading', 'paused', 'completed', 'error')`),
+    check('direct_downloads_kind_check', sql`${table.kind} IN ('file', 'hls')`)
+  ];
+});
+
 // ── media library (lib/media, docs/media-server-plan.md §5) ─────────────────
 // Folders of video files the admin added, the files found in them, and what
 // each file is (a movie or an episode). Files are addressed by their id (media
@@ -519,6 +546,8 @@ module.exports = {
   profileSettings: profileSettings,
   deviceSettings: deviceSettings,
   downloads: downloads,
+  DIRECT_STATES: DIRECT_STATES,
+  directDownloads: directDownloads,
   libraryFolders: libraryFolders,
   mediaItems: mediaItems,
   mediaFiles: mediaFiles,

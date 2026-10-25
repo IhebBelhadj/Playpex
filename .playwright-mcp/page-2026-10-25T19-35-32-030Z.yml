@@ -1,0 +1,24 @@
+- generic [active]:
+  - generic:
+    - generic [ref=f8e7]:
+      - generic [ref=f8e9]:
+        - button "Back" [ref=f8e10]
+        - generic [ref=f8e11]:
+          - heading "Night of the Living Dead" [level=1] [ref=f8e12]
+          - paragraph [ref=f8e13]: Night.mp4
+      - generic [ref=f8e14]:
+        - slider "Position" [ref=f8e15] [cursor=pointer]
+        - generic [ref=f8e17]:
+          - button "Play" [ref=f8e18]
+          - button "Back 10 seconds" [ref=f8e19]
+          - button "Forward 10 seconds" [ref=f8e20]
+          - button "Mute" [ref=f8e21]
+          - slider "Volume" [ref=f8e22]: "1"
+          - generic [ref=f8e23]:
+            - text: 0:00
+            - generic [ref=f8e24]: / —
+          - button "Subtitles" [ref=f8e25]
+          - button "Sound, speed and who’s watching" [ref=f8e26]
+          - button "Picture in picture" [ref=f8e27]
+          - button "Full screen" [ref=f8e28]
+    - region "Notifications alt+T"

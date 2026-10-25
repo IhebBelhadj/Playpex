@@ -294,6 +294,19 @@ router.delete('/engines/:id', function (req, res) {
 
 // body: { port }. Whether the server could listen on it right now (its own
 // current port counts as free).
+// What a pasted link is, and what a page links to (lib/links/inspect.js, docs/search-plan.md §4)
+router.post('/links/inspect', function (req, res) {
+  var url = req.body && typeof req.body.url === 'string' ? req.body.url.slice(0, 4096) : '';
+  if (!url.trim()) {
+    return errors.fail(res, 'INVALID', 'url: a link');
+  }
+  require('../links/inspect').inspect(url).then(function (result) {
+    res.json(result);
+  }).catch(function (err) {
+    errors.failed(res, err);
+  });
+});
+
 router.post('/settings/check-port', function (req, res) {
   var port = req.body && req.body.port, problem = settings.validatePort(port),
     current = require('../../index').info();
@@ -383,6 +396,15 @@ router.delete('/storage/entries', function (req, res) {
 
 router.get('/storage/largest', function (req, res) {
   answer(res, storageBrowser.largest(req.query.place));
+});
+
+// ?place=&path= → a subtitle file there as WebVTT (the dashboard's player adds it)
+router.get('/storage/subtitle', function (req, res) {
+  storageBrowser.subtitle({ place: req.query.place, path: req.query.path }).then(function (vtt) {
+    res.type('text/vtt').send(vtt);
+  }, function (err) {
+    answer(res, Promise.reject(err));
+  });
 });
 
 router.post('/storage/check', function (req, res) {

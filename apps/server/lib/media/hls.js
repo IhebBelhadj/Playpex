@@ -39,6 +39,7 @@ var crypto = require('crypto'),
   spawn = require('child_process').spawn,
   http = require('../plugins/http'),
   refs = require('./refs'),
+  protocol = require('@playpex/protocol'),
   settings = require('../settings'),
   ffmpeg = require('../ffmpeg'),
   log = require('../logger').child('plugins');
@@ -114,6 +115,8 @@ function register(plugin, source, options) {
       // a live playlist: said by the source, else learnt from the playlist (no #EXT-X-ENDLIST)
       live: source.kind === 'live' ? true : source.live === undefined ? null : !!source.live,
       pluginId: plugin.id,
+      // the core's own fetches (a link the admin gave, lib/links): no plugin to look up
+      principal: plugin.core ? plugin : null,
       url: source.url,
       headers: source.headers || {},
       label: source.label,
@@ -129,6 +132,9 @@ function register(plugin, source, options) {
 
 // The plugin its parts are fetched as: an open entry's may come from any public host
 function pluginOf(entry) {
+  if (entry.principal) {
+    return entry.principal;
+  }
   var plugin = require('../plugins').get(entry.pluginId);
   if (!plugin || plugin.state !== 'enabled') {
     return null;
@@ -199,10 +205,11 @@ function untoken(entry, token) {
 
 /**
  * A playlist with every URI rewritten to `prefix + token` (absolute or
- * relative to `base`, the URL it was fetched from after redirects).
+ * relative to `base`, the URL it was fetched from after redirects), then
+ * `suffix` (the server's own ffmpeg: its query, which relative URIs lose).
  * Answers { text, master, live }.
  */
-function rewrite(entry, text, base, prefix) {
+function rewrite(entry, text, base, prefix, suffix) {
   var lines = text.replace(/^﻿/, '').split(/\r?\n/),
     master = lines.some(function (l) { return /^#EXT-X-STREAM-INF/.test(l); }),
     ended = lines.some(function (l) { return /^#EXT-X-ENDLIST/.test(l.trim()); });
@@ -218,7 +225,7 @@ function rewrite(entry, text, base, prefix) {
       return null;
     }
     url.hash = '';
-    return prefix + tokenOf(entry, type, url.toString()) + '/' + named(url);
+    return prefix + tokenOf(entry, type, url.toString()) + '/' + named(url) + (suffix || '');
   }
 
   // the target's file name after its token: r/<token>/seg1.ts
@@ -339,7 +346,10 @@ function playlist(req, res, m, token, deviceId) {
         throw failure('UPSTREAM', 'not an HLS playlist');
       }
       // index.m3u8's parts are r/<token>/<name>; a part's, its siblings (../<token>/<name>)
-      var done = rewrite(entry, text, r.url, token == null ? 'r/' : '../');
+      // ffmpeg reading it for the server (a direct download): its token and device on every part
+      var internal = req.query.internal ? '?' + protocol.DEVICE_PARAM + '=' + encodeURIComponent(deviceId) +
+        '&internal=' + encodeURIComponent(String(req.query.internal)) : '';
+      var done = rewrite(entry, text, r.url, token == null ? 'r/' : '../', internal);
       if (done.live && entry.live !== true) {
         entry.live = true;
         if (!admit(entry, deviceId)) {
@@ -484,8 +494,22 @@ function forget(pluginId) {
   });
 }
 
+/**
+ * What an h_ ref fetches, for a direct download (lib/downloads/direct.js):
+ * { url, headers, label, name, live, by: 'links' | the plugin's id }, or null
+ */
+function source(ref) {
+  var entry = entryOf(ref);
+  if (!entry || entry.format !== 'hls') {
+    return null;
+  }
+  return { url: entry.url, headers: entry.headers, label: entry.label, name: entry.name, size: null, live: entry.live === true,
+    by: entry.principal ? entry.principal.id : entry.pluginId };
+}
+
 module.exports = {
   register: register,
+  source: source,
   media: media,
   playlist: playlist,
   live: live,

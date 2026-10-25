@@ -8,6 +8,7 @@ var _ = require('lodash'),
   youtube = require('./youtube'),
   mediaFiles = require('./media/files'),
   releases = require('./releases'),
+  searchSources = require('./search/sources'),
   imdb = require('./imdb'),
   subtitles = require('./subtitles'),
   fs = require('fs'),
@@ -303,6 +304,47 @@ function findDownload(req, res, next) {
   findTorrent(req, res, next);
 }
 
+// Files downloaded over HTTP (lib/downloads/direct.js, docs/search-plan.md decision C), the admin's;
+// before /downloads/:infoHash, which would take "direct" for a hash
+var direct = require('./downloads/direct');
+
+function directAction(work) {
+  return function (req, res) {
+    Promise.resolve().then(function () { return work(req); }).then(function (answer) {
+      if (answer === undefined) {
+        return res.status(204).end();
+      }
+      res.json(answer);
+    }).catch(function (err) {
+      errors.failed(res, err);
+    });
+  };
+}
+
+v1.get('/downloads/direct', authHttp.requireAdmin, directAction(function () {
+  return direct.list();
+}));
+
+v1.post('/downloads/direct', authHttp.requireAdmin, directAction(function (req) {
+  var body = req.body || {};
+  if (typeof body.ref !== 'string') {
+    throw Object.assign(new Error('ref: a media ref (r_… or h_…)'), { code: 'INVALID' });
+  }
+  return direct.add({ ref: body.ref, name: typeof body.name === 'string' ? body.name : null, paused: body.paused === true });
+}));
+
+v1.delete('/downloads/direct/:id', authHttp.requireAdmin, directAction(function (req) {
+  return direct.remove(req.params.id, { files: req.query.files === '1' }).then(function () { return undefined; });
+}));
+
+v1.post('/downloads/direct/:id/start', authHttp.requireAdmin, directAction(function (req) {
+  return direct.startOne(req.params.id);
+}));
+
+v1.post('/downloads/direct/:id/pause', authHttp.requireAdmin, directAction(function (req) {
+  return direct.pause(req.params.id);
+}));
+
 v1.get('/downloads/:infoHash', findDownload, function (req, res) {
   res.json(Object.assign({}, torrents.get(req.infoHash), { files: torrents.files(req.infoHash) }));
 });
@@ -533,6 +575,27 @@ v1.get('/releases/browse', function (req, res) {
     });
 });
 
+// Streams and files by keywords: plugins with sources.search (lib/search/sources.js, docs/search-plan.md §3)
+// GET /search/providers → [{ id, name, kinds }]
+// GET /search/sources?provider=&q=&kind=movie|show|any&page= → { provider, page, hasMore, items }
+
+v1.get('/search/providers', function (req, res) {
+  res.json(searchSources.providers());
+});
+
+v1.get('/search/sources', function (req, res) {
+  searchSources.search({
+    provider: String(req.query.provider || ''),
+    q: String(req.query.q || '').slice(0, 100),
+    kind: String(req.query.kind || 'any'),
+    page: req.query.page
+  }).then(function (result) {
+    res.json(result);
+  }).catch(function (err) {
+    errors.failed(res, err);
+  });
+});
+
 //Subtitles (see lib/subtitles: several providers, chosen by the player)
 
 v1.get('/subtitles/providers', function (req, res) {
@@ -572,6 +635,19 @@ v1.get('/subtitles/file', function (req, res) {
       log.warn('subtitles file: ' + error.message);
       fail(res, 'UPSTREAM', error.message);
     });
+});
+
+// A subtitle file the client has (SRT, ASS / SSA, WebVTT; ≤ 10 MB) in the body
+// → WebVTT for <track>; ?lang= helps with old code pages
+v1.post('/subtitles/convert', express.raw({ type: function () { return true; }, limit: '10mb' }), function (req, res) {
+  if (!Buffer.isBuffer(req.body) || !req.body.length) {
+    return fail(res, 'INVALID', 'Send the subtitle file as the request body');
+  }
+  if (req.body.indexOf(0) !== -1) {
+    return fail(res, 'NOT_SUPPORTED', 'This isn\'t a text subtitle (SRT, ASS, SSA or WebVTT)');
+  }
+  res.setHeader('content-type', 'text/vtt; charset=utf-8');
+  res.send(subtitles.toVtt(req.body, typeof req.query.lang === 'string' ? req.query.lang : undefined));
 });
 
 

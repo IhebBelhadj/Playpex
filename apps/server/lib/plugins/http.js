@@ -14,7 +14,8 @@
 // the parts of a stream the admin's address gave) from any public host.
 //
 //   request(plugin, options) → Promise<{ value: { status, headers, url, body }, bytes? }>
-//     plugin: { id, permissions, anyHost? }; options: { url, method?, headers?, body?, responseType?: text|json|bytes }
+//     plugin: { id, permissions, anyHost? }; options: { url, method?, headers?, body?, responseType?: text|json|bytes,
+//     timeoutMs?: a shorter wait than the 10 s (≥ 1 s): a slow site never sinks a hook that asks several }
 //   stream(plugin, { url, headers, method, range }) → Promise<{ status, headers, body, url, abort }>
 //     an http source's bytes (./remote.js): same checks, no size cap or decompression
 //   target(plugin, url, { stream }) → { url, host, port, granted }   the checks alone (throws)
@@ -100,7 +101,9 @@ function resolve(host, literal) {
       if (bad.length) {
         return fail(failure('ADDRESS_NOT_ALLOWED', host + ' resolves to an address plugins can\'t reach (' + bad[0].address + ')'));
       }
-      ok(addresses[0]);
+      // IPv4 first, as the rest of the server (index.js: ipv4first): an IPv6 or NAT64 address listed first
+      // may not route here (every one was checked above)
+      ok(addresses.filter(function (a) { return a.family === 4; })[0] || addresses[0]);
     });
   });
 }
@@ -181,8 +184,9 @@ function bodyOf(options, bytes, headers) {
  * One HTTPS request to a checked address; resolves { req, res } when the
  * answer's headers arrive (within the time limit)
  */
-function connect(t, address, method, headers, body) {
-  var secure = t.url.protocol === 'https:';
+function connect(t, address, method, headers, body, limitMs) {
+  var secure = t.url.protocol === 'https:',
+    limit = limitMs || LIMITS.timeoutMs;
   return new Promise(function (ok, fail) {
     var done = false;
     var req = (secure ? https : plain).request({
@@ -213,9 +217,9 @@ function connect(t, address, method, headers, body) {
       req.destroy();
       if (!done) {
         done = true;
-        fail(failure('TIMEOUT', 'no answer in ' + LIMITS.timeoutMs / 1000 + ' s'));
+        fail(failure('TIMEOUT', 'no answer in ' + limit / 1000 + ' s'));
       }
-    }, LIMITS.timeoutMs);
+    }, limit);
     req.on('error', function (err) {
       if (!done) {
         done = true;
@@ -231,9 +235,10 @@ function connect(t, address, method, headers, body) {
 }
 
 /** One HTTPS exchange to a checked address; resolves { status, headers, buffer } */
-function exchange(t, address, method, headers, body) {
-  var started = Date.now();
-  return connect(t, address, method, headers, body).then(function (r) {
+function exchange(t, address, method, headers, body, limitMs) {
+  var started = Date.now(),
+    limit = limitMs || LIMITS.timeoutMs;
+  return connect(t, address, method, headers, body, limit).then(function (r) {
     var req = r.req, res = r.res;
     return new Promise(function (ok, fail) {
       var done = false;
@@ -250,8 +255,8 @@ function exchange(t, address, method, headers, body) {
       }
       var timer = setTimeout(function () {
         req.destroy();
-        finish(failure('TIMEOUT', 'no answer in ' + LIMITS.timeoutMs / 1000 + ' s'));
-      }, Math.max(0, LIMITS.timeoutMs - (Date.now() - started)));
+        finish(failure('TIMEOUT', 'no answer in ' + limit / 1000 + ' s'));
+      }, Math.max(0, limit - (Date.now() - started)));
       var encoding = String(res.headers['content-encoding'] || '').toLowerCase(),
         stream = res,
         chunks = [],
@@ -322,6 +327,9 @@ function request(plugin, options, bytes) {
     if (['text', 'json', 'bytes'].indexOf(responseType) === -1) {
       throw failure('INVALID', 'responseType must be text, json or bytes');
     }
+    if (options.timeoutMs !== undefined && !(typeof options.timeoutMs === 'number' && options.timeoutMs >= 1000)) {
+      throw failure('INVALID', 'timeoutMs: at least 1000 (ms)');
+    }
     first = target(plugin, options.url);
     headers = headersOf(options.headers);
     body = bodyOf(options, bytes, headers);
@@ -337,7 +345,7 @@ function request(plugin, options, bytes) {
       release = r;
       return resolve(t.host, t.granted);
     }).then(function (address) {
-      return exchange(t, address, hopMethod, hopHeaders, hopBody);
+      return exchange(t, address, hopMethod, hopHeaders, hopBody, Math.min(options.timeoutMs || LIMITS.timeoutMs, LIMITS.timeoutMs));
     }).then(function (res) {
       release();
       if (REDIRECTS.indexOf(res.status) !== -1 && res.headers.location) {

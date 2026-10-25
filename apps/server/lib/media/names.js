@@ -11,6 +11,8 @@
 //   matchKind(name, title, s, e)   'episode' | 'pack' | null: the strict matcher ("Breaking Brad")
 //   matches(name, titleRef)   that, for a plugin's titleRef (a movie: 'movie' | null)
 //   compare(a, b) / rank(list)     the streaming order
+//   searchWords(text)         keywords as sites read them ("Breaking.Bad" → "Breaking Bad")
+//   searchMatches(name, text) whether a release name holds every keyword, however it's spelt
 //
 // Streaming in Chromium: H.264 plays everywhere; HEVC / x265, 10-bit, XviD
 // and 4K often don't, or are too large to stream smoothly. Audio: AAC / Opus /
@@ -76,6 +78,66 @@ function normalizeTitle(text) {
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+// ── keyword search (release lists, the dashboard's Search) ─────────────────
+// Sites and release names spell titles every way: "Breaking.Bad",
+// "breaking_bad", "Breaking Bad", "Spider-Man" / "Spiderman", "Grey's" /
+// "Greys". Keywords go to the sites as plain words, and a result counts as a
+// match when every keyword is in its name at word boundaries, punctuation and
+// joined or split words aside.
+
+/** Accents off, "&" as "and", apostrophes dropped, other signs as spaces (case kept: what sites get) */
+function searchWords(text) {
+  return String(text || '').normalize('NFD').replace(/\p{M}+/gu, '')
+    .replace(/&/g, ' and ')
+    .replace(/['’`]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+// a name's words, also split where letters meet digits ("S01E05" → s 01 e 05,
+// "1080p" → 1080 p): "s01" and "1080p" still find them, "s" alone doesn't
+function nameTokens(name) {
+  return searchWords(name).toLowerCase().split(' ').reduce(function (all, word) {
+    return all.concat(word.match(/\p{L}+|\p{N}+/gu) || []);
+  }, []);
+}
+
+function searchMatches(name, text) {
+  var words = searchWords(text).toLowerCase().split(' ').filter(Boolean);
+  if (!words.length) {
+    return true;
+  }
+  var tokens = nameTokens(name), joined = tokens.join(''), bounds = { 0: true }, at = 0;
+  tokens.forEach(function (t) {
+    at += t.length;
+    bounds[at] = true;
+  });
+
+  // a keyword fits when it's a run of whole name words ("breakingbad" fits
+  // "Breaking.Bad", "spiderman" fits "Spider-Man")
+  function fits(word) {
+    for (var i = joined.indexOf(word); i !== -1; i = joined.indexOf(word, i + 1)) {
+      if (bounds[i] && bounds[i + word.length]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // each keyword, else it joined with the next ones ("spider man" fits "Spiderman")
+  for (var i = 0; i < words.length;) {
+    var j = i + 1, word = words[i];
+    while (!fits(word) && j < words.length) {
+      word += words[j++];
+    }
+    if (!fits(word)) {
+      return false;
+    }
+    i = j;
+  }
+  return true;
 }
 
 function titlePrefix(title) {
@@ -328,6 +390,8 @@ module.exports = {
   matchKind: matchKind,
   matches: matches,
   normalizeTitle: normalizeTitle,
+  searchWords: searchWords,
+  searchMatches: searchMatches,
   compare: compare,
   rank: rank,
   AUDIO_RANK: AUDIO_RANK,

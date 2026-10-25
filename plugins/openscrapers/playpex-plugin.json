@@ -1,0 +1,101 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "openscrapers",
+  "name": "OpenScrapers",
+  "description": "The sources of the Kodi add-on OpenScrapers that still work, ported: direct video files (BnW Movies; netzkino in Germany, Austria and Switzerland) and torrents (LimeTorrents, TorrentDownload, Nyaa) for Play, Search and Find releases.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Direct video files and torrents from the sites OpenScrapers read that still answer, each one switchable.",
+    "description": "A port of the Kodi add-on OpenScrapers (GPL-3.0, a4k-openproject) to a Playpex plugin. Of its 130 scrapers, the ones whose sites still answer and give something Playpex plays: direct files from BnW Movies (public-domain black-and-white films) and netzkino (free German streaming, licensed for Germany, Austria and Switzerland only: off by default), and torrents from LimeTorrents, TorrentDownload and Nyaa (anime). Sites that only link to file hosts, need an account, hide behind Cloudflare or are gone are left out.",
+    "disclaimer": "Streaming copyrighted content may be illegal where you live. Educational project. The scrapers' logic comes from OpenScrapers (GPL-3.0).",
+    "license": "GPL-3.0 (OpenScrapers)",
+    "categories": [
+      "sources",
+      "streams"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "bnwmovies.com",
+      "archive.org",
+      "*.archive.org",
+      "api.netzkino.de.simplecache.net",
+      "pmd.netzkino-seite.netzkino.de",
+      "www.limetorrents.fun",
+      "www.limetorrents.info",
+      "www.torrentdownload.info",
+      "nyaa.si"
+    ],
+    "sources": [
+      "http",
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "releases.providers",
+      "sources.search"
+    ]
+  },
+  "contributes": {
+    "releases": {
+      "kinds": [
+        "movie",
+        "show"
+      ]
+    },
+    "settings": [
+      {
+        "key": "bnwmovies",
+        "scope": "server",
+        "type": "switch",
+        "label": "BnW Movies",
+        "description": "Public-domain black-and-white films: direct MP4 files (on archive.org).",
+        "group": "Direct files",
+        "default": true
+      },
+      {
+        "key": "netzkino",
+        "scope": "server",
+        "type": "switch",
+        "label": "netzkino",
+        "description": "Free German films: direct files. Its servers only answer in Germany, Austria and Switzerland: elsewhere they play nothing.",
+        "group": "Direct files",
+        "default": false
+      },
+      {
+        "key": "limetorrents",
+        "scope": "server",
+        "type": "switch",
+        "label": "LimeTorrents",
+        "description": "Movie and TV torrents.",
+        "group": "Torrents",
+        "default": true
+      },
+      {
+        "key": "torrentdownload",
+        "scope": "server",
+        "type": "switch",
+        "label": "TorrentDownload",
+        "description": "Torrents of every kind.",
+        "group": "Torrents",
+        "default": true
+      },
+      {
+        "key": "nyaa",
+        "scope": "server",
+        "type": "switch",
+        "label": "Nyaa",
+        "description": "Anime torrents.",
+        "group": "Torrents",
+        "default": true
+      }
+    ]
+  }
+}

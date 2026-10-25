@@ -21,7 +21,7 @@ const PAGES: Record<string, string> = Object.fromEntries(
 )
 
 // Sidebar order; README is the index (/docs)
-const ORDER = ['', 'discovery', 'auth', 'catalog', 'playback', 'live', 'profiles', 'settings', 'plugins', 'events', 'errors-and-versions']
+const ORDER = ['', 'discovery', 'auth', 'catalog', 'playback', 'search', 'live', 'profiles', 'settings', 'plugins', 'events', 'errors-and-versions']
 
 function slugOf(file: string) {
   const name = file.split('/').pop()!.replace(/\.md$/, '')

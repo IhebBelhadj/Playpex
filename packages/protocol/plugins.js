@@ -29,6 +29,8 @@ var HOOKS = {
   // check: one batched call per Play (which torrents it can serve); resolve: the chosen one
   'play.resolve': { timeoutMs: 10000, checkTimeoutMs: 3000, describe: 'Plays torrents through a service (debrid)' },
   'releases.providers': { timeoutMs: 10000, describe: 'Adds release lists' },
+  // keywords → its direct links (http / hls) or torrents, for the dashboard's Search (docs/search-plan.md §3)
+  'sources.search': { timeoutMs: 15000, describe: 'Finds its streams and files by keywords' },
   'subtitles.providers': { timeoutMs: 8000, describe: 'Adds subtitles' },
   // kept for one API version: metadata.details answers `lines` too (docs/providers-plan.md §7.2)
   'metadata.title': { timeoutMs: 3000, describe: 'Adds information to title pages' },
@@ -284,12 +286,14 @@ function checkManifest(manifest, options) {
   // Sources are used by play.collect, play.resolve (a debrid answers http
   // sources), live.stream, play effects or download effects; an http source from a declared host
   if (p.sources && hooks.indexOf('play.collect') === -1 && hooks.indexOf('play.resolve') === -1 && hooks.indexOf('live.stream') === -1 &&
-    !p.play && (p.write || []).indexOf('downloads') === -1) {
-    problem('/permissions/sources', 'sources need play.collect, play.resolve, live.stream, play or write: downloads');
+    hooks.indexOf('sources.search') === -1 && !p.play && (p.write || []).indexOf('downloads') === -1) {
+    problem('/permissions/sources', 'sources need play.collect, play.resolve, live.stream, sources.search, play or write: downloads');
   }
-  if (hooks.indexOf('play.collect') !== -1 && !p.sources) {
-    problem('/permissions/hooks', 'play.collect needs permissions.sources (the kinds it returns)');
-  }
+  ['play.collect', 'sources.search'].forEach(function (hook) {
+    if (hooks.indexOf(hook) !== -1 && !p.sources) {
+      problem('/permissions/hooks', hook + ' needs permissions.sources (the kinds it returns)');
+    }
+  });
   // the hosts may also be the admin's: a url setting with grantsHost (an IPTV subscription, a self-hosted service)
   if ((p.sources || []).some(function (k) { return k !== 'magnet'; }) && !network.length && !grantingSettings(m).length) {
     problem('/permissions/sources', 'http, hls and live sources need the stream hosts in permissions.network (or a url setting with grantsHost)');

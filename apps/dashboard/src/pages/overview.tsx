@@ -230,7 +230,7 @@ function Health({ data }: { data: Overview }) {
     problems.push({ text: 'ffmpeg isn’t there: Dolby / DTS sound plays silent, and browsers can’t play MKV files.', fix: { to: '/settings/transcoding', label: 'Transcoding settings' } })
   for (const d of data.disks)
     if (d.free !== null && d.free < 5 * 1024 ** 3)
-      problems.push({ text: <>Only {bytes(d.free)} left on the disk of {DISK_LABELS[d.id]?.toLowerCase() ?? d.id}.</>, fix: d.id === 'downloads' ? { to: '/storage', label: 'Free some space' } : undefined })
+      problems.push({ text: <>Only {bytes(d.free)} left on the disk of {DISK_LABELS[d.id]?.toLowerCase() ?? d.id}.</>, fix: d.id === 'downloads' ? { to: '/library?place=downloads', label: 'Free some space' } : undefined })
   for (const p of places.data?.places ?? [])
     if (p.status === 'offline') problems.push({ text: <>The library folder {p.name} is offline ({p.root}).</>, fix: { to: '/library', label: 'Library' } })
   const failing = data.providers.filter((p) => p.lastFailure && (!p.lastSuccess || p.lastFailure > p.lastSuccess))

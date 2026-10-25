@@ -55,7 +55,7 @@ The server reads no torrent site of its own (API 2): a title's torrents come fro
 | What | Where | Notes |
 |---|---|---|
 | Titles, posters, seasons, episodes, cast, a movie's runtime | `GET /catalog/*` ([catalog](catalog.md)) | TMDB behind the server: no key in the client. A title's page (`/catalog/titles/{mediaType}/{tmdbId}`) has the `imdbId` the requests above take. `GET /movies/{imdbId}` (YTS) and `GET /shows/{imdbId}/torrents` were removed in API 2: they answer `410 GONE` |
-| "Find releases" lists (most seeded first) | `GET /releases/providers?kind=movie\|tv`, `GET /releases/browse?kind=&provider=&q=&quality=&playable=1&page=&imdb=` | one source plugin's list with filters and paging (`plugin:<id>`); `imdb` (optional) lets a source list one show. No source: `[]` and `{ provider: null, torrents: [] }` |
+| "Find releases" lists (most seeded first) | `GET /releases/providers?kind=movie\|tv`, `GET /releases/browse?kind=&provider=&q=&quality=&playable=1&page=&imdb=` | one source plugin's list with filters and paging (`plugin:<id>`); `imdb` (optional) lets a source list one show (without it, a show's keywords get the IMDb id of the show titled so, from the catalog). Keywords reach sources as plain words ("Breaking.Bad" → "Breaking Bad"); each torrent's `matches` says whether its name holds every keyword, however it's spelt (sites answer loosely: show those first). No source: `[]` and `{ provider: null, torrents: [] }` |
 | IMDb ratings | `GET /imdb/{imdbId}`, `GET /imdb/{imdbId}/episodes` | series, season means, episodes |
 
 Release fields that help you choose: `playable: false` = video a typical player can't decode (HEVC 10-bit, XviD, 4K on Chromium); `audio: 'unsupported'` = Dolby / DTS audio (see [audio](#choosing-direct-play-or-the-transcoded-stream)). These are guesses from the release name, made for a Chromium player: a client that decodes HEVC or AC-3 can ignore them.
@@ -159,6 +159,8 @@ Without ffmpeg the answer is `direct` with a note. The answer also says what the
 1. `GET /api/v1/subtitles/providers` → `[{ id, name, description, supports: {movie, episode}, enabled }]` (`enabled: false` = needs an API key on the server). Let the user choose; remember the choice on the device.
 2. `GET /api/v1/subtitles/search?provider=&imdb_id=tt…&season=&episode=&languages=en,fr` → `{ provider, subtitles: [{ provider, ref, language, languageName, name }] }`. Languages are ISO 639-1. `unsupported: true` = this provider doesn't cover that kind of title.
 3. `GET /api/v1/subtitles/file?provider=&ref=&lang=` → **WebVTT** (`text/vtt`), whatever the original format or code page. Load it as a side track (`<track>`, ExoPlayer `SubtitleConfiguration`, AVPlayer needs it muxed or rendered by you). Add `&access_token=` when your player fetches it without your headers.
+
+A subtitle file the viewer has (picked on their device): `POST /api/v1/subtitles/convert?lang=` with its bytes as the body (any content type, ≤ 10 MB) → the same WebVTT; SRT, ASS / SSA and WebVTT are read, `lang` (ISO 639-1) helps with old code pages, anything binary answers `501 NOT_SUPPORTED`.
 
 **Subtitle files next to a file on disk** (a library file: `Movie.en.srt`, `Subs/French.srt`, RARBG's `Subs/<name>/2_English.srt`): `GET /api/v1/media/{ref}/subtitles` → `{ subtitles: [{ index, language, languageName, forced, sdh }] }` (empty for a torrent's file), then `GET /api/v1/media/{ref}/subtitles/{index}` → WebVTT, like the providers' files. They need no provider and no network; offer them first.
 

@@ -2156,6 +2156,84 @@
           }
         }
       },
+      "sources.search": {
+        "description": "Keywords → its sources (docs/search-plan.md §3): the dashboard's Search asks every plugin with this hook. Each source is checked like play.collect's (a kind in permissions.sources, a host in permissions.network)",
+        "input": {
+          "type": "object",
+          "required": [
+            "query",
+            "kind",
+            "page"
+          ],
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "kind": {
+              "description": "What the searcher wants: movies, shows, or anything",
+              "enum": [
+                "movie",
+                "show",
+                "any"
+              ]
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "results",
+            "last"
+          ],
+          "properties": {
+            "results": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "$ref": "#/$defs/source"
+                  },
+                  "title": {
+                    "$ref": "#/$defs/text"
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 1870,
+                    "maximum": 2100
+                  },
+                  "season": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "episode": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "poster": {
+                    "$ref": "#/$defs/httpsUrl"
+                  }
+                }
+              }
+            },
+            "last": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
       "subtitles.providers": {
         "input": {
           "type": "object",

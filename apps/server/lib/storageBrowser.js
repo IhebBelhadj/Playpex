@@ -10,6 +10,7 @@
 //   browse({ place, path, sort, q }) → { place, path, parent, entries, total, measuring }
 //   remove({ place, path })        → { ok, freedBytes }   CONFLICT while a running torrent writes there
 //   largest(placeId)               → { folders: [{ path, bytes }] }   the 10 biggest title folders
+//   subtitle({ place, path })      → WebVTT text of a subtitle file there (the player adds it)
 //
 // Sizes never walk the disk in a request: a place is measured in the
 // background (allocated blocks: torrent files are sparse), kept 10 minutes,
@@ -213,21 +214,79 @@ function itemTitle(item) {
   return (item.title || 'Movie') + (item.year ? ' (' + item.year + ')' : '');
 }
 
-// The library's rows of the files directly in `rel` (by name), with their items
-function libraryRows(place, rel, s) {
+// The library's rows of a place's folder, each with its item: { rows: Map(relPath → { row, item }) }
+// (two queries for the whole folder, read once per listing or search)
+function libraryOf(place, s) {
   if (!place.folderId) {
-    return Promise.resolve({});
+    return Promise.resolve({ rows: new Map() });
   }
-  return s.library.files(place.folderId).then(function (rows) {
-    var here = rows.filter(function (r) { return (r.relPath.lastIndexOf('/') === -1 ? '' : r.relPath.slice(0, r.relPath.lastIndexOf('/'))) === rel; });
-    return Promise.all(here.map(function (r) {
-      return r.itemId ? s.library.item(r.itemId).catch(function () { return null; }) : null;
-    })).then(function (items) {
-      var out = {};
-      here.forEach(function (r, i) { out[r.relPath.split('/').pop()] = { row: r, item: items[i] }; });
-      return out;
-    });
+  return Promise.all([s.library.files(place.folderId), s.library.shown({ folderId: place.folderId })]).then(function (r) {
+    var items = new Map(), rows = new Map();
+    r[1].forEach(function (f) { items.set(f.id, f.item); });
+    r[0].forEach(function (row) { rows.set(row.relPath, { row: row, item: items.get(row.id) || null }); });
+    return { rows: rows };
   });
+}
+
+// The rows of the files directly in `rel`, by name
+function libraryRows(lib, rel) {
+  var out = {};
+  lib.rows.forEach(function (entry, relPath) {
+    var slash = relPath.lastIndexOf('/');
+    if ((slash === -1 ? '' : relPath.slice(0, slash)) === rel) {
+      out[relPath.slice(slash + 1)] = entry;
+    }
+  });
+  return out;
+}
+
+function quality(row) {
+  var p = row.probe;
+  if (!p || !p.height) {
+    return (row.parse && row.parse.resolution) || null;
+  }
+  return p.height >= 2000 ? '2160p' : p.height >= 1000 ? '1080p' : p.height >= 700 ? '720p' : p.height + 'p';
+}
+
+// What a matched file is, for the dashboard: its title, its episode, its artwork
+function mediaOf(item) {
+  if (!item) {
+    return null;
+  }
+  var art = item.artwork || {};
+  return {
+    mediaType: item.kind === 'episode' ? 'tv' : 'movie',
+    tmdbId: item.kind === 'episode' ? item.showTmdbId : item.tmdbId,
+    title: item.title || null,
+    year: item.year || null,
+    season: item.kind === 'episode' ? item.season : null,
+    episode: item.kind === 'episode' ? item.episode : null,
+    episodeTitle: item.kind === 'episode' ? item.episodeTitle || null : null,
+    posterPath: art.posterPath || null,
+    stillPath: art.stillPath || null
+  };
+}
+
+// A folder's titles: the matched files under it; one title → its media (a
+// movie's folder, a show's or a season's), else only how many
+function folderTitles(lib, rel) {
+  var titles = new Map(), episodes = 0, prefix = rel + '/';
+  lib.rows.forEach(function (entry, relPath) {
+    if (relPath.indexOf(prefix) !== 0 || !entry.item || entry.row.state === 'missing' || entry.row.state === 'ignored') {
+      return;
+    }
+    var m = mediaOf(entry.item), key = m.mediaType + ':' + m.tmdbId;
+    if (m.mediaType === 'tv') {
+      episodes++;
+    }
+    if (!titles.has(key)) {
+      titles.set(key, Object.assign({}, m, { season: null, episode: null, episodeTitle: null, stillPath: null }));
+    }
+  });
+  return {
+    titles: titles.size || null,
+    media: titles.size === 1 ? Object.assign(titles.values().next().value, { episodes: episodes || null }) : null
+  };
 }
 
 // The download writing `rel` of the download folder (its top-level entry)
@@ -292,13 +351,14 @@ function sorter(sort) {
   };
 }
 
-function entryOf(place, rel, dirent, st, ix, libs, download) {
+function entryOf(place, rel, dirent, st, ix, library, libs, download) {
   var child = rel ? rel + '/' + dirent.name : dirent.name, modified = st ? new Date(st.mtimeMs).toISOString() : null;
   if (dirent.isDirectory()) {
-    var dir = ix.dirs && ix.dirs.get(child);
+    var dir = ix.dirs && ix.dirs.get(child), inside = folderTitles(library, child);
     return {
       type: 'folder', name: dirent.name, path: child, bytes: dir ? dir.bytes : null,
       items: dir ? dir.files + dir.folders : null, modifiedAt: modified, what: null, ref: null, fileId: null,
+      media: inside.media, titles: inside.titles, quality: null, duration: null,
       download: download ? { infoHash: download.infoHash, active: download.active } : null
     };
   }
@@ -311,19 +371,22 @@ function entryOf(place, rel, dirent, st, ix, libs, download) {
   return {
     type: 'file', name: dirent.name, path: child, bytes: st ? st.size : null, onDisk: st ? onDisk(st) : null, items: null,
     modifiedAt: modified, what: what, ref: ref, fileId: lib ? lib.row.id : null,
+    media: lib && lib.row.state !== 'missing' && lib.row.state !== 'ignored' ? mediaOf(lib.item) : null, titles: null,
+    quality: lib ? quality(lib.row) : null,
+    duration: lib && lib.row.probe && lib.row.probe.duration ? lib.row.probe.duration : null,
     download: download ? { infoHash: download.infoHash, active: download.active } : null
   };
 }
 
 function listing(place, rel, ix, s) {
-  return Promise.all([fs.promises.readdir(path.join(place.root, rel), { withFileTypes: true }), libraryRows(place, rel, s)]).then(function (r) {
-    var dirents = r[0].filter(function (d) { return d.name[0] !== '.'; }), libs = r[1];
+  return Promise.all([fs.promises.readdir(path.join(place.root, rel), { withFileTypes: true }), libraryOf(place, s)]).then(function (r) {
+    var dirents = r[0].filter(function (d) { return d.name[0] !== '.'; }), lib = r[1], libs = libraryRows(lib, rel);
     return Promise.all(dirents.map(function (d) {
       return fs.promises.stat(path.join(place.root, rel, d.name)).catch(function () { return null; }).then(function (st) {
         if (st && st.isDirectory() && !d.isDirectory()) {
           d = { name: d.name, isDirectory: function () { return true; } };   // a symlink to a folder
         }
-        return entryOf(place, rel, d, st, ix, libs, downloadOf(place, rel ? rel + '/' + d.name : d.name));
+        return entryOf(place, rel, d, st, ix, lib, libs, downloadOf(place, rel ? rel + '/' + d.name : d.name));
       });
     }));
   });
@@ -349,17 +412,16 @@ function search(place, q, ix, s) {
       }, Promise.resolve());
     });
   }
-  return walk('').then(function () {
-    var byDir = {};
+  return Promise.all([walk(''), libraryOf(place, s)]).then(function (r) {
+    var byDir = {}, lib = r[1];
     found.forEach(function (f) { (byDir[f.rel] = byDir[f.rel] || []).push(f.dirent); });
     return Promise.all(Object.keys(byDir).map(function (rel) {
-      return libraryRows(place, rel, s).then(function (libs) {
-        return Promise.all(byDir[rel].map(function (d) {
-          return fs.promises.stat(path.join(place.root, rel, d.name)).catch(function () { return null; }).then(function (st) {
-            return entryOf(place, rel, d, st, ix, libs, downloadOf(place, rel ? rel + '/' + d.name : d.name));
-          });
-        }));
-      });
+      var libs = libraryRows(lib, rel);
+      return Promise.all(byDir[rel].map(function (d) {
+        return fs.promises.stat(path.join(place.root, rel, d.name)).catch(function () { return null; }).then(function (st) {
+          return entryOf(place, rel, d, st, ix, lib, libs, downloadOf(place, rel ? rel + '/' + d.name : d.name));
+        });
+      }));
     }));
   }).then(function (groups) {
     return [].concat.apply([], groups);
@@ -445,6 +507,35 @@ function forgetRows(place, rel) {
   });
 }
 
+// ── a subtitle file, for a player ──────────────────────────────────────────
+
+// A text subtitle file of a place (≤ 10 MB) as WebVTT: the dashboard's player
+// adds one from the server's storage
+function subtitle(query) {
+  var place;
+  return findPlace(query.place).then(function (p) {
+    place = p;
+    return inside(place, query.path);
+  }).then(function (at) {
+    if (!/\.(srt|ass|ssa|vtt)$/i.test(at.rel)) {
+      throw failure(/\.(sub|idx|sup)$/i.test(at.rel) ? 'NOT_SUPPORTED' : 'INVALID',
+        /\.(sub|idx|sup)$/i.test(at.rel) ? 'This subtitle is pictures (VobSub, PGS): it can\'t be shown yet' : 'Not a subtitle file (SRT, ASS, SSA or WebVTT)');
+    }
+    return fs.promises.stat(at.full).then(function (st) {
+      if (!st.isFile()) {
+        throw failure('INVALID', 'Not a file');
+      }
+      if (st.size > 10 * 1024 * 1024) {
+        throw failure('INVALID', 'This subtitle file is too large');
+      }
+      return fs.promises.readFile(at.full);
+    }).then(function (buffer) {
+      var lang = /\.([a-z]{2,3})(\.(forced|sdh|cc))?\.[a-z]+$/i.exec(at.rel);
+      return require('./subtitles').toVtt(buffer, lang ? lang[1] : undefined);
+    });
+  });
+}
+
 // ── largest ────────────────────────────────────────────────────────────────
 
 // The biggest "title folders": folders whose own files hold most of their
@@ -471,5 +562,6 @@ module.exports = {
   browse: browse,
   remove: remove,
   largest: largest,
+  subtitle: subtitle,
   stale: stale
 };

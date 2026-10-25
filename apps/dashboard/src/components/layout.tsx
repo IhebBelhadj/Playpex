@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, Clapperboard, Download, HardDrive, Info, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
+import { Activity, AlertTriangle, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Dot, Spinner } from '@/components/common'
-import { PlayerProvider } from '@/components/player'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,9 +34,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     return <Navigate to={next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`} replace />
   }
   return (
-    <EventsProvider enabled>
-      <PlayerProvider>{children}</PlayerProvider>
-    </EventsProvider>
+    <EventsProvider enabled>{children}</EventsProvider>
   )
 }
 
@@ -63,7 +60,7 @@ const NAV = [
   { to: '/devices', label: 'Devices', icon: MonitorSmartphone },
   { to: '/library', label: 'Library', icon: Clapperboard },
   { to: '/downloads', label: 'Downloads', icon: Download },
-  { to: '/storage', label: 'Storage', icon: HardDrive },
+  { to: '/search', label: 'Search', icon: Search },
   { to: '/plugins', label: 'Plugins', icon: Puzzle },
   { to: '/logs', label: 'Logs', icon: ScrollText },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -71,7 +68,7 @@ const NAV = [
   { to: '/about', label: 'About', icon: Info },
 ]
 
-const WIDE = ['/downloads', '/storage']
+const WIDE = ['/downloads', '/library', '/search']
 
 function Nav({ pending, onNavigate }: { pending: number; onNavigate?: () => void }) {
   return (

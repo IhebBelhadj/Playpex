@@ -135,7 +135,8 @@ module.exports = function libraryService(repositories, options) {
       });
     },
 
-    // { folderId?, state?, q?, itemId?, limit? (≤ 500, default 100), offset? } → { files, total }
+    // { folderId?, state?, q?, itemId?, title? ('movie:<tmdbId>' | 'tv:<tmdbId>': a movie's files, every
+    // episode's of a show), limit? (≤ 500, default 100), offset? } → { files, total }
     queryFiles: function (query) {
       return Promise.resolve().then(function () {
         query = query || {};
@@ -147,10 +148,15 @@ module.exports = function libraryService(repositories, options) {
         if (query.state !== undefined && FILE_STATES.indexOf(query.state) === -1) {
           throw errors.invalid('Unknown file state: ' + query.state);
         }
+        var title = query.title === undefined ? null : /^(movie|tv):(\d{1,10})$/.exec(String(query.title));
+        if (query.title !== undefined && !(title && positiveInt(Number(title[2])))) {
+          throw errors.invalid('title is movie:<tmdbId> or tv:<tmdbId>');
+        }
         return repo.queryFiles({
           folderId: query.folderId || undefined,
           state: query.state || undefined,
           itemId: query.itemId || undefined,
+          title: title ? { kind: title[1], tmdbId: Number(title[2]) } : undefined,
           q: query.q ? String(query.q).slice(0, 200) : undefined,
           limit: limit,
           offset: offset

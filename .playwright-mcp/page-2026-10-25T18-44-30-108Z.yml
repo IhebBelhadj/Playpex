@@ -1,0 +1,368 @@
+- generic:
+  - generic:
+    - generic [aria-hidden]:
+      - complementary:
+        - generic:
+          - generic:
+            - generic: Playpex
+            - generic: ihebpc
+        - generic:
+          - navigation:
+            - link:
+              - /url: /
+              - generic: Overview
+            - link:
+              - /url: /activity
+              - generic: Activity
+            - link:
+              - /url: /devices
+              - generic: Devices
+            - link:
+              - /url: /library
+              - generic: Library
+            - link:
+              - /url: /downloads
+              - generic: Downloads
+            - link:
+              - /url: /search
+              - generic: Find torrents
+            - link:
+              - /url: /plugins
+              - generic: Plugins
+            - link:
+              - /url: /logs
+              - generic: Logs
+            - link:
+              - /url: /settings
+              - generic: Settings
+            - link:
+              - /url: /profiles
+              - generic: Profiles
+            - link:
+              - /url: /about
+              - generic: About
+        - generic:
+          - generic: tester
+          - button
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]: Find torrents
+              - radiogroup:
+                - radio [checked]: Movies
+                - radio: Shows
+            - generic:
+              - generic:
+                - textbox:
+                  - /placeholder: A movie, with its year if you know it
+                  - text: big buck bunny
+                - button
+              - button: Search
+            - group:
+              - button [pressed]:
+                - generic: The Pirate Bay
+                - generic: "11"
+              - button [pressed]:
+                - generic: TheRARBG
+                - generic: "0"
+                - generic: +50 loose
+              - button [pressed]:
+                - generic: YTS
+                - generic: nothing
+          - generic:
+            - navigation:
+              - generic:
+                - paragraph: Names
+                - button:
+                  - generic: Hold every word
+                  - generic: "11"
+                - button:
+                  - generic: Everything found
+                  - generic: "61"
+              - generic:
+                - paragraph: Quality
+                - button:
+                  - generic: Any
+                  - generic: "11"
+                - button:
+                  - generic: 1080p
+                  - generic: "6"
+                - button:
+                  - generic: 720p
+                  - generic: "3"
+                - button:
+                  - generic: SD
+                  - generic: "2"
+              - generic:
+                - paragraph: Size
+                - button:
+                  - generic: Any
+                  - generic: "11"
+                - button:
+                  - generic: Under 1 GB
+                  - generic: "10"
+                - button:
+                  - generic: 1 to 4 GB
+                  - generic: "0"
+                - button:
+                  - generic: 4 to 15 GB
+                  - generic: "1"
+                - button:
+                  - generic: Over 15 GB
+                  - generic: "0"
+              - generic:
+                - paragraph: On Playpex TV
+                - button:
+                  - generic: Any
+                  - generic: "11"
+                - button:
+                  - generic: Plays as is
+                  - generic: "9"
+            - region:
+              - generic:
+                - generic: 11 releases
+                - button: 50 more don’t have every word in their name
+              - grid:
+                - table:
+                  - rowgroup:
+                    - row:
+                      - columnheader:
+                        - checkbox
+                      - columnheader:
+                        - button: Name
+                      - columnheader:
+                        - button: Quality
+                      - columnheader:
+                        - button: Size
+                      - columnheader:
+                        - button: Seeds
+                      - columnheader:
+                        - button: Peers
+                      - columnheader:
+                        - button: Source
+                      - columnheader:
+                        - generic: Add
+                      - columnheader:
+                        - button
+                  - rowgroup:
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big.Buck.Bunny.1080p.Surround
+                          - generic: Big Buck Bunny, x264
+                      - cell: 1080p
+                      - cell: 886 MB
+                      - cell:
+                        - generic: "1"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny (2008) 720p Bluray nHD x264-NhaNc3
+                          - generic: Big Buck Bunny (2008), x264
+                      - cell: 720p
+                      - cell: 209 MB
+                      - cell:
+                        - generic: "1"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny (2008) BRRip 720p x264 -MitZep
+                          - generic: Big Buck Bunny (2008), x264
+                      - cell: 720p
+                      - cell: 74.7 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny 1080p (x264, ac3)
+                          - generic: Big Buck Bunny, x264, Dolby or DTS sound
+                      - cell: 1080p
+                      - cell: 451 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big.Buck.Bunny.2008.DVDRip.XviD.AC3.SHORT
+                          - generic: Big Buck Bunny (2008), xvid, Dolby or DTS sound
+                      - cell: SD
+                      - cell: 149 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "1"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny 2008 720p BluRay x264-DON(No Rars)
+                          - generic: Big Buck Bunny (2008), x264
+                      - cell: 720p
+                      - cell: 370 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "1"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big.Buck.Bunny.2008.READNFO.1080P.MP4-RTT.
+                          - generic: Big Buck Bunny (2008), x264
+                      - cell: 1080p
+                      - cell: 886 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: big-buck-bunny-PAL.iso
+                          - generic: big-buck-bunny-PAL iso, x264
+                      - cell: SD
+                      - cell: 7.5 GB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny (1080p).ogv
+                          - generic: Big Buck Bunny, x264
+                      - cell: 1080p
+                      - cell: 867 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big Buck Bunny 1080p
+                          - generic: Big Buck Bunny, x264
+                      - cell: 1080p
+                      - cell: 889 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+                    - row:
+                      - cell:
+                        - checkbox
+                      - cell:
+                        - generic:
+                          - generic: Big buck Bunny [1080p - H264 - Aac 5.1] [Tntvillage]
+                          - generic: Big buck Bunny, x264
+                      - cell: 1080p
+                      - cell: 507 MB
+                      - cell:
+                        - generic: "0"
+                      - cell: "0"
+                      - cell: The Pirate Bay
+                      - cell:
+                        - button: Add
+                      - cell:
+                        - button
+              - generic:
+                - button: More results
+    - region "Notifications alt+T"
+  - dialog [ref=f5e7]:
+    - generic [ref=f5e8]:
+      - generic [ref=f5e9]:
+        - heading "Add a torrent" [level=2] [ref=f5e10]
+        - paragraph [ref=f5e11]: It downloads to the end without a player, then seeds as Settings › Downloads says.
+      - generic [ref=f5e12]:
+        - generic [ref=f5e13]: Magnet link, info hash or .torrent link
+        - textbox "Magnet link, info hash or .torrent link" [active] [ref=f5e14]:
+          - /placeholder: magnet:?xt=urn:btih:…
+          - text: magnet:?xt=urn:btih:9ee38ecc0105ed61b0ef93a875325afe784b6fb5&dn=Big.Buck.Bunny.1080p.Surround&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fexplodie.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.qu.ax%3A6969%2Fannounce&tr=udp%3A%2F%2Fopen.dstud.io%3A6969%2Fannounce&tr=http%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=https%3A%2F%2Ftracker.moeblog.cn%3A443%2Fannounce&tr=https%3A%2F%2Ftracker.zhuqiy.com%3A443%2Fannounce
+        - generic [ref=f5e15]:
+          - generic [ref=f5e20]:
+            - text: Or drop a .torrent file here, or
+            - button "choose one" [ref=f5e21]
+          - button "Choose File" [ref=f5e22]
+      - generic [ref=f5e23]:
+        - paragraph [ref=f5e25]: Big.Buck.Bunny.1080p.Surround
+        - paragraph [ref=f5e26]: A magnet link's files arrive from the swarm with its metadata. Add it, then choose its files in its Files tab (everything downloads until you do).
+      - generic [ref=f5e32]:
+        - generic [ref=f5e33]:
+          - generic [ref=f5e34]: Label
+          - combobox "Label" [ref=f5e35]
+        - generic [ref=f5e36]:
+          - generic [ref=f5e37]: Start now
+          - switch "Start now" [checked] [ref=f5e38]
+          - checkbox [checked] [aria-hidden]
+      - generic [ref=f5e39]:
+        - button "Cancel" [ref=f5e40]
+        - button "Add and start" [ref=f5e41]
+    - button "Close" [ref=f5e42]

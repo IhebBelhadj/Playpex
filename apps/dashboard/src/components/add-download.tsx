@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileUp, FolderTree, Info } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { Spinner } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import { bytes } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // "Add torrent" (docs/dashboard-plan.md §4.1): a magnet, a link or a .torrent
-// file; before adding, what it is (POST /downloads/preview: its files when
+// file (or a result of Find torrents, as `link`); before adding, what it is (POST /downloads/preview: its files when
 // they are known without the swarm, the download the server already keeps),
 // which files, a label, start now or later.
 
@@ -33,18 +34,21 @@ export function AddDownloadDialog({
   open,
   onOpenChange,
   file: dropped,
+  link: given,
   labels,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** a .torrent dropped on the page */
   file?: File | null
+  /** a magnet to start from (Find torrents) */
+  link?: string
   /** labels in use, offered as suggestions */
   labels: string[]
 }) {
   const client = useQueryClient()
   // mounted again for every opening (its key): a dropped file is where it starts
-  const [link, setLink] = useState('')
+  const [link, setLink] = useState(given ?? '')
   const [file, setFile] = useState<File | null>(dropped ?? null)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -164,7 +168,7 @@ export function AddDownloadDialog({
               <Label htmlFor="add-link">Magnet link, info hash or .torrent link</Label>
               <Input
                 id="add-link"
-                autoFocus
+                autoFocus={!given}
                 value={link}
                 placeholder="magnet:?xt=urn:btih:…"
                 onChange={(e) => setLink(e.target.value)}
@@ -201,6 +205,14 @@ export function AddDownloadDialog({
                   }}
                 />
               </div>
+              {!given && (
+                <p className="text-sm text-muted-foreground">
+                  No link yet?{' '}
+                  <Link to="/search" onClick={() => onOpenChange(false)} className="font-medium text-foreground underline underline-offset-2">
+                    Search for one
+                  </Link>
+                </p>
+              )}
             </div>
           )}
 

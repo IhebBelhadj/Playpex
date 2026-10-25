@@ -127,6 +127,13 @@
       "when": 1792932265417,
       "tag": "0017_download_controls",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792955354520,
+      "tag": "0018_direct_downloads",
+      "breakpoints": true
     }
   ]
 }

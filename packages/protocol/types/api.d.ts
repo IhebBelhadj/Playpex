@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/storage/subtitle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A subtitle file of a place (SRT, ASS, SSA, WebVTT; ≤ 10 MB) as WebVTT, for a player's `<track>` */
+        get: operations["storageSubtitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/storage/check": {
         parameters: {
             query?: never;
@@ -3312,6 +3329,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The plugins that find streams and files by keywords (`sources.search`) */
+        get: operations["listSearchProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One provider's streams and files for keywords
+         * @description Its sources get media refs (`r_…` files, `h_…` HLS) the server proxies, and torrents the server's trackers; `matches`
+         *     says whether a result's name holds every keyword. Refs live an hour after their last use.
+         */
+        get: operations["searchSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/links/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a URL is, and what it links to (the server reads it)
+         * @description A magnet isn't fetched. Anything else is, by the server, at public addresses only (every redirect checked again):
+         *     a .torrent, a video file, an HLS playlist, or a web page whose magnets, .torrent links, video files and HLS playlists
+         *     are listed. Videos and playlists get media refs to play or download.
+         */
+        post: operations["inspectLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files downloaded over HTTP (not torrents), newest first */
+        get: operations["listDirectDownloads"];
+        put?: never;
+        /**
+         * Download a stream or a file the server proxies (a media ref from search, a link or Play)
+         * @description `ref`: an `r_…` (a file: HTTP with ranges, resumed after a pause or a restart) or an `h_…` (an HLS stream, saved by
+         *     ffmpeg). Into the download folder (`<name>.part` until complete). Two run at a time, the rest wait.
+         */
+        post: operations["addDirectDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/direct/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop and forget it; `files=1` also deletes its file */
+        delete: operations["removeDirectDownload"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/direct/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start (or queue) a paused or failed one */
+        post: operations["startDirectDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/direct/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause it (a file resumes where it stopped; an HLS stream starts again) */
+        post: operations["pauseDirectDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subtitles/providers": {
         parameters: {
             query?: never;
@@ -3355,6 +3511,26 @@ export interface paths {
         get: operations["getSubtitleFile"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subtitles/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A subtitle file the client has (SRT, ASS / SSA, WebVTT; ≤ 10 MB) as WebVTT
+         * @description The file's bytes as the body (any content type); old SRTs in a Windows code page are read with `lang`'s.
+         */
+        post: operations["convertSubtitle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4039,6 +4215,33 @@ export interface components {
             ref: string | null;
             /** @description Its library file (the Library page's ?file=) */
             fileId: string | null;
+            /**
+             * @description What it is: a matched file's title (an episode: its show, season and episode), or a folder's
+             *     when every matched file under it is one title (a movie's folder, a show's, a season's; `episodes`:
+             *     how many episode files). null otherwise
+             */
+            media: null | {
+                mediaType: components["schemas"]["MediaType"];
+                /** @description The movie's, or the show's */
+                tmdbId: number;
+                title: string | null;
+                year: number | null;
+                season: number | null;
+                episode: number | null;
+                episodeTitle: string | null;
+                /** @description TMDB image path (the show's for an episode) */
+                posterPath: string | null;
+                /** @description An episode's still */
+                stillPath: string | null;
+                /** @description A folder's: episode files under it */
+                episodes?: number | null;
+            };
+            /** @description A folder's: how many titles its matched files are */
+            titles: number | null;
+            /** @description A library file's: 2160p, 1080p, 720p… (ffprobe, else its name) */
+            quality: string | null;
+            /** @description A library file's, in seconds (ffprobe) */
+            duration: number | null;
             /** @description The download whose data it is */
             download: {
                 infoHash: string;
@@ -5264,6 +5467,8 @@ export interface components {
             episode?: number | null;
             /** @description kind tv */
             pack?: boolean;
+            /** @description Its name holds every keyword of `q` (punctuation, "Breaking.Bad" / "breaking bad", "Spider-Man" / "spiderman" aside); sources answer loosely. Always true without `q` */
+            matches?: boolean;
         };
         ReleasePage: {
             /** @description null: no source plugin lists this kind */
@@ -5272,6 +5477,110 @@ export interface components {
             page: number;
             hasMore: boolean;
             torrents: components["schemas"]["ReleaseTorrent"][];
+        };
+        SearchProvider: {
+            /** @description `plugin:<id>` */
+            id: string;
+            name: string;
+            /** @description What its results can be */
+            kinds: ("http" | "hls" | "magnet")[];
+        };
+        SearchSource: {
+            /** @description The plugin's id */
+            provider: string;
+            /**
+             * @description file: an HTTP file (`ref` r_…); hls: a stream (`ref` h_…); torrent: `magnet`
+             * @enum {string}
+             */
+            kind: "file" | "hls" | "torrent";
+            /** @description Its name */
+            label: string;
+            /** @description What it is, when the provider says */
+            title?: string | null;
+            year?: number | null;
+            season?: number | null;
+            episode?: number | null;
+            /** @description An https image */
+            poster?: string | null;
+            /** @description file, hls: the media ref (play: GET /media/{ref}…; download: POST /downloads/direct) */
+            ref?: string;
+            /** @description torrent */
+            magnet?: string;
+            /** @description torrent */
+            infoHash?: string;
+            size?: number | null;
+            quality?: string | null;
+            codec?: string | null;
+            audio?: string | null;
+            seeds?: number | null;
+            peers?: number | null;
+            /** @description Its name (label, else title) holds every keyword (names.searchMatches) */
+            matches: boolean;
+        };
+        SearchSourcePage: {
+            provider: string;
+            page: number;
+            hasMore: boolean;
+            items: components["schemas"]["SearchSource"][];
+        };
+        LinkItem: {
+            /** @enum {string} */
+            kind: "magnet" | "torrent" | "video" | "hls";
+            /** @description The link's text, else its file name */
+            label: string;
+            /** @description Where it is (a magnet: the magnet) */
+            url: string;
+            /** @description video, hls: a media ref to play or download (POST /downloads/direct) */
+            ref?: string;
+            /** @description magnet */
+            infoHash?: string;
+            /** @description video, torrent: when the server learnt it */
+            size?: number | null;
+            contentType?: string | null;
+        };
+        LinkInspection: {
+            /** @description Where the server ended up (after redirects) */
+            url: string;
+            /**
+             * @description What the URL itself is
+             * @enum {string}
+             */
+            kind: "magnet" | "torrent" | "video" | "hls" | "page";
+            /** @description A page's title */
+            title?: string | null;
+            /** @description The URL itself (magnet, torrent, video, hls), or what a page links to */
+            items: components["schemas"]["LinkItem"][];
+            /** @description A page longer than the server reads (2 MB): what came after isn't listed */
+            truncated?: boolean;
+        };
+        DirectDownload: {
+            id: string;
+            /** @description Its file name in the download folder */
+            name: string;
+            /** @enum {string} */
+            kind: "file" | "hls";
+            /** @enum {string} */
+            state: "queued" | "downloading" | "paused" | "completed" | "error";
+            /** @description null: unknown (an HLS stream, a server that doesn't say) */
+            size: number | null;
+            /** @description Bytes written */
+            received: number;
+            /** @description Bytes per second, while downloading */
+            speed: number;
+            /** @description Its file on the server, once complete */
+            path?: string | null;
+            /** @description Once complete: the file as a media ref (play it) */
+            ref?: string | null;
+            error?: string | null;
+            /** Format: date-time */
+            addedAt: string;
+            /** Format: date-time */
+            completedAt?: string | null;
+            source: {
+                /** @description `links` (a URL the admin gave) or the plugin's id */
+                by: string;
+                host: string;
+            };
         };
         SubtitleProvider: {
             id: string;
@@ -7418,6 +7727,43 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    storageSubtitle: {
+        parameters: {
+            query: {
+                place: string;
+                /** @description Inside the place, / separated */
+                path: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebVTT */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description `NOT_SUPPORTED`: a picture subtitle (VobSub, PGS) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     checkDirectory: {
         parameters: {
             query?: never;
@@ -8560,6 +8906,8 @@ export interface operations {
                 state?: components["schemas"]["LibraryFileState"];
                 /** @description Files of one item */
                 item?: string;
+                /** @description Files of one title: `movie:<tmdbId>` (the movie's), `tv:<tmdbId>` (every episode's of the show) */
+                title?: string;
                 /** @description Part of the path or of the matched title */
                 q?: string;
                 limit?: number;
@@ -11279,6 +11627,7 @@ export interface operations {
                 kind: components["parameters"]["ReleaseKind"];
                 /** @description Source id (unknown → the kind's default) */
                 provider?: string;
+                /** @description Keywords, sent to the source as plain words ("Breaking.Bad" → "Breaking Bad") */
                 q?: string;
                 /** @description SD also keeps 480p */
                 quality?: components["parameters"]["Quality"];
@@ -11305,6 +11654,203 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             502: components["responses"]["Upstream"];
+        };
+    };
+    listSearchProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Providers, by name */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchProvider"][];
+                };
+            };
+        };
+    };
+    searchSources: {
+        parameters: {
+            query: {
+                /** @description A provider id (`plugin:<id>`) */
+                provider: string;
+                q: string;
+                kind?: "movie" | "show" | "any";
+                page?: components["parameters"]["Page"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchSourcePage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    inspectLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    url: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What it is */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkInspection"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    listDirectDownloads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Direct downloads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectDownload"][];
+                };
+            };
+        };
+    };
+    addDirectDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ref: string;
+                    /** @description The file name (else the source's) */
+                    name?: string;
+                    paused?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectDownload"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    removeDirectDownload: {
+        parameters: {
+            query?: {
+                files?: "0" | "1";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startDirectDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectDownload"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    pauseDirectDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectDownload"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     listSubtitleProviders: {
@@ -11381,6 +11927,43 @@ export interface operations {
                 };
             };
             502: components["responses"]["Upstream"];
+        };
+    };
+    convertSubtitle: {
+        parameters: {
+            query?: {
+                /** @description Its language (ISO 639-1), for old code pages */
+                lang?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description WebVTT */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/vtt": string;
+                };
+            };
+            400: components["responses"]["Invalid"];
+            /** @description `NOT_SUPPORTED`: not a text subtitle */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     listProfiles: {

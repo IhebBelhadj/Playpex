@@ -7,6 +7,12 @@
 // `movie` / `show`), never `audience: adults` ones (no profile here): the core
 // reads no torrent site (docs/providers-plan.md §4). No such plugin → no
 // source, and browse answers an empty list.
+// Keywords reach the sources as plain words (names.searchWords: "Breaking.Bad"
+// → "Breaking Bad"), and each torrent says whether its name holds every one
+// of them (`matches`, names.searchMatches): sites answer loosely. Shows'
+// keywords without an IMDb id get the show's from the catalog when a show is
+// titled exactly so (showImdb): sources like EZTV list a show by its id, not
+// by words.
 
 var names = require('./media/names');
 var trackers = require('./trackers');
@@ -105,7 +111,7 @@ function providers(kind) {
 
 // release → what the list shows (fields the provider set itself, title/year,
 // win over the parsed ones)
-function decorate(kind, torrent) {
+function decorate(kind, torrent, q) {
   var presented = names.release(torrent.name, kind);
   var own = {};
   ['title', 'year'].forEach(function (key) {
@@ -113,7 +119,40 @@ function decorate(kind, torrent) {
       own[key] = torrent[key];
     }
   });
-  return Object.assign(torrent, describe(torrent.name), presented, own);
+  return Object.assign(torrent, describe(torrent.name), presented, own, { matches: names.searchMatches(torrent.name, q) });
+}
+
+// "breaking bad s01e05 1080p" → the IMDb id of the show titled "Breaking Bad"
+// (TMDB behind lib/catalog), or null; remembered a while, at most 200 names
+var SHOW_IDS = new Map(), SHOW_IDS_MAX = 200, SHOW_IDS_TTL = 6 * 3600 * 1000;
+
+function showImdb(q) {
+  var name = names.parse(q).title || q, key = names.normalizeTitle(name), now = Date.now();
+  if (!key) {
+    return Promise.resolve(null);
+  }
+  var known = SHOW_IDS.get(key);
+  if (known && known.until > now) {
+    return known.id;
+  }
+  var catalog = require('./catalog');
+  var id = Promise.resolve().then(function () {
+    return catalog.search('tv', { q: name });
+  }).then(function (found) {
+    var show = (found.results || []).filter(function (r) {
+      return r.mediaType === 'tv' && (names.normalizeTitle(r.title) === key || names.normalizeTitle(r.originalTitle || '') === key);
+    })[0];
+    return show ? catalog.details('tv', show.tmdbId).then(function (d) { return d.imdbId || null; }) : null;
+  }).catch(function () {
+    // no catalog (offline, no key): words alone, and asked again next time
+    SHOW_IDS.delete(key);
+    return null;
+  });
+  if (SHOW_IDS.size >= SHOW_IDS_MAX) {
+    SHOW_IDS.delete(SHOW_IDS.keys().next().value);
+  }
+  SHOW_IDS.set(key, { id: id, until: now + SHOW_IDS_TTL });
+  return id;
 }
 
 // options: { kind, provider, q, quality, playable, page, imdb }
@@ -137,7 +176,7 @@ function browse(options) {
     return Promise.resolve({ provider: provider.id, page: page, hasMore: false, torrents: [] });
   }
 
-  var q = String(options.q || '').trim();
+  var q = names.searchWords(options.q);
   var imdb = /^(tt)?\d{5,10}$/.test(String(options.imdb || '')) ? String(options.imdb) : null;
   var seen = {};
 
@@ -155,7 +194,7 @@ function browse(options) {
     return provider.list({ q: q, quality: quality, page: from, imdb: imdb }).then(function (result) {
       var torrents = kept.concat(result.results
         .map(function (torrent) {
-          return decorate(kind, torrent);
+          return decorate(kind, torrent, q);
         })
         .filter(keep));
 
@@ -166,7 +205,12 @@ function browse(options) {
     });
   }
 
-  return read(page, [], 0).then(function (result) {
+  var context = imdb || kind !== 'tv' || !q ? Promise.resolve(imdb) : showImdb(q);
+
+  return context.then(function (id) {
+    imdb = id;
+    return read(page, [], 0);
+  }).then(function (result) {
     result.torrents.sort(function (a, b) {
       return b.seeds - a.seeds;
     });

@@ -1,0 +1,20 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]: Playpex Media Server
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Sign in
+        - generic [ref=e10]: Sign in as the server’s admin.
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: Username
+          - textbox "Username" [active] [ref=e15]
+        - generic [ref=e16]:
+          - generic [ref=e17]: Password
+          - textbox "Password" [ref=e18]
+        - button "Sign in" [ref=e19]
+        - paragraph [ref=e20]:
+          - text: Forgot it? On the server machine run
+          - code [ref=e21]: playpex-server admin set <username>
+          - text: .
+  - region "Notifications alt+T"

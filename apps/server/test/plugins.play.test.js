@@ -514,6 +514,7 @@ test('release lists from releases.providers', function (t) {
     assert.equal(tor.hash, E);
     assert.equal(tor.name, 'Film 2020 1080p x264');
     assert.equal(tor.quality, '1080p');
+    assert.equal(tor.matches, true, 'its name holds the keyword');
     assert.equal(r.json.hasMore, false);
   });
 });

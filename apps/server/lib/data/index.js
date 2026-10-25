@@ -10,6 +10,7 @@ var profiles = require('./drizzle/profiles'),
   ratings = require('./drizzle/ratings'),
   settings = require('./drizzle/settings'),
   downloads = require('./drizzle/downloads'),
+  directDownloads = require('./drizzle/directDownloads'),
   library = require('./drizzle/library'),
   plugins = require('./drizzle/plugins');
 
@@ -26,6 +27,7 @@ function createRepositories(db) {
     ratings: ratings(db),
     settings: settings(db),
     downloads: downloads(db),
+    directDownloads: directDownloads(db),
     library: library(db),
     plugins: plugins(db)
   };

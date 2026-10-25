@@ -24,6 +24,8 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `download.added` | the server keeps a new torrent ([downloads](playback.md#downloads)) | a `Download` |
 | `download.updated` | a download's state changed (at once), or its progress (at most every 2 s) | a `Download` |
 | `download.removed` | the admin removed it (or "remove when watched") | `{ infoHash }` |
+| `direct.updated` (admin) | a direct download (over HTTP) changed state (at once) or progressed (at most once a second) ([search](search.md#direct-downloads-the-admins)) | a `DirectDownload` |
+| `direct.removed` (admin) | the admin removed one | `{ id }` |
 | `settings.changed` | a device's or a profile's settings were written or reset ([settings](settings.md)) | `{ scope: 'device' \| 'profile', ownerId, keys }` |
 | `plugin.changed` | a plugin was loaded, stopped (it failed) or removed, or the admin changed its settings, grants or linked accounts ([plugins](plugins.md)): refetch `GET /plugins`, ask its open screens again | `{ id, state: 'enabled' \| 'failed' \| 'removed' \| …, reason?: 'settings' \| 'grants' \| 'link' }` |
 | `plugin.notification` | a plugin told a profile something: if it's the current profile, `GET /plugins/notifications?profile=` and show what comes back ([plugins](plugins.md#notifications)) | `{ profileId, plugin }` |

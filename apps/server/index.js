@@ -152,6 +152,10 @@ function start(options) {
     if (!recovery && options.library !== false) {
       library.start(Object.assign({ torrents: torrents }, options.library));
     }
+    // files fetched over HTTP (docs/search-plan.md decision C); none in recovery mode
+    if (!recovery) {
+      require('./lib/downloads/direct').start();
+    }
     // only when listening on the LAN: not the TV app's loopback fallback
     discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
     // the DLNA server (off by default; its own port; option dlna: { port, ssdpPort } for tests)
@@ -220,7 +224,9 @@ function stop() {
   sessions.stop();
   require('./lib/media/playback').stopAll();
   events.detach();
-  return plugins.stop().then(function () {
+  return require('./lib/downloads/direct').stop().then(function () {
+    return plugins.stop();
+  }).then(function () {
     return library.stop();
   }).then(function () {
     return dlna.stop();

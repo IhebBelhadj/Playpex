@@ -1,0 +1,70 @@
+- generic [ref=f9e2]:
+  - generic [ref=f9e3]:
+    - complementary [ref=f9e4]:
+      - generic [ref=f9e6]:
+        - generic [ref=f9e7]: Playpex
+        - generic [ref=f9e8]: Media Server
+      - navigation [ref=f9e10]:
+        - link "Overview" [ref=f9e11] [cursor=pointer]:
+          - /url: /
+        - link "Activity" [ref=f9e18] [cursor=pointer]:
+          - /url: /activity
+        - link "Devices" [ref=f9e22] [cursor=pointer]:
+          - /url: /devices
+        - link "Library" [ref=f9e27] [cursor=pointer]:
+          - /url: /library
+        - link "Downloads" [ref=f9e34] [cursor=pointer]:
+          - /url: /downloads
+        - link "Search" [ref=f9e39] [cursor=pointer]:
+          - /url: /search
+        - link "Plugins" [ref=f9e44] [cursor=pointer]:
+          - /url: /plugins
+        - link "Logs" [ref=f9e48] [cursor=pointer]:
+          - /url: /logs
+        - link "Settings" [ref=f9e53] [cursor=pointer]:
+          - /url: /settings
+        - link "Profiles" [ref=f9e58] [cursor=pointer]:
+          - /url: /profiles
+        - link "About" [ref=f9e65] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=f9e69]:
+        - generic [ref=f9e72]: tester
+        - button "Sign out" [ref=f9e73]
+    - main [ref=f9e74]:
+      - generic [ref=f9e75]:
+        - generic [ref=f9e76]:
+          - generic [ref=f9e77]:
+            - heading "Search" [level=1] [ref=f9e78]
+            - radiogroup "What to find" [ref=f9e79]:
+              - radio "Everything" [checked] [ref=f9e80]
+              - radio "Movies" [ref=f9e81]
+              - radio "Shows" [ref=f9e82]
+          - generic [ref=f9e83]:
+            - generic [ref=f9e84]:
+              - textbox "Search, or paste a link" [ref=f9e85]:
+                - /placeholder: "A title, or paste a link: a page, a video, a magnet"
+                - text: night of the living dead
+              - button "Clear" [ref=f9e86]
+            - button "Search" [ref=f9e90]
+          - group "Sources" [ref=f9e91]:
+            - generic [ref=f9e92]:
+              - generic [ref=f9e94]: This server
+              - generic [ref=f9e95]: nothing
+            - generic [ref=f9e96]:
+              - generic [ref=f9e98]: Catalog
+              - generic [ref=f9e99]: searching
+        - generic [ref=f9e100]:
+          - navigation "Results" [ref=f9e101]:
+            - generic [ref=f9e102]:
+              - button "All results 0" [ref=f9e103]:
+                - generic [ref=f9e104]: All results
+                - generic [ref=f9e105]: "0"
+              - button "On this server 0" [ref=f9e106]:
+                - generic [ref=f9e107]: On this server
+                - generic [ref=f9e108]: "0"
+              - button "Movies & shows 0" [ref=f9e109]:
+                - generic [ref=f9e110]: Movies & shows
+                - generic [ref=f9e111]: "0"
+          - region "Results" [ref=f9e112]:
+            - paragraph [ref=f9e113]: Asking the catalog…
+  - region "Notifications alt+T"

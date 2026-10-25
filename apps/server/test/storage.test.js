@@ -48,18 +48,18 @@ function conforms(schema, value) {
   assert.ok(validate(value), schema + ': ' + ajv.errorsText(validate.errors));
 }
 
-function call(method, apiPath, body) {
-  var payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
+function call(method, apiPath, body, raw) {
+  var payload = body === undefined ? null : raw ? body : Buffer.from(JSON.stringify(body));
   return new Promise(function (resolve, reject) {
     var req = http.request(new URL('/api/v1' + apiPath, base), {
       method: method, agent: false,
-      headers: Object.assign(cookie ? { Cookie: cookie } : {}, payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {})
+      headers: Object.assign(cookie ? { Cookie: cookie } : {}, payload ? { 'Content-Type': raw ? 'application/octet-stream' : 'application/json', 'Content-Length': payload.length } : {})
     }, function (res) {
       var chunks = [];
       res.on('data', function (c) { chunks.push(c); });
       res.on('end', function () {
         var raw = Buffer.concat(chunks);
-        resolve({ status: res.statusCode, body: /json/.test(res.headers['content-type'] || '') ? JSON.parse(raw) : null });
+        resolve({ status: res.statusCode, body: /json/.test(res.headers['content-type'] || '') ? JSON.parse(raw) : null, text: raw.toString('utf8'), type: res.headers['content-type'] || '' });
       });
     });
     req.on('error', reject);
@@ -75,7 +75,9 @@ function write(rel, bytes) {
 
 test.before(function () {
   write('Heat (1995)/Heat.1995.1080p.mkv', 300000);
-  write('Heat (1995)/Heat.1995.en.srt', 2000);
+  fs.mkdirSync(path.join(movies, 'Heat (1995)'), { recursive: true });
+  fs.writeFileSync(path.join(movies, 'Heat (1995)/Heat.1995.en.srt'), '1\r\n00:00:01,000 --> 00:00:02,500\r\nHello\r\n');
+  write('Heat (1995)/Heat.1995.sup', 100);
   write('Odd (2001)/odd.mkv', 100000);
   write('Odd (2001)/notes.txt', 50);
   write('Ignored/clip.mkv', 1000);
@@ -120,7 +122,8 @@ test.before(function () {
       ]);
     }).then(function (rows) {
       return Promise.all([
-        s.library.match(rows[0].id, { kind: 'movie', tmdbId: 949 }, { title: 'Heat', year: 1995 }, 'admin'),
+        s.library.match(rows[0].id, { kind: 'movie', tmdbId: 949 }, { title: 'Heat', year: 1995, artwork: { posterPath: '/heat.jpg', backdropPath: null, stillPath: null } }, 'admin'),
+        s.library.updateFile(rows[0].id, { probe: { duration: 6000, height: 1080, audio: [] } }),
         s.library.ignore(rows[2].id, true)
       ]);
     });
@@ -177,7 +180,7 @@ test('browse: folders first, what each file is, sizes, a folder of 3 000 files q
       'folders (no hidden ones), by name');
     var heat = res.body.entries[1];
     assert.equal(heat.type, 'folder');
-    assert.equal(heat.items, 2);
+    assert.equal(heat.items, 3);
     assert.ok(heat.bytes >= 300000);
     return call('GET', '/admin/storage/browse?place=' + p + '&path=' + encodeURIComponent('Heat (1995)'));
   }).then(function (res) {
@@ -200,6 +203,60 @@ test('browse: folders first, what each file is, sizes, a folder of 3 000 files q
   }).then(function (timed) {
     assert.equal(timed.res.body.entries.length, 3000);
     assert.ok(timed.ms < 1000, 'a folder of 3 000 files in ' + timed.ms + ' ms');
+  });
+});
+
+test('what files and folders are: titles and artwork; a title\'s files; subtitles as WebVTT', function () {
+  var id = 'folder:' + folder.id;
+  return call('GET', '/admin/storage/browse?place=' + encodeURIComponent(id)).then(function (r) {
+    assert.equal(r.status, 200);
+    conforms('StorageListing', r.body);
+    var heat = r.body.entries.filter(function (e) { return e.name === 'Heat (1995)'; })[0];
+    assert.deepEqual([heat.media.mediaType, heat.media.tmdbId, heat.media.title, heat.media.posterPath, heat.titles], ['movie', 949, 'Heat', '/heat.jpg', 1]);
+    var odd = r.body.entries.filter(function (e) { return e.name === 'Odd (2001)'; })[0];
+    assert.equal(odd.media, null);
+    assert.equal(odd.titles, null);
+    return call('GET', '/admin/storage/browse?place=' + encodeURIComponent(id) + '&path=' + encodeURIComponent('Heat (1995)'));
+  }).then(function (r) {
+    var file = r.body.entries.filter(function (e) { return e.name === 'Heat.1995.1080p.mkv'; })[0];
+    assert.equal(file.media.title, 'Heat');
+    assert.equal(file.media.year, 1995);
+    assert.equal(file.quality, '1080p');
+    assert.equal(file.duration, 6000);
+    var srt = r.body.entries.filter(function (e) { return /\.srt$/.test(e.name); })[0];
+    assert.equal(srt.media, null);
+    return call('GET', '/admin/library/files?title=movie:949');
+  }).then(function (r) {
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.files.map(function (f) { return f.relPath; }), ['Heat (1995)/Heat.1995.1080p.mkv']);
+    return Promise.all([
+      call('GET', '/admin/library/files?title=tv:949'),
+      call('GET', '/admin/library/files?title=heat')
+    ]);
+  }).then(function (r) {
+    assert.equal(r[0].body.total, 0);
+    assert.equal(r[1].status, 400);
+    var q = '/admin/storage/subtitle?place=' + encodeURIComponent(id) + '&path=';
+    return Promise.all([
+      call('GET', q + encodeURIComponent('Heat (1995)/Heat.1995.en.srt')),
+      call('GET', q + encodeURIComponent('Heat (1995)/Heat.1995.sup')),
+      call('GET', q + encodeURIComponent('Heat (1995)/Heat.1995.1080p.mkv')),
+      call('GET', q + encodeURIComponent('../x.srt'))
+    ]);
+  }).then(function (r) {
+    assert.equal(r[0].status, 200);
+    assert.match(r[0].type, /text\/vtt/);
+    assert.match(r[0].text, /^WEBVTT\n\n1\n00:00:01\.000 --> 00:00:02\.500\nHello/);
+    assert.deepEqual(r.slice(1).map(function (x) { return x.status; }), [501, 400, 400]);
+    return Promise.all([
+      call('POST', '/subtitles/convert', Buffer.from('[Script Info]\nTitle: x\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\i1}Hi{\\i0}\\Nthere\n'), true),
+      call('POST', '/subtitles/convert', Buffer.from([0, 1, 2, 3]), true)
+    ]);
+  }).then(function (r) {
+    assert.equal(r[0].status, 200);
+    assert.match(r[0].text, /^WEBVTT/);
+    assert.match(r[0].text, /00:00:01\.000 --> 00:00:02\.000/);
+    assert.equal(r[1].status, 501);
   });
 });
 

@@ -1,0 +1,36 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "archive",
+  "name": "Internet Archive",
+  "description": "Public-domain and openly licensed films from the Internet Archive: found by keywords in Search, offered when a film is played, played and downloaded through the server.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Search the Internet Archive's films (public domain, Creative Commons) and play or download their files.",
+    "description": "Adds the Internet Archive to the dashboard's Search: its moving-image collection, searched by title words, each film's video files (MP4, Matroska) as streams the server plays and downloads. No account, no key.",
+    "disclaimer": "Films keep the license the Internet Archive lists for them. Playpex is an educational project.",
+    "license": "See licence.md",
+    "categories": [
+      "streams"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "archive.org",
+      "*.archive.org"
+    ],
+    "sources": [
+      "http"
+    ],
+    "hooks": [
+      "sources.search",
+      "play.collect"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ var profilesService = require('./profiles'),
   recommendationsService = require('./recommendations'),
   settingsService = require('./settings'),
   downloadsService = require('./downloads'),
+  directDownloadsService = require('./directDownloads'),
   libraryService = require('./library'),
   pluginsService = require('./plugins');
 
@@ -35,6 +36,7 @@ function createServices(repositories, options) {
     recommendations: recommendationsService(repositories, Object.assign({ catalog: options.catalog }, shared)),
     settings: settingsService(repositories, Object.assign({ publish: options.publish }, shared)),
     downloads: downloadsService(repositories, shared),
+    directDownloads: directDownloadsService(repositories, shared),
     library: libraryService(repositories, shared),
     plugins: pluginsService(repositories, shared)
   };

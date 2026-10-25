@@ -127,18 +127,54 @@ seeder.init({ dataDir: seedDir, stateDir: path.join(seedDir, '.state'), log: log
   put('Sintel (2010)/Sintel.2010.mp4', sintel.files[0].data);
   put('Clips/unknown-clip.mkv', heat.files[0].data.slice(0, 2 * MB));
   put('Clips/notes.txt', Buffer.from('ripped from the bluray'));
+  // more titles for the Library's index (Sintel's video under their names), and a shows folder
+  var more = [
+    ['The Thing (1982)/The.Thing.1982.1080p.mp4', { kind: 'movie', tmdbId: 1091 }, 'The Thing', 1982],
+    ['Alien (1979)/Alien.1979.Directors.Cut.mp4', { kind: 'movie', tmdbId: 348 }, 'Alien', 1979],
+    ['Arrival (2016)/Arrival.2016.2160p.mp4', { kind: 'movie', tmdbId: 329865 }, 'Arrival', 2016],
+    ['Blade Runner (1982)/Blade.Runner.1982.Final.Cut.mp4', { kind: 'movie', tmdbId: 78 }, 'Blade Runner', 1982],
+    ['Zodiac (2007)/Zodiac.2007.mp4', { kind: 'movie', tmdbId: 1949 }, 'Zodiac', 2007],
+    ['Drive (2011)/Drive.2011.720p.mp4', { kind: 'movie', tmdbId: 64690 }, 'Drive', 2011]
+  ];
+  more.forEach(function (m) { put(m[0], sintel.files[0].data); });
+  var shows = path.join(tmp, 'Shows'), episodes = [1, 2, 3].map(function (n) {
+    return ['Breaking Bad/Season 1/Breaking.Bad.S01E0' + n + '.mp4', { kind: 'episode', showTmdbId: 1396, season: 1, episode: n }];
+  }).concat([['Breaking Bad/Season 2/Breaking.Bad.S02E01.mp4', { kind: 'episode', showTmdbId: 1396, season: 2, episode: 1 }]]);
+  episodes.forEach(function (e) {
+    fs.mkdirSync(path.dirname(path.join(shows, e[0])), { recursive: true });
+    fs.writeFileSync(path.join(shows, e[0]), sintel.files[0].data);
+  });
+  fs.writeFileSync(path.join(shows, 'Breaking Bad/Season 1/Breaking.Bad.S01E01.en.srt'), srt);
+  // the titles' details from TMDB (posters), when it answers; else names only
+  var matcher = require('../../lib/library/match'), tmdb = require('../../lib/tmdb');
+  function details(identity, title, year) {
+    return matcher.describe(identity, tmdb).then(function (d) { return d || { title: title, year: year }; }, function () {
+      return { title: title, year: year };
+    });
+  }
   return require('../../lib/userData').services().then(function (s) {
-    return s.library.addFolder({ path: fs.realpathSync(movies), kind: 'movies' }).then(function (folder) {
+    return Promise.all([
+      s.library.addFolder({ path: fs.realpathSync(movies), kind: 'movies' }),
+      s.library.addFolder({ path: fs.realpathSync(shows), kind: 'shows' })
+    ]).then(function (folders) {
+      var folder = folders[0];
       return Promise.all([
-        s.library.addFile(folder.id, { relPath: 'Heat (1995)/Heat.1995.1080p.mkv', size: heat.files[0].data.length }),
+        s.library.addFile(folder.id, { relPath: 'Heat (1995)/Heat.1995.1080p.mkv', size: heat.files[0].data.length, subtitles: [{ relPath: 'Heat (1995)/Heat.1995.en.srt', language: 'en' }] }),
         s.library.addFile(folder.id, { relPath: 'Sintel (2010)/Sintel.2010.mp4', size: sintel.files[0].data.length }),
         s.library.addFile(folder.id, { relPath: 'Clips/unknown-clip.mkv', size: 2 * MB })
-      ]);
-    }).then(function (rows) {
-      return Promise.all([
-        s.library.match(rows[0].id, { kind: 'movie', tmdbId: 949 }, { title: 'Heat', year: 1995 }, 'admin'),
-        s.library.match(rows[1].id, { kind: 'movie', tmdbId: 45745 }, { title: 'Sintel', year: 2010 }, 'admin')
-      ]);
+      ].concat(more.map(function (m) {
+        return s.library.addFile(folder.id, { relPath: m[0], size: sintel.files[0].data.length });
+      })).concat(episodes.map(function (e) {
+        return s.library.addFile(folders[1].id, { relPath: e[0], size: sintel.files[0].data.length });
+      }))).then(function (rows) {
+        var identities = [[{ kind: 'movie', tmdbId: 949 }, 'Heat', 1995], [{ kind: 'movie', tmdbId: 45745 }, 'Sintel', 2010], null]
+          .concat(more.map(function (m) { return [m[1], m[2], m[3]]; }))
+          .concat(episodes.map(function (e) { return [e[1], 'Breaking Bad', 2008]; }));
+        return Promise.all(rows.map(function (row, i) {
+          var id = identities[i];
+          return id && details(id[0], id[1], id[2]).then(function (d) { return s.library.match(row.id, id[0], d, 'admin'); });
+        }));
+      });
     });
   });
 }).then(function () {

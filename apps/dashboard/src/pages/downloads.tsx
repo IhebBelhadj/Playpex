@@ -23,16 +23,19 @@ import {
   Trash2,
   Zap,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { AddDownloadDialog } from '@/components/add-download'
+import { RailGroup, RailItem, useIsDesktop } from '@/components/rail'
+import { DirectList } from '@/components/direct-list'
+import { useDirectDownloads } from '@/lib/direct'
 import { RulesDialog } from '@/components/download-rules'
 import { Empty, Loading, QueryError, Spinner } from '@/components/common'
 import { DataTable, type RowAction } from '@/components/data-table'
 import { DownloadPane, PANE_TABS, type PaneTab } from '@/components/download-pane'
 import { useOverview } from '@/components/layout'
-import { usePlayer } from '@/components/player'
+import { usePlayer } from '@/lib/player'
 import { SwarmStrip, toneOf } from '@/components/swarm-strip'
 import {
   AlertDialog,
@@ -97,18 +100,6 @@ function matches(d: Download, filter: string): boolean {
   return STATES.find((s) => s.id === filter)?.states.includes(d.state) ?? true
 }
 
-function useIsDesktop() {
-  const query = '(min-width: 768px)'
-  const [desktop, setDesktop] = useState(() => window.matchMedia(query).matches)
-  useEffect(() => {
-    const m = window.matchMedia(query)
-    const change = () => setDesktop(m.matches)
-    m.addEventListener('change', change)
-    return () => m.removeEventListener('change', change)
-  }, [])
-  return desktop
-}
-
 const PANE_KEY = 'playpex.downloads.pane'
 
 function usePaneHeight() {
@@ -156,6 +147,8 @@ export function DownloadsPage() {
   const deviceName = useDeviceNames()
   const navigate = useNavigate()
   const desktop = useIsDesktop()
+  const directs = useDirectDownloads()
+  const directCount = directs.data?.length ?? 0
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
@@ -178,7 +171,7 @@ export function DownloadsPage() {
           toast.error(detail.files ? 'It has no video to play' : 'Its files aren’t known yet: it needs its metadata first')
           return
         }
-        player.play({ ref: file.ref, title: file.name, detail: d.name ?? undefined })
+        player.play({ ref: file.ref, title: file.name, detail: d.name ?? undefined, place: 'downloads', dir: file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : '' })
       })
       .catch((err) => toast.error(errorMessage(err)))
   }
@@ -254,7 +247,7 @@ export function DownloadsPage() {
           ]
         : []
     return [
-      { label: 'Play here', icon: <MonitorPlay />, shortcut: 'P', disabled: targets.length > 1 || d.name === null, onSelect: () => playDownload(d) },
+      { label: 'Play', icon: <MonitorPlay />, shortcut: 'P', disabled: targets.length > 1 || d.name === null, onSelect: () => playDownload(d) },
       'separator',
       { label: `Start${many}`, icon: <Play />, shortcut: 'Space', disabled: !targets.some(canStart), onSelect: () => actions.start.mutate(targets.filter(canStart).map((t) => t.infoHash)) },
       { label: `Pause${many}`, icon: <Pause />, shortcut: 'Space', disabled: !targets.some(canPause), onSelect: () => actions.pause.mutate(targets.filter(canPause).map((t) => t.infoHash)) },
@@ -295,7 +288,7 @@ export function DownloadsPage() {
           a.click()
         },
       },
-      { label: 'Show in Storage', icon: <FolderOpen />, onSelect: () => navigate('/storage') },
+      { label: 'Show in the Library', icon: <FolderOpen />, onSelect: () => navigate('/library?place=downloads') },
       'separator',
       { label: `Remove${many}…`, icon: <Trash2 />, shortcut: 'Del', destructive: true, onSelect: () => setRemoving(hashes) },
     ]
@@ -535,6 +528,11 @@ export function DownloadsPage() {
         >
           <Plus /> Add torrent
         </Button>
+        <Button variant="outline" asChild>
+          <Link to="/search">
+            <Search /> Search
+          </Link>
+        </Button>
         <div className="hidden items-center gap-1 border-l pl-2 md:flex">
           <Button
             variant="ghost"
@@ -606,6 +604,11 @@ export function DownloadsPage() {
               ))}
             </RailGroup>
           )}
+          {(directCount > 0 || filter === 'direct') && (
+            <RailGroup title="Over HTTP">
+              <RailItem label="Direct downloads" count={directCount} active={filter === 'direct'} onClick={() => setParam({ filter: 'direct' })} />
+            </RailGroup>
+          )}
         </nav>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
@@ -630,6 +633,7 @@ export function DownloadsPage() {
                     </SelectItem>
                   ))}
                 </SelectGroup>
+                {(directCount > 0 || filter === 'direct') && <SelectItem value="direct">Direct downloads ({directCount})</SelectItem>}
                 {labels.length > 0 && (
                   <SelectGroup>
                     <SelectLabel>Labels</SelectLabel>
@@ -644,7 +648,9 @@ export function DownloadsPage() {
             </Select>
           </div>
 
-          {shown.length === 0 ? (
+          {filter === 'direct' ? (
+            <DirectList downloads={directs.data ?? []} q={q} />
+          ) : shown.length === 0 ? (
             <div className="flex flex-1 items-center justify-center p-6">
               <Empty icon={<DownloadIcon />} title={list.length ? 'Nothing matches' : 'No downloads yet'}>
                 {list.length ? (
@@ -793,33 +799,6 @@ export function DownloadsPage() {
         }}
       />
     </div>
-  )
-}
-
-function RailGroup({ title, children }: { title?: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      {title && <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">{title}</p>}
-      {children}
-    </div>
-  )
-}
-
-function RailItem({ label, count, active, tone, onClick }: { label: string; count: number; active: boolean; tone?: 'fault'; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'true' : undefined}
-      className={cn(
-        'flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted',
-        active ? 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--primary)]' : 'text-muted-foreground',
-        tone === 'fault' && 'text-destructive',
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className={cn('text-xs tabular-nums', count === 0 && 'opacity-50')}>{count}</span>
-    </button>
   )
 }
 

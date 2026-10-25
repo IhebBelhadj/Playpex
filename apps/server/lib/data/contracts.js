@@ -172,6 +172,28 @@
  * @property {function(string, Partial<Download>): Promise<Download|null>} update
  * @property {function(string): Promise<boolean>} remove
  *
+ * @typedef {object} DirectDownload
+ * @property {string} id
+ * @property {string} name          its file name in saveDir
+ * @property {'file'|'hls'} kind
+ * @property {'queued'|'downloading'|'paused'|'completed'|'error'} state
+ * @property {string} url
+ * @property {Object<string, string>|null} headers   a plugin source's: never to a client
+ * @property {string} by            'links' or a plugin id
+ * @property {string} saveDir
+ * @property {number|null} sizeBytes
+ * @property {number} doneBytes
+ * @property {string|null} error
+ * @property {Date} addedAt
+ * @property {Date|null} completedAt
+ *
+ * @typedef {object} DirectDownloadsRepository
+ * @property {function(): Promise<DirectDownload[]>} list                                newest first
+ * @property {function(string): Promise<DirectDownload|null>} find
+ * @property {function(DirectDownload): Promise<DirectDownload>} insert
+ * @property {function(string, Partial<DirectDownload>): Promise<DirectDownload|null>} update
+ * @property {function(string): Promise<boolean>} remove
+ *
  * @typedef {object} LibraryRepository
  * @property {function(): Promise<LibraryFolder[]>} listFolders                          oldest first
  * @property {function(string): Promise<LibraryFolder|null>} findFolder
@@ -183,7 +205,7 @@
  * @property {function(MediaFile): Promise<MediaFile>} insertFile                        DuplicateError for a known folder + path
  * @property {function(string, Partial<MediaFile>): Promise<MediaFile|null>} updateFile
  * @property {function(string): Promise<boolean>} removeFile
- * @property {function({ folderId?: string, state?: string, q?: string, itemId?: string, limit: number, offset: number }): Promise<{ rows: Array<MediaFile & { item: MediaItem|null }>, total: number }>} queryFiles
+ * @property {function({ folderId?: string, state?: string, q?: string, itemId?: string, title?: { kind: 'movie'|'tv', tmdbId: number }, limit: number, offset: number }): Promise<{ rows: Array<MediaFile & { item: MediaItem|null }>, total: number }>} queryFiles
  *   newest first; q matches the path
  * @property {function(): Promise<Array<{ folderId: string, state: string, count: number }>>} countFiles
  * @property {function({ audiences: string[], folderId?: string }): Promise<Array<MediaFile & { item: MediaItem|null, folder: { kind: string, path: string, builtin: boolean, dlna: boolean } }>>} listShown
@@ -240,6 +262,7 @@
  * @property {RatingsRepository} ratings
  * @property {SettingsRepository} settings
  * @property {DownloadsRepository} downloads
+ * @property {DirectDownloadsRepository} directDownloads
  * @property {LibraryRepository} library
  * @property {PluginsRepository} plugins
  */

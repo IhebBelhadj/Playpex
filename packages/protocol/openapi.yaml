@@ -111,6 +111,8 @@ tags:
     description: 'What can play a title: files on this server, downloads, torrents, ranked (the play pipeline)'
   - name: releases
     description: Release lists from the server's source plugins (`releases.providers`)
+  - name: search
+    description: Streams and files found by keywords in plugins (`sources.search`), and links read by the server (docs/search-plan.md)
   - name: subtitles
   - name: profiles
   - name: library
@@ -873,6 +875,30 @@ paths:
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /admin/storage/subtitle:
+    get:
+      tags: [admin]
+      operationId: storageSubtitle
+      summary: A subtitle file of a place (SRT, ASS, SSA, WebVTT; ≤ 10 MB) as WebVTT, for a player's `<track>`
+      security:
+        - adminSession: []
+      parameters:
+        - { name: place, in: query, required: true, schema: { type: string } }
+        - { name: path, in: query, required: true, schema: { type: string }, description: 'Inside the place, / separated' }
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt: { schema: { type: string } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '501':
+          description: '`NOT_SUPPORTED`: a picture subtitle (VobSub, PGS)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /admin/storage/check:
     post:
       tags: [admin]
@@ -1808,6 +1834,7 @@ paths:
         - { name: folder, in: query, required: false, schema: { type: string } }
         - { name: state, in: query, required: false, schema: { $ref: '#/components/schemas/LibraryFileState' } }
         - { name: item, in: query, required: false, schema: { type: string }, description: 'Files of one item' }
+        - { name: title, in: query, required: false, schema: { type: string, pattern: '^(movie|tv):\d{1,10}$' }, description: 'Files of one title: `movie:<tmdbId>` (the movie''s), `tv:<tmdbId>` (every episode''s of the show)' }
         - { name: q, in: query, required: false, schema: { type: string }, description: 'Part of the path or of the matched title' }
         - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
         - { name: offset, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
@@ -3710,7 +3737,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ReleaseKind'
         - { name: provider, in: query, description: 'Source id (unknown → the kind''s default)', schema: { type: string } }
-        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: q, in: query, description: 'Keywords, sent to the source as plain words ("Breaking.Bad" → "Breaking Bad")', schema: { type: string, maxLength: 100 } }
         - $ref: '#/components/parameters/Quality'
         - $ref: '#/components/parameters/Playable'
         - $ref: '#/components/parameters/Page'
@@ -3723,6 +3750,144 @@ paths:
               schema: { $ref: '#/components/schemas/ReleasePage' }
         '400': { $ref: '#/components/responses/Invalid' }
         '502': { $ref: '#/components/responses/Upstream' }
+
+  # ── search (docs/search-plan.md) ────────────────────────────────────────────
+  /search/providers:
+    get:
+      tags: [search]
+      operationId: listSearchProviders
+      summary: The plugins that find streams and files by keywords (`sources.search`)
+      responses:
+        '200':
+          description: Providers, by name
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/SearchProvider' } }
+  /search/sources:
+    get:
+      tags: [search]
+      operationId: searchSources
+      summary: One provider's streams and files for keywords
+      description: |
+        Its sources get media refs (`r_…` files, `h_…` HLS) the server proxies, and torrents the server's trackers; `matches`
+        says whether a result's name holds every keyword. Refs live an hour after their last use.
+      parameters:
+        - { name: provider, in: query, required: true, description: 'A provider id (`plugin:<id>`)', schema: { type: string } }
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: kind, in: query, schema: { type: string, enum: [movie, show, any], default: any } }
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: A page of results
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchSourcePage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /admin/links/inspect:
+    post:
+      tags: [search]
+      operationId: inspectLink
+      summary: What a URL is, and what it links to (the server reads it)
+      description: |
+        A magnet isn't fetched. Anything else is, by the server, at public addresses only (every redirect checked again):
+        a .torrent, a video file, an HLS playlist, or a web page whose magnets, .torrent links, video files and HLS playlists
+        are listed. Videos and playlists get media refs to play or download.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 4096 }
+      responses:
+        '200':
+          description: What it is
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LinkInspection' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /downloads/direct:
+    get:
+      tags: [downloads]
+      operationId: listDirectDownloads
+      summary: Files downloaded over HTTP (not torrents), newest first
+      responses:
+        '200':
+          description: Direct downloads
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DirectDownload' } }
+    post:
+      tags: [downloads]
+      operationId: addDirectDownload
+      summary: Download a stream or a file the server proxies (a media ref from search, a link or Play)
+      description: |
+        `ref`: an `r_…` (a file: HTTP with ranges, resumed after a pause or a restart) or an `h_…` (an HLS stream, saved by
+        ffmpeg). Into the download folder (`<name>.part` until complete). Two run at a time, the rest wait.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref]
+              properties:
+                ref: { type: string }
+                name: { type: string, maxLength: 200, description: 'The file name (else the source''s)' }
+                paused: { type: boolean }
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectDownload' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/direct/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [downloads]
+      operationId: removeDirectDownload
+      summary: Stop and forget it; `files=1` also deletes its file
+      parameters:
+        - { name: files, in: query, schema: { type: string, enum: ['0', '1'] } }
+      responses:
+        '204': { description: Removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/direct/{id}/start:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [downloads]
+      operationId: startDirectDownload
+      summary: Start (or queue) a paused or failed one
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectDownload' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/direct/{id}/pause:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [downloads]
+      operationId: pauseDirectDownload
+      summary: Pause it (a file resumes where it stopped; an HLS stream starts again)
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectDownload' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # ── subtitles ───────────────────────────────────────────────────────────────
   /subtitles/providers:
@@ -3768,6 +3933,30 @@ paths:
           content:
             text/vtt: { schema: { type: string } }
         '502': { $ref: '#/components/responses/Upstream' }
+
+  /subtitles/convert:
+    post:
+      tags: [subtitles]
+      operationId: convertSubtitle
+      summary: A subtitle file the client has (SRT, ASS / SSA, WebVTT; ≤ 10 MB) as WebVTT
+      description: The file's bytes as the body (any content type); old SRTs in a Windows code page are read with `lang`'s.
+      parameters:
+        - { name: lang, in: query, schema: { type: string }, description: 'Its language (ISO 639-1), for old code pages' }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: WebVTT
+          content:
+            text/vtt: { schema: { type: string } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '501':
+          description: '`NOT_SUPPORTED`: not a text subtitle'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   # ── profiles ────────────────────────────────────────────────────────────────
   /profiles:
@@ -4741,7 +4930,7 @@ components:
               status: { type: string, enum: [online, offline], description: 'offline: its folder isn''t there (an unplugged drive, a share)' }
     StorageEntry:
       type: object
-      required: [type, name, path, bytes, items, modifiedAt, what, ref, fileId, download]
+      required: [type, name, path, bytes, items, modifiedAt, what, ref, fileId, media, titles, quality, duration, download]
       properties:
         type: { type: string, enum: [folder, file] }
         name: { type: string }
@@ -4759,6 +4948,29 @@ components:
             text: { type: string }
         ref: { type: [string, 'null'], description: 'A media ref to play it (a library file, a download''s video)' }
         fileId: { type: [string, 'null'], description: 'Its library file (the Library page''s ?file=)' }
+        media:
+          description: |
+            What it is: a matched file's title (an episode: its show, season and episode), or a folder's
+            when every matched file under it is one title (a movie's folder, a show's, a season's; `episodes`:
+            how many episode files). null otherwise
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [mediaType, tmdbId, title, year, season, episode, episodeTitle, posterPath, stillPath]
+              properties:
+                mediaType: { $ref: '#/components/schemas/MediaType' }
+                tmdbId: { type: integer, description: 'The movie''s, or the show''s' }
+                title: { type: [string, 'null'] }
+                year: { type: [integer, 'null'] }
+                season: { type: [integer, 'null'] }
+                episode: { type: [integer, 'null'] }
+                episodeTitle: { type: [string, 'null'] }
+                posterPath: { type: [string, 'null'], description: 'TMDB image path (the show''s for an episode)' }
+                stillPath: { type: [string, 'null'], description: 'An episode''s still' }
+                episodes: { type: [integer, 'null'], description: 'A folder''s: episode files under it' }
+        titles: { type: [integer, 'null'], description: 'A folder''s: how many titles its matched files are' }
+        quality: { type: [string, 'null'], description: 'A library file''s: 2160p, 1080p, 720p… (ffprobe, else its name)' }
+        duration: { type: [number, 'null'], description: 'A library file''s, in seconds (ffprobe)' }
         download:
           type: [object, 'null']
           description: The download whose data it is
@@ -5960,6 +6172,7 @@ components:
             season: { type: [integer, 'null'], description: 'kind tv' }
             episode: { type: [integer, 'null'], description: 'kind tv' }
             pack: { type: boolean, description: 'kind tv' }
+            matches: { type: boolean, description: 'Its name holds every keyword of `q` (punctuation, "Breaking.Bad" / "breaking bad", "Spider-Man" / "spiderman" aside); sources answer loosely. Always true without `q`' }
     ReleasePage:
       type: object
       required: [provider, page, hasMore, torrents]
@@ -5968,6 +6181,82 @@ components:
         page: { type: integer, description: 'Last page read; ask for page + 1 next' }
         hasMore: { type: boolean }
         torrents: { type: array, items: { $ref: '#/components/schemas/ReleaseTorrent' } }
+
+    # ── search
+    SearchProvider:
+      type: object
+      required: [id, name, kinds]
+      properties:
+        id: { type: string, description: '`plugin:<id>`' }
+        name: { type: string }
+        kinds: { type: array, items: { type: string, enum: [http, hls, magnet] }, description: 'What its results can be' }
+    SearchSource:
+      type: object
+      required: [provider, kind, label, matches]
+      properties:
+        provider: { type: string, description: 'The plugin''s id' }
+        kind: { type: string, enum: [file, hls, torrent], description: 'file: an HTTP file (`ref` r_…); hls: a stream (`ref` h_…); torrent: `magnet`' }
+        label: { type: string, description: 'Its name' }
+        title: { type: [string, 'null'], description: 'What it is, when the provider says' }
+        year: { type: [integer, 'null'] }
+        season: { type: [integer, 'null'] }
+        episode: { type: [integer, 'null'] }
+        poster: { type: [string, 'null'], description: 'An https image' }
+        ref: { type: string, description: 'file, hls: the media ref (play: GET /media/{ref}…; download: POST /downloads/direct)' }
+        magnet: { type: string, description: 'torrent' }
+        infoHash: { type: string, description: 'torrent' }
+        size: { type: [number, 'null'] }
+        quality: { type: [string, 'null'] }
+        codec: { type: [string, 'null'] }
+        audio: { type: [string, 'null'] }
+        seeds: { type: [integer, 'null'] }
+        peers: { type: [integer, 'null'] }
+        matches: { type: boolean, description: 'Its name (label, else title) holds every keyword (names.searchMatches)' }
+    SearchSourcePage:
+      type: object
+      required: [provider, page, hasMore, items]
+      properties:
+        provider: { type: string }
+        page: { type: integer }
+        hasMore: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/SearchSource' } }
+    LinkItem:
+      type: object
+      required: [kind, label, url]
+      properties:
+        kind: { type: string, enum: [magnet, torrent, video, hls] }
+        label: { type: string, description: 'The link''s text, else its file name' }
+        url: { type: string, description: 'Where it is (a magnet: the magnet)' }
+        ref: { type: string, description: 'video, hls: a media ref to play or download (POST /downloads/direct)' }
+        infoHash: { type: string, description: 'magnet' }
+        size: { type: [number, 'null'], description: 'video, torrent: when the server learnt it' }
+        contentType: { type: [string, 'null'] }
+    LinkInspection:
+      type: object
+      required: [url, kind, items]
+      properties:
+        url: { type: string, description: 'Where the server ended up (after redirects)' }
+        kind: { type: string, enum: [magnet, torrent, video, hls, page], description: 'What the URL itself is' }
+        title: { type: [string, 'null'], description: 'A page''s title' }
+        items: { type: array, items: { $ref: '#/components/schemas/LinkItem' }, description: 'The URL itself (magnet, torrent, video, hls), or what a page links to' }
+        truncated: { type: boolean, description: 'A page longer than the server reads (2 MB): what came after isn''t listed' }
+    DirectDownload:
+      type: object
+      required: [id, name, kind, state, size, received, speed, addedAt, source]
+      properties:
+        id: { type: string }
+        name: { type: string, description: 'Its file name in the download folder' }
+        kind: { type: string, enum: [file, hls] }
+        state: { type: string, enum: [queued, downloading, paused, completed, error] }
+        size: { type: [number, 'null'], description: 'null: unknown (an HLS stream, a server that doesn''t say)' }
+        received: { type: number, description: 'Bytes written' }
+        speed: { type: number, description: 'Bytes per second, while downloading' }
+        path: { type: [string, 'null'], description: 'Its file on the server, once complete' }
+        ref: { type: [string, 'null'], description: 'Once complete: the file as a media ref (play it)' }
+        error: { type: [string, 'null'] }
+        addedAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        source: { type: object, required: [by, host], properties: { by: { type: string, description: '`links` (a URL the admin gave) or the plugin''s id' }, host: { type: string } } }
 
     # ── subtitles
     SubtitleProvider:
