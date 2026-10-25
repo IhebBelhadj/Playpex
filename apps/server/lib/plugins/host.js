@@ -15,7 +15,8 @@
 // notifications ./notifications.js, link status ./links.js (plan step P3b);
 // plugins.call runs another plugin's exported data handler (P4b); core data
 // (tmdb.*, imdb.*, library.find) ./core.js; release names, HTML and .torrent
-// files (names.*, html.select, torrent.info) ./utilities.js.
+// files (names.*, html.select, torrent.info) ./utilities.js; IPTV playlists and
+// guides (iptv.m3u, iptv.xmltv) ./iptv.js.
 
 var http = require('./http'),
   health = require('../health'),
@@ -23,6 +24,7 @@ var http = require('./http'),
   writes = require('./writes'),
   core = require('./core'),
   utilities = require('./utilities'),
+  iptv = require('./iptv'),
   scheduler = require('./scheduler'),
   notifications = require('./notifications');
 
@@ -204,7 +206,7 @@ function createHost(plugin, services) {
     }
   };
 
-  Object.assign(API, writes(plugin, services), core(plugin, services), utilities(plugin));
+  Object.assign(API, writes(plugin, services), core(plugin, services), utilities(plugin), iptv(plugin));
 
   return function host(api, args, bytes) {
     args = args || {};

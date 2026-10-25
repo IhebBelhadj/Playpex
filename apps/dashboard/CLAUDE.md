@@ -57,7 +57,7 @@ src/components/plugin-repositories.tsx  BrowseTab (GET /admin/plugins/catalog, k
                         what's `refused`, errors / stale, a `pendingKey` to trust, on / off, remove; Add = URL → preview → "Trust and add")
 src/pages/plugin.tsx    /plugins/:pluginId, a plugin's own page (GET /admin/plugins/{id}, key ['admin-plugin', id]; refetched every
                         5 s on Activity): Overview (listing, origin, signature, requires, exports, changelog), Permissions, Settings,
-                        Profiles, Accounts, Activity (its counters: `AdminPlugin.stats`; jobs; its log lines GET /admin/logs?plugin=),
+                        Profiles, Accounts, Channels (a live plugin's: `components/plugin-channels.tsx`, GET /admin/plugins/{id}/channels, key ['admin-plugin-channels', id]: count, groups, guide, updated / how long, its error, search, group badges, the first 300 rows; Refresh = POST …/channels/refresh), Activity (its counters: `AdminPlugin.stats`; jobs; its log lines GET /admin/logs?plugin=),
                         Versions (its update policy (PATCH {updatePolicy}), the versions its repository lists, the version kept by the
                         last update: POST …/rollback → the preview → install); Overview alerts for `held`, deprecated (its replacement),
                         no longer listed; the menu: Reload (a developer copy), Clear data (POST …/clear), Remove / Remove keep its data
@@ -72,7 +72,7 @@ src/components/plugin-settings.tsx  a plugin's options rendered from its manifes
                         ['admin-plugin-settings', id]): PluginServerSettings (its page's Settings) and PluginProfiles (its Profiles:
                         a profile picker, "Use it for <profile>" (PUT …/profiles {shown}), "What it may do for <profile>": a switch per
                         personal permission (PUT …/grants), then its profile settings); groups, "Show advanced", visibleIf / enabledIf
-                        against the draft, switch / choice / slider / number / text / secret (never shown: "Set") / action (POST
+                        against the draft, switch / choice / slider / number / text / url (a monospace address field; `grantsHost`: a line saying it lets the plugin reach that host) / secret (never shown: "Set") / action (POST
                         …/settings/{key}/run, its toasts shown); edits are a draft per scope saved together (PUT; a refusal's
                         `errors` per field: ApiError.fields)
 src/components/plugin-accounts.tsx  PluginAccounts (its Accounts): each link's accounts (GET /admin/plugins/{id}/links, key

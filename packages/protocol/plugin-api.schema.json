@@ -18,6 +18,12 @@
       "maxLength": 4096,
       "pattern": "^https://"
     },
+    "webUrl": {
+      "description": "An http(s) URL: https to the hosts of permissions.network; plain http (and other ports) only to a host the admin granted with a url setting (grantsHost), or one of the stream hosts its document lists (streamHosts)",
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^https?://"
+    },
     "infoHash": {
       "type": "string",
       "pattern": "^[0-9a-fA-F]{40}$"
@@ -111,7 +117,7 @@
       }
     },
     "titleRef": {
-      "description": "Which title: a movie, a show, an episode of one (tmdbId is the show's), or another video of the library",
+      "description": "Which title: a movie, a show, an episode of one (tmdbId is the show's), another video of the library, or a TV channel of a live plugin (channel: its id)",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -123,7 +129,8 @@
             "movie",
             "show",
             "episode",
-            "video"
+            "video",
+            "channel"
           ]
         },
         "tmdbId": {
@@ -148,6 +155,12 @@
           "type": "integer",
           "minimum": 1800,
           "maximum": 3000
+        },
+        "channel": {
+          "description": "kind channel: the channel's id (live.channels)",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
         }
       },
       "allOf": [
@@ -165,11 +178,25 @@
               "episode"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "channel"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "channel"
+            ]
+          }
         }
       ]
     },
     "source": {
-      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: an HTTPS file proxied by the server as a media ref r_…; hls: an HLS playlist (VOD or live), proxied as h_… (every URI in it rewritten to the server); live: a continuous stream (MPEG-TS, or an HLS live playlist with format hls), proxied as l_… / h_…. The client never sees a URL or a header",
+      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: a file (HTTPS; plain HTTP from a host the admin granted) proxied by the server as a media ref r_…; hls: an HLS playlist (VOD or live), proxied as h_… (every URI in it rewritten to the server); live: a continuous stream (MPEG-TS, or an HLS live playlist with format hls), proxied as l_… / h_…. The client never sees a URL or a header",
       "oneOf": [
         {
           "type": "object",
@@ -252,7 +279,7 @@
               "const": "http"
             },
             "url": {
-              "$ref": "#/$defs/httpsUrl"
+              "$ref": "#/$defs/webUrl"
             },
             "headers": {
               "description": "Sent by the server with every request of this stream (a token): never to the client. Host, Cookie, Connection, Range, Content-Length and Transfer-Encoding are the server's (FORBIDDEN_HEADERS in plugins.js)",
@@ -306,7 +333,7 @@
               "const": "hls"
             },
             "url": {
-              "$ref": "#/$defs/httpsUrl",
+              "$ref": "#/$defs/webUrl",
               "description": "The playlist (.m3u8): a master playlist or a media playlist. Its variants, segments, keys and maps are fetched by the server as the plugin: their hosts must be in permissions.network"
             },
             "headers": {
@@ -357,7 +384,7 @@
               "const": "live"
             },
             "url": {
-              "$ref": "#/$defs/httpsUrl",
+              "$ref": "#/$defs/webUrl",
               "description": "The stream: MPEG-TS over HTTPS (remuxed by the server's ffmpeg for the player), or an HLS live playlist (format hls)"
             },
             "headers": {
@@ -485,6 +512,117 @@
             "maybe",
             "no"
           ]
+        }
+      }
+    },
+    "channel": {
+      "description": "A TV channel of a live plugin (live.channels), as the server keeps it and clients list it",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable across refreshes (the guide and the player name it)",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9._:@-]+$"
+        },
+        "number": {
+          "description": "Its channel number; the server numbers the ones without, after the highest",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99999
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "logo": {
+          "description": "An http(s) URL (fetched by the server as the plugin, then served to clients) or assets/… of the package",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^(https?://|assets/)"
+        },
+        "group": {
+          "description": "Its group (News, Sport…): the guide's filter",
+          "type": "string",
+          "maxLength": 60
+        },
+        "country": {
+          "type": "string",
+          "pattern": "^[A-Za-z]{2}$"
+        },
+        "languages": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]{2,3}$"
+          }
+        },
+        "audience": {
+          "description": "adults: never listed to a kids profile (its plugin's audience rule, per channel)",
+          "enum": [
+            "everyone",
+            "adults"
+          ]
+        }
+      }
+    },
+    "programme": {
+      "description": "One programme of a channel (live.guide)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "start",
+        "end",
+        "title"
+      ],
+      "properties": {
+        "channel": {
+          "description": "The channel's id",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "episode": {
+          "description": "As it should read: S2 E5, Part 3…",
+          "type": "string",
+          "maxLength": 30
+        },
+        "image": {
+          "$ref": "#/$defs/httpsUrl"
         }
       }
     },
@@ -1421,6 +1559,20 @@
               "maxLength": 200
             }
           }
+        },
+        "guide": {
+          "description": "A guide screen: the core draws its channels (live.channels) and programmes (live.guide); its data handler, if it has one, only names it",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/text"
+            },
+            "empty": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
         }
       }
     },
@@ -2248,6 +2400,111 @@
                 },
                 {
                   "$ref": "#/$defs/identity"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "live.channels": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "refresh": {
+              "description": "The admin asked for a refresh: don't answer from your own cache",
+              "type": "boolean"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "channels"
+          ],
+          "properties": {
+            "channels": {
+              "type": "array",
+              "maxItems": 5000,
+              "items": {
+                "$ref": "#/$defs/channel"
+              }
+            }
+          }
+        }
+      },
+      "live.guide": {
+        "input": {
+          "type": "object",
+          "required": [
+            "channels",
+            "from",
+            "to"
+          ],
+          "properties": {
+            "channels": {
+              "description": "Ids of its channels (≤ 200)",
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "string"
+              }
+            },
+            "from": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "to": {
+              "description": "At most 48 h after from",
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "programmes"
+          ],
+          "properties": {
+            "programmes": {
+              "type": "array",
+              "maxItems": 20000,
+              "items": {
+                "$ref": "#/$defs/programme"
+              }
+            }
+          }
+        }
+      },
+      "live.stream": {
+        "input": {
+          "type": "object",
+          "required": [
+            "channel"
+          ],
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/channel"
+            }
+          }
+        },
+        "output": {
+          "description": "An hls or live source (checked against its permissions), or null: it can't play now",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/source"
                 }
               ]
             }

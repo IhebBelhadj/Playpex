@@ -223,7 +223,9 @@ test('run-time shapes: sources, effects, events, hook answers', function () {
   assert.ok(source({ kind: 'magnet', label: '1080p', infoHash: 'a'.repeat(40), seeds: 10 }));
   assert.ok(!source({ kind: 'magnet', label: 'nothing to play' }), 'a magnet source without magnet or hash');
   assert.ok(source({ kind: 'http', label: 'Debrid', url: 'https://cdn.example.com/f.mkv', headers: { Authorization: 'Bearer x' } }));
-  assert.ok(!source({ kind: 'http', label: 'plain', url: 'http://cdn.example.com/f.mkv' }), 'not HTTPS');
+  // plain http is a shape the schema accepts: only a host the admin granted reaches it (lib/plugins/http.js)
+  assert.ok(source({ kind: 'http', label: 'plain', url: 'http://cdn.example.com/f.mkv' }));
+  assert.ok(!source({ kind: 'http', label: 'ftp', url: 'ftp://cdn.example.com/f.mkv' }), 'not http(s)');
   assert.ok(!source({ kind: 'file', label: 'a path', path: '/etc/passwd' }), 'no file sources');
   assert.ok(source({ kind: 'hls', label: 'HLS', url: 'https://cdn.example.com/master.m3u8', live: false, quality: '1080p' }));
   assert.ok(!source({ kind: 'hls', label: 'HLS', url: 'https://cdn.example.com/master.m3u8', size: 10 }), 'a playlist has no size');

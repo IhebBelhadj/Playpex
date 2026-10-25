@@ -3,7 +3,7 @@
 // What a plugin's data answer may ask a client to do (docs/plugins-plan.md
 // §5.3), checked against its permissions before the answer leaves the server:
 //   play      needs permissions.play; each source a kind of permissions.sources
-//             (an http source on a declared host); audience adults → tracking 'none';
+//             (an http source on a declared host, or one the admin gave it); audience adults → tracking 'none';
 //             an http source leaves as { kind: 'media', ref: 'r_…', label, … }:
 //             the server proxies it (./remote.js), the client never sees its URL;
 //             hls / live ones as { kind: 'media', ref: 'h_…' | 'l_…', format, … } (lib/media/hls.js)
@@ -12,8 +12,8 @@
 //   confirm   its `then` checked the same way
 // An effect that breaks a rule is dropped (and logged), the rest of the answer stays.
 
-var protocol = require('@playpex/protocol/plugins'),
-  remote = require('./remote'),
+var remote = require('./remote'),
+  http = require('./http'),
   hls = require('../media/hls');
 
 // An http source as clients get it: a media ref, never the URL or its headers
@@ -34,6 +34,8 @@ function forClient(plugin, source) {
   return out;
 }
 
+// A kind it declared; a stream's URL on a host it declared (https), or one the
+// admin gave it (./grants.js: http too, its port, the stream hosts its document lists)
 function sourceAllowed(plugin, source) {
   var p = plugin.manifest.permissions;
   if ((p.sources || []).indexOf(source.kind) === -1) {
@@ -41,7 +43,8 @@ function sourceAllowed(plugin, source) {
   }
   if (source.kind !== 'magnet') {
     try {
-      return protocol.hostAllowed(p.network, new URL(source.url).hostname);
+      http.target(plugin, source.url, { stream: true });
+      return true;
     } catch (e) {
       return false;
     }

@@ -35,7 +35,12 @@ var HOOKS = {
   'metadata.details': { timeoutMs: 5000, describe: 'Adds ratings, tags and links to title pages' },
   'player.markers': { timeoutMs: 3000, describe: 'Marks intros, recaps and credits in the player' },
   // chosen per library folder by the admin (its information provider)
-  'library.match': { timeoutMs: 10000, describe: 'Recognises the files of library folders it is chosen for' }
+  'library.match': { timeoutMs: 10000, describe: 'Recognises the files of library folders it is chosen for' },
+  // live TV (docs/providers-plan.md §8.1): its channels (kept by the server), their programmes, a channel's stream
+  // when it plays (IPTV URLs carry tokens that expire)
+  'live.channels': { timeoutMs: 30000, describe: 'Adds TV channels' },
+  'live.guide': { timeoutMs: 30000, describe: 'Adds a programme guide to its channels' },
+  'live.stream': { timeoutMs: 10000, describe: 'Plays its TV channels' }
 };
 
 // Events (§4.4): what a plugin may observe, by family
@@ -51,8 +56,10 @@ var SOURCE_KINDS = ['magnet', 'http', 'hls', 'live'];
 var MARKER_KINDS = ['intro', 'recap', 'credits', 'chapter'];
 var EFFECTS = ['open', 'play', 'toast', 'refresh', 'confirm', 'download'];
 // No settings template: setup is the dashboard's, clients only show content (§1 goal 7)
-var TEMPLATES = ['catalog', 'title', 'releases', 'list'];
-var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'secret', 'action'];
+// guide: its channels and their programmes, drawn from live.channels / live.guide (its data handler optional)
+var TEMPLATES = ['catalog', 'title', 'releases', 'list', 'guide'];
+// url: an address the admin types; with grantsHost its host joins the plugin's network permission (decision J)
+var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'url', 'secret', 'action'];
 var LISTING_CATEGORIES = ['catalog', 'sources', 'streams', 'live', 'resolvers', 'subtitles', 'metadata', 'library', 'tracking', 'notifications', 'tools'];
 
 // Slots of core screens a packaged plugin may contribute to (the TV's slot
@@ -89,7 +96,12 @@ var LIMITS = {
   sourceRefTtlMs: 60 * 60 * 1000,
   notifications: { perHour: 10, keepMs: 24 * 60 * 60 * 1000 },
   // tmdb.* / imdb.* through the server's own clients (its key, its 6 h cache), per plugin and service
-  core: { perSecond: 10, burst: 20, inFlight: 4, maxWaitMs: 10000 }
+  core: { perSecond: 10, burst: 20, inFlight: 4, maxWaitMs: 10000 },
+  // live TV: what live.channels may list, what one live.guide call covers, iptv.* downloads (parsed on the host)
+  live: {
+    channels: 5000, guideChannels: 200, guideHours: 48, programmes: 20000,
+    downloadBytes: 200 * 1024 * 1024, cacheMs: 6 * 60 * 60 * 1000, downloadTimeoutMs: 120000
+  }
 };
 
 // Request headers an http source can't set: the server's own
@@ -199,6 +211,13 @@ function hostOf(url) {
   return m ? m[1].toLowerCase() : null;
 }
 
+/** The url settings whose host the admin's value grants (decision J) */
+function grantingSettings(manifest) {
+  return ((manifest.contributes && manifest.contributes.settings) || []).filter(function (s) {
+    return s.type === 'url' && s.grantsHost;
+  });
+}
+
 function names(list, field) {
   return (list || []).map(function (x) { return x[field]; });
 }
@@ -263,16 +282,26 @@ function checkManifest(manifest, options) {
   }
 
   // Sources are used by play.collect, play.resolve (a debrid answers http
-  // sources), play effects or download effects; an http source from a declared host
-  if (p.sources && hooks.indexOf('play.collect') === -1 && hooks.indexOf('play.resolve') === -1 && !p.play &&
-    (p.write || []).indexOf('downloads') === -1) {
-    problem('/permissions/sources', 'sources need play.collect, play.resolve, play or write: downloads');
+  // sources), live.stream, play effects or download effects; an http source from a declared host
+  if (p.sources && hooks.indexOf('play.collect') === -1 && hooks.indexOf('play.resolve') === -1 && hooks.indexOf('live.stream') === -1 &&
+    !p.play && (p.write || []).indexOf('downloads') === -1) {
+    problem('/permissions/sources', 'sources need play.collect, play.resolve, live.stream, play or write: downloads');
   }
   if (hooks.indexOf('play.collect') !== -1 && !p.sources) {
     problem('/permissions/hooks', 'play.collect needs permissions.sources (the kinds it returns)');
   }
-  if ((p.sources || []).some(function (k) { return k !== 'magnet'; }) && !network.length) {
-    problem('/permissions/sources', 'http, hls and live sources need the stream hosts in permissions.network');
+  // the hosts may also be the admin's: a url setting with grantsHost (an IPTV subscription, a self-hosted service)
+  if ((p.sources || []).some(function (k) { return k !== 'magnet'; }) && !network.length && !grantingSettings(m).length) {
+    problem('/permissions/sources', 'http, hls and live sources need the stream hosts in permissions.network (or a url setting with grantsHost)');
+  }
+  if ((hooks.indexOf('live.channels') !== -1) !== (hooks.indexOf('live.stream') !== -1)) {
+    problem('/permissions/hooks', 'live.channels and live.stream go together (its channels, and how one plays)');
+  }
+  if (hooks.indexOf('live.guide') !== -1 && hooks.indexOf('live.channels') === -1) {
+    problem('/permissions/hooks', 'live.guide needs live.channels (the channels it has programmes for)');
+  }
+  if (hooks.indexOf('live.stream') !== -1 && !(p.sources || []).some(function (k) { return k === 'hls' || k === 'live'; })) {
+    problem('/permissions/hooks', 'live.stream answers hls or live sources: it needs them in permissions.sources');
   }
   if (hooks.indexOf('play.resolve') !== -1 && (p.sources || []).indexOf('http') === -1) {
     problem('/permissions/hooks', 'play.resolve answers http sources: it needs permissions.sources http');
@@ -337,8 +366,12 @@ function checkManifest(manifest, options) {
   var screens = names(c.screens, 'name');
   duplicates(screens).forEach(function (n) { problem('/contributes/screens', 'screen ' + n + ' declared twice'); });
   (c.screens || []).forEach(function (s, i) {
-    if (s.template !== 'settings' && !s.data) {
+    // a guide's channels and programmes are the live hooks'; its handler (a title, an empty text) is optional
+    if (s.template !== 'guide' && !s.data) {
       problem('/contributes/screens/' + i, 'a ' + s.template + ' screen needs data (its handler)');
+    }
+    if (s.template === 'guide' && hooks.indexOf('live.channels') === -1) {
+      problem('/contributes/screens/' + i, 'a guide screen shows its live.channels: it needs that hook');
     }
   });
   (c.sections || []).forEach(function (s, i) {
@@ -401,8 +434,19 @@ function checkManifest(manifest, options) {
         problem(at + '/default', 'doesn\'t match the pattern');
       }
     }
-    if (s.type === 'text' && s.default != null && s.maxLength && s.default.length > s.maxLength) {
+    if ((s.type === 'text' || s.type === 'url') && s.default != null && s.maxLength && s.default.length > s.maxLength) {
       problem(at + '/default', 'longer than maxLength');
+    }
+    if (s.type === 'url') {
+      if (s.grantsHost && s.scope !== 'server') {
+        problem(at + '/scope', 'a url that grants its host is the admin\'s: scope server');
+      }
+      if (s.default && urlProblem(s.default, s.schemes)) {
+        problem(at + '/default', urlProblem(s.default, s.schemes));
+      }
+      if (s.default && s.grantsHost) {
+        problem(at + '/default', 'a url that grants its host has no default: the admin types it');
+      }
     }
     if (s.type === 'secret') {
       if (s.scope !== 'server') {
@@ -444,6 +488,47 @@ function checkManifest(manifest, options) {
   return problems;
 }
 
+/**
+ * Why a url setting's value isn't acceptable, or null: an http(s) URL (the
+ * setting's `schemes`, default both) without credentials. Its address is
+ * checked when the server uses it (public addresses only)
+ */
+function urlProblem(value, schemes) {
+  var u;
+  try {
+    u = new URL(String(value));
+  } catch (e) {
+    return 'not a web address';
+  }
+  var scheme = u.protocol.replace(/:$/, '');
+  if ((schemes || ['https', 'http']).indexOf(scheme) === -1) {
+    return 'must start with ' + (schemes || ['https', 'http']).map(function (x) { return x + '://'; }).join(' or ');
+  }
+  if (u.username || u.password) {
+    return 'no user name or password in the address';
+  }
+  if (!u.hostname) {
+    return 'no host name';
+  }
+  return null;
+}
+
+/**
+ * What a url setting's value grants: { host, port, scheme } (the port the
+ * URL names, else its scheme's), or null for a value that can't be one
+ */
+function grantOf(value) {
+  if (!value || urlProblem(value)) {
+    return null;
+  }
+  var u = new URL(String(value)), scheme = u.protocol.replace(/:$/, '');
+  return {
+    host: u.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, ''),
+    port: u.port ? parseInt(u.port, 10) : scheme === 'https' ? 443 : 80,
+    scheme: scheme
+  };
+}
+
 /** The @key strings of a manifest: [{ path, key }] */
 function translated(m) {
   var found = [];
@@ -479,6 +564,10 @@ function describePermissions(manifest) {
   if (p.network && p.network.length) {
     add('network', 'Talks to ' + p.network.join(', '));
   }
+  grantingSettings(m).forEach(function (s) {
+    add('network.' + s.key, 'Talks to the address you give in its setting ' + JSON.stringify(s.label) +
+      (s.streamHosts ? ', and the stream hosts that address lists' : ''));
+  });
   if (p.storage) {
     add('storage', 'Keeps up to ' + p.storage.replace(/(KB|MB)$/, ' $1') + ' of its own data');
   }
@@ -488,8 +577,17 @@ function describePermissions(manifest) {
   if (p.play) {
     add('play', 'Can start playback');
   }
-  if (p.sources) {
-    add('sources', 'Adds ' + p.sources.map(function (k) { return k === 'magnet' ? 'torrents' : 'streams from the web'; }).join(' and ') + ' to Play');
+  // a live plugin's streams are its channels' ("Plays its TV channels"), not Play's
+  var hooks = p.hooks || [];
+  if (p.sources && (p.play || hooks.indexOf('play.collect') !== -1 || hooks.indexOf('play.resolve') !== -1 || (p.write || []).indexOf('downloads') !== -1)) {
+    var kinds = [];
+    p.sources.forEach(function (k) {
+      var text = k === 'magnet' ? 'torrents' : 'streams from the web';
+      if (kinds.indexOf(text) === -1) {
+        kinds.push(text);
+      }
+    });
+    add('sources', 'Adds ' + kinds.join(' and ') + ' to Play');
   }
   (p.hooks || []).forEach(function (h) {
     if (h !== 'play.collect' || !p.sources) {
@@ -548,5 +646,8 @@ module.exports = {
   compareVersions: compareVersions,
   hostAllowed: hostAllowed,
   checkManifest: checkManifest,
-  describePermissions: describePermissions
+  describePermissions: describePermissions,
+  grantingSettings: grantingSettings,
+  urlProblem: urlProblem,
+  grantOf: grantOf
 };

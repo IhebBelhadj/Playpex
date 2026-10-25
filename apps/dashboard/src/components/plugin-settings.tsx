@@ -382,6 +382,29 @@ function Field({
             </Button>
           )}
         </div>
+      ) : d.type === 'url' ? (
+        <>
+          <Input
+            id={id}
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+            maxLength={d.maxLength ?? 2048}
+            placeholder={d.placeholder}
+            value={typeof value === 'string' ? value : ''}
+            disabled={disabled}
+            aria-invalid={!!error}
+            onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+          />
+          {d.grantsHost && (
+            <p className="text-xs text-muted-foreground">
+              Saving it lets the plugin reach this address's host
+              {d.streamHosts ? ', and play the streams the document there lists' : ''} (public addresses only).
+            </p>
+          )}
+        </>
       ) : (
         <Input
           id={id}

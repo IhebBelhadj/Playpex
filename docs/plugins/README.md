@@ -1,8 +1,8 @@
 # Writing a Playpex plugin
 
-**Status: the contract (steps P0, P0b of [`docs/plugins-plan.md`](../plugins-plan.md)), the sandbox (P2), the TV templates (P1), the hooks (P3), events / schedules / writes / linking / notifications (P3b), installing (P4) and repositories (P4b).** The manifest, permissions, hooks, events, sources, effects, template data and repository indexes described here are fixed in `packages/protocol` and checked by tests. The server runs plugins in their sandbox with the whole host API, `plugins.call` between plugins included. Playpex TV draws your screens and contributions (tv.md); the dashboard installs packages, edits your settings, grants your personal permissions per profile, links accounts and shows what your plugin does (its page's Activity: requests per host, calls, CPU time, jobs, its log lines). An update asking for more permissions than the installed version installs only once the admin accepts them; the version an update replaced can be put back. Publish in a repository ([repositories.md](repositories.md)): admins add it once, browse it, install with dependencies and get updates by their policy. **The example plugin [`plugins/hello`](../../plugins/hello)** uses every template, slot, effect and kind of setting.
+**Status: the contract (steps P0, P0b of [`docs/plugins-plan.md`](../plugins-plan.md)), the sandbox (P2), the TV templates (P1), the hooks (P3), events / schedules / writes / linking / notifications (P3b), installing (P4), repositories (P4b), and live TV (providers plan step 9: `live.*` hooks, `iptv.*`, the `guide` template, `url` settings that grant hosts).** The manifest, permissions, hooks, events, sources, effects, template data and repository indexes described here are fixed in `packages/protocol` and checked by tests. The server runs plugins in their sandbox with the whole host API, `plugins.call` between plugins included. Playpex TV draws your screens and contributions (tv.md); the dashboard installs packages, edits your settings, grants your personal permissions per profile, links accounts and shows what your plugin does (its page's Activity: requests per host, calls, CPU time, jobs, its log lines). An update asking for more permissions than the installed version installs only once the admin accepts them; the version an update replaced can be put back. Publish in a repository ([repositories.md](repositories.md)): admins add it once, browse it, install with dependencies and get updates by their policy. **The example plugin [`plugins/hello`](../../plugins/hello)** uses every template, slot, effect and kind of setting.
 
-**Trying a plugin today**: set `plugins.developerMode` to `true` in the server's `settings.json`, put your plugin folder (manifest, `server.js`, `assets/`, `i18n/`) in `<config dir>/plugins-dev/<id>/` (Linux `~/.config/Playpex/plugins-dev/`), restart the server; the log says whether it loaded and why not. Your section shows in Playpex TV's menu, your settings on the dashboard's Plugins page; call a data handler by hand with `POST /api/v1/plugins/<id>/data/<name>` ([client guide](../api/plugins.md)). Copying `plugins/hello` there is the quickest start. For the parts not built yet, this guide is what a plugin will be written against, and what those steps must keep.
+**Trying a plugin today**: set `plugins.developerMode` to `true` in the server's `settings.json`, put your plugin folder (manifest, `server.js`, `assets/`, `i18n/`) in `<config dir>/plugins-dev/<id>/` (Linux `~/.config/Playpex/plugins-dev/`), restart the server; the log says whether it loaded and why not. Your section shows in Playpex TV's menu, your settings on the dashboard's Plugins page; call a data handler by hand with `POST /api/v1/plugins/<id>/data/<name>` ([client guide](../api/plugins.md)). Copying `plugins/hello` there is the quickest start. Everything in this guide is built.
 
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live. Plugins inherit that framing.
 
@@ -46,7 +46,8 @@ There is **no TV code** in a plugin. Your screens and contributions are data (th
 
 | | How | Guide |
 |---|---|---|
-| A section in the menu, its own screens | `contributes.sections` / `screens` on the templates `catalog`, `title`, `releases`, `list` | [tv.md](tv.md) |
+| A section in the menu, its own screens | `contributes.sections` / `screens` on the templates `catalog`, `title`, `releases`, `list`, `guide` | [tv.md](tv.md) |
+| Live TV: channels, a programme guide, IPTV (M3U, XMLTV) | hooks `live.channels`, `live.guide`, `live.stream`, host calls `iptv.m3u` / `iptv.xmltv`, a `guide` screen | [server.md](server.md#live-tv-m3u-and-xmltv) |
 | Rows, action tiles, meta, search filters on core screens | `contributes.slots` | [tv.md](tv.md) |
 | More sources for Play (torrents, HTTPS streams), reorder or hide them, confirm before playing | hooks `play.collect`, `play.rank`, `play.before` | [server.md](server.md#hooks) |
 | Release lists, subtitles, more information on titles, intro / credits markers in the player | hooks `releases.providers`, `subtitles.providers`, `metadata.details` (ratings, tags, links: a metadata provider; `metadata.title` before it), `player.markers` | [server.md](server.md#hooks) |
@@ -58,10 +59,10 @@ There is **no TV code** in a plugin. Your screens and contributions are data (th
 | Tell people something ("Downloaded: …") | `notify.send` | [server.md](server.md#notifications) |
 | Work with other plugins | `requires`, `exports` | [manifest.md](manifest.md#dependencies) |
 | Link an account (Trakt, a debrid service) | `link`: a device code, or your own `custom` flow; the admin links from the dashboard | [server.md](server.md#account-linking) |
-| Options (rendered by the dashboard) | `contributes.settings` | [manifest.md](manifest.md#settings) |
+| Options (rendered by the dashboard) | `contributes.settings`; a `url` setting with `grantsHost` adds the admin's host (an IPTV provider, a self-hosted service) to what you may reach | [manifest.md](manifest.md#settings) |
 | Be found and updated | a repository | [repositories.md](repositories.md) |
 
-What it can't: read files, start processes, reach this machine or the LAN, see tokens or other plugins' data, run code in the TV, change the core's own sources (only add, reorder, hide with a reason), show anything to kids profiles when it's an `adults` plugin. [security.md](security.md) lists the rules and why.
+What it can't: read files, start processes, reach this machine or the LAN (not even through an address the admin gave it), see tokens or other plugins' data, run code in the TV, change the core's own sources (only add, reorder, hide with a reason), show anything to kids profiles when it's an `adults` plugin. [security.md](security.md) lists the rules and why.
 
 ## Where the contract lives
 
@@ -72,7 +73,7 @@ What it can't: read files, start processes, reach this machine or the LAN, see t
 | Repository index | `packages/protocol/repository.schema.json`; signatures `packages/protocol/signing.js` |
 | Constants (`SERVER_PLUGIN_API`, hooks, events, limits), `checkManifest`, `describePermissions`, `hostAllowed`, `satisfiesVersion` | `packages/protocol/plugins.js` (types `plugins.d.ts`) |
 | Tests | `apps/server/test/plugins.contract.test.js` |
-| Reference plugins | `plugins/hello` (every template, slot, effect and setting), `plugins/velvet` (the 18+ section: two catalogs, two torrent sources, Play; in its own repository), `plugins/trakt/playpex-plugin.json` (Trakt, the manifest so far) |
+| Reference plugins | `plugins/hello` (every template, slot, effect and setting), `plugins/velvet` (the 18+ section: two catalogs, two torrent sources, Play; in its own repository), `plugins/trakt` (Trakt: scrobbling, sync, a metadata provider, account linking), `plugins/m3u` (live TV: an M3U playlist and XMLTV guide, `url` settings that grant hosts), `plugins/torrents/*` (torrent sites as source plugins) |
 
 A manifest is valid when it passes the schema **and** `checkManifest` (the rules between fields: a hook needs its permission, an `http` source a declared host, a link its secrets…). The server runs both at install.
 

@@ -842,6 +842,14 @@ function iso(d) {
   return d instanceof Date ? d.toISOString() : d || null;
 }
 
+// The hosts the admin gave a running plugin in its settings, instead of "the address you give in …"
+function withGrants(permissions, loaded) {
+  var given = loaded ? require('./grants').describe(loaded) : [];
+  return permissions.map(function (x) {
+    return given.filter(function (g) { return g.key === x.key; })[0] || x;
+  });
+}
+
 function describe(row, loaded, rows) {
   // a plugin that doesn't run (off, or failed to load): its manifest on disk
   var m = loaded ? loaded.manifest : row ? installedManifest(row.id) : null;
@@ -860,7 +868,7 @@ function describe(row, loaded, rows) {
     enabled: row ? row.enabled : true,
     state: row && !row.enabled ? 'disabled' : loaded ? loaded.state : 'failed',
     error: loaded ? loaded.error : row && row.enabled ? loadErrors[row.id] || 'not loaded' : null,
-    permissions: m ? protocol.describePermissions(m) : [],
+    permissions: m ? withGrants(protocol.describePermissions(m), loaded) : [],
     hooks: m ? ((m.permissions && m.permissions.hooks) || []) : [],
     // how many options it has (Plugins › <name> › Settings); null: its manifest can't be read
     settings: m ? ((m.contributes && m.contributes.settings) || []).length : null,

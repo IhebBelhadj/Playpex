@@ -473,6 +473,8 @@ v1.use('/profiles', require('./routes/profiles'));
 // What can play a title: files on this server, downloads, torrents (lib/play)
 v1.use('/play', require('./routes/play'));
 v1.use('/plugins', require('./routes/plugins'));
+// Live TV: plugins' channels, guide, streams (lib/live)
+v1.use('/live', require('./routes/live'));
 // Movies, shows and people from TMDB, in our shapes (lib/catalog.js)
 v1.use('/catalog', require('./routes/catalog'));
 // The media library as clients browse it (lib/library/view.js)

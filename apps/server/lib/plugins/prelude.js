@@ -132,6 +132,18 @@ module.exports = String.raw`(function (host, register, log) {
         return call('torrent.info', {}, b);
       }
     },
+    iptv: {
+      // a url (fetched and parsed by the host, cached 6 h) or { url } / { text }
+      m3u: function (source) {
+        return call('iptv.m3u', typeof source === 'string' ? { url: source } : source || {});
+      },
+      // options: { channels: [{ id, tvgId?, name? }], from, to } (dates or ISO strings)
+      xmltv: function (url, options) {
+        options = options || {};
+        var iso = function (d) { return d instanceof Date ? d.toISOString() : d; };
+        return call('iptv.xmltv', { url: url, channels: options.channels, from: iso(options.from), to: iso(options.to) });
+      }
+    },
     log: { info: line('info'), warn: line('warn'), error: line('error') },
     hooks: { on: function (name, fn) { add('hook', name, fn); } },
     events: { on: function (name, fn) { add('event', name, fn); } },

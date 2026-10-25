@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PluginChannels } from '@/components/plugin-channels'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -95,6 +96,7 @@ export function PluginPage() {
     ['settings', 'Settings', (p.settings ?? 0) > 0],
     ['profiles', 'Profiles', true],
     ['accounts', 'Accounts', (p.links ?? 0) > 0],
+    ['channels', 'Channels', p.hooks.includes('live.channels')],
     ['activity', 'Activity', true],
     ['versions', 'Versions', !dev],
   ]
@@ -160,6 +162,11 @@ export function PluginPage() {
         <TabsContent value="accounts">
           <Panel title="Accounts" description="The accounts it uses on other services, linked from here and never from a client.">
             <PluginAccounts plugin={p.id} />
+          </Panel>
+        </TabsContent>
+        <TabsContent value="channels">
+          <Panel title="Channels" description="The TV channels it lists, as the server keeps them (asked again every 6 hours and after a change of its settings).">
+            <PluginChannels plugin={p.id} enabled={p.state === 'enabled'} />
           </Panel>
         </TabsContent>
         <TabsContent value="activity">

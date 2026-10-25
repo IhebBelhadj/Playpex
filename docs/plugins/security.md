@@ -8,6 +8,7 @@ A plugin is code the server's owner didn't write. The rules below hold **by cons
 | No plugin code in the TV; screens are core templates fed with data | the TV's renderer holds the device token (added by the shell) and `window.playpex` (power, connection) |
 | Every capability is a permission in the manifest, shown to the admin in words, granted at install, and asked again when it grows | install is consent; an update can't sneak in more |
 | Network: HTTPS, declared host names only (no IPs, no local names); resolved addresses must be public, on every redirect | the server sits on the LAN: routers, NAS, cameras (SSRF) |
+| An address the admin typed (a `url` setting with `grantsHost`) adds only its own host and port (plain http allowed there); `streamHosts` adds the hosts that document lists, for streaming only; still public addresses only | the admin chose them, the plugin didn't; data can't leave through the plugin's own requests to hosts a document named |
 | Requests rate limited per host (2/s, burst 10, 4 in flight; stricter only) | a plugin hammering a site gets the user's address banned |
 | `http` sources are proxied; the client never sees the URL or headers | tokens of debrid services stay on the server |
 | Context carries profile id + kids flag, device id + name; never tokens or other profiles | user data stays the user's |

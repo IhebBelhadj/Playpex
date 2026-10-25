@@ -188,6 +188,8 @@ A plugin's stream (a `type: 'plugin'` source, or a play effect's `media` source:
 - **Live** (`format: live`, or an `hls` playlist without an end): show "Live" instead of a timeline, don't seek, save no progress. The server plays at most `streaming.maxLive` live streams at once (one per device and stream; default 2): past it the playlist or the stream answers `503 BUSY`. A live HLS viewer counts while it asks for its playlist (every target duration); release it at once with `DELETE /media/{ref}`.
 - Keepalive and release are as for files (`POST /media/{ref}/keepalive`, `DELETE /media/{ref}`); the admin's Activity shows the method `hls` or `live`.
 
+TV channels of live plugins come from `/live/*` and play the same way: [Live TV](live.md).
+
 ## Leases, keepalive and releasing
 
 The server keeps a torrent running while at least one device holds a **lease** on it (a file on disk has leases too, for the admin's Activity page, with nothing to start or stop); that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever. Every torrent is also a **download** the server keeps afterwards ([below](#downloads)): leases decide whether it runs, never whether it is deleted.

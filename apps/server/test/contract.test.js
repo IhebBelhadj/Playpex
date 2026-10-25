@@ -1078,7 +1078,7 @@ test('API 2: the routes of the torrent sites are gone (410), the plugins\' capab
       assert.equal(res.body.code, 'GONE');
     }),
     call('GET', '/plugins', undefined, { expect: 200 }).then(function (res) {
-      assert.deepEqual(res.body.capabilities, { releases: false, sources: false });
+      assert.deepEqual(res.body.capabilities, { releases: false, sources: false, live: false });
     }),
     call('GET', '/admin/overview', undefined, { admin: true, expect: 200 }).then(function (res) {
       assert.deepEqual(res.body.sources, { plugins: [], notice: true });

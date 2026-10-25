@@ -26,7 +26,9 @@
 // playlist (hls.js does every target duration), a continuous one while its
 // answer is open.
 //
-//   register(plugin, source) → entry { ref, format: 'hls' | 'live', … }
+//   register(plugin, source, { open? }) → entry { ref, format: 'hls' | 'live', … }
+//     open: a stream the admin's address gave (lib/live: a channel from a host
+//     the admin granted): its parts may come from any public host
 //   media(ref) → Promise<Media>        lib/media's resolve for kinds 'hls' / 'live'
 //   playlist(req, res, media, token)   GET …/index.m3u8 (token null) and …/r/<token>
 //   live(req, res, media, lease)       GET /media/l_…
@@ -96,11 +98,13 @@ function isPlaylist(source) {
  * Keeps an hls / live source (already checked: the plugin may use the kind
  * and the host) and answers its entry; the same source keeps its ref.
  */
-function register(plugin, source) {
+function register(plugin, source, options) {
   sweep();
-  var playlist = isPlaylist(source),
+  var open = !!(options && options.open),
+    playlist = isPlaylist(source),
     id = crypto.createHmac('sha256', SECRET)
-      .update(plugin.id + '\n' + source.kind + '\n' + source.url + '\n' + JSON.stringify(source.headers || {})).digest('hex').slice(0, 32),
+      .update(plugin.id + '\n' + source.kind + '\n' + source.url + '\n' + JSON.stringify(source.headers || {}) + (open ? '\nopen' : ''))
+      .digest('hex').slice(0, 32),
     entry = entries.get(id);
   if (!entry) {
     entry = {
@@ -113,6 +117,7 @@ function register(plugin, source) {
       url: source.url,
       headers: source.headers || {},
       label: source.label,
+      open: open,
       name: String(source.label || 'stream').replace(/[\\/\0\r\n]/g, ' ').slice(0, 200),
       usedAt: Date.now()
     };
@@ -122,9 +127,13 @@ function register(plugin, source) {
   return entry;
 }
 
+// The plugin its parts are fetched as: an open entry's may come from any public host
 function pluginOf(entry) {
   var plugin = require('../plugins').get(entry.pluginId);
-  return plugin && plugin.state === 'enabled' ? plugin : null;
+  if (!plugin || plugin.state !== 'enabled') {
+    return null;
+  }
+  return entry.open ? Object.assign(Object.create(plugin), { openStream: true }) : plugin;
 }
 
 function entryOf(ref) {

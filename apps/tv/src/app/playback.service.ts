@@ -45,6 +45,9 @@ export interface PlaybackRequest {
   // download isn't named and no playback event names it). Set for an
   // `audience: adults` plugin's plays, and any plugin may ask for it
   tracking?: 'full' | 'none';
+  // A TV channel of a live plugin (LiveService.play, docs/providers-plan.md §8):
+  // the player shows its banner, ↑ / ↓ flip through the lineup it came from
+  channel?: { plugin: string, id: string, number: number, name: string, logo?: string | null };
   // Development builds only: a video URL played directly, no torrent (the
   // player's screenshots and scenarios: window.playpexDev.player())
   devSrc?: string;

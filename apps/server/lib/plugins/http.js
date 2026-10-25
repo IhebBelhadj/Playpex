@@ -7,20 +7,28 @@
 // rebinding could change); every redirect is checked again. Port 443 only,
 // 10 s per request, 8 MB answers (after decompression), no cookie jar, and
 // a rate limit per plugin and host (./ratelimit.js).
+// A host the admin granted (./grants.js: a url setting with grantsHost) may
+// also be plain http, on its own port, or an IP address (a public one); a
+// stream (stream(), never request()) may also come from the stream hosts the
+// admin's document lists, and an `openStream` plugin view (lib/media/hls.js:
+// the parts of a stream the admin's address gave) from any public host.
 //
 //   request(plugin, options) → Promise<{ value: { status, headers, url, body }, bytes? }>
 //     plugin: { id, permissions, anyHost? }; options: { url, method?, headers?, body?, responseType?: text|json|bytes }
 //   stream(plugin, { url, headers, method, range }) → Promise<{ status, headers, body, url, abort }>
 //     an http source's bytes (./remote.js): same checks, no size cap or decompression
+//   target(plugin, url, { stream }) → { url, host, port, granted }   the checks alone (throws)
 //   configure({ lookup, ports, ca, allowAddresses, maxWaitMs })   tests only: a fake resolver, other ports, a CA,
 //     addresses to treat as public (a loopback test server), a shorter wait for the rate limit
 
 var https = require('https'),
+  plain = require('http'),
   dns = require('dns'),
   net = require('net'),
   zlib = require('zlib'),
   protocol = require('@playpex/protocol/plugins'),
-  RateLimiter = require('./ratelimit');
+  RateLimiter = require('./ratelimit'),
+  grants = require('./grants');
 
 var LIMITS = protocol.LIMITS.http,
   METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -70,10 +78,14 @@ function isPublic(address) {
   return !blocked4.check(address, 'ipv4');
 }
 
-/** Resolves a host name to one checked address (all of its addresses must be public) */
-function resolve(host) {
+/** Resolves a host name to one checked address (all of its addresses must be public); `literal`: an IP address may be given */
+function resolve(host, literal) {
   if (net.isIP(host)) {
-    return Promise.reject(failure('ADDRESS_NOT_ALLOWED', 'IP addresses aren\'t allowed: declare a host name'));
+    if (!literal) {
+      return Promise.reject(failure('ADDRESS_NOT_ALLOWED', 'IP addresses aren\'t allowed: declare a host name'));
+    }
+    return isPublic(host) ? Promise.resolve({ address: host, family: net.isIP(host) })
+      : Promise.reject(failure('ADDRESS_NOT_ALLOWED', host + ' is an address plugins can\'t reach'));
   }
   return new Promise(function (ok, fail) {
     (testing.lookup || dns.lookup)(host, { all: true, verbatim: true }, function (err, addresses) {
@@ -93,30 +105,38 @@ function resolve(host) {
   });
 }
 
-/** The URL checked against the plugin's permissions; throws */
-function target(plugin, url) {
+/**
+ * The URL checked against the plugin's permissions; throws. `options.stream`:
+ * for a stream's bytes (stream hosts count)
+ */
+function target(plugin, url, options) {
   var u;
   try {
     u = new URL(url);
   } catch (e) {
     throw failure('INVALID', 'not a URL: ' + String(url).slice(0, 200));
   }
-  if (u.protocol !== 'https:') {
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') {
     throw failure('HTTPS_ONLY', 'only https:// URLs');
   }
   if (u.username || u.password) {
     throw failure('INVALID', 'no credentials in URLs: send a header');
   }
-  var port = u.port ? parseInt(u.port, 10) : 443;
-  if (port !== 443 && testing.ports.indexOf(port) === -1) {
+  // what the admin gave it: its scheme, its port, an IP address (public ones only, resolve())
+  var granted = !!plugin.openStream || !!grants.match(plugin, u, options);
+  if (u.protocol === 'http:' && !granted) {
+    throw failure('HTTPS_ONLY', 'only https:// URLs (plain http only to an address the admin gave it)');
+  }
+  var port = u.port ? parseInt(u.port, 10) : u.protocol === 'http:' ? 80 : 443;
+  if (port !== 443 && !granted && testing.ports.indexOf(port) === -1) {
     throw failure('PORT_NOT_ALLOWED', 'only port 443');
   }
-  var host = u.hostname.toLowerCase().replace(/\.$/, '');
+  var host = u.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   // the server's own fetches (repository indexes and packages) may go to any public host
-  if (!plugin.anyHost && !protocol.hostAllowed((plugin.permissions && plugin.permissions.network) || [], host)) {
+  if (!granted && !plugin.anyHost && !protocol.hostAllowed((plugin.permissions && plugin.permissions.network) || [], host)) {
     throw failure('HOST_NOT_ALLOWED', host + ' isn\'t in permissions.network');
   }
-  return { url: u, host: host, port: port };
+  return { url: u, host: host, port: port, granted: granted, stream: !!(options && options.stream) };
 }
 
 function headersOf(given) {
@@ -162,17 +182,18 @@ function bodyOf(options, bytes, headers) {
  * answer's headers arrive (within the time limit)
  */
 function connect(t, address, method, headers, body) {
+  var secure = t.url.protocol === 'https:';
   return new Promise(function (ok, fail) {
     var done = false;
-    var req = https.request({
+    var req = (secure ? https : plain).request({
       host: t.host,
-      servername: t.host,
+      servername: secure && !net.isIP(t.host) ? t.host : undefined,
       port: t.port,
       method: method,
       path: t.url.pathname + t.url.search,
       headers: Object.assign({ host: t.url.host }, headers),
       agent: false,
-      ca: testing.ca || undefined,
+      ca: secure ? testing.ca || undefined : undefined,
       // the address we checked, not a second lookup
       lookup: function (hostname, opts, callback) {
         if (opts && opts.all) {
@@ -314,7 +335,7 @@ function request(plugin, options, bytes) {
     var release;
     return limiter.acquire(plugin.id + ' ' + t.host, rules).then(function (r) {
       release = r;
-      return resolve(t.host);
+      return resolve(t.host, t.granted);
     }).then(function (address) {
       return exchange(t, address, hopMethod, hopHeaders, hopBody);
     }).then(function (res) {
@@ -359,7 +380,7 @@ function request(plugin, options, bytes) {
 
 /** The next hop of a redirect, checked again; Authorization and Cookie stay with their host */
 function redirected(plugin, t, location, headers) {
-  var next = target(plugin, new URL(location, t.url).toString()),
+  var next = target(plugin, new URL(location, t.url).toString(), { stream: t.stream }),
     nextHeaders = Object.assign({}, headers);
   if (next.host !== t.host) {
     delete nextHeaders.authorization;
@@ -384,7 +405,7 @@ function stream(plugin, options) {
   options = options || {};
   var first, headers, redirects = 0;
   try {
-    first = target(plugin, options.url);
+    first = target(plugin, options.url, { stream: true });
     headers = headersOf(options.headers);
   } catch (err) {
     return Promise.reject(err);
@@ -401,7 +422,7 @@ function stream(plugin, options) {
   var method = options.method === 'HEAD' ? 'HEAD' : 'GET';
 
   function hop(t, hopHeaders) {
-    return resolve(t.host).then(function (address) {
+    return resolve(t.host, t.granted).then(function (address) {
       return connect(t, address, method, hopHeaders, null);
     }).then(function (r) {
       var res = r.res;

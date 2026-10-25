@@ -823,3 +823,142 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
   font-size: var(--px-text-small);
   color: var(--px-color-text-muted);
 }
+
+// ── a TV channel: its banner and the mini guide ─────────────────────────────
+
+.channelBanner {
+  position: absolute;
+  left: calc(var(--px-safe-x) + dp(60));
+  bottom: calc(var(--px-safe-y) + dp(60));
+  z-index: var(--px-z-raise-2);
+  display: flex;
+  align-items: center;
+  gap: dp(22);
+  min-width: dp(560);
+  max-width: dp(820);
+  padding: dp(20) dp(28);
+  border-radius: var(--px-radius-l);
+  background: var(--px-surface-pane-solid);
+  box-shadow: var(--px-shadow-capsule);
+
+  .channelNumber {
+    font-family: var(--px-font-display);
+    font-size: var(--px-text-display);
+    line-height: 1;
+    color: var(--px-color-text);
+  }
+  .channelLogo {
+    width: dp(76);
+    height: dp(52);
+    object-fit: contain;
+  }
+  .channelText {
+    min-width: 0;
+    flex: 1;
+  }
+  .channelName {
+    margin: 0 0 dp(6);
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-heading);
+    color: var(--px-color-text);
+  }
+}
+
+.onAir {
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  span { color: var(--px-color-text-muted); margin-left: dp(8); }
+}
+
+.onAirNext {
+  margin: dp(8) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  span { margin-left: dp(6); }
+}
+
+.onAirProgress {
+  display: block;
+  height: dp(3);
+  margin-top: dp(8);
+  border-radius: dp(2);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--px-color-progress);
+  }
+}
+
+.channelList {
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: dp(4);
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+.channelRow {
+  display: grid;
+  grid-template-columns: dp(64) dp(60) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: dp(16);
+  width: 100%;
+  min-height: dp(72);
+  margin-bottom: dp(8);
+  padding: dp(8) dp(18);
+  border: none;
+  border-radius: dp(8);
+  background: var(--px-surface-row);
+  color: var(--px-color-text);
+  text-align: left;
+
+  .channelNumber {
+    font-family: var(--px-font-display);
+    font-size: var(--px-text-headline);
+  }
+  .channelLogo {
+    width: dp(56);
+    height: dp(40);
+    object-fit: contain;
+  }
+  .channelText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .channelName {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-lead);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .playing {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-small);
+    color: var(--px-color-on);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .onAir { color: var(--px-color-on-focus-muted); }
+    .onAirProgress { background: var(--px-color-on-focus-track); }
+  }
+}

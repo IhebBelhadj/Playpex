@@ -48,6 +48,21 @@
     </div>
   </div>
 
+  <!-- A TV channel's banner: at the start, on every flip (↑ / ↓), 4 s -->
+  <div class="channelBanner" *ngIf="banner as b">
+    <span class="channelNumber">{{ b.channel.number }}</span>
+    <img class="channelLogo" *ngIf="b.logo" [src]="b.logo" alt="">
+    <div class="channelText">
+      <p class="channelName">{{ b.channel.name }}</p>
+      <ng-container *ngIf="b.onAir?.now as now; else noGuide">
+        <p class="onAir"><b>{{ now.title }}</b> <span>{{ onAirTime(now) }}</span></p>
+        <div class="onAirProgress"><span [style.width.%]="onAirProgress(now) * 100"></span></div>
+        <p class="onAirNext" *ngIf="b.onAir.next as next">Next: {{ next.title }} <span>{{ onAirTime(next) }}</span></p>
+      </ng-container>
+      <ng-template #noGuide><p class="onAirNext">{{ b.onAir ? 'No programme information' : '' }}</p></ng-template>
+    </div>
+  </div>
+
   <div class="controls" pxSection="playerControls" (focusin)="poke()">
     <div class="titleBlock">
       <span class="liveMark" *ngIf="live">Live</span>
@@ -263,3 +278,24 @@
     </div>
   </px-panel>
 </div>
+
+<!-- A TV channel's mini guide (OK with the controls hidden): the lineup with what's on -->
+<px-panel *ngIf="channelsOpen" id="playerChannels" edge="end" [width]="620" [title]="'Channels'"
+  focus=".channelRow.current" (closed)="channelsOpen = false">
+  <div class="channelList" pxGrid="player-channels" align="third" enter="selected">
+    <button class="channelRow focusable" *ngFor="let c of lineupChannels" pxItem [pxItemKey]="c.id"
+      [class.current]="c.id == playback.channel?.id" [class.selected]="c.id == playback.channel?.id" (pxSelect)="tune(c)">
+      <span class="channelNumber">{{ c.number }}</span>
+      <img class="channelLogo" *ngIf="channelLogo(c) as logo; else noLogo" [src]="logo" alt="">
+      <ng-template #noLogo><span class="channelLogo"></span></ng-template>
+      <span class="channelText">
+        <span class="channelName">{{ c.name }}</span>
+        <ng-container *ngIf="channelGuide[c.id]?.now as now">
+          <span class="onAir">{{ now.title }}</span>
+          <span class="onAirProgress"><span [style.width.%]="onAirProgress(now) * 100"></span></span>
+        </ng-container>
+      </span>
+      <span class="playing" *ngIf="c.id == playback.channel?.id">Playing</span>
+    </button>
+  </div>
+</px-panel>

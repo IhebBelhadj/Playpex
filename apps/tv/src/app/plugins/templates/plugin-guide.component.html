@@ -1,0 +1,87 @@
+<px-section-layout class="pluginGuide">
+
+  <!-- Its name, groups and the time window -->
+  <div class="toolbar" pxSection="guideToolbar" [leaveFor]="{ left: '@menu', down: ['grid:' + gridId, '@pluginGuide'] }">
+    <h1 class="heading">{{ heading }}</h1>
+    <span class="now">{{ windowText || nowText }}</span>
+    <span class="spacer"></span>
+    <px-button *ngIf="answer?.groups?.length" key="groups" variant="toolbar" icon="opts" [label]="groupLabel"
+      [active]="!!state.group" (pxSelect)="openGroups()"></px-button>
+    <ng-container *ngIf="guide">
+      <px-button *ngIf="state.offset" key="now" variant="toolbar" label="Now" (pxSelect)="now()"></px-button>
+      <px-button *ngIf="state.offset" key="earlier" variant="toolbar" label="Earlier" (pxSelect)="earlier()"></px-button>
+      <px-button key="later" variant="toolbar" label="Later" (pxSelect)="later()"></px-button>
+    </ng-container>
+  </div>
+
+  <div class="guideArea" pxSection="pluginGuide" [leaveFor]="{ left: '@menu', up: '@guideToolbar' }">
+
+    <!-- The focused programme (or channel) -->
+    <div class="spot" *ngIf="spot as s">
+      <img class="spotLogo" *ngIf="logo(s.channel) as src" [src]="src" alt="">
+      <div class="spotText">
+        <p class="spotChannel"><span class="spotNumber">{{ s.channel.number }}</span> {{ s.channel.name }}<span *ngIf="s.channel.group"> · {{ s.channel.group }}</span></p>
+        <ng-container *ngIf="s.programme as p; else noProgramme">
+          <h2 class="spotTitle">{{ p.title }}</h2>
+          <p class="spotMeta">
+            <span>{{ span(p) }}</span>
+            <span *ngIf="p.episode">{{ p.episode }}</span>
+            <span *ngIf="p.subtitle">{{ p.subtitle }}</span>
+            <span *ngIf="p.category">{{ p.category }}</span>
+          </p>
+          <div class="spotProgress" *ngIf="onAir(p)"><span [style.width.%]="progress(p) * 100"></span></div>
+          <p class="spotOverview" *ngIf="p.description">{{ p.description }}</p>
+        </ng-container>
+        <ng-template #noProgramme>
+          <h2 class="spotTitle">{{ s.channel.name }}</h2>
+          <p class="spotMeta">{{ guide ? 'No programme information' : 'Press OK to watch' }}</p>
+        </ng-template>
+      </div>
+    </div>
+
+    <px-empty class="note" *ngIf="loadError" size="hero" [title]="scope.name + ' unavailable'" [text]="loadError"
+      action="Try again" actionKey="retry" (act)="load()"></px-empty>
+    <px-empty class="note" *ngIf="loading && !answer" size="hero" [busy]="true" [text]="'Loading the channels…'"></px-empty>
+    <px-empty class="note" *ngIf="answer && !loadError && !filtered.length" size="hero" title="No channels"
+      [text]="emptyText || 'Nothing to watch here yet.'"></px-empty>
+
+    <!-- The time ruler over the programmes -->
+    <div class="ruler" *ngIf="guide && lines.length">
+      <span class="tick" *ngFor="let t of ticks" [style.left.%]="t.left">{{ t.label }}</span>
+    </div>
+
+    <div class="lines" *ngIf="lines.length" [pxGrid]="gridId" align="third" enter="nearest">
+      <div class="line" *ngFor="let line of lines; trackBy: trackLine">
+        <div class="channel">
+          <span class="number">{{ line.channel.number }}</span>
+          <img class="logo" *ngIf="logo(line.channel) as src; else noLogo" [src]="src" alt="" loading="lazy">
+          <ng-template #noLogo><span class="logo"></span></ng-template>
+          <span class="name">{{ line.channel.name }}</span>
+        </div>
+        <div class="cells">
+          <button class="cell focusable" *ngFor="let cell of line.cells; trackBy: trackCell" pxItem [pxItemKey]="cell.key"
+            [class.onAir]="onAir(cell.programme)" [class.unknown]="!cell.programme"
+            [style.left.%]="cell.left" [style.width]="'calc(' + cell.width + '% - var(--guide-gap))'" (pxSelect)="pick(cell)">
+            <span class="cellTitle">{{ cell.programme?.title || (guide ? 'No information' : 'Watch ' + line.channel.name) }}</span>
+            <span class="cellTime" *ngIf="cell.programme">{{ span(cell.programme) }}</span>
+          </button>
+          <!-- now: an amber rule across the lines -->
+          <span class="nowLine" *ngIf="guide && nowLeft !== null" [style.left.%]="nowLeft"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</px-section-layout>
+
+<!-- Its groups -->
+<px-panel *ngIf="panel == 'groups'" id="guideGroups" title="Channel groups" align="start" [width]="1040"
+  focus=".panelBody .selected" (closed)="panel = null">
+  <div class="panelBody" pxStack>
+    <div class="chipLine" pxGrid enter="nearest">
+      <px-chip key="group:all" [label]="'All channels (' + (answer?.channels?.length || 0) + ')'" [selected]="!state.group"
+        (pxSelect)="chooseGroup(null)"></px-chip>
+      <px-chip *ngFor="let g of answer?.groups" [key]="'group:' + g.name" [label]="g.name + ' (' + g.count + ')'"
+        [selected]="state.group == g.name" (pxSelect)="chooseGroup(g.name)"></px-chip>
+    </div>
+  </div>
+</px-panel>

@@ -260,6 +260,30 @@ router.delete('/plugins/:id', function (req, res) {
   });
 });
 
+// A live plugin's channels (Plugins › <name> › Channels): what it listed last, and Refresh
+router.get('/plugins/:id/channels', function (req, res) {
+  answer(res, function () {
+    var live = require('../live');
+    return live.channels(req.params.id, { profile: null }).then(function (r) {
+      return Object.assign(live.status(req.params.id), { guide: r.guide, list: r.channels });
+    }, function (err) {
+      if (err.code === 'PLUGIN_FAILED') {
+        return Object.assign(live.status(req.params.id), { guide: false, list: [] });
+      }
+      throw err;
+    });
+  });
+});
+
+router.post('/plugins/:id/channels/refresh', function (req, res) {
+  answer(res, function () {
+    var live = require('../live');
+    return live.channels(req.params.id, { profile: null }, { refresh: true }).then(function (r) {
+      return Object.assign(live.status(req.params.id), { guide: r.guide, list: r.channels });
+    });
+  });
+});
+
 router.get('/plugins/:id/settings', function (req, res) {
   answer(res, function () { return pluginSettings.view(req.params.id, localeOf(req)); });
 });

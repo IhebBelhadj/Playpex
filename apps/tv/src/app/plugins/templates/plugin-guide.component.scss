@@ -1,0 +1,290 @@
+// The guide template (docs/providers-plan.md §10.4): channels as lines, their
+// programmes sized by length over a 3 h window, an amber rule at now
+@use 'px' as *;
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.pluginGuide {
+  --guide-channel: #{dp(280)};
+  --guide-gap: #{dp(6)};
+}
+
+// ── toolbar ─────────────────────────────────────────────────────────────────
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: dp(12);
+  padding: dp(26) dp(170) 0 0;     // the shell's clock on the right
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-large);
+  color: var(--px-color-text);
+  white-space: nowrap;
+}
+
+.now {
+  margin-left: dp(8);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  color: var(--px-color-text-muted);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.guideArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-right: dp(60);
+}
+
+.note {
+  margin-top: dp(60);
+}
+
+// ── the focused programme ───────────────────────────────────────────────────
+
+.spot {
+  display: flex;
+  gap: dp(26);
+  height: dp(210);
+  padding: dp(22) 0 dp(14);
+  box-sizing: border-box;
+  flex: none;
+}
+
+.spotLogo {
+  width: dp(150);
+  height: dp(100);
+  object-fit: contain;
+  flex: none;
+}
+
+.spotText {
+  min-width: 0;
+  flex: 1;
+}
+
+.spotChannel {
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-secondary);
+
+  .spotNumber {
+    font-family: var(--px-font-display);
+    color: var(--px-color-text);
+  }
+}
+
+.spotTitle {
+  margin: dp(4) 0 dp(6);
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-title);
+  color: var(--px-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotMeta {
+  display: flex;
+  gap: dp(16);
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+.spotProgress {
+  width: dp(320);
+  height: dp(3);
+  margin-top: dp(10);
+  border-radius: dp(2);
+  background: var(--px-color-progress-track);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--px-color-progress);
+  }
+}
+
+.spotOverview {
+  max-width: dp(900);
+  max-height: 2.8em;
+  margin: dp(10) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-label);
+  line-height: 1.4;
+  color: var(--px-color-text-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// ── the time ruler ──────────────────────────────────────────────────────────
+
+.ruler {
+  position: relative;
+  height: dp(30);
+  margin-left: var(--guide-channel);
+  flex: none;
+
+  .tick {
+    position: absolute;
+    top: 0;
+    padding-left: dp(8);
+    border-left: dp(1) solid var(--px-color-text-faint);
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-small);
+    color: var(--px-color-text-muted);
+  }
+}
+
+// ── lines: channels and their programmes (one pxGrid, scrolls natively) ────
+
+.lines {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: dp(4) 0 dp(80);
+  margin: 0 dp(-6);
+  padding-inline: dp(6);
+
+  &::-webkit-scrollbar { display: none; }
+  mask-image: linear-gradient(180deg, var(--px-black) calc(100% - dp(70)), transparent 100%);
+}
+
+.line {
+  display: flex;
+  height: dp(64);
+  margin-bottom: dp(6);
+}
+
+.channel {
+  display: grid;
+  grid-template-columns: dp(64) dp(56) minmax(0, 1fr);
+  align-items: center;
+  gap: dp(12);
+  width: var(--guide-channel);
+  flex: none;
+  padding-right: dp(14);
+  box-sizing: border-box;
+
+  .number {
+    font-family: var(--px-font-display);
+    font-size: var(--px-text-headline);
+    color: var(--px-color-text);
+    text-align: right;
+  }
+  .logo {
+    width: dp(56);
+    height: dp(38);
+    object-fit: contain;
+  }
+  .name {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-label);
+    color: var(--px-color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.cells {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: dp(8);
+  padding: 0 dp(14);
+  border: none;
+  border-radius: dp(6);
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--px-surface-row);
+  color: var(--px-color-text);
+  text-align: left;
+  transition: background var(--px-dur-fast);
+
+  &.onAir { background: var(--px-surface-tile); }
+  &.unknown { color: var(--px-color-text-muted); }
+
+  .cellTitle {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-label);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cellTime {
+    margin-top: dp(3);
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-small);
+    color: var(--px-color-text-muted);
+    white-space: nowrap;
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+    z-index: var(--px-z-raise);
+
+    .cellTime { color: var(--px-color-on-focus-muted); }
+  }
+}
+
+.nowLine {
+  position: absolute;
+  top: dp(-3);
+  bottom: dp(-3);
+  width: dp(1);
+  background: var(--px-color-progress);
+  pointer-events: none;
+  z-index: var(--px-z-raise-2);
+}
+
+// ── the groups panel ────────────────────────────────────────────────────────
+
+.panelBody {
+  min-height: 0;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
+  overflow-y: auto;
+}
+
+.chipLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(10);
+}

@@ -75,7 +75,7 @@ function present(src, d, locale) {
       out[k] = t(d[k]);
     }
   });
-  ['visibleIf', 'enabledIf', 'min', 'max', 'step', 'unit', 'integer', 'maxLength', 'pattern', 'default'].forEach(function (k) {
+  ['visibleIf', 'enabledIf', 'min', 'max', 'step', 'unit', 'integer', 'maxLength', 'pattern', 'schemes', 'grantsHost', 'streamHosts', 'default'].forEach(function (k) {
     if (d[k] !== undefined) {
       out[k] = d[k];
     }
@@ -117,6 +117,15 @@ function problem(d, value) {
         return 'doesn\'t have the expected form';
       }
       return null;
+    case 'url':
+      // empty: not set
+      if (typeof value !== 'string') {
+        return 'must be a web address';
+      }
+      if (value.length > (d.maxLength || 2048)) {
+        return 'is longer than ' + (d.maxLength || 2048) + ' characters';
+      }
+      return value === '' ? null : protocol.urlProblem(value, d.schemes);
     default:
       return 'can\'t be set';
   }
@@ -215,6 +224,11 @@ function update(id, body, locale) {
         return s.plugins.settings.set(id, d.scope, profileId, key, value);
       }));
     }).then(function () {
+      // a new address the admin gave it (grantsHost), and live plugins' channels from it
+      var loaded = plugins.get(id);
+      return loaded ? require('./grants').refresh(loaded) : null;
+    }).then(function () {
+      require('../live').forget(id);
       plugins.publish({ id: id, state: src.state, reason: 'settings' });
       return view(id, locale);
     });

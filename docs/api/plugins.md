@@ -6,14 +6,14 @@ Status: all of this exists (plugins plan steps P1–P4): the sandbox and these r
 
 ## What's there
 
-`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin] }`: the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin, and no profile gets a plugin the admin hid from it on the dashboard), each with
+`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin], capabilities: { releases, sources, live } }` (`capabilities`: what the profile's plugins provide: hide Find releases without `releases`; `live`: TV channels, [Live TV](live.md)): the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin, and no profile gets a plugin the admin hid from it on the dashboard), each with
 
 | Field | Use |
 |---|---|
 | `id`, `name`, `version`, `audience` | `audience: adults`: never listed for a kids profile; its screens may use the `adult` accent (`chrome`); `name` and menu labels come translated for the request's `Accept-Language` |
 | `play` | it may hand play requests to the core: its `releases` screens play the release selected (else say it can't) |
 | `sections` | menu entries: `{ screen, menu: { label, icon, order } }` opening one of its screens |
-| `screens` | `{ name, template, data, title?, params? }`: screen `plugin.<id>.<name>`; draw it with your `catalog` / `title` / `releases` / `list` template, filled by its `data` handler |
+| `screens` | `{ name, template, data, title?, params? }`: screen `plugin.<id>.<name>`; draw it with your `catalog` / `title` / `releases` / `list` template, filled by its `data` handler; `guide` is a live plugin's TV guide, drawn from `/live/{plugin}/*` ([Live TV](live.md); its `data`, optional, names it) |
 | `slots` | `{ slot, data, order? }`: contributions to your core screens (`core.movie.actions`, `core.movies.rows`, `core.search.filters`…) |
 | `chrome` | `{ accent: 'adult' }` or null |
 | `icon`, `assets` | `assets/…` paths of the package are served at `<api><assets><path under assets/>` |

@@ -20,6 +20,7 @@ The server checks `data` against the template (out of shape: the screen shows it
 | `title` | a movie page: title info, action tiles, rows; it scrolls | `{ info: TitleInfo, actions?: Action[], rows?: Row[] }` |
 | `releases` | Find releases: a rail with search and filter chips, the release list by seeders | `{ title?, releases: Release[], last, filters?, empty? }`; selecting a release asks the core to play it (needs `play`) |
 | `list` | a list of rows like the library's folders (menus, folders) | `{ title?, items: [{ key, label, meta?, icon?, intent?, call? }], empty? }` |
+| `guide` | a TV guide: channels as lines, their programmes over 3 h from now, an amber now line, groups, Later / Earlier; Enter on what's on plays the channel (↑/↓ flip channels in the player) | drawn from your `live.channels` / `live.guide` by the core (playing needs no `play` permission: `live.stream` is the core's way in); your handler (optional) answers `{ title?, empty? (shown when there's no channel: say what the admin should set) }` |
 
 There is no settings screen: options are the dashboard's ([manifest.md](manifest.md#settings)). A choice that changes what a screen shows (a layout, a sort) is one of its `filters`; the core remembers it per profile.
 

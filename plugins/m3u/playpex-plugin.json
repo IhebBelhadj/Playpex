@@ -1,0 +1,95 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "m3u",
+  "name": "Live TV (M3U)",
+  "description": "Your own IPTV channels from an M3U playlist, with their programme guide from XMLTV.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1",
+    "nav": "^1",
+    "ui": "^1"
+  },
+  "audience": "everyone",
+  "icon": "assets/live.svg",
+  "listing": {
+    "summary": "Watch the channels of an M3U playlist (your IPTV subscription, or a public list) with a programme guide.",
+    "description": "Paste the address of an M3U playlist in its settings, and optionally of an XMLTV guide (else the one the playlist names). The channels show in a Live TV section with their programmes; the server plays HLS and MPEG-TS streams. The plugin carries no list of its own.",
+    "disclaimer": "Only add playlists you are allowed to watch. Playpex is an educational project.",
+    "license": "See licence.md",
+    "categories": [
+      "live"
+    ]
+  },
+  "permissions": {
+    "sources": [
+      "hls",
+      "live"
+    ],
+    "hooks": [
+      "live.channels",
+      "live.guide",
+      "live.stream"
+    ]
+  },
+  "contributes": {
+    "sections": [
+      {
+        "screen": "guide",
+        "menu": {
+          "label": "Live TV",
+          "icon": "assets/live.svg",
+          "order": 70
+        }
+      }
+    ],
+    "screens": [
+      {
+        "name": "guide",
+        "template": "guide",
+        "data": "guide",
+        "title": "Live TV"
+      }
+    ],
+    "settings": [
+      {
+        "key": "playlist",
+        "scope": "server",
+        "type": "url",
+        "label": "Playlist (M3U)",
+        "description": "The address of your M3U playlist: http or https, as your provider gives it.",
+        "placeholder": "https://provider.example/playlist.m3u",
+        "grantsHost": true,
+        "streamHosts": true
+      },
+      {
+        "key": "guide",
+        "scope": "server",
+        "type": "url",
+        "label": "Programme guide (XMLTV)",
+        "description": "Optional: an XMLTV file (.xml or .xml.gz). Empty: the guide the playlist names, if any.",
+        "placeholder": "https://provider.example/guide.xml.gz",
+        "grantsHost": true
+      },
+      {
+        "key": "playlistGuide",
+        "scope": "server",
+        "type": "switch",
+        "label": "Use the guide the playlist names",
+        "description": "When no guide address is given above.",
+        "default": true
+      },
+      {
+        "key": "groups",
+        "scope": "server",
+        "type": "text",
+        "label": "Only these groups",
+        "description": "Group names, separated by commas. Empty: every channel.",
+        "maxLength": 500,
+        "level": "advanced"
+      }
+    ]
+  }
+}

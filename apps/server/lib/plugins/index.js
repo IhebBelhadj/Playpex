@@ -181,7 +181,7 @@ function load(dir, origin) {
         publish(plugin);
       }
     });
-    return Promise.all([plugin.sandbox.start(), refreshHidden(plugin.id)]).then(function (r) { return r[0]; });
+    return Promise.all([plugin.sandbox.start(), refreshHidden(plugin.id), require('./grants').refresh(plugin)]).then(function (r) { return r[0]; });
   }).then(function (registered) {
     plugin.registered = registered;
     plugin.state = 'enabled';
@@ -216,6 +216,7 @@ function unload(id) {
   }
   require('./remote').forget(id);
   require('../media/hls').forget(id);
+  require('../live').forget(id);
   plugin.state = 'removed';
   publish(plugin);
   return true;

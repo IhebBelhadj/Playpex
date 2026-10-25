@@ -23,6 +23,7 @@ import { Marker, PlaySourcesService } from '../play-sources.service';
 import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.service';
 import { environment } from '../../environments/environment';
 import { HlsPlayer, loadHls } from './hls';
+import { LiveChannel, LiveService, NowNext } from '../live/live.service';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -37,6 +38,10 @@ const CONTROLS_IDLE_MS = 6000;
 const SCRUB_COMMIT_MS = 700;
 // Up next shows this long before the end (episodes)
 const UP_NEXT_S = 40;
+// A channel's banner shows this long (a flip, the start)
+const BANNER_MS = 4000;
+// Channel flips: presses in a row add up, the switch happens this long after the last
+const FLIP_MS = 900;
 
 // What a held arrow jumps by: 10 s, then 30 s, then a minute (presses in a row)
 function scrubStep(presses:number):number {
@@ -88,6 +93,12 @@ const PICTURE_MODES:{ key:PictureMode, label:string, fit:string, help:string }[]
 // live is one continuous stream on <video src>. Live ones (a live playlist,
 // or a continuous stream) have no timeline but a Live mark, no seeking, and
 // are remembered nowhere.
+//
+// A TV channel (PlaybackRequest.channel, LiveService): its banner (number,
+// logo, name, now / next with the programme's progress) at the start and on
+// every flip; with the controls hidden ↑ / ↓ flip through the lineup it came
+// from (presses add up, the switch replaces this player), OK opens the mini
+// guide (a px-panel of the lineup with what's on), media next / previous flip.
 const PLAY_BUTTON = '.buttons [data-px-key="play"]';
 
 @Component({
@@ -197,6 +208,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   private markersSub:Subscription;
   private skipDismissed = new Set<Marker>();
 
+  // a TV channel: its banner, the channel a flip is heading to, the mini guide
+  banner:{ channel:LiveChannel | PlaybackRequest['channel'], logo:string | null, onAir:NowNext | null } | null = null;
+  private bannerTimer;
+  private flipTo:LiveChannel | null = null;
+  private flipTimer;
+  private bannerSub:Subscription;
+  channelsOpen = false;
+  channelGuide:Record<string, NowNext> = {};
+  private channelGuideSub:Subscription;
+
   // up next (episodes)
   upNext:NextEpisode | null = null;
   upNextLooking = false;
@@ -257,6 +278,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     private sources:PlaySourcesService,
     private mediaTracks:MediaTracksService,
     private playbackService:PlaybackService,
+    private liveTv:LiveService,
   ) {
     this.stateKnown = new Promise(resolve => this.markStateKnown = resolve);
   }
@@ -341,8 +363,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       // a plugin's stream: nothing to probe, its tracks come from the playlist
       if (source.format == 'hls' || source.format == 'live') {
         this.format = source.format;
-        this.live = source.format == 'live';
-        this.stages = ['Opening the stream'];
+        this.live = source.format == 'live' || !!this.playback.channel;
+        this.stages = [this.playback.channel ? `Tuning to ${this.playback.channel.number} ${this.playback.channel.name}` : 'Opening the stream'];
         setTimeout(() => this.setupPlayer());
         return;
       }
@@ -427,6 +449,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.scrubTimer);
     clearTimeout(this.controlsIdle);
     clearTimeout(this.readyTimer);
+    clearTimeout(this.bannerTimer);
+    clearTimeout(this.flipTimer);
+    this.bannerSub?.unsubscribe();
+    this.channelGuideSub?.unsubscribe();
     this.stateSub?.unsubscribe();
     this.nextSub?.unsubscribe();
     this.markersSub?.unsubscribe();
@@ -727,8 +753,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     // the controls are hidden: any key brings them, Left / Right scrub, OK
     // plays the next episode while Up next shows, else pauses / plays
     if (!this.controlsVisible) {
+      // a TV channel: ↑ / ↓ flip, OK the mini guide
+      if (this.playback.channel && (action == 'up' || action == 'down' || action == 'select')) {
+        take();
+        this.zone.run(() => action == 'select' ? this.openChannels() : this.flip(action == 'up' ? -1 : 1));
+      }
       // live: no time to move in, the arrows only bring the controls
-      if (this.live && (action == 'left' || action == 'right' || action == 'up' || action == 'down')) {
+      else if (this.live && (action == 'left' || action == 'right' || action == 'up' || action == 'down')) {
         take();
         this.zone.run(() => this.showControls(PLAY_BUTTON));
       }
@@ -788,8 +819,13 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // out (before playback is ready: out at once). The subtitles panel is a
   // layer: it closes itself
   private back():boolean {
+    if (this.flipTo) {
+      this.cancelFlip();
+      return true;
+    }
     if (!this.playerReady) return false;
-    if (this.scrub) this.cancelScrub();
+    if (this.banner && !this.controlsVisible) this.hideBanner();
+    else if (this.scrub) this.cancelScrub();
     else if (this.skipMarker && !this.controlsVisible) this.skipDismissed.add(this.skipMarker);
     else if (this.upNextShown && !this.controlsVisible) this.upNextDismissed = true;
     else if (this.controlsVisible) this.hideControls();
@@ -829,6 +865,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.playerReady = true;
         this.updateClock();
         this.startMediaSession();
+        // a channel: its banner once the picture is there
+        if (this.playback.channel) this.showBanner(this.playback.channel);
       } , 1500)
     });
 
@@ -977,9 +1015,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.scrubTimer = setTimeout(() => this.zone.run(() => this.commitScrub()), SCRUB_COMMIT_MS);
         break;
       case 'next':
-        if (this.upNext) this.playNext();
+        if (this.playback.channel) this.flip(1);
+        else if (this.upNext) this.playNext();
         break;
       case 'previous':
+        if (this.playback.channel) this.flip(-1);
         if (this.live) break;
         this.seekTo(0);
         this.showControls(PLAY_BUTTON);
@@ -1362,6 +1402,99 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       imdbId: this.playback.imdbId,
       tracking: 'none',
     });
+  }
+
+  // ── TV channels (PlaybackRequest.channel) ────────────────────────────────
+
+  /** The banner of a channel: this one, or where a flip is heading */
+  private showBanner(channel:LiveChannel | PlaybackRequest['channel']) {
+    let plugin = this.playback.channel.plugin;
+    let logo = 'logo' in channel && channel.logo ? (this.liveTv.logo(channel as LiveChannel) || null) : null;
+    this.banner = { channel, logo, onAir: this.banner?.channel?.id == channel.id ? this.banner.onAir : null };
+    this.bannerSub?.unsubscribe();
+    if (this.liveTv.lineup?.guide !== false) {
+      this.bannerSub = this.liveTv.nowNext(plugin, [channel.id]).subscribe(found => {
+        if (this.banner?.channel?.id == channel.id) this.banner = { ...this.banner, onAir: found[channel.id] || null };
+      });
+    }
+    clearTimeout(this.bannerTimer);
+    this.bannerTimer = setTimeout(() => this.zone.run(() => {
+      if (!this.flipTo) this.banner = null;
+    }), BANNER_MS);
+  }
+
+  hideBanner() {
+    clearTimeout(this.bannerTimer);
+    this.banner = null;
+  }
+
+  /** A programme's progress now (0–1) */
+  onAirProgress(p:{ start:string, end:string } | null):number {
+    if (!p) return 0;
+    let start = Date.parse(p.start), end = Date.parse(p.end);
+    return Math.max(0, Math.min(1, (Date.now() - start) / Math.max(1, end - start)));
+  }
+
+  onAirTime(p:{ start:string, end:string } | null):string {
+    if (!p) return '';
+    let t = (iso:string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${t(p.start)}–${t(p.end)}`;
+  }
+
+  /** ↑ / ↓: the lineup's channel `step` away (presses add up), played FLIP_MS after the last press */
+  flip(step:number) {
+    let from = this.flipTo || this.playback.channel;
+    let next = this.liveTv.neighbour(from.id, step);
+    if (!next) {
+      this.showBanner(this.playback.channel);
+      return;
+    }
+    this.flipTo = next;
+    this.showBanner(next);
+    clearTimeout(this.flipTimer);
+    this.flipTimer = setTimeout(() => this.zone.run(() => this.tune(this.flipTo)), FLIP_MS);
+  }
+
+  private cancelFlip() {
+    clearTimeout(this.flipTimer);
+    this.flipTo = null;
+    this.showBanner(this.playback.channel);
+  }
+
+  /** Another channel, in place of this player (Back still returns where the channel was opened from) */
+  tune(channel:LiveChannel | null) {
+    this.flipTo = null;
+    this.channelsOpen = false;
+    if (!channel || channel.id == this.playback.channel.id || this.destroyed) {
+      this.showBanner(this.playback.channel);
+      return;
+    }
+    // the stream's slot is let go first: the server counts live viewers (streaming.maxLive)
+    this.releaseTorrent();
+    this.liveTv.play(this.playback.channel.plugin, channel, { replace: true }).subscribe(ok => {
+      if (!ok && !this.destroyed) this.leavePlayer();
+    });
+  }
+
+  /** OK with the controls hidden: the lineup with what's on, the current channel focused */
+  openChannels() {
+    let lineup = this.liveTv.lineup;
+    if (!lineup?.channels.length) return this.showBanner(this.playback.channel);
+    this.hideBanner();
+    this.channelsOpen = true;
+    if (lineup.guide) {
+      this.channelGuideSub?.unsubscribe();
+      this.channelGuideSub = this.liveTv.nowNext(lineup.plugin, lineup.channels.slice(0, 200).map(c => c.id))
+        .subscribe(found => this.channelGuide = found);
+    }
+  }
+
+  get lineupChannels():LiveChannel[] {
+    return this.liveTv.lineup?.channels || [];
+  }
+
+  channelLogo(channel:LiveChannel):string | null {
+    return this.liveTv.logo(channel);
   }
 
   // ── HLS (a plugin's stream, format hls) ─────────────────────────────────

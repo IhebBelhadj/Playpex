@@ -14,6 +14,7 @@ import { PluginClient } from './plugin-client.service';
 import { PluginNotifications } from './plugin-notifications.service';
 import { ClientPlugin, PluginCapabilities, PLUGIN_SCOPE, PLUGIN_SCREEN, PluginAction, PluginMetaItem, PluginRow, PluginScope } from './plugin-models';
 import { PluginCatalogComponent } from './templates/plugin-catalog.component';
+import { PluginGuideComponent } from './templates/plugin-guide.component';
 import { PluginListComponent } from './templates/plugin-list.component';
 import { PluginReleasesComponent } from './templates/plugin-releases.component';
 import { PluginTitleComponent } from './templates/plugin-title.component';
@@ -38,6 +39,7 @@ const TEMPLATES:Record<string, Type<unknown>> = {
   title: PluginTitleComponent,
   releases: PluginReleasesComponent,
   list: PluginListComponent,
+  guide: PluginGuideComponent,
 };
 
 interface Defined {

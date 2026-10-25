@@ -951,6 +951,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plugins/{pluginId}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A live plugin's channels as the server keeps them (Plugins › <name> › Channels)
+         * @description Asks the plugin when the server has none yet. A plugin that fails answers its error, no channels.
+         */
+        get: operations["getAdminPluginChannels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/channels/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asks a live plugin for its channels again now (`live.channels` with `refresh`) */
+        post: operations["refreshAdminPluginChannels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/plugins/{pluginId}/settings": {
         parameters: {
             query?: never;
@@ -2697,6 +2734,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The plugins with TV channels for a profile
+         * @description Plugins with `live.channels` and `live.stream` the profile may use (a kids profile gets no `audience: adults`
+         *     plugin). `channels` is how many the server holds (null until something asked for them).
+         */
+        get: operations["listLiveProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live/{pluginId}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A live plugin's channels
+         * @description As the server keeps them (6 h, then refreshed in the background; at once after a change of the plugin's
+         *     settings): numbered (channels without a number after the highest), one per id. `group` and `q` (words of the
+         *     name, number or group) filter them; `groups` counts them all. A kids profile gets no channel with
+         *     `audience: adults`. Logos: an https URL, or a path under the API prefix (the server fetches it).
+         */
+        get: operations["listLiveChannels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live/{pluginId}/guide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The programmes of some of a live plugin's channels
+         * @description Up to 200 channels and 48 h. Programmes overlapping `from`…`to`, by channel then start. A plugin without
+         *     `live.guide` answers none. Kept 15 min.
+         */
+        get: operations["getLiveGuide"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live/{pluginId}/channels/{channelId}/play": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A channel's stream, now
+         * @description Asks the plugin for the channel's stream (`live.stream`: IPTV addresses carry tokens that expire) and answers
+         *     it as a media ref: `format` hls (play `<api>/media/{ref}/index.m3u8` with an HLS player) or live (a continuous
+         *     Matroska stream at `<api>/media/{ref}`, remuxed by the server's ffmpeg). Live viewers count against
+         *     `streaming.maxLive` (503 `BUSY` from the media routes); `DELETE /media/{ref}` frees the slot. Nothing is
+         *     remembered: no resume point, history or progress.
+         */
+        post: operations["playLiveChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live/{pluginId}/logos/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A channel's logo, fetched by the server as the plugin (the path a channel's `logo` names) */
+        get: operations["getLiveLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plugins": {
         parameters: {
             query?: never;
@@ -3244,8 +3387,11 @@ export interface components {
             }[];
             screens: {
                 name: string;
-                /** @enum {string} */
-                template: "catalog" | "title" | "releases" | "list";
+                /**
+                 * @description guide: the plugin's channels (GET /live/{pluginId}/channels) and programmes, drawn by the client
+                 * @enum {string}
+                 */
+                template: "catalog" | "title" | "releases" | "list" | "guide";
                 data?: string;
                 title?: string;
                 params?: string[];
@@ -4033,7 +4179,7 @@ export interface components {
             /** @enum {string} */
             scope: "server" | "profile";
             /** @enum {string} */
-            type: "switch" | "choice" | "slider" | "number" | "text" | "secret" | "action";
+            type: "switch" | "choice" | "slider" | "number" | "text" | "url" | "secret" | "action";
             label: string;
             description?: string;
             group?: string;
@@ -4059,6 +4205,12 @@ export interface components {
             maxLength?: number;
             placeholder?: string;
             pattern?: string;
+            /** @description A url: the schemes it accepts (default both) */
+            schemes?: ("https" | "http")[];
+            /** @description A url: saving it lets the plugin reach its host (shown in its permissions) */
+            grantsHost?: boolean;
+            /** @description A url: and the stream hosts the document there lists */
+            streamHosts?: boolean;
             /** @description An action: asked before it runs */
             confirm?: string;
             default?: unknown;
@@ -4138,6 +4290,75 @@ export interface components {
             /** @enum {string} */
             state: "none" | "pending" | "done" | "failed";
             message: string | null;
+        };
+        LiveProvider: {
+            plugin: string;
+            name: string;
+            /** @description It has a programme guide (`live.guide`) */
+            guide: boolean;
+            /** @description How many the server holds; null: not asked yet */
+            channels: number | null;
+            /** Format: date-time */
+            updatedAt: string | null;
+            /** @description Why the last refresh failed (the channels before it are kept) */
+            error: string | null;
+        };
+        /** @description A TV channel (`$defs/channel` of plugin-api.schema.json, numbered by the server) */
+        LiveChannel: {
+            id: string;
+            number: number;
+            name: string;
+            /** @description An https URL, or a path under the API prefix (/live/{plugin}/logos/… , /plugins/{plugin}/assets/…) */
+            logo?: string;
+            group?: string;
+            country?: string;
+            languages?: string[];
+            /** @enum {string} */
+            audience?: "everyone" | "adults";
+        };
+        LiveChannels: {
+            plugin: string;
+            name: string;
+            guide: boolean;
+            channels: components["schemas"]["LiveChannel"][];
+            /** @description Its groups in the order they first appear, with how many channels each holds */
+            groups: {
+                name: string;
+                count: number;
+            }[];
+            /** Format: date-time */
+            updatedAt: string | null;
+            error: string | null;
+        };
+        LiveProgramme: {
+            /** @description The channel's id */
+            channel: string;
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+            title: string;
+            subtitle?: string;
+            description?: string;
+            category?: string;
+            /** @description As it reads: S2 E5 */
+            episode?: string;
+            image?: string;
+        };
+        AdminLiveChannels: {
+            channels: number | null;
+            groups: {
+                name: string;
+                count: number;
+            }[];
+            /** Format: date-time */
+            updatedAt: string | null;
+            /** @description How long its last live.channels took */
+            durationMs: number | null;
+            error: string | null;
+            refreshing: boolean;
+            guide: boolean;
+            list: components["schemas"]["LiveChannel"][];
         };
         PluginNotification: {
             id: string;
@@ -7188,6 +7409,55 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getAdminPluginChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its channels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLiveChannels"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    refreshAdminPluginChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its channels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLiveChannels"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+        };
+    };
     getAdminPluginSettings: {
         parameters: {
             query?: never;
@@ -9624,6 +9894,166 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listLiveProviders: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live plugins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        providers: components["schemas"]["LiveProvider"][];
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listLiveChannels: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                group?: string;
+                q?: string;
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its channels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveChannels"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+        };
+    };
+    getLiveGuide: {
+        parameters: {
+            query: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                /** @description Channel ids, comma separated */
+                channels: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The programmes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        from: string;
+                        /** Format: date-time */
+                        to: string;
+                        programmes: components["schemas"]["LiveProgramme"][];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+        };
+    };
+    playLiveChannel: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                pluginId: string;
+                channelId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What to play */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        channel: components["schemas"]["LiveChannel"];
+                        source: {
+                            /** @enum {string} */
+                            kind: "media";
+                            ref: string;
+                            /** @enum {string} */
+                            format: "hls" | "live";
+                            label: string;
+                            live: boolean;
+                        };
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+        };
+    };
+    getLiveLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image (PNG, JPEG, GIF, WebP or SVG; ≤ 1 MB) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/*": unknown;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+        };
+    };
     listPlugins: {
         parameters: {
             query?: {
@@ -9650,6 +10080,8 @@ export interface operations {
                             releases: boolean;
                             /** @description Some plugin finds a title's sources (`play.collect`) */
                             sources: boolean;
+                            /** @description Some plugin has TV channels (`live.channels`): GET /live lists them */
+                            live?: boolean;
                         };
                     };
                 };

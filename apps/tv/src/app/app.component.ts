@@ -13,6 +13,7 @@ import { DevHook } from './dev-hook.service';
 import { ServerLibraryService } from './server-library.service';
 import { PluginMetaService } from './plugin-meta.service';
 import { RemotePlugins } from './plugins/remote';
+import { LiveService } from './live/live.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -51,12 +52,15 @@ export class AppComponent implements AfterViewInit , OnInit{
     pluginMeta:PluginMetaService,
     // the server's plugins: their screens, menu entries and contributions (plugins/remote.ts)
     remotePlugins:RemotePlugins,
+    // live TV: its plugins' chips on the search page (live/live.service.ts)
+    liveTv:LiveService,
     ){
     // remote / keyboard media keys → the screen shown (§13.2)
     mediaKeys.init();
     // development builds: window.playpexDev (scripts/screens.js)
     devHook.install();
     remotePlugins.start();
+    liveTv.start();
     navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);
   }
 

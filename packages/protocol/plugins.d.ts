@@ -8,13 +8,14 @@ export declare const ID: RegExp;
 // ── Manifest (playpex-plugin.json) ──────────────────────────────────────────
 
 export type HookName = 'play.collect' | 'play.rank' | 'play.before' | 'play.resolve' | 'releases.providers'
-  | 'subtitles.providers' | 'metadata.title' | 'metadata.details' | 'player.markers' | 'library.match';
+  | 'subtitles.providers' | 'metadata.title' | 'metadata.details' | 'player.markers' | 'library.match'
+  | 'live.channels' | 'live.guide' | 'live.stream';
 export type EventFamily = 'playback' | 'downloads' | 'library' | 'watchlist';
 export type WriteScope = 'watchlist' | 'watched' | 'ratings' | 'downloads';
-export type SourceKind = 'magnet' | 'http';
-export type TemplateName = 'catalog' | 'title' | 'releases' | 'list';
-export type ListingCategory = 'catalog' | 'sources' | 'resolvers' | 'subtitles' | 'metadata' | 'library' | 'tracking'
-  | 'notifications' | 'tools';
+export type SourceKind = 'magnet' | 'http' | 'hls' | 'live';
+export type TemplateName = 'catalog' | 'title' | 'releases' | 'list' | 'guide';
+export type ListingCategory = 'catalog' | 'sources' | 'streams' | 'live' | 'resolvers' | 'subtitles' | 'metadata' | 'library'
+  | 'tracking' | 'notifications' | 'tools';
 /** 1.2.3, ^1 / ^1.2 / ^1.2.3, ~1.2 / ~1.2.3, 1.x, >=1.2.0, >=1.2.0 <2.0.0, * */
 export type VersionRange = string;
 /** plain text, or @<key> of i18n/<locale>.json */
@@ -83,6 +84,9 @@ export type PluginSetting =
   | SettingBase & { type: 'slider'; min: number; max: number; step?: number; unit?: string; default: number }
   | SettingBase & { type: 'number'; min?: number; max?: number; step?: number; integer?: boolean; unit?: string; default: number }
   | SettingBase & { type: 'text' | 'secret'; maxLength?: number; placeholder?: string; pattern?: string; default?: string }
+  /** grantsHost: its host (and port; http or https) joins permissions.network when the admin saves it (decision J);
+   *  streamHosts: so do, for streams only, the hosts the document at that address lists (iptv.m3u) */
+  | SettingBase & { type: 'url'; maxLength?: number; placeholder?: string; schemes?: ('https' | 'http')[]; grantsHost?: boolean; streamHosts?: boolean; default?: string }
   /** a button in the dashboard calling a data handler */
   | SettingBase & { type: 'action'; data: string; confirm?: string };
 
@@ -158,7 +162,9 @@ export interface PluginContext {
 }
 
 export interface PluginTitleRef {
-  kind: 'movie' | 'show' | 'episode' | 'video';
+  kind: 'movie' | 'show' | 'episode' | 'video' | 'channel';
+  /** kind channel: the channel's id */
+  channel?: string;
   /** an episode: the show's */
   tmdbId?: number;
   imdbId?: string;
@@ -178,9 +184,45 @@ interface SourceBase {
   audio?: string;
   notes?: string[];
 }
+/** url: https to permissions.network's hosts; plain http only to a host the admin granted (a url setting with grantsHost) */
 export type PluginSource =
   | SourceBase & { kind: 'magnet'; magnet?: string; infoHash?: string; fileIndex?: number; fileName?: string; seeds?: number; peers?: number }
-  | SourceBase & { kind: 'http'; url: string; headers?: Record<string, string>; container?: string };
+  | SourceBase & { kind: 'http'; url: string; headers?: Record<string, string>; container?: string }
+  /** an HLS playlist, VOD or live (unset: read from the playlist) */
+  | SourceBase & { kind: 'hls'; url: string; headers?: Record<string, string>; live?: boolean }
+  /** a continuous stream: MPEG-TS (default), or a live HLS playlist */
+  | SourceBase & { kind: 'live'; url: string; headers?: Record<string, string>; format?: 'ts' | 'hls' };
+
+/** A TV channel of a live plugin (live.channels) */
+export interface Channel {
+  /** stable across refreshes: [A-Za-z0-9._:@-]+ */
+  id: string;
+  /** the server numbers the ones without, after the highest */
+  number?: number;
+  name: string;
+  /** http(s) (fetched by the server) or assets/… */
+  logo?: string;
+  group?: string;
+  country?: string;
+  languages?: string[];
+  /** adults: never listed to a kids profile */
+  audience?: 'everyone' | 'adults';
+}
+
+/** One programme of a channel (live.guide) */
+export interface Programme {
+  channel: string;
+  /** ISO 8601 */
+  start: string;
+  end: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  category?: string;
+  /** as it should read: S2 E5 */
+  episode?: string;
+  image?: string;
+}
 
 /** What play.rank / play.before see of a source: no magnet, path, URL or ref */
 export interface RankedSource {
@@ -331,6 +373,8 @@ export interface TemplateData {
   title: { info: PluginTitleInfo; actions?: PluginAction[]; rows?: PluginRow[] };
   releases: { title?: string; releases: Release[]; last: boolean; filters?: FilterGroup[]; empty?: string };
   list: { title?: string; items: { key: string; label: string; meta?: string; icon?: string; intent?: PluginIntent; call?: PluginCall }[]; empty?: string };
+  /** the core draws the channels and programmes; the handler (optional) only names the screen */
+  guide: { title?: string; empty?: string };
 }
 
 export type PlaybackEventName = 'playback.started' | 'playback.progress' | 'playback.paused' | 'playback.ended' | 'playback.finished';
@@ -379,6 +423,11 @@ export interface HookIO {
   'metadata.details': { input: { title: PluginTitleRef; details: TitleDetails }; output: MetadataAdditions };
   'player.markers': { input: { title: PluginTitleRef; duration: number; fileName?: string; size?: number }; output: Marker[] };
   'library.match': { input: { file: LibraryFile }; output: { identity: Identity | null } };
+  'live.channels': { input: { refresh?: boolean }; output: { channels: Channel[] } };
+  /** ≤ 200 channels, ≤ 48 h */
+  'live.guide': { input: { channels: string[]; from: string; to: string }; output: { programmes: Programme[] } };
+  /** an hls or live source, or null: it can't play now */
+  'live.stream': { input: { channel: Channel }; output: { source: PluginSource | null } };
 }
 
 /** The core's details of a title, as metadata.details gets them */
@@ -492,6 +541,7 @@ export declare const LIMITS: {
   sourceRefTtlMs: number;
   notifications: { perHour: number; keepMs: number };
   core: { perSecond: number; burst: number; inFlight: number; maxWaitMs: number };
+  live: { channels: number; guideChannels: number; guideHours: number; programmes: number; downloadBytes: number; cacheMs: number; downloadTimeoutMs: number };
 };
 export declare const FORBIDDEN_HEADERS: readonly string[];
 export declare function parseSize(value: string): number | null;
@@ -502,3 +552,9 @@ export declare function hostAllowed(patterns: readonly string[] | undefined, hos
 export declare function checkManifest(manifest: PluginManifest | RepositoryManifest,
   options?: { versions?: { server?: number; nav?: number; ui?: number }; files?: string[]; strings?: { [locale: string]: Record<string, string> } }): ManifestProblem[];
 export declare function describePermissions(manifest: PluginManifest): PermissionText[];
+/** The url settings whose host the admin's value grants */
+export declare function grantingSettings(manifest: PluginManifest): PluginSetting[];
+/** Why a url setting's value isn't acceptable, or null */
+export declare function urlProblem(value: string, schemes?: ('https' | 'http')[]): string | null;
+/** What a url setting's value grants, or null */
+export declare function grantOf(value: string): { host: string; port: number; scheme: 'http' | 'https' } | null;
