@@ -6,7 +6,7 @@ import { DESIGN_PX_PER_REM } from './units';
 // at 4K and twice too big in a small window.
 //
 //   posterBase = tmdbImageBase('poster', 180);    // in a field: once per page
-//   <img [src]="posterBase + movie.poster_path">
+//   <img [src]="posterBase + movie.posterPath">
 
 // TMDB's sizes per image type (configuration API), smallest first: [name, width]
 const SIZES = {

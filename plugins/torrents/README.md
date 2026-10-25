@@ -11,12 +11,15 @@ The torrent sites Playpex Media Server used to read itself, as plugins (`docs/pr
 
 Each is one site: its own hosts in `permissions.network`, nothing else (no storage, no settings); `contributes.releases.kinds` says which Find releases lists it is a source of (YTS movies, EZTV shows). Matching and ranking are the core's (`playpex.names.matches` / `rank`): the server ranks every plugin's torrents together, so YTS + EZTV + TheRARBG installed give what the core gave on its own (`apps/server/test/providers.parity.test.js`, on recorded answers of the sites, against what the core's providers answered on them: `expected.json`).
 
-**Never in the official repository** (decision A of the providers plan): these go in a repository of their own, which an admin adds deliberately. Build it with:
+**Never in the official repository** (decision A of the providers plan): they are the default source plugins, in a repository of their own ("Torrent sites", id `torrents`) that an admin adds deliberately; other publishers' source plugins come in their own repositories. It is built into `~/projects/playpex-plugins/torrents` (its own git repository, `IhebBelhadj/playpex-torrents` on GitHub Pages; `https://ihebbelhadj.github.io/playpex-torrents/`) and signed with `~/projects/playpex-keys/torrents.json` (fingerprint `a991 6fcc 01cc 2e17 44c0 544a dc1d 8be2`; keep using it, servers pin it). After changing a plugin, raise its `version` and build again:
 
 ```
 npm run pack:repository -- plugins/torrents/yts plugins/torrents/eztv plugins/torrents/therarbg plugins/torrents/piratebay \
-  --out <folder> --key <key file> --id torrents --name "Torrent sites" --base-url https://…/
+  --out ../playpex-plugins/torrents --key ../playpex-keys/torrents.json --id torrents --name "Torrent sites" \
+  --base-url https://ihebbelhadj.github.io/playpex-torrents/ --sign-packages
 ```
+
+Another host: the same command with its `--base-url` (same key). `--sign-packages` signs each `.ppx` too: until the repository is online, trust the key on the dashboard (Plugins › trusted publisher keys: `ed25519:mAtCvzXymXpJ3Hku7fmWWjkurGAYO5equ+2/ErAMKkY=`) and upload the packages.
 
 To try one without a repository: set `plugins.developerMode` to `true` in the server's `settings.json`, copy its folder into `<config>/plugins-dev/` and restart the server (`docs/plugins/README.md`).
 

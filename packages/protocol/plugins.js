@@ -30,7 +30,9 @@ var HOOKS = {
   'play.resolve': { timeoutMs: 10000, checkTimeoutMs: 3000, describe: 'Plays torrents through a service (debrid)' },
   'releases.providers': { timeoutMs: 10000, describe: 'Adds release lists' },
   'subtitles.providers': { timeoutMs: 8000, describe: 'Adds subtitles' },
+  // kept for one API version: metadata.details answers `lines` too (docs/providers-plan.md §7.2)
   'metadata.title': { timeoutMs: 3000, describe: 'Adds information to title pages' },
+  'metadata.details': { timeoutMs: 5000, describe: 'Adds ratings, tags and links to title pages' },
   'player.markers': { timeoutMs: 3000, describe: 'Marks intros, recaps and credits in the player' },
   // chosen per library folder by the admin (its information provider)
   'library.match': { timeoutMs: 10000, describe: 'Recognises the files of library folders it is chosen for' }
@@ -45,13 +47,13 @@ var EVENTS = {
 };
 
 var WRITE_SCOPES = ['watchlist', 'watched', 'ratings', 'downloads'];
-var SOURCE_KINDS = ['magnet', 'http'];
+var SOURCE_KINDS = ['magnet', 'http', 'hls', 'live'];
 var MARKER_KINDS = ['intro', 'recap', 'credits', 'chapter'];
 var EFFECTS = ['open', 'play', 'toast', 'refresh', 'confirm', 'download'];
 // No settings template: setup is the dashboard's, clients only show content (§1 goal 7)
 var TEMPLATES = ['catalog', 'title', 'releases', 'list'];
 var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'secret', 'action'];
-var LISTING_CATEGORIES = ['catalog', 'sources', 'resolvers', 'subtitles', 'metadata', 'library', 'tracking', 'notifications', 'tools'];
+var LISTING_CATEGORIES = ['catalog', 'sources', 'streams', 'live', 'resolvers', 'subtitles', 'metadata', 'library', 'tracking', 'notifications', 'tools'];
 
 // Slots of core screens a packaged plugin may contribute to (the TV's slot
 // catalog, apps/tv/src/app/ui/slots/slots.ts, has the same names), and what
@@ -269,8 +271,8 @@ function checkManifest(manifest, options) {
   if (hooks.indexOf('play.collect') !== -1 && !p.sources) {
     problem('/permissions/hooks', 'play.collect needs permissions.sources (the kinds it returns)');
   }
-  if ((p.sources || []).indexOf('http') !== -1 && !network.length) {
-    problem('/permissions/sources', 'http sources need the stream hosts in permissions.network');
+  if ((p.sources || []).some(function (k) { return k !== 'magnet'; }) && !network.length) {
+    problem('/permissions/sources', 'http, hls and live sources need the stream hosts in permissions.network');
   }
   if (hooks.indexOf('play.resolve') !== -1 && (p.sources || []).indexOf('http') === -1) {
     problem('/permissions/hooks', 'play.resolve answers http sources: it needs permissions.sources http');

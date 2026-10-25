@@ -6,13 +6,15 @@
 // one in its index, ./install.js a package from it): an adults plugin is
 // published in a repository of its own, which the admin adds deliberately.
 //
-// Not published yet (plan §10: where it lives, who holds its key): with no
-// url / key there is no built-in repository. Tests give one with the start
-// option `repositories.official`.
+// Hosted on GitHub Pages (decided 2026-10-25; built in
+// ~/projects/playpex-plugins/official with `npm run pack:repository`, its key
+// kept by the publisher, never in this repository): its first plugin is Trakt
+// (plugins/trakt). Without url / key there would be no built-in repository.
+// Tests give their own with the start option `repositories.official`.
 
 module.exports = {
   id: 'playpex',
   name: 'Playpex',
-  url: null,      // https://…/index.json (its signature at <url>.sig)
-  key: null       // ed25519:…
+  url: 'https://ihebbelhadj.github.io/playpex-official/index.json',   // its signature at <url>.sig
+  key: 'ed25519:jwgCJg+cIkeB3780604xy4dhMrngT4h4NJrT2Nas2cw='           // fingerprint 1440 8b9d b5d7 cf14 eac7 2c7b c4ea 0738
 };

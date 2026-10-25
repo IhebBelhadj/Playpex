@@ -2,13 +2,17 @@ import { Injectable } from '@angular/core';
 import { Artwork, LibraryService, MediaType } from './library.service';
 import { Navigator } from './nav/navigator.service';
 import type { PlaySource } from './play-sources.service';
+import { TitleItem, displayTitle } from './movies.service';
 
 // A file the server has (POST /play/sources: a library file, a download's
-// file), played through /media/{ref} with no torrent request
+// file), played through /media/{ref} with no torrent request; or a plugin's
+// stream through the server (`format`, Schema<'MediaFormat'>: hls = its
+// playlist /media/{ref}/index.m3u8 with hls.js, live = one continuous stream)
 export interface PlaybackSource {
   ref: string;
   infoHash?: string;        // a download's file: its torrent (stats, progress)
   path?: string;            //   and its path in it
+  format?: 'file' | 'hls' | 'live';
 }
 
 // What the player plays: the payload of its screen (core.player), opened by
@@ -63,10 +67,10 @@ export class PlaybackService {
   constructor(private navigator:Navigator) { }
 
   // A movie torrent's magnet: its own, else built from its info hash (a resume's)
-  static movieMagnet(movie, torrent):string {
+  static movieMagnet(movie:Partial<TitleItem>, torrent):string {
     let magnet = torrent.magnet;
     if (!magnet) {
-      magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie['original_title'] + torrent.quality)}`;
+      magnet = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(displayTitle(movie) + torrent.quality)}`;
       TRACKERS.forEach(tracker => magnet += "&tr=" + tracker);
     }
     return magnet;
@@ -74,7 +78,7 @@ export class PlaybackService {
 
   // What a play source gives the player: its file, else its torrent
   static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource, file?:PlaybackRequest['file'] } {
-    if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path } };
+    if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path, ...(source.format ? { format: source.format } : {}) } };
     return { magnet: source.magnet || source.infoHash, ...(source.file ? { file: source.file } : {}) };
   }
 
@@ -90,20 +94,20 @@ export class PlaybackService {
 
   // Movie from MoviesService.selectedmovie; `torrent` needs only `hash`
   // (+ `quality`): resuming passes the saved info hash.
-  playMovie(movie, torrent, startAt?:number) {
+  playMovie(movie:Partial<TitleItem>, torrent, startAt?:number) {
     this.playMovieFrom(movie, { magnet: PlaybackService.movieMagnet(movie, torrent) }, startAt);
   }
 
   // The same with a play source's target (PlaybackService.target)
-  playMovieFrom(movie, target:{ magnet?:string, source?:PlaybackSource }, startAt?:number) {
+  playMovieFrom(movie:Partial<TitleItem>, target:{ magnet?:string, source?:PlaybackSource }, startAt?:number) {
     this.play({
-      title: movie['original_title'],
-      year: (movie['release_date'] || '').slice(0, 4),
-      runtimeMinutes: movie['runtime'],
+      title: displayTitle(movie),
+      year: movie.year || '',
+      runtimeMinutes: movie.runtime,
       ...target,
-      imdbId: movie['imdb_id'],
+      imdbId: movie.imdbId,
       mediaType: 'movie',
-      tmdbId: movie['id'],
+      tmdbId: movie.tmdbId,
       artwork: LibraryService.artworkOf(movie),
       startAt,
     });

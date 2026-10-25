@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { EMPTY, Observable } from 'rxjs';
 import { ServerService } from './server.service';
 import { ProfilesService } from './profiles.service';
+import type { CatalogTitle } from './movies.service';
 
 // The current profile's watch list, playback progress and history
 // (server: apps/server/lib/routes/library.js).
@@ -121,13 +122,13 @@ export class LibraryService {
     return this.call(base => this.http.delete(`${base}/watched/${key.mediaType}/${key.tmdbId}`, { params: this.episodeParams(key) }));
   }
 
-  // TMDB title object (movie details, show details or a list item) → what the server keeps
-  static artworkOf(item:any):Artwork {
+  // A catalog title (a list item or its page) → what the server keeps
+  static artworkOf(item:Partial<CatalogTitle>):Artwork {
     return {
-      title: item['title'] || item['original_title'] || item['name'] || null,
-      posterPath: item['poster_path'] || null,
-      backdropPath: item['backdrop_path'] || null,
-      genreIds: item['genre_ids'] || (item['genres'] || []).map(g => g['id']),
+      title: item.title || item.originalTitle || null,
+      posterPath: item.posterPath || null,
+      backdropPath: item.backdropPath || null,
+      genreIds: item.genreIds || [],
     };
   }
 

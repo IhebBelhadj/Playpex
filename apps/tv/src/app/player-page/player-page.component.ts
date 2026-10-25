@@ -22,6 +22,7 @@ import { EpisodePlaybackService, NextEpisode } from '../episode-playback.service
 import { Marker, PlaySourcesService } from '../play-sources.service';
 import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.service';
 import { environment } from '../../environments/environment';
+import { HlsPlayer, loadHls } from './hls';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -80,6 +81,13 @@ const PICTURE_MODES:{ key:PictureMode, label:string, fit:string, help:string }[]
 // them. Settings (subtitles, their size and timing, audio, video, stats) are
 // a px-panel layer docked at the right edge, with tabs; "Audio & subtitles"
 // another (the file's tracks, docs/providers-plan.md §6, §10.3): two columns.
+//
+// A plugin's stream (docs/providers-plan.md §8.3): format hls plays the
+// server's proxied playlist with hls.js (loaded on first use; Chromium plays
+// no HLS), its audio renditions and subtitles in the tracks panel; format
+// live is one continuous stream on <video src>. Live ones (a live playlist,
+// or a continuous stream) have no timeline but a Live mark, no seeking, and
+// are remembered nowhere.
 const PLAY_BUTTON = '.buttons [data-px-key="play"]';
 
 @Component({
@@ -98,6 +106,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   moviePlayer:HTMLVideoElement;
   link:string;                // the file's stream path: /media/{ref} (TorrentFile.ref); URLs: server.media()
   ref:string | null = null;   // its media ref (null: a server without refs, the torrent routes)
+  format:'file' | 'hls' | 'live' = 'file';   // how it plays (a plugin's stream: hls / live)
+  live = false;               // no end: a live playlist or a continuous stream
+  private hls:HlsPlayer | null = null;
   paused = false;
   playerSub:Subscription;
   audioWarning = false;
@@ -327,6 +338,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.torrentHash = source.infoHash;   // a download's: its stats
       if (!source.infoHash) this.stages = ['Opening the file on the server'];
       this.startKeepalive();
+      // a plugin's stream: nothing to probe, its tracks come from the playlist
+      if (source.format == 'hls' || source.format == 'live') {
+        this.format = source.format;
+        this.live = source.format == 'live';
+        this.stages = ['Opening the stream'];
+        setTimeout(() => this.setupPlayer());
+        return;
+      }
       this.probeFile().then(() => this.loadTracks()).then(() => this.setupPlayer());
       return;
     }
@@ -430,6 +449,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // ── what's shown ──────────────────────────────────────────────────────────
 
   get duration():number {
+    if (this.live) return 0;
     let d = this.mediaDuration();
     return isFinite(d) && d > 0 ? d : 0;
   }
@@ -606,6 +626,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   // Jump to the saved position once both the video and the saved state are there
   applyResume() {
+    if (this.live) return;
     if (this.resumeApplied || !this.resumeAt || !this.moviePlayer || this.moviePlayer.readyState < 1) return;
     this.resumeApplied = true;
     let duration = this.mediaDuration();
@@ -618,7 +639,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   saveProgress() {
     let player = this.moviePlayer;
     // tracking none stays out of the library (Continue watching, Watched)
-    if (!this.playback?.tmdbId || this.playback.tracking == 'none' || this.playback.devSrc || !player || !this.playerReady || !this.resumeDecided) return;
+    if (!this.playback?.tmdbId || this.playback.tracking == 'none' || this.playback.devSrc || this.live || !player || !this.playerReady || !this.resumeDecided) return;
     // don't overwrite the saved position with 0:00 before jumping to it
     if (this.resumeAt && !this.resumeApplied) return;
     let duration = this.mediaDuration();
@@ -706,7 +727,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     // the controls are hidden: any key brings them, Left / Right scrub, OK
     // plays the next episode while Up next shows, else pauses / plays
     if (!this.controlsVisible) {
-      if (action == 'left' || action == 'right') {
+      // live: no time to move in, the arrows only bring the controls
+      if (this.live && (action == 'left' || action == 'right' || action == 'up' || action == 'down')) {
+        take();
+        this.zone.run(() => this.showControls(PLAY_BUTTON));
+      }
+      else if (action == 'left' || action == 'right') {
         take();
         this.zone.run(() => this.scrubBy(action == 'right' ? 1 : -1));
       }
@@ -782,12 +808,15 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let on = (name:string, fn:() => void) => player.addEventListener(name, fn, { signal: this.videoListeners.signal });
 
     this.applyVolume();
-    this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
-      : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
-    this.moviePlayer.play()?.catch(() => {});
-    // e.g. HEVC/x265 or AVI that Chromium can't decode
+    if (this.format == 'hls') this.attachHls();
+    else {
+      this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
+        : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
+      this.moviePlayer.play()?.catch(() => {});
+    }
+    // e.g. HEVC/x265 or AVI that Chromium can't decode (hls.js says so itself)
     on('error', () => {
-      if (!this.screen.active || !this.moviePlayer.getAttribute('src')) return;
+      if (this.hls || !this.screen.active || !this.moviePlayer.getAttribute('src')) return;
       this.leavePlayer();
       this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
     });
@@ -820,7 +849,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.seekAfterLoad = null;
       }
       this.updateTimeline();
-      this.askMarkers();
+      if (!this.live) this.askMarkers();
     });
     this.applyInitialSubtitles();
     on('timeupdate', () => {
@@ -844,6 +873,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // and frees the decoder; `src = ""` alone would load the page's own URL
   private stopVideo() {
     this.videoListeners.abort();
+    this.hls?.destroy();
+    this.hls = null;
     let player = this.moviePlayer || this.host.nativeElement.querySelector<HTMLVideoElement>('.moviePlayer');
     if (!player) return;
     player.pause();
@@ -940,6 +971,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         break;
       case 'forward':
       case 'rewind':
+        if (this.live) break;
         this.scrubBy(action == 'forward' ? 1 : -1);
         clearTimeout(this.scrubTimer);
         this.scrubTimer = setTimeout(() => this.zone.run(() => this.commitScrub()), SCRUB_COMMIT_MS);
@@ -948,6 +980,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         if (this.upNext) this.playNext();
         break;
       case 'previous':
+        if (this.live) break;
         this.seekTo(0);
         this.showControls(PLAY_BUTTON);
         break;
@@ -1259,6 +1292,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // The user picks an audio track: at once, from where the video is
   selectAudio(track:MediaTrack) {
     if (!MediaTracksService.usable(track) || track === this.audioTrack || !this.moviePlayer) return;
+    if (this.hls) {
+      this.audioTrack = track;
+      this.hls.audioTrack = track.index;
+      return;
+    }
     let at = this.position(), wasTranscoding = this.transcoding;
     this.chosenAudio = track.id;
     this.useAudio(track);
@@ -1302,6 +1340,12 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (chosen) this.chosenSubtitle = track.id;
     this.subtitleTrack = track;
     this.selectedSubtitle = null;
+    if (this.hls) {
+      this.moviePlayer.querySelectorAll('track').forEach(t => t.remove());
+      this.hls.subtitleTrack = track.index;
+      this.hls.subtitleDisplay = true;
+      return;
+    }
     this.addTrack(this.mediaTracks.subtitleUrl(this.link, track), track.language || '', MediaTracksService.label(track));
   }
 
@@ -1318,6 +1362,68 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       imdbId: this.playback.imdbId,
       tracking: 'none',
     });
+  }
+
+  // ── HLS (a plugin's stream, format hls) ─────────────────────────────────
+
+  // hls.js on the server's playlist (its parts come through the server too:
+  // the shell sends this device's headers with every request)
+  private attachHls() {
+    loadHls().then(HlsPlayer => {
+      if (this.destroyed) return;
+      if (!HlsPlayer.isSupported()) return this.cantPlay("This stream can't be played here (no Media Source support)");
+      let hls = this.hls = new HlsPlayer({ backBufferLength: 60, enableWorker: true });
+      let recovered = false;
+      hls.on(HlsPlayer.Events.LEVEL_LOADED, (_e, data) => this.zone.run(() => {
+        if (data.details.live && !this.live) {
+          this.live = true;
+          this.updateTimeline();
+        }
+      }));
+      hls.on(HlsPlayer.Events.AUDIO_TRACKS_UPDATED, () => this.zone.run(() => this.hlsTracks()));
+      hls.on(HlsPlayer.Events.SUBTITLE_TRACKS_UPDATED, () => this.zone.run(() => this.hlsTracks()));
+      hls.on(HlsPlayer.Events.AUDIO_TRACK_SWITCHED, () => this.zone.run(() => this.hlsTracks()));
+      hls.on(HlsPlayer.Events.ERROR, (_e, data) => this.zone.run(() => {
+        if (!data.fatal || this.destroyed) return;
+        let status = (data.response as any)?.code;
+        if (status == 503) return this.cantPlay('The server already plays as many live streams as it allows. Try again later');
+        if (data.type == HlsPlayer.ErrorTypes.MEDIA_ERROR && !recovered) {
+          recovered = true;
+          return hls.recoverMediaError();
+        }
+        this.cantPlay(data.type == HlsPlayer.ErrorTypes.NETWORK_ERROR ? "The stream isn't answering. Try again later" :
+          "This stream's format can't be played here");
+      }));
+      hls.loadSource(this.server.media(`${this.link}/index.m3u8`));
+      hls.attachMedia(this.moviePlayer);
+      this.moviePlayer.play()?.catch(() => {});
+    }, () => this.cantPlay("The stream player couldn't be loaded"));
+  }
+
+  private cantPlay(message:string) {
+    if (this.destroyed || !this.screen.active) return;
+    this.leavePlayer();
+    this.notificationService.sendNotification('error', message);
+  }
+
+  // The playlist's audio renditions and subtitles as the tracks panel's
+  // (played natively: hls.js switches them)
+  private hlsTracks() {
+    let hls = this.hls;
+    if (!hls) return;
+    let languageName = (code:string) => {
+      try { return code ? new Intl.DisplayNames(['en'], { type: 'language' }).of(code.split('-')[0]) : null; }
+      catch (e) { return null; }
+    };
+    let track = (kind:'a' | 's', t:{ lang?:string, name?:string, default?:boolean, forced?:boolean }, i:number):MediaTrack => ({
+      id: `${kind}:${i}`, source: 'embedded', index: i, language: t.lang ? t.lang.split('-')[0] : null, languageName: languageName(t.lang),
+      title: t.name || null, default: !!t.default, forced: !!t.forced, play: kind == 'a' ? 'direct' : 'text',
+    });
+    let audio = hls.audioTracks.map((t, i) => track('a', t, i));
+    let subtitles = hls.subtitleTracks.map((t, i) => track('s', t, i));
+    this.tracks = { video: [], audio, subtitles, probed: true } as MediaTracks;
+    this.audioTrack = audio[hls.audioTrack] || null;
+    this.subtitleTrack = hls.subtitleTrack >= 0 ? subtitles[hls.subtitleTrack] || null : null;
   }
 
   openTracks() {
@@ -1445,6 +1551,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.selectedSubtitle = null;
     this.subtitleTrack = null;
     this.chosenSubtitle = 'off';
+    if (this.hls) this.hls.subtitleTrack = -1;
     this.moviePlayer?.querySelectorAll('track').forEach(track => track.remove());
   }
 

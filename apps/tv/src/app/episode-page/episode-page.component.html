@@ -3,7 +3,7 @@
      stands in for <movie-description>, which movies-page hides here. -->
 <div class="episodePageContainer" pxSection="episodePage" [leaveFor]="{ left: '@menu' }">
   <px-title-info class="episodeHeader" *ngIf="episode" [info]="titleInfo" layout="episode">
-    <span pxEyebrow class="position">Season {{seasonNumber}}, episode {{episode.episode_number}}</span>
+    <span pxEyebrow class="position">Season {{seasonNumber}}, episode {{episode.episodeNumber}}</span>
   </px-title-info>
 
   <!-- the episode page's bar is tighter and its labels wider ("Resume (12 min left)") -->
@@ -30,22 +30,22 @@
         <span class="count">{{episodes.length}} episodes</span>
       </h3>
       <season-curve [episodes]="episodes" [imdb]="seasonImdb"
-        [current]="episode?.episode_number" [highlight]="focusedEpisode"></season-curve>
+        [current]="episode?.episodeNumber" [highlight]="focusedEpisode"></season-curve>
     </div>
     <ng-container *ngFor="let ep of episodes; let i = index; trackBy: byEpisode">
-      <px-card variant="still" [key]="ep.episode_number" [image]="ep.still_path ? stillBase + ep.still_path : null"
-        [title]="ep.name" [number]="ep.episode_number" [dim]="ep.upcoming && ep !== episode"
+      <px-card variant="still" [key]="ep.episodeNumber" [image]="ep.stillPath ? stillBase + ep.stillPath : null"
+        [title]="ep.name" [number]="ep.episodeNumber" [dim]="ep.upcoming && ep !== episode"
         [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
         [meta]="episodeMeta(ep)" [badges]="episodeBadges(ep)"
         [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
-        [data]="{ index: i, episode: ep.episode_number }" (pxSelect)="openEpisode(ep)"></px-card>
+        [data]="{ index: i, episode: ep.episodeNumber }" (pxSelect)="openEpisode(ep)"></px-card>
     </ng-container>
   </px-card-row>
 
   <px-card-row class="guests" *ngIf="guests.length" pxStackItem rowKey="guests" title="Guest stars" tone="detail" align="third"
    >
     <ng-container *ngFor="let guest of guests; trackBy: byCredit">
-      <px-card variant="portrait" [key]="guest.credit_id" [image]="profileBase + guest.profile_path" [title]="guest.name"
+      <px-card variant="portrait" [key]="guest.creditId" [image]="profileBase + guest.profilePath" [title]="guest.name"
         [subtitle]="guest.character || ''"></px-card>
     </ng-container>
   </px-card-row>

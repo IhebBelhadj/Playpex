@@ -169,7 +169,7 @@
       ]
     },
     "source": {
-      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: an HTTPS file proxied by the server as a media ref r_…, the client never sees the URL",
+      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: an HTTPS file proxied by the server as a media ref r_…; hls: an HLS playlist (VOD or live), proxied as h_… (every URI in it rewritten to the server); live: a continuous stream (MPEG-TS, or an HLS live playlist with format hls), proxied as l_… / h_…. The client never sees a URL or a header",
       "oneOf": [
         {
           "type": "object",
@@ -290,6 +290,111 @@
             },
             "notes": {
               "$ref": "#/$defs/notes"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "url"
+          ],
+          "properties": {
+            "kind": {
+              "const": "hls"
+            },
+            "url": {
+              "$ref": "#/$defs/httpsUrl",
+              "description": "The playlist (.m3u8): a master playlist or a media playlist. Its variants, segments, keys and maps are fetched by the server as the plugin: their hosts must be in permissions.network"
+            },
+            "headers": {
+              "description": "Sent by the server with every request of this stream (a token): never to the client. Host, Cookie, Connection, Range, Content-Length and Transfer-Encoding are the server's (FORBIDDEN_HEADERS in plugins.js)",
+              "type": "object",
+              "maxProperties": 8,
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9-]{1,64}$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 2048
+              }
+            },
+            "label": {
+              "$ref": "#/$defs/text"
+            },
+            "quality": {
+              "$ref": "#/$defs/quality"
+            },
+            "codec": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "audio": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "notes": {
+              "$ref": "#/$defs/notes"
+            },
+            "live": {
+              "type": "boolean",
+              "description": "A live playlist (no end): the player shows Live, no timeline. Unset: the server reads it from the playlist (no #EXT-X-ENDLIST)"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "url"
+          ],
+          "properties": {
+            "kind": {
+              "const": "live"
+            },
+            "url": {
+              "$ref": "#/$defs/httpsUrl",
+              "description": "The stream: MPEG-TS over HTTPS (remuxed by the server's ffmpeg for the player), or an HLS live playlist (format hls)"
+            },
+            "headers": {
+              "description": "Sent by the server with every request of this stream (a token): never to the client. Host, Cookie, Connection, Range, Content-Length and Transfer-Encoding are the server's (FORBIDDEN_HEADERS in plugins.js)",
+              "type": "object",
+              "maxProperties": 8,
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9-]{1,64}$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 2048
+              }
+            },
+            "label": {
+              "$ref": "#/$defs/text"
+            },
+            "quality": {
+              "$ref": "#/$defs/quality"
+            },
+            "codec": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "audio": {
+              "type": "string",
+              "maxLength": 20
+            },
+            "notes": {
+              "$ref": "#/$defs/notes"
+            },
+            "format": {
+              "enum": [
+                "ts",
+                "hls"
+              ],
+              "description": "ts (default; hls when the URL's path ends in .m3u8 / .m3u)"
             }
           }
         }
@@ -1954,6 +2059,134 @@
               "items": {
                 "$ref": "#/$defs/metaItem"
               }
+            }
+          }
+        }
+      },
+      "metadata.details": {
+        "input": {
+          "type": "object",
+          "required": [
+            "title",
+            "details"
+          ],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/titleRef"
+            },
+            "details": {
+              "type": "object",
+              "required": [
+                "title",
+                "genres"
+              ],
+              "properties": {
+                "title": {
+                  "$ref": "#/$defs/text"
+                },
+                "originalTitle": {
+                  "$ref": "#/$defs/text"
+                },
+                "year": {
+                  "type": "integer"
+                },
+                "imdbId": {
+                  "$ref": "#/$defs/imdbId"
+                },
+                "genres": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "runtime": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Additions only (decision I of docs/providers-plan.md): the core's details are never overridden",
+          "properties": {
+            "ratings": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "value",
+                  "max"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24,
+                    "description": "Shown before the value: Trakt, Letterboxd…"
+                  },
+                  "value": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "max": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "The scale: 10, 5, 100…"
+                  },
+                  "votes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "url": {
+                    "$ref": "#/$defs/httpsUrl"
+                  }
+                }
+              }
+            },
+            "tags": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            },
+            "links": {
+              "type": "array",
+              "maxItems": 5,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "url"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "url": {
+                    "$ref": "#/$defs/httpsUrl"
+                  }
+                }
+              }
+            },
+            "lines": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "$ref": "#/$defs/metaItem"
+              },
+              "description": "Items of the title's meta line, as metadata.title's `meta`"
             }
           }
         }

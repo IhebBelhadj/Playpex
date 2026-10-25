@@ -4,7 +4,9 @@
 // through lib/plugins' hooks:
 //   play.collect  a collect handler like the core's: a plugin's `magnet`
 //                 sources become torrents, its `http` sources media refs
-//                 r_… (lib/plugins/remote.js) of type `plugin`; every
+//                 r_… (lib/plugins/remote.js) of type `plugin`, its `hls`
+//                 sources h_… refs (lib/media/hls.js, format hls; `live`
+//                 ones are for play effects and channels, not a title's); every
 //                 plugin's torrents ranked together, like the core's sites
 //   play.resolve  check: which collected torrents a resolver (debrid) can
 //                 serve at once (badge `cached`, ranked before the others);
@@ -19,6 +21,7 @@ var crypto = require('crypto'),
   protocol = require('@playpex/protocol/plugins'),
   plugins = require('../plugins'),
   remote = require('../plugins/remote'),
+  hls = require('../media/hls'),
   effects = require('../plugins/effects'),
   trackers = require('../trackers'),
   names = require('../media/names'),
@@ -116,6 +119,25 @@ function fromPlugin(plugin, src, context) {
       badges: ['plugin']
     };
   }
+  if (src.kind === 'hls') {
+    var stream = hls.register(plugin, src);
+    return {
+      id: stream.ref,
+      type: 'plugin',
+      format: 'hls',
+      provider: plugin.id,
+      plugin: plugin.id,
+      label: src.label,
+      ref: stream.ref,
+      size: null,
+      quality: src.quality || null,
+      codec: src.codec || null,
+      audio: src.audio || null,
+      playable: 'yes',
+      notes: (src.notes || []).slice(),
+      badges: stream.live ? ['plugin', 'live'] : ['plugin']
+    };
+  }
   var entry = remote.register(plugin, src),
     named = play.playableByName(entry.name + ' ' + (src.codec || '') + ' ' + (src.audio || ''), context.ffmpeg);
   return {
@@ -184,6 +206,9 @@ var collector = {
       r.results.forEach(function (res) {
         var plugin = plugins.get(res.plugin);
         res.output.forEach(function (src) {
+          if (src.kind === 'live') {
+            return errors.push({ handler: 'plugin:' + res.plugin, message: 'live sources are channels\' (live.stream) and play effects\', not a title\'s: ' + src.label });
+          }
           var found = plugin && effects.sourceAllowed(plugin, src) ? fromPlugin(plugin, src, context) : null;
           if (found) {
             found.handler = 'plugin:' + plugin.id;

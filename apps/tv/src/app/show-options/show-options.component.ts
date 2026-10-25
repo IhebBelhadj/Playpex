@@ -5,7 +5,7 @@ import { Component, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
-import { MoviesService } from '../movies.service';
+import { CatalogDetails, EpisodeItem, MoviesService } from '../movies.service';
 import { NavigationService } from '../navigation.service';
 import { NotificationService } from '../notification.service';
 import { EpisodeProgress, LibraryService } from '../library.service';
@@ -43,13 +43,13 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   stillBase = tmdbImageBase('still', 270);
 
-  show;
+  show:CatalogDetails;
   imdbId:string;
   trailer:string;
-  seasons = [];
+  seasons:CatalogDetails['seasons'] = [];
   selectedSeason:number;
   seasonName = "";
-  episodes = [];
+  episodes:EpisodeItem[] = [];
   loadingEpisodes = false;
   focusedEpisode:number = null;      // lights its bar in the season curve
 
@@ -116,11 +116,11 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
         this.selectedSeason = request.season;
         this.updateSlotContext();
         this.screen.setState('season', request.season);
-        this.seasonName = data['name'];
+        this.seasonName = data.name;
         this.focusedEpisode = null;
-        this.episodes = (data['episodes'] || []).map(ep => ({
+        this.episodes = (data.episodes || []).map(ep => ({
           ...ep,
-          upcoming: !ep.air_date || ep.air_date > this.today
+          upcoming: !ep.airDate || ep.airDate > this.today
         }));
         let restore = this.restoreEpisode;
         this.restoreEpisode = false;
@@ -157,27 +157,27 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.imdb = null;
     this.moviesService.getTvDetails(id).subscribe(show => {
       this.show = show;
-      this.imdbId = show['external_ids']?.['imdb_id'];
+      this.imdbId = show.imdbId;
       this.updateSlotContext();
       this.loadImdb();
-      this.trailer = this.pickTrailer(show['videos']?.['results'] || []);
+      this.trailer = this.pickTrailer(show.videos || []);
 
       // Regular seasons first, "Specials" (season 0) last
-      this.seasons = (show['seasons'] || [])
-        .filter(s => s.episode_count > 0)
-        .sort((a, b) => (a.season_number || 1000) - (b.season_number || 1000));
+      this.seasons = (show.seasons || [])
+        .filter(s => s.episodeCount > 0)
+        .sort((a, b) => (a.seasonNumber || 1000) - (b.seasonNumber || 1000));
 
       // Describe the show above the page
-      this.moviesService.assignSelection({ ...show, media_type : 'tv' });
+      this.moviesService.assignSelection({ ...show });
       this.loadLibraryState();
 
-      let season = this.seasons[0]?.season_number;
-      if (lastSeason !== undefined && this.seasons.some(s => s.season_number === lastSeason)) {
+      let season = this.seasons[0]?.seasonNumber;
+      if (lastSeason !== undefined && this.seasons.some(s => s.seasonNumber === lastSeason)) {
         season = lastSeason;
         this.restoreEpisode = true;
       }
       if (season !== undefined) {
-        this.seasonRequests.next({ showId : show['id'] , season });
+        this.seasonRequests.next({ showId : show.tmdbId , season });
       }
 
       if (!this.restoreEpisode) setTimeout(() => this.focusPlay(), 0);
@@ -198,8 +198,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       if (!series || show !== this.show) return;
       this.imdb = series;
       if (series.rating) {
-        show['rating'] = series.rating;
-        this.moviesService.assignSelection({ ...show, media_type : 'tv' });
+        this.moviesService.assignSelection({ ...show, rating: series.rating });
       }
     });
   }
@@ -213,21 +212,21 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   episodeRating(ep):number | null {
-    return ImdbService.episode(this.imdb , this.selectedSeason , ep.episode_number)?.rating || null;
+    return ImdbService.episode(this.imdb , this.selectedSeason , ep.episodeNumber)?.rating || null;
   }
 
   isResolving(ep):boolean {
-    return this.episodePlayback.isResolving(this.show , this.selectedSeason , ep.episode_number);
+    return this.episodePlayback.isResolving(this.show , this.selectedSeason , ep.episodeNumber);
   }
 
   loadLibraryState(){
     this.inWatchlist = false;
     this.episodeProgress.clear();
     this.onServerSub?.unsubscribe();
-    this.onServerSub = this.serverLibrary.live('tv' , Number(this.show['id'])).subscribe(title => {
+    this.onServerSub = this.serverLibrary.live('tv' , Number(this.show.tmdbId)).subscribe(title => {
       this.onServer = ServerLibraryService.episodesOf(title);
     });
-    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
+    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show.tmdbId) };
     this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
     this.library.episodesProgress(ref).subscribe({
       next : list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}` , p)),
@@ -237,14 +236,14 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   // Shown on the episode thumbnail: a watched badge, or a bar once it's started
   progressOf(ep):EpisodeProgress | null {
-    let progress = this.episodeProgress.get(`${this.selectedSeason}x${ep.episode_number}`);
+    let progress = this.episodeProgress.get(`${this.selectedSeason}x${ep.episodeNumber}`);
     return progress && (progress.finished || progress.ratio >= 0.02) ? progress : null;
   }
 
   toggleWatchlist(){
     if (this.libraryBusy || !this.show) return;
     this.libraryBusy = true;
-    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show['id']) };
+    let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show.tmdbId) };
     let adding = !this.inWatchlist;
     this.inWatchlist = adding;
     let request:Observable<unknown> = adding
@@ -263,7 +262,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     });
   }
 
-  pickTrailer(videos){
+  pickTrailer(videos:CatalogDetails['videos']){
     let youtube = videos.filter(v => v.site == 'YouTube');
     let trailer = youtube.find(v => v.type == 'Trailer') || youtube[0];
     return trailer?.key;
@@ -292,15 +291,15 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   // this show's (progress, subtitles)
   findReleases(){
     if (!this.show) return;
-    let title = this.show['name'];
+    let title = this.show.title;
     this.releases.open('tv', title, {
       label: title,
       context: {
         mediaType: 'tv',
-        tmdbId: Number(this.show['id']),
+        tmdbId: Number(this.show.tmdbId),
         imdbId: this.imdbId,
         title,
-        year: (this.show['first_air_date'] || '').slice(0, 4),
+        year: this.show.year || '',
         artwork: LibraryService.artworkOf(this.show),
       },
     }, this.imdbId || null);
@@ -314,14 +313,14 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.slotContext = { show: titleRef(this.show, this.imdbId), season: this.selectedSeason ?? null, profile: profileContext(this.profiles.current.value) };
   }
 
-  bySeason = (i:number, s:any) => s.season_number;
-  byEpisode = (i:number, ep:any) => ep.episode_number;
+  bySeason = (i:number, s:{ seasonNumber:number }) => s.seasonNumber;
+  byEpisode = (i:number, ep:EpisodeItem) => ep.episodeNumber;
 
   // an episode card's runtime and air date
   episodeMeta(ep):string[] {
     let meta = [];
     if (ep.runtime) meta.push(ep.runtime + ' min');
-    if (ep.air_date) meta.push(formatDate(ep.air_date, 'd MMM y', 'en-US'));
+    if (ep.airDate) meta.push(formatDate(ep.airDate, 'd MMM y', 'en-US'));
     return meta;
   }
 
@@ -329,7 +328,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     if (ep.upcoming) return ['upcoming'];
     let badges:Badge[] = [];
     if (this.progressOf(ep)?.finished) badges.push('watched');
-    if (this.onServer.has(`${this.selectedSeason}x${ep.episode_number}`)) badges.push('server');
+    if (this.onServer.has(`${this.selectedSeason}x${ep.episodeNumber}`)) badges.push('server');
     return badges.length ? badges : null;
   }
 
@@ -343,17 +342,17 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   // The episode's own page: its details, ratings, Play and Find releases
   openEpisode(ep){
     if (!ep) return;
-    this.navigator.open({ screen: 'core.episode', params: { id: this.show['id'], season: this.selectedSeason, episode: ep.episode_number } });
+    this.navigator.open({ screen: 'core.episode', params: { id: this.show.tmdbId, season: this.selectedSeason, episode: ep.episodeNumber } });
   }
 
   // A focused season loads its episodes (scrolling is the movement system's)
   onFocus(node:HTMLElement){
     if (!this.screen.active) return;
     this.focusedEpisode = node.dataset['episode'] !== undefined
-      ? this.episodes[Number(node.dataset['index'])]?.episode_number ?? null
+      ? this.episodes[Number(node.dataset['index'])]?.episodeNumber ?? null
       : null;
     if (!node.classList.contains('season')) return;
-    this.seasonRequests.next({ showId : this.show['id'] , season : Number(node.dataset['season']) });
+    this.seasonRequests.next({ showId : this.show.tmdbId , season : Number(node.dataset['season']) });
   }
 
   showYtVid(vidId){

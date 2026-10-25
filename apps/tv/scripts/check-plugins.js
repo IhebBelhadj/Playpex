@@ -13,7 +13,10 @@
 //   • torrent sites are plugins (docs/providers-plan.md §4, step 5): no torrent
 //     site's host in the core's code (the TV app, the server, the protocol, the
 //     dashboard): the sites are plugins/torrents/*. Release names may still
-//     carry a site's tag (lib/media/names.js cleans them): only hosts count.
+//     carry a site's tag (lib/media/names.js cleans them): only hosts count;
+//   • the catalog is the server's (docs/providers-plan.md §7.1, step 6): the TV
+//     app calls no TMDB API and holds no TMDB key (its images still come from
+//     TMDB's image host: image.tmdb.org is fine).
 //
 //   npm run check:plugins                exits 1 and lists the offending lines
 //
@@ -39,6 +42,10 @@ const SECTION = { name: 'the 18+ section in the core (it is a plugin: plugins/ve
 const SITES = {
   name: 'a torrent site in the core (the sites are plugins: plugins/torrents)',
   re: /\b(yts\.(mx|lt|ag|am|rs|bz)|movies-api\.accel\.li|eztvx?\.(to|wf|tf|re)|therarbg\.(to|com)|rarbg\.to|apibay\.org|thepiratebay\.org)\b|providers\/(yts|eztv|therarbg|piratebay)\b/i,
+};
+const CATALOG = {
+  name: 'TMDB called from the TV app (the catalog is the server\'s: /catalog/*)',
+  re: /api\.themoviedb\.org|api_key|tmdb_?key/i,
 };
 const DASHBOARD = path.join(REPO, 'apps', 'dashboard', 'src');
 
@@ -86,13 +93,13 @@ function check(file, rules) {
     }
   });
 }
-DIRS.flatMap(d => files(d, /\.(ts|js|html)$/)).forEach(file => check(file, RULES.concat([SECTION, SITES])));
+DIRS.flatMap(d => files(d, /\.(ts|js|html)$/)).forEach(file => check(file, RULES.concat([SECTION, SITES, CATALOG])));
 CORE.flatMap(d => files(d, /\.(js|ts|json|ya?ml)$/)).forEach(file => check(file, [SECTION, SITES]));
 files(DASHBOARD, /\.(ts|tsx)$/).forEach(file => check(file, [SITES]));
 
 if (problems.length) {
   console.error(problems.join('\n'));
-  console.error('\n' + problems.length + ' problem(s). Plugins are set up on the dashboard (docs/plugins-plan.md §6.3); the TV only renders them; the 18+ section is a plugin (§7.1b); torrent sites are plugins (docs/providers-plan.md §4).');
+  console.error('\n' + problems.length + ' problem(s). Plugins are set up on the dashboard (docs/plugins-plan.md §6.3); the TV only renders them; the 18+ section is a plugin (§7.1b); torrent sites are plugins (docs/providers-plan.md §4); the catalog is the server\'s (§7.1).');
   process.exit(1);
 }
-console.log('No plugin set-up in the TV app, no 18+ section and no torrent site in the core.');
+console.log('No plugin set-up or TMDB call in the TV app, no 18+ section and no torrent site in the core.');

@@ -58,7 +58,7 @@ var DISCOVERY = {
 // on disk, `r_<32 hex>` for a plugin's HTTPS source the server proxies
 // (plugins plan §4.7; it expires an hour after its last use). Opaque to
 // clients: they get refs from the server, never build them.
-var MEDIA_REF_PATTERN = '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32})$';
+var MEDIA_REF_PATTERN = '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32}|h_[0-9a-f]{32}|l_[0-9a-f]{32})$';
 
 // Every error answer is { error: <message for people>, code: <one of these> }
 var ERROR_CODES = {

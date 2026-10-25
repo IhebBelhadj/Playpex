@@ -8,6 +8,7 @@
 //   npm run screens -w apps/tv                          builds, then shoots into .screens/latest
 //   npx electron scripts/screens.js [--out .screens/baseline] [--size 1920x1080]   (default 1440x810, the design)
 //                                   [--only movies,movie] [--settle 4000] [--scale 0.8]
+//                                   [--server http://127.0.0.1:28480]
 //
 // --scale: the UI scale of the shots (client.json uiScale, ui/display.ts;
 // default 0.8, the app's default), whatever Playpex TV itself uses.
@@ -15,8 +16,8 @@
 // Overlay shots (torrent picker, play choice, error, connection lost) open
 // over the screen before them: `--only movie,torrent-picker`.
 //
-// Needs a Playpex Media Server on this machine (`npm run server`): loopback,
-// no pairing. Enters the first profile without a PIN that isn't a kids one.
+// Needs a Playpex Media Server on this machine (`npm run server`, or the one
+// `--server` names, as the scenarios do): loopback, no pairing. Enters the first profile without a PIN that isn't a kids one.
 // Live screens show today's TMDB data: compare them side by side by eye; the
 // gallery (core.dev.gallery) is the deterministic one.
 
@@ -74,6 +75,7 @@ const out = path.resolve(ROOT, option('out', '.screens/latest'));
 const only = option('only', '').split(',').filter(Boolean);
 const settle = +option('settle', 3500);
 const scale = +option('scale', 0.8);
+const serverUrl = option('server', '').replace(/\/+$/, '');
 
 process.env.PLAYPEX_TV_INDEX = path.join(ROOT, 'dist', 'screens', 'index.html');
 process.env.PLAYPEX_TV_SHOTS = size;
@@ -93,8 +95,18 @@ try {
 } catch (e) { }
 // a fixed size, and no first-start size screen in front of every shot
 record.uiScale = scale;
-fs.writeFileSync(path.join(userData, 'client.json'), JSON.stringify(record, null, 2), { mode: 0o600 });
 app.setPath('userData', userData);
+
+// the server to use: its id is the key client.json knows it by
+async function useServer() {
+  if (serverUrl) {
+    const info = await fetch(serverUrl + '/api/v1/server').then(r => r.json());
+    record.servers = { [info.id]: { name: info.name, url: serverUrl } };
+    record.lastServerId = info.id;
+    record.deviceId = 'tv-screens';
+  }
+  fs.writeFileSync(path.join(userData, 'client.json'), JSON.stringify(record, null, 2), { mode: 0o600 });
+}
 // sizes in real pixels: on a scaled display (125 %) the window would be
 // measured in larger units and clamped to the screen
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
@@ -173,4 +185,7 @@ app.once('browser-window-created', (event, win) => {
 });
 
 console.log('Screens ' + size + ' → ' + path.relative(process.cwd(), out));
-require('../electron/main.js');
+useServer().then(() => require('../electron/main.js'), err => {
+  console.error('No server at ' + serverUrl + ': ' + err.message);
+  process.exit(1);
+});

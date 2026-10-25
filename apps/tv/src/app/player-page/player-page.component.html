@@ -33,7 +33,7 @@
   <!-- Up next (episodes, the last 40 s or from the credits): Enter plays it, Back dismisses it -->
   <div class="upNext" *ngIf="upNextShown">
     <div class="upNextStill">
-      <img *ngIf="upNext.episode.still_path" [src]="stillBase + upNext.episode.still_path" alt="">
+      <img *ngIf="upNext.episode.stillPath" [src]="stillBase + upNext.episode.stillPath" alt="">
     </div>
     <div class="upNextText">
       <p class="upNextLabel">Up next</p>
@@ -50,12 +50,14 @@
 
   <div class="controls" pxSection="playerControls" (focusin)="poke()">
     <div class="titleBlock">
+      <span class="liveMark" *ngIf="live">Live</span>
       <h1 class="title">{{ playback?.title }}</h1>
       <p class="meta" *ngIf="metaLine">{{ metaLine }}</p>
     </div>
 
     <div class="controlStack" pxStack="player">
-      <div class="timeline">
+      <!-- a live stream has no time to move in: the Live mark instead -->
+      <div class="timeline" *ngIf="!live">
         <button class="scrubber" pxItem pxItemKey="timeline" data-pointer="own"
           (click)="onTimelineClick($event)" (mousemove)="onTimelineHover($event)" (mouseleave)="hoverAt = null">
           <span class="track"></span>
@@ -86,10 +88,10 @@
           <px-button variant="icon" key="tracks" icon="caption" label="Audio & subtitles" (pxSelect)="openTracks()"></px-button>
         </div>
         <div class="group center">
-          <px-button variant="icon" key="back10" icon="leftSeek" label="10 s back" (pxSelect)="jump(-10)"></px-button>
+          <px-button variant="icon" *ngIf="!live" key="back10" icon="leftSeek" label="10 s back" (pxSelect)="jump(-10)"></px-button>
           <px-button variant="icon" size="l" key="play" [icon]="paused ? 'playSharp' : 'pause'" [label]="paused ? 'Play' : 'Pause'"
             (pxSelect)="togglePlay()"></px-button>
-          <px-button variant="icon" key="fwd10" icon="rightSeek" label="10 s ahead" (pxSelect)="jump(10)"></px-button>
+          <px-button variant="icon" *ngIf="!live" key="fwd10" icon="rightSeek" label="10 s ahead" (pxSelect)="jump(10)"></px-button>
         </div>
         <div class="group end">
           <px-button variant="icon" *ngIf="upNext" key="next" icon="next" [label]="upNextLooking ? 'Finding a release…' : 'Next episode'"

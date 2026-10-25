@@ -272,7 +272,7 @@ function linkOf(source:PluginSource):string | null {
 }
 
 function target(source:PluginSource):Pick<PlaybackRequest, 'magnet' | 'source' | 'file'> {
-  if (source.kind == 'media') return { source: { ref: source.ref } };
+  if (source.kind == 'media') return { source: { ref: source.ref, ...(source.format ? { format: source.format } : {}) } };
   let hint = source.fileIndex != null || source.fileName ? { file: { index: source.fileIndex ?? null, name: source.fileName || null } } : {};
   return { magnet: linkOf(source), ...hint };
 }
@@ -280,7 +280,7 @@ function target(source:PluginSource):Pick<PlaybackRequest, 'magnet' | 'source' |
 function sourceOption(source:PluginSource, index:number):TorrentOption {
   return {
     quality: source.quality || (source.kind == 'magnet' ? 'SD' : 'Video'),
-    tags: [source.kind == 'media' ? 'Stream' : null, source.codec && source.codec != 'h264' ? source.codec : null].filter(Boolean),
+    tags: [source.kind == 'media' ? (source.format == 'live' || source.format == 'hls' ? 'Live / HLS' : 'Stream') : null, source.codec && source.codec != 'h264' ? source.codec : null].filter(Boolean),
     size: source.size ? formatBytes(source.size) : undefined,
     seeds: source.kind == 'magnet' ? source.seeds : undefined,
     name: source.label,

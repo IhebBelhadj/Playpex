@@ -16,13 +16,13 @@
    >
     <!-- a season chip, with the season's IMDb mean -->
     <ng-container *ngFor="let season of seasons; trackBy: bySeason">
-      <button class="season focusable" pxItem [pxItemKey]="season.season_number"
-        [class.selected]="season.season_number === selectedSeason" [attr.data-season]="season.season_number"
+      <button class="season focusable" pxItem [pxItemKey]="season.seasonNumber"
+        [class.selected]="season.seasonNumber === selectedSeason" [attr.data-season]="season.seasonNumber"
         (pxSelect)="enterEpisodes()">
         {{season.name}}
-        <span class="seasonRating" *ngIf="seasonRating(season.season_number) as rating">{{rating | number:'1.1-1'}}</span>
+        <span class="seasonRating" *ngIf="seasonRating(season.seasonNumber) as rating">{{rating | number:'1.1-1'}}</span>
         <!-- episodes of the season on the Playpex server -->
-        <span class="seasonOnServer" *ngIf="seasonOnServer(season.season_number) as n"
+        <span class="seasonOnServer" *ngIf="seasonOnServer(season.seasonNumber) as n"
           [attr.aria-label]="n + ' on this server'"><img src="assets/icons/server.svg" alt="">{{n}}</span>
       </button>
     </ng-container>
@@ -40,12 +40,12 @@
       <season-curve [episodes]="episodes" [imdb]="selectedSeasonImdb" [highlight]="focusedEpisode"></season-curve>
     </div>
     <ng-container *ngFor="let ep of episodes; let i = index; trackBy: byEpisode">
-      <px-card variant="still" [key]="ep.episode_number" [image]="ep.still_path ? stillBase + ep.still_path : null"
-        [title]="ep.name" [number]="ep.episode_number" [dim]="ep.upcoming"
+      <px-card variant="still" [key]="ep.episodeNumber" [image]="ep.stillPath ? stillBase + ep.stillPath : null"
+        [title]="ep.name" [number]="ep.episodeNumber" [dim]="ep.upcoming"
         [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
         [meta]="episodeMeta(ep)" [badges]="episodeBadges(ep)"
         [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
-        [busy]="isResolving(ep)" busyLabel="Finding torrents…" [data]="{ index: i, episode: ep.episode_number }"
+        [busy]="isResolving(ep)" busyLabel="Finding torrents…" [data]="{ index: i, episode: ep.episodeNumber }"
         (pxSelect)="openEpisode(ep)"></px-card>
     </ng-container>
   </px-card-row>

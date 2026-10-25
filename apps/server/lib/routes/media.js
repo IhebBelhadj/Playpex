@@ -15,6 +15,7 @@ var express = require('express'),
   media = require('../media'),
   transcode = require('../transcode'),
   tracks = require('../media/tracks'),
+  hls = require('../media/hls'),
   ffmpeg = require('../ffmpeg'),
   subtitles = require('../subtitles'),
   sessions = require('../sessions'),
@@ -70,6 +71,24 @@ function lease(req, res, next) {
   next();
 }
 
+// A plugin's HLS or live stream has no file to probe, transcode or read
+// tracks from (an HLS player reads its renditions from the playlist)
+function bytes(req, res, next) {
+  if (req.media.kind === 'hls' || req.media.kind === 'live') {
+    return fail(res, 'NOT_SUPPORTED', 'A stream has no file to read this from');
+  }
+  next();
+}
+
+// An h_ ref's playlist (index.m3u8), or a part of it by token (r/<token>/<its file name>, lib/media/hls.js)
+function playlist(req, res) {
+  if (req.media.kind !== 'hls') {
+    return fail(res, 'NOT_FOUND', 'Not an HLS stream');
+  }
+  sessions.trackStream(req.lease, req, res, req.media, 'hls');
+  hls.playlist(req, res, req.media, req.params.token == null ? null : req.params.token, req.lease.deviceId);
+}
+
 function input(req) {
   return media.input(req.media, req.socket.localPort, req.lease.deviceId);
 }
@@ -78,8 +97,16 @@ function input(req) {
 // limit), unless the file is finished on disk; a stream download fetches only
 // this file from then on (season packs), with its tail early.
 function stream(req, res) {
-  var file = req.media,
-    range = req.headers.range && rangeParser(file.size, req.headers.range)[0];
+  var file = req.media;
+  if (file.kind === 'hls') {
+    return res.redirect(302, file.ref + '/index.m3u8');
+  }
+  if (file.kind === 'live') {
+    sessions.trackStream(req.lease, req, res, file, 'live');
+    req.socket.setTimeout(0);
+    return hls.live(req, res, file, req.lease.deviceId);
+  }
+  var range = req.headers.range && rangeParser(file.size, req.headers.range)[0];
 
   sessions.trackStream(req.lease, req, res, file, 'direct');
   req.socket.setTimeout(3600000);
@@ -275,22 +302,26 @@ function subtitleTrackFile(req, res) {
 }
 
 var ref = '/:ref',
-  open = [fromRef, audience, lease];
+  open = [fromRef, audience, lease],
+  file = open.concat(bytes);
 
 router.get(ref, open, stream);   // and HEAD
-router.get(ref + '/probe', open, probe);
-router.get(ref + '/keyframe', open, keyframe);
-router.get(ref + '/transcode', open, transcoded);
+router.get(ref + '/index.m3u8', open, playlist);
+router.get(ref + '/r/:token([A-Za-z0-9_.-]{1,4096})/:name([A-Za-z0-9._-]{1,64})', open, playlist);
+router.get(ref + '/probe', file, probe);
+router.get(ref + '/keyframe', file, keyframe);
+router.get(ref + '/transcode', file, transcoded);
 router.post(ref + '/keepalive', open, keepalive);
-router.get(ref + '/subtitles', fromRef, audience, subtitleList);
-router.get(ref + '/subtitles/:index(\\d+)', fromRef, audience, subtitleFile);
-router.get(ref + '/tracks', open, trackList);
-router.get(ref + '/subtitles/embedded/:index(\\d+)', open, embeddedSubtitle);
-router.get(ref + '/subtitles/file/:track(f\\d+)', open, subtitleTrackFile);
+router.get(ref + '/subtitles', fromRef, audience, bytes, subtitleList);
+router.get(ref + '/subtitles/:index(\\d+)', fromRef, audience, bytes, subtitleFile);
+router.get(ref + '/tracks', file, trackList);
+router.get(ref + '/subtitles/embedded/:index(\\d+)', file, embeddedSubtitle);
+router.get(ref + '/subtitles/file/:track(f\\d+)', file, subtitleTrackFile);
 // The calling device lets go (a torrent pauses 30 s after the last device let
 // go; nothing is deleted)
 router.delete(ref, fromRef, function (req, res) {
   sessions.release(req.media.key, sessions.device(req).id);
+  hls.left(req.media.ref, sessions.device(req).id);
   res.json({ ok: true });
 });
 

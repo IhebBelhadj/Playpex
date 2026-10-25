@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Loading, PageHeader, QueryError, Spinner } from '@/components/common'
 import { DesktopCard, useHost } from '@/components/desktop'
 import { DlnaPanel } from '@/components/dlna'
+import { MetadataProviders } from '@/components/metadata-providers'
 import { useOverview } from '@/components/layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -90,6 +91,7 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     fields: [
       { key: 'streaming.maxTorrents', label: 'Torrents at once', kind: 'number', help: 'Running torrents, streams and downloads together. A new stream past it pauses a download nobody watches, else it is refused (clients show “server busy”).' },
       { key: 'streaming.maxTranscodes', label: 'Audio transcodes at once', kind: 'number', help: 'Each one runs ffmpeg.' },
+      { key: 'streaming.maxLive', label: 'Live streams at once', kind: 'number', help: 'Plugins’ live channels and streams, one per device watching. A continuous stream runs ffmpeg.' },
       { key: 'streaming.idleTimeoutMinutes', label: 'Idle timeout (minutes)', kind: 'number', help: 'A device silent this long (crashed, offline) loses its torrents.' },
     ],
   },
@@ -109,11 +111,20 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     ],
   },
   {
+    id: 'metadata',
+    title: 'Metadata',
+    description: 'Where titles, posters, seasons and people come from: TMDB, through this server (apps hold no key of their own).',
+    fields: [
+      { key: 'metadata.language', label: 'Language', kind: 'text', placeholder: 'en-US', help: 'What titles and overviews are written in: a language code, with a region or not (en-US, fr, pt-BR, ja).' },
+      { key: 'metadata.region', label: 'Region', kind: 'text', placeholder: 'TMDB’s default', help: 'A country code (US, FR, GB): what “now playing” and “upcoming” mean. Empty = TMDB’s default.' },
+      { key: 'providers.tmdbApiKey', label: 'TMDB API key', kind: 'secret', help: 'Empty: Playpex’s built-in key. Your own: themoviedb.org/settings/api.' },
+    ],
+  },
+  {
     id: 'providers',
     title: 'Providers',
     description: 'API keys of optional services. Stored on the server, never shown in full.',
     fields: [
-      { key: 'providers.tmdbApiKey', label: 'TMDB', kind: 'secret', help: 'Recommendations. themoviedb.org/settings/api' },
       { key: 'providers.openSubtitlesApiKey', label: 'OpenSubtitles.com', kind: 'secret', help: 'opensubtitles.com/en/consumers' },
       { key: 'providers.wyzieApiKey', label: 'Wyzie Subs', kind: 'secret', help: 'store.wyzie.io/redeem' },
     ],
@@ -613,6 +624,7 @@ export function SettingsPage() {
             </Button>
           </div>
           {group.id === 'dlna' && <DlnaPanel />}
+          {group.id === 'metadata' && <MetadataProviders />}
         </form>
       ) : (
         <QueryError error={new Error(`No settings group "${tab}"`)} />

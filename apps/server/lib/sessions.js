@@ -276,7 +276,7 @@ function sourceKind(lease) {
   if (lease.ref && lease.ref.indexOf('f_') === 0) {
     return 'file';
   }
-  if (lease.ref && lease.ref.indexOf('r_') === 0) {
+  if (lease.ref && /^[rhl]_/.test(lease.ref)) {
     return 'plugin';
   }
   var d = lease.infoHash && torrents.get(lease.infoHash);

@@ -215,6 +215,7 @@ function unload(id) {
     plugin.sandbox.stop();
   }
   require('./remote').forget(id);
+  require('../media/hls').forget(id);
   plugin.state = 'removed';
   publish(plugin);
   return true;
@@ -268,6 +269,7 @@ function stop() {
       plugin.sandbox.stop();
     }
     require('./remote').forget(id);
+    require('../media/hls').forget(id);
   });
   return Promise.resolve();
 }
@@ -316,7 +318,7 @@ function withHook(name, ctx) {
   });
 }
 
-/** Runs a hook on every enabled plugin that has it (plan §4.3) */
+/** Runs a hook on every enabled plugin that has it (plan §4.3); `options.only` / `except`: plugin ids */
 function runHook(name, input, ctx, options) {
   options = options || {};
   var hook = protocol.HOOKS[name];
@@ -329,7 +331,7 @@ function runHook(name, input, ctx, options) {
   }
   var answers = {}, errors = [];
   var chosen = hooked(name, ctx).filter(function (plugin) {
-    return !options.only || plugin.id === options.only;
+    return (!options.only || plugin.id === options.only) && (options.except || []).indexOf(plugin.id) === -1;
   });
   var runs = chosen.map(function (plugin) {
     bump(plugin.stats.hooks, name, 'calls');

@@ -1,7 +1,7 @@
 import { ProfilesService } from '../profiles.service';
 import { NavigationService } from './../navigation.service';
 import { BackgroundService } from './../background.service';
-import { MoviesService } from './../movies.service';
+import { MoviesService, TitleItem, displayTitle } from './../movies.service';
 import { Component, Input, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
@@ -21,8 +21,7 @@ export class MovieDescriptionComponent implements OnInit {
 
   private profiles = inject(ProfilesService);
 
-  selectedMovie;
-  movieDetails;
+  selectedMovie:Partial<TitleItem>;
   year;
   fullDescription = false;
   shortDescription = "";
@@ -68,43 +67,36 @@ export class MovieDescriptionComponent implements OnInit {
     private router:Router,
   ){}
 
-  onMovieSelect(movie){
-    this.backgroundService.sendImage(movie['backdrop_path'])
+  onMovieSelect(movie:Partial<TitleItem>){
+    this.backgroundService.sendImage(movie.backdropPath)
   }
 
-  dataUpdate(movie){
+  dataUpdate(movie:Partial<TitleItem>){
     this.selectedMovie = movie;
 
     this.shortDescription = (this.selectedMovie.overview || '').slice(0 , 255);
-    this.genres = [];
-    if (movie['genres']) {
-      movie['genres'].forEach(el => {
-        this.genres.push(el['name'])
-      });
-    }
+    this.genres = (movie.genres || []).map(g => g.name);
 
-    // movies have release_date, TV shows first_air_date
-    let date = this.selectedMovie.release_date || this.selectedMovie.first_air_date;
-    this.year = date ? date.slice(0,4) : undefined;
+    this.year = movie.year || undefined;
     this.info = this.titleInfo(movie);
-    this.slotContext = movie?.id ? {
-      kind: movie.media_type == 'tv' ? 'tv' : 'movie', tmdbId: Number(movie.id),
-      imdbId: movie.imdb_id || movie.external_ids?.imdb_id || null, profile: profileContext(this.profiles.current.value),
+    this.slotContext = movie?.tmdbId ? {
+      kind: movie.mediaType == 'tv' ? 'tv' : 'movie', tmdbId: Number(movie.tmdbId),
+      imdbId: movie.imdbId || null, profile: profileContext(this.profiles.current.value),
     } : null;
     this.onMovieSelect(movie);
   }
 
-  private titleInfo(movie):TitleInfoModel {
+  private titleInfo(movie:Partial<TitleItem>):TitleInfoModel {
     let meta:MetaItem[] = [];
     if (this.year) meta.push({ kind: 'text', text: this.year });
     if (movie.rating) meta.push({ kind: 'score', source: 'imdb', value: movie.rating });
-    if (movie.media_type == 'tv') {
-      let seasons = movie.number_of_seasons;
+    if (movie.mediaType == 'tv') {
+      let seasons = movie.seasonCount;
       if (seasons) meta.push({ kind: 'chip', text: `${seasons} ${seasons == 1 ? 'season' : 'seasons'}` });
-      if (movie.vote_average) meta.push({ kind: 'score', source: 'tmdb', value: movie.vote_average });
+      if (movie.voteAverage) meta.push({ kind: 'score', source: 'tmdb', value: movie.voteAverage });
     }
     return {
-      title: movie.original_title || movie.name || '',
+      title: displayTitle(movie),
       meta,
       genres: this.genres,
       overview: movie.overview || '',

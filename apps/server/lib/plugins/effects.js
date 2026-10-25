@@ -5,22 +5,27 @@
 //   play      needs permissions.play; each source a kind of permissions.sources
 //             (an http source on a declared host); audience adults → tracking 'none';
 //             an http source leaves as { kind: 'media', ref: 'r_…', label, … }:
-//             the server proxies it (./remote.js), the client never sees its URL
+//             the server proxies it (./remote.js), the client never sees its URL;
+//             hls / live ones as { kind: 'media', ref: 'h_…' | 'l_…', format, … } (lib/media/hls.js)
 //   download  needs write: ['downloads'], the same source rules; torrents only
 //   open      its own screens (plugin.<id>.*) or core.movie / show / episode / search
 //   confirm   its `then` checked the same way
 // An effect that breaks a rule is dropped (and logged), the rest of the answer stays.
 
 var protocol = require('@playpex/protocol/plugins'),
-  remote = require('./remote');
+  remote = require('./remote'),
+  hls = require('../media/hls');
 
 // An http source as clients get it: a media ref, never the URL or its headers
 function forClient(plugin, source) {
-  if (source.kind !== 'http') {
+  if (source.kind === 'magnet') {
     return source;
   }
-  var entry = remote.register(plugin, source),
+  var entry = source.kind === 'http' ? remote.register(plugin, source) : hls.register(plugin, source),
     out = { kind: 'media', ref: entry.ref, label: source.label };
+  if (entry.format) {
+    out.format = entry.format;
+  }
   ['quality', 'size', 'codec', 'audio', 'notes'].forEach(function (k) {
     if (source[k] !== undefined) {
       out[k] = source[k];
@@ -34,7 +39,7 @@ function sourceAllowed(plugin, source) {
   if ((p.sources || []).indexOf(source.kind) === -1) {
     return false;
   }
-  if (source.kind === 'http') {
+  if (source.kind !== 'magnet') {
     try {
       return protocol.hostAllowed(p.network, new URL(source.url).hostname);
     } catch (e) {

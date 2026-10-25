@@ -38,7 +38,7 @@ What the dashboard's catalog and your plugin's page show (Kodi's add-on metadata
   "summary": "Scrobbles what you watch to Trakt…",       // ≤ 150, the catalog's line
   "description": "…",                                     // ≤ 4000
   "disclaimer": "…", "license": "MIT", "source": "https://github.com/…",
-  "categories": ["tracking", "notifications"],            // catalog sources resolvers subtitles metadata library tracking notifications tools
+  "categories": ["tracking", "notifications"],            // catalog sources streams live resolvers subtitles metadata library tracking notifications tools
   "screenshots": ["assets/shot-1.jpg"], "fanart": "assets/fanart.jpg"
 }
 ```
@@ -64,7 +64,7 @@ Each is shown to the admin in words at install (`describePermissions`); a new ve
 | `storage: "<n>KB\|MB"` | its own key / value store (≤ 100 MB) | "Keeps up to 5 MB of its own data" |
 | `secrets: [names]` | values the admin enters, for this plugin only | "Asks for: traktClientId" |
 | `play: true` | the `play` effect | "Can start playback" |
-| `sources: ["magnet", "http"]` | the kinds of `Source` it may give (`play.collect`, `play.resolve`, `play` and `download` effects); needs one of those uses, `http` needs `network` | "Adds torrents to Play" |
+| `sources: ["magnet", "http", "hls", "live"]` | the kinds of `Source` it may give (`play.collect`, `play.resolve`, `play` and `download` effects); needs one of those uses, `http` / `hls` / `live` need `network` (every host a playlist names) | "Adds torrents to Play" |
 | `hooks: [names]` | middleware stages ([server.md](server.md#hooks)) | per hook ("Reorders or hides the sources of Play") |
 | `events: [families]` | `playback`, `downloads`, `library`, `watchlist` | "Sees what you watch", … |
 | `schedule: true` | background jobs | "Runs in the background" |

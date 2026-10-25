@@ -24,7 +24,7 @@ interface Row {
   cards:Card[];
 }
 
-// What the description shows from TMDB for the focused title
+// What the description shows from the catalog for the focused title
 interface Details {
   length:string | null;          // "2h 46m" for movies, "3 seasons" for shows
   score:number | null;
@@ -273,16 +273,16 @@ export class LibraryPageComponent implements OnInit, AfterViewInit, OnDestroy {
     return request.pipe(
       map(data => {
         let length:string | null = null;
-        if (entry.mediaType == 'tv' && data['number_of_seasons']) {
-          let n = data['number_of_seasons'];
+        if (entry.mediaType == 'tv' && data.seasonCount) {
+          let n = data.seasonCount;
           length = `${n} ${n == 1 ? 'season' : 'seasons'}`;
-        } else if (data['runtime']) {
-          let h = Math.floor(data['runtime'] / 60), m = data['runtime'] % 60;
+        } else if (data.runtime) {
+          let h = Math.floor(data.runtime / 60), m = data.runtime % 60;
           length = h ? `${h}h ${m}m` : `${m}m`;
         }
-        let overview:string = data['overview'] || '';
+        let overview:string = data.overview || '';
         if (overview.length > OVERVIEW_MAX) overview = overview.slice(0, OVERVIEW_MAX).replace(/\s+\S*$/, '') + '…';
-        return { length, score: data['vote_average'] || null, genres: (data['genres'] || []).map(g => g['name']), overview };
+        return { length, score: data.voteAverage || null, genres: (data.genres || []).map(g => g.name), overview };
       }),
       catchError(() => of(null)),      // offline: the header keeps what the server knows
     );

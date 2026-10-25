@@ -34,7 +34,7 @@ Content-Type: application/json
 - `type`: `file` (a file of the server's media library), `download` (a file of a torrent the server keeps for this title; `progress` 1 = all on disk), `torrent` (from a provider). **A source with a `ref` plays through `/media/{ref}` directly** (skip steps 2–4: no `POST /torrents`, no polling; the lease is taken by the first `GET /media/{ref}`, kept with `POST /media/{ref}/keepalive`, released with `DELETE /media/{ref}`). A `torrent` plays from its `magnet` (steps 2–5).
 - `playable`: `yes`, `audio-converted` (Dolby / DTS sound the server re-encodes, see [audio](#choosing-direct-play-or-the-transcoded-stream)), `maybe` (HEVC / 10-bit / 4K: depends on the hardware), `no`; `notes` say why in words. Like the release fields below, these are judged for a Chromium player.
 - `badges` you may show (ignore unknown ones): `best` (the first), `on-server`, `downloading`, `pack`, `hdr`, `plugin` (from a plugin of the server), `cached` (a service a plugin links plays this torrent at once: say "Cached on <`resolver.label`>").
-- Plugins on the server ([plugins](plugins.md)) may add sources: torrents, and `type: 'plugin'` streams that play by their `ref` like a file (the server proxies them; there's no URL to see). `hidden` lists what a plugin hid, with `by` (its name) and `reason`: show "Hidden by <by>: <reason>" under the choices; they can't be played.
+- Plugins on the server ([plugins](plugins.md)) may add sources: torrents, and `type: 'plugin'` streams that play by their `ref` (the server proxies them; there's no URL to see) **as their `format` says**: absent or `file` like a file, `hls` an HLS playlist ([streams](#plugins-streams-hls-and-live)); badge `live` when it is known to be live. `hidden` lists what a plugin hid, with `by` (its name) and `reason`: show "Hidden by <by>: <reason>" under the choices; they can't be played.
 - **Show ways to play, not a list of releases**: `groups` sorts the sources by kind, in this order when present: `server` (a library file or a download: on this server), `stream` (a plugin's stream, or a torrent a plugin's service plays at once), `torrent`. Each group names its `best` source (its first in `sources`) and `count`; each source has its `group` and its `readiness`, how soon it plays: `instant` (on disk, a stream), `seconds` (a healthy swarm, a download running), `slow` (few people sharing), `unknown`. Playpex TV shows one lane per group with its best line first ("Plays now", "Starts in seconds", "Few people sharing: may be slow"), the rest one step further; a group with nothing is left out, and with no group at all there is nothing to play this from (say that sources come from the server's admin: plugins on its dashboard).
 - A `torrent` a plugin found may name the file of the torrent to play (`file: { name, index }`): play that one once the torrent's files are known.
 - With `profileId`, the profile's setting `player.preferLocalFiles` (default on) puts the files on the server that play first, and **`policy.autoplay`** names the source to start without asking (a lone file on the server that plays, or, with `player.autoplayKind` `server` / `stream`, the best of that group when it plays); otherwise show the groups and let the user pick. A kids profile gets no file of an adults-only folder.
@@ -50,12 +50,11 @@ Content-Type: application/json
 
 **Markers**: once the player knows the video's length, `POST /play/markers` with the same title fields plus `duration` (seconds) and `fileName` answers `{ markers: [{ plugin, kind, start, end?, label? }] }`: between an `intro` / `recap` marker's `start` and `end` show "Skip intro" / "Skip recap" (seek to `end`); a `credits` marker is where "Up next" starts instead of the last 40 s; `chapter`s can mark the timeline. Empty when no plugin marks anything.
 
-The server reads no torrent site of its own (API 2): a title's torrents come from the **source plugins** its admin installed, through `POST /play/sources`. With none, the sources are only files on the server and its downloads, and `GET /plugins` answers `capabilities: { releases: false, sources: false }`: say so ("Nothing to play this from yet", sources are added on the server's dashboard) and hide "Find releases". The routes below are the rest a title page uses. Titles come from public catalogs.
+The server reads no torrent site of its own (API 2): a title's torrents come from the **source plugins** its admin installed, through `POST /play/sources`. With none, the sources are only files on the server and its downloads, and `GET /plugins` answers `capabilities: { releases: false, sources: false }`: say so ("Nothing to play this from yet", sources are added on the server's dashboard) and hide "Find releases". The routes below are the rest a title page uses.
 
 | What | Where | Notes |
 |---|---|---|
-| Titles, posters, seasons, episodes, cast | **TMDB**, called by the client with its own key | The server will proxy it later (plan §12 G: `/api/v1/catalog/*`, the key in server settings). Until then each client needs a TMDB key. Movies need TMDB's `imdb_id`, shows their `external_ids.imdb_id` |
-| A movie's runtime | TMDB `movie/{id}` (`runtime`) | `GET /movies/{imdbId}` (YTS) and `GET /shows/{imdbId}/torrents` were removed in API 2: they answer `410 GONE` |
+| Titles, posters, seasons, episodes, cast, a movie's runtime | `GET /catalog/*` ([catalog](catalog.md)) | TMDB behind the server: no key in the client. A title's page (`/catalog/titles/{mediaType}/{tmdbId}`) has the `imdbId` the requests above take. `GET /movies/{imdbId}` (YTS) and `GET /shows/{imdbId}/torrents` were removed in API 2: they answer `410 GONE` |
 | "Find releases" lists (most seeded first) | `GET /releases/providers?kind=movie\|tv`, `GET /releases/browse?kind=&provider=&q=&quality=&playable=1&page=&imdb=` | one source plugin's list with filters and paging (`plugin:<id>`); `imdb` (optional) lets a source list one show. No source: `[]` and `{ provider: null, torrents: [] }` |
 | IMDb ratings | `GET /imdb/{imdbId}`, `GET /imdb/{imdbId}/episodes` | series, season means, episodes |
 
@@ -174,6 +173,21 @@ Subtitles inside the file (MKV) and subtitle files of a torrent: see [tracks](#t
 - **Other videos** of the torrent (`kind`: `episode` of a pack, `extra`, `video`): play one by its `ref` like any file.
 - Track ids stay the same for a file: save the chosen ones with the progress (`audioTrack`, `subtitleTrack`) to come back with them. The profile's settings `player.audioLanguage` / `player.subtitleLanguage` / `player.subtitleForcedOnly` ([settings](settings.md)) say what to start with when nothing was saved.
 
+## Plugins' streams: HLS and live
+
+A plugin's stream (a `type: 'plugin'` source, or a play effect's `media` source: [plugins](plugins.md)) has a `format` (`MediaFormat`; absent = `file`):
+
+| `format` | Ref | How to play it |
+|---|---|---|
+| `file` | `r_…` | like a file: `GET /media/{ref}` with ranges; probe, transcode and tracks work |
+| `hls` | `h_…` | an HLS playlist: **`GET /media/{ref}/index.m3u8`** with an HLS player (hls.js in a browser or Electron: Chromium plays no HLS itself; ExoPlayer, AVPlayer, mpv natively). `GET /media/{ref}` answers `302` to it. VOD or live: a live playlist has no `#EXT-X-ENDLIST` |
+| `live` | `l_…` | one continuous Matroska stream on `GET /media/{ref}` (the server's ffmpeg remuxes the plugin's MPEG-TS: video copied, audio AAC stereo): no size, no ranges, no seeking; `503 TRANSCODER_UNAVAILABLE` without ffmpeg |
+
+- The server fetches the playlist **as the plugin** and rewrites every URI in it (variant playlists, segments, `#EXT-X-KEY`, `#EXT-X-MAP`, `#EXT-X-MEDIA`, …) to `r/{token}/{name}` beside it, so your player only ever talks to the server: send the same auth with every request (the `Authorization` header, or a player that keeps the query: `device=` / `access_token=` are not repeated in the rewritten URIs, so prefer a header). Tokens are signed: a client can't ask for anything else through them. Live playlists are fetched again on every request.
+- `probe`, `keyframe`, `transcode`, `tracks` and the subtitle routes answer `501 NOT_SUPPORTED` for `hls` / `live` refs: the audio renditions and subtitles of an HLS stream are in its playlist (hls.js: `audioTracks`, `subtitleTracks`).
+- **Live** (`format: live`, or an `hls` playlist without an end): show "Live" instead of a timeline, don't seek, save no progress. The server plays at most `streaming.maxLive` live streams at once (one per device and stream; default 2): past it the playlist or the stream answers `503 BUSY`. A live HLS viewer counts while it asks for its playlist (every target duration); release it at once with `DELETE /media/{ref}`.
+- Keepalive and release are as for files (`POST /media/{ref}/keepalive`, `DELETE /media/{ref}`); the admin's Activity shows the method `hls` or `live`.
+
 ## Leases, keepalive and releasing
 
 The server keeps a torrent running while at least one device holds a **lease** on it (a file on disk has leases too, for the admin's Activity page, with nothing to start or stop); that's how two devices can watch the same torrent and why a crashed client doesn't leave a torrent downloading forever. Every torrent is also a **download** the server keeps afterwards ([below](#downloads)): leases decide whether it runs, never whether it is deleted.
@@ -232,4 +246,4 @@ Saving where the user stopped is per **profile** ([profiles](profiles.md#playbac
 
 ## Trailers
 
-`/youtube/{videoId}` exists but is **broken** past the first ~1 MB (YouTube's proof-of-origin checks). Play trailers with YouTube's own player (IFrame API, the YouTube app or SDK) using TMDB's `videos`.
+`/youtube/{videoId}` exists but is **broken** past the first ~1 MB (YouTube's proof-of-origin checks). Play trailers with YouTube's own player (IFrame API, the YouTube app or SDK) using a title page's `videos` (`/catalog/titles/…`).

@@ -2,7 +2,7 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "trakt",
   "name": "Trakt",
-  "description": "Scrobbles what you watch to Trakt and keeps your watch list, watched history and ratings in sync.",
+  "description": "Scrobbles what you watch to Trakt, keeps your watch list, history and ratings in sync, and adds Trakt's ratings and rows.",
   "version": "1.0.0",
   "publisher": {
     "name": "Playpex"
@@ -16,10 +16,11 @@
   "audience": "everyone",
   "icon": "assets/trakt.svg",
   "listing": {
-    "summary": "Scrobbles what you watch to Trakt and keeps your watch list, history and ratings in sync.",
+    "summary": "Scrobbles what you watch to Trakt, keeps your watch list, history and ratings in sync, and adds Trakt's ratings and rows.",
     "license": "See licence.md",
     "categories": [
       "tracking",
+      "metadata",
       "notifications"
     ]
   },
@@ -33,7 +34,7 @@
       "traktClientSecret"
     ],
     "hooks": [
-      "metadata.title"
+      "metadata.details"
     ],
     "events": [
       "playback",
@@ -60,7 +61,8 @@
         "tokenUrl": "https://api.trakt.tv/oauth/device/token",
         "refreshUrl": "https://api.trakt.tv/oauth/token",
         "clientIdSecret": "traktClientId",
-        "clientSecretSecret": "traktClientSecret"
+        "clientSecretSecret": "traktClientSecret",
+        "body": "json"
       }
     }
   ],

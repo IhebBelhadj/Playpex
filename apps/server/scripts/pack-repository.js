@@ -9,11 +9,14 @@
 //
 //   npm run pack:repository -- <plugin folder>… --out <folder> --key <key file>
 //       --id <repository id> --name "<name>" --base-url https://<host>/<path>/ [--homepage <url>]
+//       [--sign-packages]
 //
 // --key: a key file made by `npm run pack:plugin -- --keygen <file>`; its
 // public key is the repository's (servers pin it when the admin adds the
-// repository: keep using the same one). Packages aren't signed themselves: the
-// signed index, with each package's sha256, vouches for them.
+// repository: keep using the same one). The signed index, with each package's
+// sha256, vouches for the packages; --sign-packages also signs each one with
+// that key, so a .ppx installs by upload too on a server that trusts the key
+// (plugins.publisherKeys) without the repository.
 // An adults plugin goes in a repository of its own: the official Playpex
 // repository never carries one (servers refuse it there).
 
@@ -47,11 +50,12 @@ var args = process.argv.slice(2),
   id = option('id'),
   name = option('name'),
   baseUrl = option('base-url'),
-  homepage = option('homepage');
+  homepage = option('homepage'),
+  signPackages = args.indexOf('--sign-packages') !== -1;
 
 if (!folders.length || !out || !keyFile || !id || !name || !baseUrl) {
   die('usage: npm run pack:repository -- <plugin folder>… --out <folder> --key <key file> --id <repository id>\n' +
-    '         --name "<name>" --base-url https://<host>/<path>/ [--homepage <url>]');
+    '         --name "<name>" --base-url https://<host>/<path>/ [--homepage <url>] [--sign-packages]');
 }
 if (!/^https:\/\//.test(baseUrl)) {
   die('--base-url must be an https:// URL (where the folder will be served)');
@@ -82,7 +86,7 @@ function changelogOf(dir, version) {
 
 folders.forEach(function (dir) {
   var manifest = JSON.parse(fs.readFileSync(path.join(dir, 'playpex-plugin.json'), 'utf8'));
-  var packed = childProcess.spawnSync(process.execPath, [PACK, dir, '--out', out], { encoding: 'utf8', env: Object.assign({}, process.env, { INIT_CWD: CWD }) });
+  var packed = childProcess.spawnSync(process.execPath, [PACK, dir, '--out', out].concat(signPackages ? ['--key', keyFile] : []), { encoding: 'utf8', env: Object.assign({}, process.env, { INIT_CWD: CWD }) });
   if (packed.status !== 0) {
     die(packed.stderr || packed.stdout);
   }

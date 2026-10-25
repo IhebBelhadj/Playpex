@@ -6,9 +6,10 @@
 // library's rows (a file on disk, `folder.path + rel_path`, whose realpath
 // must stay inside the folder's: no route ever takes a path from a client).
 //
-//   Media = { ref, kind: 'torrent' | 'file' | 'remote', key, name, path, size,
+//   Media = { ref, kind: 'torrent' | 'file' | 'remote' | 'hls' | 'live', key, name, path, size,
 //             infoHash (torrent), fullPath, folder, mtime, subtitles (file),
-//             pluginId (remote: a plugin's http source, lib/plugins/remote.js) }
+//             pluginId (remote: a plugin's http source, lib/plugins/remote.js;
+//             hls / live: its HLS or continuous stream, ./hls.js: size null, never opened as bytes) }
 //   key: what leases hold (lib/sessions.js): the info hash of a torrent (its
 //   leases are shared by every file and route), the ref of a disk file or of
 //   a remote source.
@@ -116,6 +117,9 @@ function resolve(ref) {
   if (parsed.kind === 'remote') {
     return require('../plugins/remote').media(ref);
   }
+  if (parsed.kind === 'hls' || parsed.kind === 'live') {
+    return require('./hls').media(ref);
+  }
   var found = parsed.kind === 'torrent' ? Promise.resolve(fromTorrent(parsed)) : fromLibrary(parsed);
   return found.then(function (media) {
     if (!media) {
@@ -154,6 +158,9 @@ function open(media, range) {
   }
   if (media.kind === 'remote') {
     return require('../plugins/remote').open(media, range);
+  }
+  if (media.kind === 'hls' || media.kind === 'live') {
+    return Promise.reject(failure('NOT_SUPPORTED', 'A stream has no bytes to read by range'));
   }
   return torrents.prepareStream(media.infoHash, media.path).then(function () {
     torrents.prefetchTail(media.infoHash, media.path);

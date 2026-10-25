@@ -135,6 +135,9 @@ test('sources need a use (collect, resolve, play, downloads), and http sources a
   assert.notDeepEqual(problems(minimal({ permissions: { hooks: ['play.collect'], sources: ['http'] } })), []);
   assert.notDeepEqual(problems(minimal({ permissions: { hooks: ['play.collect'], sources: ['ftp'], network: ['a.example.com'] } })), []);
   assert.deepEqual(problems(minimal({ permissions: { hooks: ['play.collect'], sources: ['http'], network: ['*.debrid.example.com'] } })), []);
+  assert.notDeepEqual(problems(minimal({ permissions: { play: true, sources: ['hls'] } })), [], 'hls needs its hosts');
+  assert.notDeepEqual(problems(minimal({ permissions: { play: true, sources: ['live'] } })), [], 'live needs its hosts');
+  assert.deepEqual(problems(minimal({ permissions: { play: true, sources: ['hls', 'live'], network: ['*.cdn.example.com'] } })), []);
 });
 
 test('limits can only be stricter', function () {
@@ -222,6 +225,11 @@ test('run-time shapes: sources, effects, events, hook answers', function () {
   assert.ok(source({ kind: 'http', label: 'Debrid', url: 'https://cdn.example.com/f.mkv', headers: { Authorization: 'Bearer x' } }));
   assert.ok(!source({ kind: 'http', label: 'plain', url: 'http://cdn.example.com/f.mkv' }), 'not HTTPS');
   assert.ok(!source({ kind: 'file', label: 'a path', path: '/etc/passwd' }), 'no file sources');
+  assert.ok(source({ kind: 'hls', label: 'HLS', url: 'https://cdn.example.com/master.m3u8', live: false, quality: '1080p' }));
+  assert.ok(!source({ kind: 'hls', label: 'HLS', url: 'https://cdn.example.com/master.m3u8', size: 10 }), 'a playlist has no size');
+  assert.ok(source({ kind: 'live', label: 'TV', url: 'https://tv.example.com/1.ts', headers: { 'X-Token': 'x' } }));
+  assert.ok(source({ kind: 'live', label: 'TV', url: 'https://tv.example.com/1', format: 'hls' }));
+  assert.ok(!source({ kind: 'live', label: 'TV', url: 'https://tv.example.com/1', format: 'rtmp' }));
 
   assert.ok(titleRef({ kind: 'episode', tmdbId: 1396, season: 1, episode: 2 }));
   assert.ok(!titleRef({ kind: 'episode', tmdbId: 1396 }), 'an episode without its numbers');

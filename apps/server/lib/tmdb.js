@@ -1,25 +1,31 @@
 'use strict';
 
-// Minimal TMDB client for the server (the UI calls TMDB directly). Used as the
-// recommendations "catalog", by the library's matching (lib/library/match.js)
-// and by plugins (`playpex.tmdb.*`, lib/plugins/core.js: `get`).
-// Key: TMDB_API_KEY (environment or the repo's .env, loaded by server.js);
-// without it every call rejects (code PROVIDER_NOT_CONFIGURED) and
-// recommendations are empty.
+// The server's TMDB client: the catalog clients browse (lib/catalog.js,
+// /catalog/*), the recommendations "catalog", the library's matching
+// (lib/library/match.js) and plugins (`playpex.tmdb.*`, lib/plugins/core.js:
+// `get`). Key: the admin's (`providers.tmdbApiKey`, TMDB_API_KEY), else the
+// app key Playpex ships (decision B of docs/providers-plan.md: a fresh server
+// shows a catalog).
 
 var axios = require('axios').default;
 var settings = require('./settings');
 
 var BASE = 'https://api.themoviedb.org/3';
+// Playpex's own TMDB app key (TMDB allows app keys in distributed apps)
+var DEFAULT_KEY = '0067d3f9de200e949bc7f144b1ff83f1';
 var CACHE_TTL = 6 * 60 * 60 * 1000,
   CACHE_MAX = 2000;        // entries: plugins can ask for many different pages
 
 var cache = new Map();
 
-// Kept 6 h; past CACHE_MAX the oldest entry goes (a Map keeps insertion order)
-function remember(key, results) {
+function apiKey() {
+  return settings.get('providers.tmdbApiKey') || DEFAULT_KEY;
+}
+
+// Kept 6 h (or `ttl` ms); past CACHE_MAX the oldest entry goes (a Map keeps insertion order)
+function remember(key, results, ttl) {
   cache.delete(key);
-  cache.set(key, { results: results, expires: Date.now() + CACHE_TTL });
+  cache.set(key, { results: results, expires: Date.now() + (ttl || CACHE_TTL) });
   if (cache.size > CACHE_MAX) {
     cache.delete(cache.keys().next().value);
   }
@@ -51,11 +57,8 @@ function recommendations(ref) {
   if (cached && cached.expires > Date.now()) {
     return cached.results;
   }
-  if (!settings.get('providers.tmdbApiKey')) {
-    return Promise.reject(new Error('TMDB_API_KEY is not set'));
-  }
   var results = axios.get(BASE + '/' + ref.mediaType + '/' + ref.tmdbId + '/recommendations', {
-    params: { api_key: settings.get('providers.tmdbApiKey'), language: 'en-US', page: 1 },
+    params: { api_key: apiKey(), language: 'en-US', page: 1 },
     timeout: 15000
   }).then(function (res) {
     return (res.data.results || []).map(function (r) { return toCandidate(ref.mediaType, r); });
@@ -64,30 +67,32 @@ function recommendations(ref) {
   return results;
 }
 
-// GET <path> with params, cached 6 h (failures are not kept)
-function get(path, params) {
+// GET <path> with params (`language` en-US unless given), cached 6 h or
+// `options.ttl` ms (failures are not kept)
+function get(path, params, options) {
   var key = path + '?' + JSON.stringify(params || {}),
     cached = cache.get(key);
   if (cached && cached.expires > Date.now()) {
     return cached.results;
   }
-  if (!settings.get('providers.tmdbApiKey')) {
-    var err = new Error('TMDB_API_KEY is not set');
-    err.code = 'PROVIDER_NOT_CONFIGURED';
-    return Promise.reject(err);
-  }
   var results = axios.get(BASE + path, {
-    params: Object.assign({ api_key: settings.get('providers.tmdbApiKey'), language: 'en-US' }, params),
+    params: Object.assign({ api_key: apiKey(), language: 'en-US' }, params),
     timeout: 15000
   }).then(function (res) {
     return res.data;
   });
-  remember(key, results);
+  remember(key, results, options && options.ttl);
   return results;
 }
 
+// Always: the admin's key, else Playpex's
 function configured() {
-  return !!settings.get('providers.tmdbApiKey');
+  return true;
+}
+
+// The admin set no key of their own (the dashboard says so)
+function builtInKey() {
+  return !settings.get('providers.tmdbApiKey');
 }
 
 // search/movie · search/tv: the first page's results
@@ -102,6 +107,7 @@ function search(mediaType, query, year) {
 module.exports = {
   recommendations: recommendations,
   configured: configured,
+  builtInKey: builtInKey,
   get: get,
   search: search,
   movie: function (id) { return get('/movie/' + id, { append_to_response: 'external_ids' }); },

@@ -1,4 +1,4 @@
-import { EMPTY_SEARCH, MoviesService, SearchItem, SearchKind, SearchRow, SearchState } from './../movies.service';
+import { CatalogPerson, CatalogTitle, EMPTY_SEARCH, MoviesService, SearchItem, SearchKind, SearchRow, SearchState } from './../movies.service';
 import { catchError, debounceTime, first, forkJoin, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
@@ -261,39 +261,36 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       case 'person':
         return this.searchKind('person' , q).pipe(map(r => [this.row('people' , 'People' , r , 'person')]));
       case 'anime':
-        // TMDB has no anime type: Japanese animation (genre 16)
-        let isAnime = r => (r['genre_ids'] || []).includes(16) && r['original_language'] == 'ja';
+        // no anime type: Japanese animation (genre 16)
+        let isAnime = (r:CatalogTitle) => (r.genreIds || []).includes(16) && r.originalLanguage == 'ja';
         return forkJoin([this.searchKind('tv' , q) , this.searchKind('movie' , q)]).pipe(map(([tv , movies]) => [
           this.row('animeShows' , 'Anime series' , tv.filter(isAnime) , 'tv'),
           this.row('animeMovies' , 'Anime movies' , movies.filter(isAnime) , 'movie'),
         ]));
       default:
         return this.searchKind('multi' , q).pipe(map(results => [
-          this.row('movies' , 'Movies' , results.filter(r => r['media_type'] == 'movie') , 'movie'),
-          this.row('shows' , 'TV shows' , results.filter(r => r['media_type'] == 'tv') , 'tv'),
-          this.row('people' , 'People' , results.filter(r => r['media_type'] == 'person') , 'person'),
+          this.row('movies' , 'Movies' , results.filter(r => r.mediaType == 'movie') , 'movie'),
+          this.row('shows' , 'TV shows' , results.filter(r => r.mediaType == 'tv') , 'tv'),
+          this.row('people' , 'People' , results.filter(r => r.mediaType == 'person') , 'person'),
         ]));
     }
   }
 
-  private searchKind(kind:SearchKind , query:string):Observable<object[]> {
-    return this.moviesService.search(kind , query).pipe(map(data => data['results'] || []));
+  private searchKind(kind:SearchKind , query:string):Observable<any[]> {
+    return this.moviesService.search(kind , query).pipe(map(data => data.results || []));
   }
 
-  private row(key:string , title:string , results:object[] , kind:SearchItem['kind']):SearchRow {
-    return { key , title , items : results.map(r => this.toItem(r , kind)).filter(i => i.image) };
+  private row(key:string , title:string , results:(CatalogTitle | CatalogPerson)[] , kind:SearchItem['kind']):SearchRow {
+    return { key , title , items : results.map(r => this.toItem(r)).filter(i => i.image) };
   }
 
-  private toItem(r:object , kind:SearchItem['kind']):SearchItem {
-    let date = r['release_date'] || r['first_air_date'] || '';
-    return {
-      key : `${kind}-${r['id']}`,
-      kind,
-      id : r['id'],
-      title : r['title'] || r['name'],
-      sub : kind == 'person' ? (r['known_for_department'] || '') : date.slice(0 , 4),
-      image : kind == 'person' ? r['profile_path'] : r['poster_path'],
-    };
+  private toItem(r:CatalogTitle | CatalogPerson):SearchItem {
+    if (r.mediaType == 'person') {
+      return { key : `person-${r.personId}`, kind : 'person', id : r.personId, title : r.name,
+        sub : r.knownForDepartment || '', image : r.profilePath };
+    }
+    return { key : `${r.mediaType}-${r.tmdbId}`, kind : r.mediaType, id : r.tmdbId, title : r.title,
+      sub : r.year || '', image : r.posterPath };
   }
 
   // ── opening a result ────────────────────────────────────────────────────
@@ -314,10 +311,9 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   showCredits(person:SearchItem){
     this.moviesService.getPersonCredits(person.id).pipe(first()).subscribe(data=>{
       let seen = new Set<string>();
-      let credits = [...(data['cast'] || []) , ...(data['crew'] || [])]
-        .filter(c => c['media_type'] == 'movie' || c['media_type'] == 'tv')
-        .sort((a , b) => (b['vote_count'] || 0) - (a['vote_count'] || 0))
-        .map(c => ({ ...this.toItem(c , c['media_type']) , badge : c['media_type'] == 'tv' ? 'TV' : undefined }))
+      let credits = [...(data.cast || []) , ...(data.crew || [])]
+        .sort((a , b) => (b.voteCount || 0) - (a.voteCount || 0))
+        .map(c => ({ ...this.toItem(c) , badge : c.mediaType == 'tv' ? 'TV' : undefined }))
         .filter(item => item.image && !seen.has(item.key) && seen.add(item.key))
         .slice(0 , 40);
 

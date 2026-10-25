@@ -16,7 +16,8 @@ import { restartServer } from '@/lib/restart'
 import { AuthShell } from './login'
 
 // First-run setup (plan §7): 1. the admin account (only from the server
-// machine), 2. server name, download directory, LAN sharing, TMDB key.
+// machine), 2. server name, download directory, LAN sharing (the catalog
+// needs no key: the server ships TMDB's, Settings › Metadata replaces it).
 
 function AccountStep() {
   const client = useQueryClient()
@@ -73,7 +74,6 @@ function ServerStep() {
   const [name, setName] = useState<string | null>(null)
   const [dir, setDir] = useState<string | null>(null)
   const [lan, setLan] = useState<boolean | null>(null)
-  const [tmdb, setTmdb] = useState('')
   const check = useMutation({ mutationFn: (d: string) => unwrap(api.POST('/admin/storage/check', { body: { dir: d } })) })
   const save = useMutation({
     mutationFn: async () => {
@@ -84,7 +84,6 @@ function ServerStep() {
             general: { serverName: name ?? s.general.serverName },
             storage: { downloadDir: dir ?? s.storage.downloadDir },
             network: { lanSharing: lan ?? s.network.lanSharing },
-            ...(tmdb.trim() ? { providers: { tmdbApiKey: tmdb.trim() } } : {}),
           },
         }),
       )
@@ -163,17 +162,6 @@ function ServerStep() {
           <p className="mt-1 text-xs text-muted-foreground">Devices on your network can pair with this server. Off = only this machine.</p>
         </div>
         <Switch id="lan" checked={lan ?? s.network.lanSharing} disabled={locked('network.lanSharing')} onCheckedChange={setLan} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="tmdb">TMDB API key (optional)</Label>
-        <Input id="tmdb" placeholder={s.providers.tmdbApiKey || 'not set'} value={tmdb} disabled={locked('providers.tmdbApiKey')} onChange={(e) => setTmdb(e.target.value)} />
-        <p className="text-xs text-muted-foreground">
-          For recommendations. Free key at{' '}
-          <a className="underline underline-offset-2" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
-            themoviedb.org
-          </a>
-          .
-        </p>
       </div>
       <Button type="submit" className="w-full" disabled={save.isPending}>
         {save.isPending ? <Spinner /> : <Check />} Finish setup

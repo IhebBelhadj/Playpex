@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { catchError, defaultIfEmpty, map, Observable, of, switchMap } from 'rxjs';
-import { MoviesService } from './movies.service';
+import { CatalogDetails, EpisodeItem, MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
 import { PlaybackService, PlaybackSource } from './playback.service';
 import { LibraryService } from './library.service';
@@ -15,10 +15,10 @@ import { PlaySource, PlaySourcesService, SourcesQuery } from './play-sources.ser
 // (PlaybackService.play). Download picks among torrents only (chooseRelease).
 
 export interface EpisodeTarget {
-  show: any;                 // TMDB show details
+  show: CatalogDetails;      // the show's page (catalog)
   imdbId: string;
   season: number;
-  episode: any;              // TMDB episode (episode_number, name, air_date, runtime, upcoming)
+  episode: EpisodeItem;      // the catalog's episode (+ upcoming)
 }
 
 // The player's "Up next": the episode and the source that would play
@@ -49,26 +49,26 @@ export class EpisodePlaybackService {
     return `S${pad(season)}E${pad(episode)}`;
   }
 
-  static keyOf(show:any, season:number, episode:number):string {
-    return `${show?.['id']}x${season}x${episode}`;
+  static keyOf(show:{ tmdbId:number } | null, season:number, episode:number):string {
+    return `${show?.tmdbId}x${season}x${episode}`;
   }
 
-  isResolving(show:any, season:number, episode:number):boolean {
+  isResolving(show:{ tmdbId:number } | null, season:number, episode:number):boolean {
     return this.resolving === EpisodePlaybackService.keyOf(show, season, episode);
   }
 
   play(target:EpisodeTarget) {
     let ep = target.episode;
     if (!ep || this.resolving !== null) return;
-    let code = EpisodePlaybackService.code(target.season, ep.episode_number);
+    let code = EpisodePlaybackService.code(target.season, ep.episodeNumber);
 
     if (ep.upcoming) {
       this.notificationService.sendNotification("error", `${code} hasn't aired yet`);
       return;
     }
 
-    let key = { mediaType: 'tv' as const, tmdbId: Number(target.show['id']), season: target.season, episode: ep.episode_number };
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
+    let key = { mediaType: 'tv' as const, tmdbId: Number(target.show.tmdbId), season: target.season, episode: ep.episodeNumber };
+    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
     // no current profile: state() completes empty → play as usual
     this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false })).subscribe({
       next: state => {
@@ -78,7 +78,7 @@ export class EpisodePlaybackService {
           this.findAndPlay(target, code);
           return;
         }
-        this.playChoice.choose(`${target.show['name']} ${code}`, resume).subscribe(choice => {
+        this.playChoice.choose(`${target.show.title} ${code}`, resume).subscribe(choice => {
           if (choice == 'restart') this.findAndPlay(target, code, 0);
           // same file / release as last time, so the saved position matches
           else if (resume.fileId) this.findAndPlay(target, code, resume.positionS, source => source.ref == 'f_' + resume.fileId);
@@ -99,29 +99,29 @@ export class EpisodePlaybackService {
   // The episode after `season` / `episode`: the next one of its season, else
   // the first of the following season; null when there is none that has aired
   next(tmdbId:number, season:number, episode:number, imdbId?:string):Observable<NextEpisode | null> {
-    let aired = ep => !!ep?.['air_date'] && new Date(ep['air_date']) <= new Date();
+    let aired = ep => !!ep?.airDate && new Date(ep.airDate) <= new Date();
     return this.movies.getTvDetails(tmdbId).pipe(
-      switchMap((show:any) => this.movies.getTvSeason(tmdbId, season).pipe(
-        switchMap((current:any) => {
-          let ep = (current['episodes'] || []).find(e => e['episode_number'] == episode + 1);
+      switchMap(show => this.movies.getTvSeason(tmdbId, season).pipe(
+        switchMap(current => {
+          let ep = (current.episodes || []).find(e => e.episodeNumber == episode + 1);
           if (ep) return of({ season, ep });
-          let following = (show['seasons'] || [])
-            .map(x => x['season_number'])
+          let following = (show.seasons || [])
+            .map(x => x.seasonNumber)
             .filter(n => n > season)
             .sort((a, b) => a - b)[0];
           if (following === undefined) return of(null);
           return this.movies.getTvSeason(tmdbId, following).pipe(
-            map((next:any) => ({ season: following, ep: (next['episodes'] || [])[0] })),
+            map(next => ({ season: following, ep: (next.episodes || [])[0] })),
           );
         }),
         map(found => {
           if (!found?.ep || !aired(found.ep)) return null;
           return {
             show,
-            imdbId: imdbId || show['external_ids']?.['imdb_id'],
+            imdbId: imdbId || show.imdbId,
             season: found.season,
             episode: found.ep,
-            code: EpisodePlaybackService.code(found.season, found.ep['episode_number']),
+            code: EpisodePlaybackService.code(found.season, found.ep.episodeNumber),
             source: null,
           } as NextEpisode;
         }),
@@ -144,7 +144,7 @@ export class EpisodePlaybackService {
   // episode's saved position if it has one, in place of the current player
   playNext(next:NextEpisode) {
     if (!next.source) return;
-    let key = { mediaType: 'tv' as const, tmdbId: Number(next.show['id']), season: next.season, episode: next.episode['episode_number'] };
+    let key = { mediaType: 'tv' as const, tmdbId: Number(next.show.tmdbId), season: next.season, episode: next.episode.episodeNumber };
     // through the server's plugins first (they may ask, refuse, or give a stream)
     this.sources.start(next.source).subscribe(source => {
       this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
@@ -157,18 +157,18 @@ export class EpisodePlaybackService {
   static query(target:EpisodeTarget):SourcesQuery {
     return {
       kind: 'episode',
-      tmdbId: Number(target.show['id']),
+      tmdbId: Number(target.show.tmdbId),
       imdbId: target.imdbId,
-      title: target.show['name'],
-      year: PlaySourcesService.year(target.show['first_air_date']),
+      title: target.show.title,
+      year: PlaySourcesService.year(target.show.releaseDate),
       season: target.season,
-      episode: target.episode.episode_number,
+      episode: target.episode.episodeNumber,
     };
   }
 
   private findAndPlay(target:EpisodeTarget, code:string, startAt?:number, prefer?:(source:PlaySource) => boolean) {
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, target.episode.episode_number);
-    this.sources.choose(EpisodePlaybackService.query(target), `${target.show['name']} ${code}`, { prefer, looked: () => this.resolving = null })
+    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, target.episode.episodeNumber);
+    this.sources.choose(EpisodePlaybackService.query(target), `${target.show.title} ${code}`, { prefer, looked: () => this.resolving = null })
       .subscribe(source => this.start(target, code, PlaybackService.target(source), startAt));
   }
 
@@ -178,25 +178,25 @@ export class EpisodePlaybackService {
    * `magnet`); completes empty on Back. The Download action's.
    */
   chooseRelease(target:EpisodeTarget):Observable<PlaySource> {
-    let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episode_number);
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episode_number);
-    return this.sources.choose(EpisodePlaybackService.query(target), `${target.show['name']} ${code}`,
+    let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episodeNumber);
+    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
+    return this.sources.choose(EpisodePlaybackService.query(target), `${target.show.title} ${code}`,
       { kind: 'download', only: ['torrent'], looked: () => this.resolving = null });
   }
 
   private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource }, startAt?:number, replace = false) {
     let ep = target.episode;
     this.playback.play({
-      title: target.show['name'],
+      title: target.show.title,
       subtitle: `${code} · ${ep.name}`,
-      year: (ep.air_date || '').slice(0, 4),
+      year: (ep.airDate || '').slice(0, 4),
       runtimeMinutes: ep.runtime,
       ...what,
       imdbId: target.imdbId,
       season: target.season,
-      episode: ep.episode_number,
+      episode: ep.episodeNumber,
       mediaType: 'tv',
-      tmdbId: target.show['id'],
+      tmdbId: target.show.tmdbId,
       artwork: LibraryService.artworkOf(target.show),
       startAt,
     }, { replace });

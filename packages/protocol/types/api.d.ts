@@ -1724,6 +1724,11 @@ export interface paths {
          *     stopped torrent starts again, 503 `BUSY` past the limit, unless the file is finished on disk).
          *     A disk file of an adults-only library folder answers 403 `FORBIDDEN` to a kids profile
          *     (`profile`, else the profile of the device's last keepalive).
+         *
+         *     A plugin's live stream (`l_`, format `live`): one continuous Matroska stream remuxed by the
+         *     server's ffmpeg (video copied, audio AAC), no size and no ranges; past `streaming.maxLive` live
+         *     streams 503 `BUSY`, without ffmpeg 503 `TRANSCODER_UNAVAILABLE`. An HLS ref (`h_`, format `hls`):
+         *     302 to its `index.m3u8`.
          */
         get: operations["streamMedia"];
         put?: never;
@@ -1735,6 +1740,74 @@ export interface paths {
         delete: operations["releaseMedia"];
         options?: never;
         head: operations["headMedia"];
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/index.m3u8": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The HLS playlist of an `h_` ref (format hls)
+         * @description The plugin's playlist fetched by the server as the plugin (its headers, its hosts, the address
+         *     rules on every hop), every URI in it (variant playlists, segments, `#EXT-X-KEY`, `#EXT-X-MAP`,
+         *     `#EXT-X-MEDIA`, …) rewritten to `r/{token}/{name}` beside it. Live playlists are fetched again on every
+         *     request. Takes or refreshes the device's lease; a live one past `streaming.maxLive` → 503 `BUSY`.
+         *     Other refs: 404.
+         */
+        get: operations["mediaPlaylist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/r/{token}/{name}": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description From a playlist the server rewrote (signed: no other URL can be asked) */
+                token: string;
+                /** @description The part's file name (`seg1.ts`), for players that judge parts by their extension; not read */
+                name: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * A playlist's variant playlist, segment, key or map, through the server
+         * @description A playlist is rewritten like `index.m3u8`; anything else streams through (`Range` passed on). 404 for a token of another ref.
+         */
+        get: operations["mediaPlaylistPart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -2191,6 +2264,254 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the catalog comes from, its image base and language */
+        get: operations["getCatalogInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/genres/{mediaType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+            };
+            cookie?: never;
+        };
+        /** The genres of movies or shows (ids for `discover`) */
+        get: operations["getCatalogGenres"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/lists/{mediaType}/{list}": {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                /** @description Movies: popular, top_rated, now_playing, upcoming, trending. Shows: popular, top_rated, airing_today, on_the_air, trending (of the week) */
+                list: "popular" | "top_rated" | "now_playing" | "upcoming" | "airing_today" | "on_the_air" | "trending";
+            };
+            cookie?: never;
+        };
+        /** One of the provider's lists, a page at a time (cached 1 h) */
+        get: operations["getCatalogList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/discover/{mediaType}": {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+                sort?: "popularity" | "rating" | "newest";
+                /** @description Genre ids: `,` = all of them, `|` = any */
+                genres?: string;
+                withoutGenres?: string;
+                /** @description Original language (ISO 639-1) */
+                language?: string;
+                minVotes?: number;
+                /** @description Minimum score, 0–10 */
+                minRating?: number;
+                /** @description Released (movies) / first aired (shows) on or after */
+                from?: string;
+                /** @description …on or before */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+            };
+            cookie?: never;
+        };
+        /** Titles by filters (cached 1 h); never adult titles */
+        get: operations["discoverCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/search/{kind}": {
+        parameters: {
+            query: {
+                q: string;
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                /** @description `multi`: movies, shows and people together */
+                kind: "multi" | "movie" | "tv" | "person";
+            };
+            cookie?: never;
+        };
+        /** Search (cached 1 h); never adult titles */
+        get: operations["searchCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/titles/{mediaType}/{tmdbId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        /** A movie's / a show's page (cached 6 h) */
+        get: operations["getCatalogTitle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/titles/{mediaType}/{tmdbId}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        /** Cast and crew of a title */
+        get: operations["getCatalogCredits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/titles/{mediaType}/{tmdbId}/similar": {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        /** Titles like this one */
+        get: operations["getCatalogSimilar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/titles/{mediaType}/{tmdbId}/extras": {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What the server's metadata providers (plugins) add to a title's page, for a profile
+         * @description Ratings, tags, links and meta-line items from plugins with `metadata.details` (or the older
+         *     `metadata.title`, whose items come as `lines`), in the admin's order (Settings › Metadata),
+         *     switched-off providers left out. Additions only: never the catalog's own fields. A provider
+         *     that failed or was late is only left out (`errors`). Not cached: ask once per title and profile,
+         *     again on `plugin.changed`.
+         */
+        get: operations["getCatalogExtras"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/titles/tv/{tmdbId}/seasons/{season}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tmdbId: components["parameters"]["TmdbId"];
+                /** @description 0 = specials */
+                season: number;
+            };
+            cookie?: never;
+        };
+        /** A season of a show and its episodes */
+        get: operations["getCatalogSeason"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/people/{personId}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        /** A person's movies and shows, as cast (`character`) and crew (`job`) */
+        get: operations["getCatalogPersonCredits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/imdb/{imdbId}": {
         parameters: {
             query?: never;
@@ -2363,7 +2684,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * What plugins add to a title page (`metadata.title`)
+         * What plugins add to a title page (`metadata.title`); kept through API 2, use `GET /catalog/titles/{mediaType}/{tmdbId}/extras`
+         * @deprecated
          * @description Up to 3 items per plugin: `text`, `chip`, `score` (0–10, `votes`, `label`), `seal`
          *     (`$defs/metaItem` of `@playpex/protocol/plugin-api.schema.json`). Plugins that fail or take longer
          *     than 3 s are left out. A kids profile gets nothing from `audience: adults` plugins.
@@ -3069,8 +3391,11 @@ export interface components {
             torrentName: string | null;
             /** @description Path of the file being played (in the torrent, or in its library folder) */
             file: string | null;
-            /** @enum {string|null} */
-            method: "direct" | "audio-transcode" | null;
+            /**
+             * @description hls: a plugin's HLS stream through the server's proxy; live: a continuous stream remuxed by ffmpeg
+             * @enum {string|null}
+             */
+            method: "direct" | "audio-transcode" | "hls" | "live" | null;
             /** @description A media response is open right now */
             streaming: boolean;
             /** Format: date-time */
@@ -3466,10 +3791,11 @@ export interface components {
             /** @description Stable for a source: the media ref of a file, a download's file or a plugin's source, `torrent:<infoHash>` of a torrent */
             id: string;
             /**
-             * @description file: in the library; download: a file of the server's download of this title; torrent: from a provider or a plugin; plugin: a plugin's HTTPS source, proxied by the server (play its `ref`)
+             * @description file: in the library; download: a file of the server's download of this title; torrent: from a provider or a plugin; plugin: a plugin's HTTPS source, proxied by the server (play its `ref` as its `format` says)
              * @enum {string}
              */
             type: "file" | "download" | "torrent" | "plugin";
+            format?: components["schemas"]["MediaFormat"];
             /** @description library, downloads, or the plugin that found it (its id) */
             provider: string;
             /** @description The collect handler that found it */
@@ -3522,6 +3848,11 @@ export interface components {
                 index?: number | null;
             };
         };
+        /**
+         * @description How a ref plays (absent = file). file: `GET /media/{ref}` with byte ranges; hls: an HLS playlist, `GET /media/{ref}/index.m3u8` with an HLS player (hls.js: Chromium plays no HLS); live: `GET /media/{ref}` is one continuous Matroska stream (no size, no ranges, no seeking). hls may be live too: the playlist has no `#EXT-X-ENDLIST`
+         * @enum {string}
+         */
+        MediaFormat: "file" | "hls" | "live";
         /**
          * @description The way to play: server (a file of the library or of a download: on this server), stream (a plugin's stream, or a torrent a plugin's service plays at once), torrent
          * @enum {string}
@@ -4284,6 +4615,165 @@ export interface components {
                 [key: string]: components["schemas"]["SettingDefinition"];
             };
         };
+        CatalogInfo: {
+            /** @description tmdb */
+            provider: string;
+            /** @description Images are `<imageBase><size>/<path>` (TMDB sizes: w92 … w780, original) */
+            imageBase: string;
+            /** @description What titles and overviews are written in (Settings › Metadata) */
+            language: string;
+            region: string | null;
+        };
+        CatalogGenre: {
+            id: number;
+            name: string;
+        };
+        /** @description A movie or a show in a list. Titles are `(mediaType, tmdbId)` everywhere in the API */
+        CatalogTitle: {
+            mediaType: components["schemas"]["MediaType"];
+            tmdbId: number;
+            /** @description In the catalog's language */
+            title: string;
+            originalTitle: string | null;
+            /** @description A movie's release, a show's first air date (YYYY-MM-DD) */
+            releaseDate: string | null;
+            year: string | null;
+            overview: string;
+            /** @description An image path (`CatalogInfo.imageBase`) */
+            posterPath: string | null;
+            backdropPath: string | null;
+            genreIds: number[];
+            /** @description TMDB's score */
+            voteAverage: number;
+            voteCount: number;
+            originalLanguage: string | null;
+        };
+        CatalogPerson: {
+            /** @enum {string} */
+            mediaType: "person";
+            personId: number;
+            name: string;
+            profilePath: string | null;
+            knownForDepartment: string | null;
+        };
+        CatalogPage: {
+            page: number;
+            totalPages: number;
+            totalResults: number;
+            results: (components["schemas"]["CatalogTitle"] | components["schemas"]["CatalogPerson"])[];
+        };
+        CatalogVideo: {
+            /** @description The site's id (a YouTube video id: `/youtube/{videoId}`) */
+            key: string;
+            name: string;
+            site: string;
+            /** @description Trailer, Teaser, Clip… */
+            type: string;
+            official: boolean;
+        };
+        CatalogSeasonSummary: {
+            /** @description 0 = specials */
+            seasonNumber: number;
+            name: string;
+            overview: string;
+            airDate: string | null;
+            episodeCount: number;
+            posterPath: string | null;
+        };
+        /** @description A title's page; `seasonCount`, `episodeCount` and `seasons` for shows only */
+        CatalogDetails: components["schemas"]["CatalogTitle"] & {
+            imdbId: string | null;
+            genres: components["schemas"]["CatalogGenre"][];
+            /** @description Minutes: a movie's, a show's usual episode */
+            runtime: number | null;
+            tagline: string | null;
+            status: string | null;
+            videos: components["schemas"]["CatalogVideo"][];
+            seasonCount?: number;
+            episodeCount?: number;
+            seasons?: components["schemas"]["CatalogSeasonSummary"][];
+        };
+        CatalogCast: {
+            personId: number;
+            name: string;
+            character: string | null;
+            profilePath: string | null;
+            creditId: string;
+            order: number | null;
+        };
+        CatalogCrew: {
+            personId: number;
+            name: string;
+            job: string | null;
+            department: string | null;
+            profilePath: string | null;
+            creditId: string;
+        };
+        CatalogCredits: {
+            cast: components["schemas"]["CatalogCast"][];
+            crew: components["schemas"]["CatalogCrew"][];
+        };
+        CatalogEpisode: {
+            seasonNumber: number;
+            episodeNumber: number;
+            name: string;
+            overview: string;
+            /** @description null = not announced */
+            airDate: string | null;
+            runtime: number | null;
+            stillPath: string | null;
+            voteAverage: number;
+            voteCount: number;
+            crew: components["schemas"]["CatalogCrew"][];
+            guestStars: components["schemas"]["CatalogCast"][];
+        };
+        CatalogSeason: {
+            /** @description The show's */
+            tmdbId: number;
+            seasonNumber: number;
+            name: string;
+            overview: string;
+            airDate: string | null;
+            posterPath: string | null;
+            episodes: components["schemas"]["CatalogEpisode"][];
+        };
+        CatalogExtras: {
+            /** @description In the admin's order; only providers that added something */
+            providers: {
+                plugin: string;
+                name: string;
+                ratings: {
+                    /** @description Shown before the value (Trakt, Letterboxd…) */
+                    source: string;
+                    value: number;
+                    /** @description Its scale: 10, 5, 100… */
+                    max: number;
+                    votes: number | null;
+                    url: string | null;
+                }[];
+                tags: string[];
+                /** @description To show (a TV doesn't open them) */
+                links: {
+                    label: string;
+                    url: string;
+                }[];
+                /** @description Meta-line items (as `PluginTitleMeta` items) */
+                lines: Record<string, never>[];
+            }[];
+            errors: {
+                plugin: string;
+                code: string;
+            }[];
+        };
+        CatalogPersonCredits: {
+            cast: (components["schemas"]["CatalogTitle"] & {
+                character: string | null;
+            })[];
+            crew: (components["schemas"]["CatalogTitle"] & {
+                job: string | null;
+                department: string | null;
+            })[];
+        };
         /** @enum {string} */
         MediaType: "movie" | "tv";
         /** @description Sent with writes so lists render without TMDB; a write without them keeps what is stored */
@@ -4694,6 +5184,8 @@ export interface components {
                 /** @description Running torrents at once (streams and downloads) */
                 maxTorrents: number;
                 maxTranscodes: number;
+                /** @description Live streams at once (plugins' live HLS playlists and continuous streams, one per device and stream); past it 503 `BUSY` */
+                maxLive: number;
                 idleTimeoutMinutes: number;
             };
             downloads: {
@@ -4733,7 +5225,18 @@ export interface components {
                 /** @description The Overview's "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed */
                 sourcesNotice: boolean;
             };
+            metadata: {
+                /** @description What `/catalog/*` answers in (en-US, fr, pt-BR…) */
+                language: string;
+                /** @description Region of the movie lists (now playing, upcoming…); empty = the provider's default */
+                region: string;
+                /** @description Metadata providers (plugin ids) whose additions come first, in this order; the others after, by id */
+                order: string[];
+                /** @description Metadata providers switched off (their hooks aren't asked for title pages) */
+                disabled: string[];
+            };
             providers: {
+                /** @description Empty = the TMDB app key Playpex ships */
                 tmdbApiKey: string;
                 openSubtitlesApiKey: string;
                 wyzieApiKey: string;
@@ -5150,6 +5653,7 @@ export interface components {
         /** @description 1 / true: only releases the TV app can play (video and audio) */
         Playable: "1" | "true" | "0" | "false";
         Page: number;
+        CatalogPage: number;
     };
     requestBodies: never;
     headers: never;
@@ -7810,6 +8314,13 @@ export interface operations {
         responses: {
             200: components["responses"]["Media"];
             206: components["responses"]["Media"];
+            /** @description An `h_` ref: its playlist (`index.m3u8`) */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             503: components["responses"]["Busy"];
@@ -7877,6 +8388,82 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    mediaPlaylist: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The playlist */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.apple.mpegurl": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+            503: components["responses"]["Busy"];
+        };
+    };
+    mediaPlaylistPart: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: {
+                Range?: string;
+            };
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                /** @description From a playlist the server rewrote (signed: no other URL can be asked) */
+                token: string;
+                /** @description The part's file name (`seg1.ts`), for players that judge parts by their extension; not read */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The bytes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A range of them */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
         };
     };
     probeMedia: {
@@ -8501,6 +9088,308 @@ export interface operations {
         requestBody?: never;
         responses: {
             410: components["responses"]["Gone"];
+        };
+    };
+    getCatalogInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogInfo"];
+                };
+            };
+        };
+    };
+    getCatalogGenres: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Genres */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        genres: components["schemas"]["CatalogGenre"][];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogList: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                /** @description Movies: popular, top_rated, now_playing, upcoming, trending. Shows: popular, top_rated, airing_today, on_the_air, trending (of the week) */
+                list: "popular" | "top_rated" | "now_playing" | "upcoming" | "airing_today" | "on_the_air" | "trending";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of titles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    discoverCatalog: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+                sort?: "popularity" | "rating" | "newest";
+                /** @description Genre ids: `,` = all of them, `|` = any */
+                genres?: string;
+                withoutGenres?: string;
+                /** @description Original language (ISO 639-1) */
+                language?: string;
+                minVotes?: number;
+                /** @description Minimum score, 0–10 */
+                minRating?: number;
+                /** @description Released (movies) / first aired (shows) on or after */
+                from?: string;
+                /** @description …on or before */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of titles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    searchCatalog: {
+        parameters: {
+            query: {
+                q: string;
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                /** @description `multi`: movies, shows and people together */
+                kind: "multi" | "movie" | "tv" | "person";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of results (people only for `multi` and `person`) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogTitle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogDetails"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credits */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogCredits"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogSimilar: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["CatalogPage"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of titles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogExtras: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                mediaType: components["parameters"]["MediaType"];
+                tmdbId: components["parameters"]["TmdbId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Additions, by provider */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogExtras"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogSeason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tmdbId: components["parameters"]["TmdbId"];
+                /** @description 0 = specials */
+                season: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Season */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSeason"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogPersonCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credits */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPersonCredits"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
         };
     };
     getImdbRating: {

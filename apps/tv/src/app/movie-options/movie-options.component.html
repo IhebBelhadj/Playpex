@@ -20,7 +20,7 @@
 
   <px-card-row class="casts" pxStackItem rowKey="cast" title="cast" tone="detail" align="third">
     <ng-container *ngFor="let cast of casts; let i = index; trackBy: byCredit">
-      <px-card variant="portrait" [key]="cast.credit_id" [image]="profileImgBase + cast.profile_path" [title]="cast.name"
+      <px-card variant="portrait" [key]="cast.creditId" [image]="profileImgBase + cast.profilePath" [title]="cast.name"
         [data]="{ index: i }"></px-card>
     </ng-container>
   </px-card-row>
@@ -28,8 +28,8 @@
   <px-card-row class="similar" pxStackItem rowKey="similar" title="Similar titles to watch" tone="detail" align="third"
    >
     <ng-container *ngFor="let movie of similar; let i = index; trackBy: byId">
-      <px-card variant="compact" [key]="movie.id" [image]="movieImgBase + movie.poster_path" [title]="movie.original_title"
-        [subtitle]="(movie.release_date || '').slice(0, 4)" [data]="{ index: i, id: movie.id }" (pxSelect)="openSimilar(movie)"></px-card>
+      <px-card variant="compact" [key]="movie.tmdbId" [image]="movieImgBase + movie.posterPath" [title]="movie.originalTitle || movie.title"
+        [subtitle]="movie.year || ''" [data]="{ index: i, id: movie.tmdbId }" (pxSelect)="openSimilar(movie)"></px-card>
     </ng-container>
   </px-card-row>
 

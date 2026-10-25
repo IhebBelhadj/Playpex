@@ -7,13 +7,16 @@ import { ServerEvents } from './server-events.service';
 import { ServerService } from './server.service';
 import { defineContribution, CONTRIBUTIONS, MetaItem } from './ui/public-api';
 
-type PluginMeta = Schema<'PluginTitleMeta'>;
+type Extras = Schema<'CatalogExtras'>;
 
-// What the server's plugins add to a title's meta line (their
-// `metadata.title` hook, docs/plugins-plan.md §4.3, through POST
-// /plugins/meta): another score, a tag. A contribution to `core.title.meta`
-// like the core's "On this server". One request per title and profile, kept
-// until a plugin or the profile changes; a failure shows nothing.
+// What the server's metadata providers add to a title's meta line (plugins
+// with `metadata.details`, or the older `metadata.title`; GET
+// /catalog/titles/{mediaType}/{tmdbId}/extras, docs/providers-plan.md §7.2), in
+// the admin's order: their ratings (on a 10 scale, after their name), up to two
+// tags, their lines. Links aren't shown: a TV doesn't open them. A
+// contribution to `core.title.meta` like the core's "On this server". One
+// request per title and profile, kept until a plugin or the profile changes; a
+// failure shows nothing.
 @Injectable({
   providedIn: 'root'
 })
@@ -33,18 +36,22 @@ export class PluginMetaService {
       id: 'core.plugins.meta',
       slot: 'core.title.meta',
       order: 50,
-      meta: ctx => ctx.kind == 'episode' || !ctx.tmdbId ? [] : this.items(ctx.kind == 'tv' ? 'show' : 'movie', ctx.tmdbId, ctx.imdbId),
+      meta: ctx => ctx.kind == 'episode' || !ctx.tmdbId ? [] : this.items(ctx.kind == 'tv' ? 'tv' : 'movie', ctx.tmdbId),
     });
   }
 
-  private items(kind:'movie' | 'show', tmdbId:number, imdbId:string | null):Observable<MetaItem[]> {
+  private items(kind:'movie' | 'tv', tmdbId:number):Observable<MetaItem[]> {
     let profile = this.profiles.current.value?.id || null;
     let key = `${profile}:${kind}:${tmdbId}`;
     let cached = this.cache.get(key);
     if (!cached) {
-      let title = { kind, tmdbId, ...(imdbId ? { imdbId } : {}) };
-      cached = this.http.post<PluginMeta>(`${this.server.api}/plugins/meta`, { title }, { params: profile ? { profile } : {} }).pipe(
-        map(answer => answer.meta.flatMap(m => m.items.map(item => this.item(m.plugin, item as any)).filter(Boolean))),
+      cached = this.http.get<Extras>(`${this.server.api}/catalog/titles/${kind}/${tmdbId}/extras`, { params: profile ? { profile } : {} }).pipe(
+        map(answer => answer.providers.flatMap(p => [
+          ...p.ratings.map(r => ({ kind: 'score', source: 'provider', label: r.source, votes: r.votes ?? null,
+            value: Math.round(r.value / r.max * 100) / 10 } as MetaItem)),
+          ...p.tags.slice(0, 2).map(text => ({ kind: 'chip', text } as MetaItem)),
+          ...p.lines.map(item => this.item(p.plugin, item)).filter(Boolean),
+        ])),
         catchError(() => of([] as MetaItem[])),
         shareReplay(1),
       );

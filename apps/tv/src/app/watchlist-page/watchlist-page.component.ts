@@ -6,7 +6,7 @@ import { catchError, debounceTime, map, Observable, of, Subject, Subscription, s
 import { NavigationService } from '../navigation.service';
 import { FocusEngine } from '../movement/movement';
 import { BackgroundService } from '../background.service';
-import { MoviesService } from '../movies.service';
+import { CatalogDetails, MoviesService } from '../movies.service';
 import { ContinueItem, Library, LibraryService, MediaType, WatchedItem, WatchlistItem } from '../library.service';
 import { Navigator, useScreen } from '../nav/public-api';
 import { tmdbImageBase } from '../ui/public-api';
@@ -29,7 +29,7 @@ interface Row {
   cards: Card[];
 }
 
-// What the description shows from TMDB for the focused title
+// What the description shows from the catalog for the focused title
 interface Details {
   year: string | null;
   length: string | null;         // "2h 46m" for movies, "3 seasons" for shows
@@ -68,7 +68,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   loaded = false;
   loadError = '';
   spot:Card | null = null;
-  details:Details | null = null;      // TMDB details of `spot`, once loaded
+  details:Details | null = null;      // the catalog's details of `spot`, once loaded
 
   private detailCache = new Map<string, Details>();
   private detailRequests = new Subject<Card>();
@@ -268,7 +268,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     (document.querySelector(selector) as HTMLElement)?.focus({ preventScroll: true });
   }
 
-  // ── TMDB details ──────────────────────────────────────────────────────────
+  // ── the title's page (catalog) ──────────────────────────────────────────────────────────
 
   private titleKey(card:Card):string {
     return `${card.mediaType}:${card.tmdbId}`;
@@ -284,23 +284,23 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
     );
   }
 
-  private toDetails(card:Card, data:any):Details {
-    let date:string = data['release_date'] || data['first_air_date'] || '';
+  private toDetails(card:Card, data:CatalogDetails):Details {
+    let date:string = data.releaseDate || '';
     let length:string | null = null;
-    if (card.mediaType == 'tv' && data['number_of_seasons']) {
-      let n = data['number_of_seasons'];
+    if (card.mediaType == 'tv' && data.seasonCount) {
+      let n = data.seasonCount;
       length = `${n} ${n == 1 ? 'season' : 'seasons'}`;
-    } else if (data['runtime']) {
-      let h = Math.floor(data['runtime'] / 60), m = data['runtime'] % 60;
+    } else if (data.runtime) {
+      let h = Math.floor(data.runtime / 60), m = data.runtime % 60;
       length = h ? `${h}h ${m}m` : `${m}m`;
     }
-    let overview:string = data['overview'] || '';
+    let overview:string = data.overview || '';
     if (overview.length > OVERVIEW_MAX) overview = overview.slice(0, OVERVIEW_MAX).replace(/\s+\S*$/, '') + '…';
     return {
       year: date ? date.slice(0, 4) : null,
       length,
-      score: data['vote_average'] || null,
-      genres: (data['genres'] || []).map(g => g['name']),
+      score: data.voteAverage || null,
+      genres: (data.genres || []).map(g => g.name),
       overview,
     };
   }

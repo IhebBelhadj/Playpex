@@ -23,7 +23,7 @@ var DEFAULT_PORT = 28470;
 var LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 
 // Whole numbers ≥ 1 (counts, minutes)
-var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'streaming.idleTimeoutMinutes',
+var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'streaming.maxLive', 'streaming.idleTimeoutMinutes',
   'security.pairingRequestMinutes', 'downloads.maxActive'];
 // Whole numbers ≥ 0 (0 = off)
 var NON_NEGATIVE_INTEGERS = ['downloads.seedMinutes', 'downloads.uploadSlots'];
@@ -61,6 +61,7 @@ function defaults() {
     streaming: {
       maxTorrents: 4,         // active torrents at once (streams + downloads); past it a new stream → 503 BUSY
       maxTranscodes: 2,       // ffmpeg audio transcodes at once (one per device and file)
+      maxLive: 2,             // plugins' live streams at once (one per device and stream; lib/media/hls.js)
       idleTimeoutMinutes: 10  // a client lease with no request / keepalive for this long is dropped
     },
     downloads: {
@@ -100,7 +101,20 @@ function defaults() {
       // the admin dismisses it
       sourcesNotice: true
     },
+    metadata: {
+      // what /catalog/* answers in (lib/catalog.js): TMDB's language
+      // (ISO 639-1, optionally -<ISO 3166-1> region) and the region of the
+      // movie lists (now playing, upcoming…; '' = TMDB's default)
+      language: 'en-US',
+      region: '',
+      // metadata providers (plugins with metadata.details / metadata.title):
+      // whose additions show first (ids; the others after, by id), and the
+      // ones switched off (docs/providers-plan.md §7.2)
+      order: [],
+      disabled: []
+    },
     providers: {
+      // '' = the app key Playpex ships (lib/tmdb.js)
       tmdbApiKey: '',
       openSubtitlesApiKey: '',
       wyzieApiKey: ''
@@ -206,6 +220,9 @@ function coerce(key, value, fromEnv) {
       return { error: key + ' must be a list of strings' };
     }
     var list = value.map(function (v) { return v.trim(); }).filter(Boolean);
+    if ((key === 'metadata.order' || key === 'metadata.disabled') && list.some(function (id) { return !/^[a-z][a-z0-9-]{1,31}$/.test(id); })) {
+      return { error: key + ' must list plugin ids' };
+    }
     if (key === 'plugins.publisherKeys') {
       var bad = list.filter(function (k) {
         try {
@@ -229,6 +246,12 @@ function coerce(key, value, fromEnv) {
   }
   if (key === 'general.logLevel' && LOG_LEVELS.indexOf(value) === -1) {
     return { error: 'logLevel must be one of ' + LOG_LEVELS.join(', ') };
+  }
+  if (key === 'metadata.language' && !/^[a-z]{2}(-[A-Z]{2})?$/.test(value.trim())) {
+    return { error: 'metadata.language must be a language code such as en-US or fr' };
+  }
+  if (key === 'metadata.region' && !/^([A-Z]{2})?$/.test(value.trim())) {
+    return { error: 'metadata.region must be a country code such as US, or empty' };
   }
   if (key === 'general.serverName' && !value.trim()) {
     return { error: 'serverName must not be empty' };

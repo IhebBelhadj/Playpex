@@ -1,12 +1,37 @@
-import { YoutubeService } from './youtube.service';
 import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http'
 import { BehaviorSubject, Observable, of, map, catchError, shareReplay } from 'rxjs';
+import type { Schema } from '@playpex/protocol';
 import { Catalog, MediaType } from './catalog';
-import { categories, showCategories } from './categories';
+import { CatalogQuery, categories, showCategories } from './categories';
 import { ServerService } from './server.service';
 
-// TMDB search endpoints: 'multi' = movies, TV shows and people together
+// The server's catalog (GET /catalog/*: TMDB behind the server, in its own
+// shapes; docs/providers-plan.md §7.1): the TV holds no TMDB key.
+export type CatalogTitle = Schema<'CatalogTitle'>;
+export type CatalogPerson = Schema<'CatalogPerson'>;
+export type CatalogDetails = Schema<'CatalogDetails'>;
+export type CatalogPage = Schema<'CatalogPage'>;
+export type CatalogCredits = Schema<'CatalogCredits'>;
+export type CatalogSeason = Schema<'CatalogSeason'>;
+export type CatalogEpisode = Schema<'CatalogEpisode'>;
+export type CatalogPersonCredits = Schema<'CatalogPersonCredits'>;
+
+// A title as the TV holds it: a list item, completed by its page once read,
+// with its IMDb rating once known
+export type TitleItem = CatalogTitle & Partial<CatalogDetails> & { rating?: number };
+
+// An episode of a season row (upcoming: not aired yet)
+export type EpisodeItem = CatalogEpisode & { upcoming?: boolean };
+
+// The name a title is shown and searched by: a movie's original title (as
+// before the catalog moved to the server), a show's name
+export function displayTitle(item:Partial<CatalogTitle> | null | undefined):string {
+  if (!item) return '';
+  return (item.mediaType == 'movie' ? item.originalTitle || item.title : item.title || item.originalTitle) || '';
+}
+
+// Search kinds: 'multi' = movies, TV shows and people together
 export type SearchKind = 'multi' | 'movie' | 'tv' | 'person';
 
 // What the search page shows; kept here so it survives a trip to a title page
@@ -16,7 +41,7 @@ export interface SearchItem {
   id: number;
   title: string;
   sub: string;                          // year, or a person's department
-  image: string;                        // TMDB poster / profile path
+  image: string;                        // poster / profile image path
   badge?: string;                       // shown on mixed rows ("TV")
 }
 
@@ -51,28 +76,25 @@ export class MoviesService {
     tv: new Catalog('tv', showCategories, 'core.shows', 'core.show'),
   };
 
-  // Item shown in <movie-description>: a TMDB movie, or a TV show (media_type 'tv')
-  selectedmovie = new BehaviorSubject({});
+  // Item shown in <movie-description>: a movie or a show (mediaType), {} = none
+  selectedmovie = new BehaviorSubject<Partial<TitleItem>>({});
   searchData = new BehaviorSubject<SearchState>(EMPTY_SEARCH);
-
-  private tmdb_key = "0067d3f9de200e949bc7f144b1ff83f1";
-
-
 
   constructor(
     private http:HttpClient,
     private server:ServerService,
     ) { }
 
+  private get base():string {
+    return `${this.server.api}/catalog`;
+  }
 
-  //****Tmdb API endpoints setup****
-
-  // TMDB's genres of a kind ('movie' | 'tv'), fetched once
+  // The genres of a kind ('movie' | 'tv'), fetched once
   private genres$ = {};
-  getGenres(kind:string):Observable<{ id:number, name:string }[]> {
+  getGenres(kind:MediaType):Observable<{ id:number, name:string }[]> {
     if (!this.genres$[kind]) {
-      this.genres$[kind] = this.http.get(`https://api.themoviedb.org/3/genre/${kind}/list?api_key=${this.tmdb_key}&language=en-US`).pipe(
-        map(data => data['genres'] || []),
+      this.genres$[kind] = this.http.get<{ genres:{ id:number, name:string }[] }>(`${this.base}/genres/${kind}`).pipe(
+        map(data => data.genres || []),
         catchError(() => {
           this.genres$[kind] = null;
           return of([]);
@@ -83,53 +105,41 @@ export class MoviesService {
     return this.genres$[kind];
   }
 
-  getMovies(query){
-    let params = query.params;
-
-    let url = query.url as string;
-    url = url.replace('<<api_key>>' , this.tmdb_key)
-    return this.http.get(url , {params : params})
+  // A row's page: a list, discover or search (categories.ts)
+  getMovies(query:CatalogQuery):Observable<CatalogPage> {
+    return this.http.get<CatalogPage>(`${this.base}/${query.path}`, { params: query.params as any });
   }
 
-
-  getCredits(id){
-    return this.http.get(`https://api.themoviedb.org/3/movie/${id}/credits?api_key=${this.tmdb_key}&language=en-US`)
+  getCredits(id:number | string):Observable<CatalogCredits> {
+    return this.http.get<CatalogCredits>(`${this.base}/titles/movie/${id}/credits`);
   }
 
-  getSimilarMovies(id){
-    return this.http.get(`https://api.themoviedb.org/3/movie/${id}/similar?api_key=${this.tmdb_key}&language=en-US&page=1&with_original_language=en`)
+  getSimilarMovies(id:number | string):Observable<CatalogPage> {
+    return this.http.get<CatalogPage>(`${this.base}/titles/movie/${id}/similar`);
   }
 
-
-  getTmdbMovieDetails(tmdb_id){
-    return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US` , {
-      headers : {
-        "Cache-Control": "no-store"
-      }
-    })
+  // A movie's page (runtime, IMDb id, genres, videos)
+  getTmdbMovieDetails(tmdbId:number | string):Observable<CatalogDetails> {
+    return this.http.get<CatalogDetails>(`${this.base}/titles/movie/${tmdbId}`);
   }
 
-  // regular titles only (include_adult=false)
-  search(kind:SearchKind , query:string , page = 1){
-    return this.http.get(`https://api.themoviedb.org/3/search/${kind}?api_key=${this.tmdb_key}&language=en-US&query=${encodeURIComponent(query)}&include_adult=false&page=${page}`)
+  // regular titles only (the server never asks for adult ones)
+  search(kind:SearchKind , query:string , page = 1):Observable<CatalogPage> {
+    return this.http.get<CatalogPage>(`${this.base}/search/${kind}`, { params: { q: query, page } });
   }
 
   // Movies and shows a person played in or worked on
-  getPersonCredits(person_id){
-    return this.http.get(`https://api.themoviedb.org/3/person/${person_id}/combined_credits?api_key=${this.tmdb_key}&language=en-US`)
+  getPersonCredits(personId:number):Observable<CatalogPersonCredits> {
+    return this.http.get<CatalogPersonCredits>(`${this.base}/people/${personId}/credits`);
   }
 
-  // TV: details incl. imdb id (for torrents/subtitles) and trailers
-  getTvDetails(tmdb_id){
-    return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${this.tmdb_key}&language=en-US&append_to_response=external_ids,videos`)
+  // A show's page: IMDb id (torrents, subtitles), seasons, trailers
+  getTvDetails(tmdbId:number | string):Observable<CatalogDetails> {
+    return this.http.get<CatalogDetails>(`${this.base}/titles/tv/${tmdbId}`);
   }
 
-  getTvSeason(tmdb_id, season_number){
-    return this.http.get(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?api_key=${this.tmdb_key}&language=en-US`)
-  }
-
-  getMovieVideos(tmdb_id){
-    return this.http.get(`https://api.themoviedb.org/3/movie/${tmdb_id}/videos?api_key=${this.tmdb_key}&language=en-US`)
+  getTvSeason(tmdbId:number | string, season:number):Observable<CatalogSeason> {
+    return this.http.get<CatalogSeason>(`${this.base}/titles/tv/${tmdbId}/seasons/${season}`);
   }
 
 
@@ -140,11 +150,11 @@ export class MoviesService {
 
   //Keeps track of the object movie that is going to be
   //sent to the movie description and later display its properties in the view
-      assignSelection(movie){
+      assignSelection(movie:Partial<TitleItem>){
         this.selectedmovie.next(movie);
       }
 
-      checkSelection():Observable<any>{
+      checkSelection():Observable<Partial<TitleItem>>{
         return this.selectedmovie.asObservable();
       }
 

@@ -84,8 +84,11 @@ export class DevHook {
       overlay: kind => run(() => this.overlay(kind)),
       input: action => run(() => this.dispatcher.dispatch(action)),
       layers: () => this.layerStack.layers.map(layer => layer.def.id),
-      // a media ref (f_… / t_…): that file on the server, played as a source
-      player: (src, kind = 'movie') => run(() => /^[ft]_/.test(src)
+      // a media ref (f_… / t_…): that file on the server, played as a source;
+      // a plugin's stream (h_… / l_…: development only, clients never read refs)
+      player: (src, kind = 'movie') => run(() => /^[hl]_/.test(src)
+        ? this.playback.play({ title: 'Test stream', source: { ref: src, format: src[0] == 'h' ? 'hls' : 'live' }, tracking: 'none' })
+        : /^[ft]_/.test(src)
         ? this.playback.play({ title: 'Heat', year: '1995', source: { ref: src }, startAt: 0 })
         : this.playback.play(kind == 'episode'
         ? { title: 'Breaking Bad', subtitle: 'S01E01 · Pilot', magnet: '', devSrc: src, imdbId: 'tt0903747',

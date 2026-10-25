@@ -1,15 +1,16 @@
 import { Category } from './categories';
 import { MediaType } from './catalog';
+import { CatalogTitle } from './movies.service';
 
 // Filters of a section's list page (movies or TV shows), picked in the filter
-// panel next to the search bar. Alone they become three TMDB `discover` rows
-// (popular, top rated, newest); with a search they narrow its results (TMDB's
-// search endpoint can't filter, so results are checked here).
+// panel next to the search bar. Alone they become three catalog `discover`
+// rows (popular, top rated, newest); with a search they narrow its results
+// (search can't filter, so results are checked here).
 
 export interface CatalogFilters {
-  genre: number | null;      // TMDB genre id
+  genre: number | null;      // the catalog's genre id
   period: string;            // '' or an id of PERIODS
-  rating: number;            // minimum TMDB score, 0 = any
+  rating: number;            // minimum score (TMDB's), 0 = any
   language: string;          // original language (ISO 639-1), '' = any
 }
 
@@ -83,39 +84,37 @@ export function filterCategories(media: MediaType, f: CatalogFilters, genres: Ge
   ].filter(Boolean).join(' ');
   let title = (base: string) => [base, noun, tail].filter(Boolean).join(' ');
 
-  let date = media == 'tv' ? 'first_air_date' : 'primary_release_date';
   let today = new Date().toISOString().slice(0, 10);
   let rows = [
-    { name: title('Popular'), sort: 'popularity.desc', votes: 50 },
-    { name: title('Top rated'), sort: 'vote_average.desc', votes: 300 },
-    { name: title('Newest'), sort: `${date}.desc`, votes: 10 },
+    { name: title('Popular'), sort: 'popularity', votes: 50 },
+    { name: title('Top rated'), sort: 'rating', votes: 300 },
+    { name: title('Newest'), sort: 'newest', votes: 10 },
   ];
   return rows.map(row => new Category(row.name, {
-    url: `https://api.themoviedb.org/3/discover/${media}?api_key=<<api_key>>&language=en-US&include_adult=false` +
-      (media == 'tv' ? '&without_genres=10763,10764,10767' : ''),
-    params: discoverParams(media, f, { sort_by: row.sort, 'vote_count.gte': row.votes, [`${date}.lte`]: today }),
+    path: `discover/${media}`,
+    params: discoverParams(media, f, { sort: row.sort, minVotes: row.votes, to: today }),
   }));
 }
 
-function discoverParams(media: MediaType, f: CatalogFilters, base: { [key: string]: any }) {
-  let params: { [key: string]: any } = { ...base, page: 1 };
-  let date = media == 'tv' ? 'first_air_date' : 'primary_release_date';
+function discoverParams(media: MediaType, f: CatalogFilters, base: { [key: string]: string | number }) {
+  let params: { [key: string]: string | number } = { ...base, page: 1 };
   let period = PERIODS.find(p => p.id === f.period);
-  if (f.genre !== null) params['with_genres'] = f.genre;
-  if (period?.from) params[`${date}.gte`] = period.from;
-  if (period?.to && period.to < params[`${date}.lte`]) params[`${date}.lte`] = period.to;
-  if (f.rating) params['vote_average.gte'] = f.rating;
-  if (f.language) params['with_original_language'] = f.language;
+  if (media == 'tv') params['withoutGenres'] = '10763,10764,10767';
+  if (f.genre !== null) params['genres'] = String(f.genre);
+  if (period?.from) params['from'] = period.from;
+  if (period?.to && period.to < params['to']) params['to'] = period.to;
+  if (f.rating) params['minRating'] = f.rating;
+  if (f.language) params['language'] = f.language;
   return params;
 }
 
-// A search result (TMDB list item) kept by the filters
-export function matchesFilters(item: any, f: CatalogFilters): boolean {
-  let date = item['release_date'] || item['first_air_date'] || '';
+// A search result kept by the filters
+export function matchesFilters(item: CatalogTitle, f: CatalogFilters): boolean {
+  let date = item.releaseDate || '';
   let period = PERIODS.find(p => p.id === f.period);
-  return (f.genre === null || (item['genre_ids'] || []).includes(f.genre)) &&
+  return (f.genre === null || (item.genreIds || []).includes(f.genre)) &&
     (!period?.from || (!!date && date >= period.from)) &&
     (!period?.to || (!!date && date <= period.to)) &&
-    (!f.rating || (item['vote_average'] || 0) >= f.rating) &&
-    (!f.language || item['original_language'] === f.language);
+    (!f.rating || (item.voteAverage || 0) >= f.rating) &&
+    (!f.language || item.originalLanguage === f.language);
 }

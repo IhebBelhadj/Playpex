@@ -181,6 +181,20 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
 .titleBlock {
   margin-bottom: dp(22);
 
+  // a live stream (docs/providers-plan.md §10.4): in place of the timeline
+  .liveMark {
+    display: inline-block;
+    margin-bottom: dp(10);
+    padding: dp(3) dp(10);
+    border-radius: var(--px-radius-s);
+    background: var(--px-color-live);
+    color: var(--px-color-on-focus);
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-small);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
   .title {
     margin: 0;
     font-family: var(--px-font-bold);

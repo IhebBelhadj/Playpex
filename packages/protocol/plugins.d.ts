@@ -8,7 +8,7 @@ export declare const ID: RegExp;
 // ── Manifest (playpex-plugin.json) ──────────────────────────────────────────
 
 export type HookName = 'play.collect' | 'play.rank' | 'play.before' | 'play.resolve' | 'releases.providers'
-  | 'subtitles.providers' | 'metadata.title' | 'player.markers' | 'library.match';
+  | 'subtitles.providers' | 'metadata.title' | 'metadata.details' | 'player.markers' | 'library.match';
 export type EventFamily = 'playback' | 'downloads' | 'library' | 'watchlist';
 export type WriteScope = 'watchlist' | 'watched' | 'ratings' | 'downloads';
 export type SourceKind = 'magnet' | 'http';
@@ -376,8 +376,27 @@ export interface HookIO {
   };
   'subtitles.providers': { input: { title: PluginTitleRef; languages: string[]; fileName?: string; size?: number }; output: PluginSubtitle[] };
   'metadata.title': { input: { title: PluginTitleRef }; output: { meta?: PluginMetaItem[] } };
+  'metadata.details': { input: { title: PluginTitleRef; details: TitleDetails }; output: MetadataAdditions };
   'player.markers': { input: { title: PluginTitleRef; duration: number; fileName?: string; size?: number }; output: Marker[] };
   'library.match': { input: { file: LibraryFile }; output: { identity: Identity | null } };
+}
+
+/** The core's details of a title, as metadata.details gets them */
+export interface TitleDetails {
+  title: string;
+  originalTitle?: string;
+  year?: number;
+  imdbId?: string;
+  genres: string[];
+  runtime?: number;
+}
+
+/** What a metadata provider adds to a title's page (never overrides: decision I) */
+export interface MetadataAdditions {
+  ratings?: { source: string; value: number; max: number; votes?: number; url?: string }[];
+  tags?: string[];
+  links?: { label: string; url: string }[];
+  lines?: PluginMetaItem[];
 }
 
 /** What library.match sees of a file: never the folder's path or the content */

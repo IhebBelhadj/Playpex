@@ -5,7 +5,7 @@ import { Toasts } from '../ui/public-api';
 import { MediaKeys } from '../media-keys.service';
 import { NotificationService } from './../notification.service';
 import { Observable, Subscription } from 'rxjs';
-import { MoviesService } from './../movies.service';
+import { CatalogCredits, CatalogTitle, MoviesService, TitleItem, displayTitle } from './../movies.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { gsap ,Power1} from 'gsap'
@@ -48,12 +48,12 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   movieImgBase = tmdbImageBase('poster', 150);
 
   movieId;
-  casts;
-  similar;
-  trailer;
+  casts:CatalogCredits['cast'];
+  similar:CatalogTitle[];
+  trailer:string;
   playingTrailer = false;
   findingTorrents = false;    // Play is looking up sources
-  selectedMovie;
+  selectedMovie:TitleItem;
   // what plugins' actions and rows on this page get (ui/slots)
   slotContext:MovieContext | null = null;
 
@@ -64,8 +64,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   private resume:PlaybackState['resume'] = null;
   private libraryBusy = false;
 
-  // params { id } (TMDB id); payload: the TMDB movie it was opened from
-  private screen = useScreen<{ id:string }, any>();
+  // params { id } (TMDB id); payload: the catalog title it was opened from
+  private screen = useScreen<{ id:string }, TitleItem>();
   // a remote's Play key = the Play button (§13.2)
   private mediaSub = inject(MediaKeys).for(this.screen).subscribe(a => (a == 'playPause' || a == 'play') && this.onPlay());
   private subscriptions:Subscription[] = [];
@@ -111,8 +111,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.downloadSub?.unsubscribe();
     this.download = null;
     this.downloadTile = DownloadsService.tile(null);
-    if (!this.selectedMovie?.['id']) return;
-    this.downloadSub = this.downloads.forTitle({ mediaType: 'movie', tmdbId: Number(this.selectedMovie['id']) }).subscribe(d => {
+    if (!this.selectedMovie?.tmdbId) return;
+    this.downloadSub = this.downloads.forTitle({ mediaType: 'movie', tmdbId: Number(this.selectedMovie.tmdbId) }).subscribe(d => {
       this.download = d;
       this.downloadTile = DownloadsService.tile(d);
     });
@@ -125,18 +125,18 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     if (d) {
       if (['paused', 'error'].includes(d.state)) {
         this.downloads.start(d.infoHash).subscribe({
-          next: () => this.toasts.show({ text: 'Downloading again', detail: movie['original_title'], tone: 'success', key: 'download' }),
+          next: () => this.toasts.show({ text: 'Downloading again', detail: displayTitle(movie), tone: 'success', key: 'download' }),
           error: () => this.toasts.show({ text: "Couldn't start the download", tone: 'error', key: 'download' }),
         });
       } else {
-        this.toasts.show({ text: this.downloadTile.label, detail: movie['original_title'], tone: 'info', key: 'download' });
+        this.toasts.show({ text: this.downloadTile.label, detail: displayTitle(movie), tone: 'info', key: 'download' });
       }
       return;
     }
-    if (!movie?.['id']) return;
-    this.sources.choose(this.sourcesQuery(), movie['original_title'], { kind: 'download', only: ['torrent'] }).subscribe(source => {
-      let title = movie['original_title'] + (movie['release_date'] ? ` (${movie['release_date'].slice(0, 4)})` : '');
-      this.downloads.add(source.magnet, { mediaType: 'movie', tmdbId: Number(movie['id']) }, title)
+    if (!movie?.tmdbId) return;
+    this.sources.choose(this.sourcesQuery(), displayTitle(movie), { kind: 'download', only: ['torrent'] }).subscribe(source => {
+      let title = displayTitle(movie) + (movie.year ? ` (${movie.year})` : '');
+      this.downloads.add(source.magnet, { mediaType: 'movie', tmdbId: Number(movie.tmdbId) }, title)
         .subscribe({
           next: added => this.toasts.show({
             text: added.state === 'queued' ? 'Queued on the server' : 'Downloading on the server',
@@ -157,18 +157,19 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     if (pageContainer) pageContainer.scrollTop = 0;
   }
 
-  // The movie it was opened with, completed from TMDB when it lacks the
+  // The movie it was opened with, completed from its page when it lacks the
   // details (a similar title, a search result, opened by id)
-  loadMovie(movie){
-    let ready = (data) => {
+  loadMovie(movie:TitleItem | undefined){
+    let ready = (data:TitleItem) => {
       this.selectedMovie = data;
+      this.pickTrailer(data);
       this.moviesService.assignSelection(this.selectedMovie);
       this.slotContext = { movie: titleRef(data), profile: profileContext(this.profiles.current.value) };
       this.loadRating();
       this.loadLibraryState();
       this.watchDownload();
     };
-    if (movie?.['imdb_id']) {
+    if (movie?.imdbId) {
       ready(movie);
       return;
     }
@@ -178,38 +179,30 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     }));
   }
 
-  byCredit = (i:number, c:any) => c.credit_id;
-  byId = (i:number, m:any) => m.id;
+  byCredit = (i:number, c:{ creditId:string }) => c.creditId;
+  byId = (i:number, m:CatalogTitle) => m.tmdbId;
 
   getPageData(id){
 
     this.moviesService.getCredits(id)
     .subscribe(data =>{
       // people with a photo only
-      this.casts = (data['cast'] || []).filter(c => c.profile_path);
+      this.casts = (data.cast || []).filter(c => c.profilePath);
       this.restoreInRows();
     })
 
     this.moviesService.getSimilarMovies(id)
     .subscribe(data =>{
       // titles with a poster, in English
-      this.similar = (data['results'] || []).filter(m => m.poster_path && m.original_language == 'en');
+      this.similar = (data.results as CatalogTitle[] || []).filter(m => m.posterPath && m.originalLanguage == 'en');
       this.restoreInRows();
     })
+  }
 
-    this.moviesService.getMovieVideos(id)
-    .subscribe(data=>{
-      let trailer;
-      for(let video of data['results']){
-        if (video['name'].includes('Official Trailer')) {
-          trailer = video['key'];
-          break;
-        }
-      }
-
-      this.trailer = trailer || data['results'][0]['key'];
-
-    })
+  // The trailer: its "Official Trailer", else its first video (the page's videos)
+  private pickTrailer(movie:TitleItem){
+    let videos = movie.videos || [];
+    this.trailer = (videos.find(v => v.name.includes('Official Trailer')) || videos[0])?.key;
   }
 
   // Every source's releases of this movie (title + year), most seeded first;
@@ -217,14 +210,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   findReleases(){
     let movie = this.selectedMovie;
     if (!movie) return;
-    let title = movie['original_title'] || movie['title'];
-    let year = (movie['release_date'] || '').slice(0, 4);
+    let title = displayTitle(movie);
+    let year = movie.year || '';
     this.releases.open('movie', [title, year].filter(Boolean).join(' '), {
-      label: movie['title'] || title,
+      label: movie.title || title,
       context: {
         mediaType: 'movie',
-        tmdbId: movie['id'],
-        imdbId: movie['imdb_id'],
+        tmdbId: movie.tmdbId,
+        imdbId: movie.imdbId,
         title,
         year,
         artwork: LibraryService.artworkOf(movie),
@@ -242,16 +235,16 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   // Play needs nothing more than the title's ids
   loadRating(){
     let movie = this.selectedMovie;
-    if (!movie['imdb_id'] || movie['rating']) return;
-    this.subscriptions.push(this.imdb.title(movie['imdb_id']).subscribe(rating => {
+    if (!movie.imdbId || movie.rating) return;
+    this.subscriptions.push(this.imdb.title(movie.imdbId).subscribe(rating => {
       if (!rating?.rating || this.selectedMovie !== movie) return;
-      movie['rating'] = rating.rating;
+      movie.rating = rating.rating;
       this.moviesService.assignSelection(movie);
     }));
   }
 
   private movieRef():MediaRef {
-    return { mediaType: 'movie', tmdbId: Number(this.selectedMovie['id']) };
+    return { mediaType: 'movie', tmdbId: Number(this.selectedMovie.tmdbId) };
   }
 
   loadLibraryState(){
@@ -326,7 +319,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.chooseSourceAndPlay();
       return;
     }
-    this.playChoice.choose(this.selectedMovie['original_title'] , resume).subscribe(choice => {
+    this.playChoice.choose(displayTitle(this.selectedMovie) , resume).subscribe(choice => {
       if (choice == 'restart') this.chooseSourceAndPlay(0);
       // same file / release as last time, so the saved position matches
       else if (resume.fileId) this.chooseSourceAndPlay(resume.positionS, source => source.ref == 'f_' + resume.fileId);
@@ -340,10 +333,10 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     let movie = this.selectedMovie;
     return {
       kind: 'movie',
-      tmdbId: Number(movie['id']),
-      imdbId: movie['imdb_id'],
-      title: movie['title'] || movie['original_title'],
-      year: PlaySourcesService.year(movie['release_date']),
+      tmdbId: Number(movie.tmdbId),
+      imdbId: movie.imdbId,
+      title: movie.title || movie.originalTitle,
+      year: PlaySourcesService.year(movie.releaseDate),
     };
   }
 
@@ -353,7 +346,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     let movie = this.selectedMovie;
     if (this.findingTorrents) return;
     this.findingTorrents = true;
-    this.sources.choose(this.sourcesQuery(), movie['original_title'], { prefer, looked: () => this.findingTorrents = false })
+    this.sources.choose(this.sourcesQuery(), displayTitle(movie), { prefer, looked: () => this.findingTorrents = false })
       .subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
   }
 
@@ -362,8 +355,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   // Its own page, over this one (Back comes here)
-  openSimilar(movie){
-    this.navigator.open({ screen: 'core.movie', params: { id: movie.id }, payload: movie });
+  openSimilar(movie:CatalogTitle){
+    this.navigator.open({ screen: 'core.movie', params: { id: movie.tmdbId }, payload: movie });
   }
 
   showYtVid(vidId){

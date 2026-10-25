@@ -11,8 +11,8 @@
     <px-card-row class="section" *ngIf="category.value.length" pxStackItem [rowKey]="category.key" [title]="category.key"
       [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)">
       <ng-container *ngFor="let movie of category.value; let i = index; trackBy: trackById">
-        <px-card variant="poster" [key]="movie?.id" [image]="movie?.poster_path ? imgBaseUrl + movie.poster_path : null"
-          [title]="movie?.title || movie?.name || ''" [data]="{ id: movie?.id, section: category.key, index: i }"
+        <px-card variant="poster" [key]="movie?.tmdbId" [image]="movie?.posterPath ? imgBaseUrl + movie.posterPath : null"
+          [title]="movie?.title || ''" [data]="{ id: movie?.tmdbId, section: category.key, index: i }"
           (pxSelect)="open(movie)"></px-card>
       </ng-container>
     </px-card-row>

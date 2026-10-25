@@ -49,7 +49,7 @@ There is **no TV code** in a plugin. Your screens and contributions are data (th
 | A section in the menu, its own screens | `contributes.sections` / `screens` on the templates `catalog`, `title`, `releases`, `list` | [tv.md](tv.md) |
 | Rows, action tiles, meta, search filters on core screens | `contributes.slots` | [tv.md](tv.md) |
 | More sources for Play (torrents, HTTPS streams), reorder or hide them, confirm before playing | hooks `play.collect`, `play.rank`, `play.before` | [server.md](server.md#hooks) |
-| Release lists, subtitles, more information on titles, intro / credits markers in the player | hooks `releases.providers`, `subtitles.providers`, `metadata.title`, `player.markers` | [server.md](server.md#hooks) |
+| Release lists, subtitles, more information on titles, intro / credits markers in the player | hooks `releases.providers`, `subtitles.providers`, `metadata.details` (ratings, tags, links: a metadata provider; `metadata.title` before it), `player.markers` | [server.md](server.md#hooks) |
 | React to what happens (scrobble, notify) | events `playback`, `downloads`, `library`, `watchlist` | [server.md](server.md#events) |
 | Work in the background | `schedule.every` | [server.md](server.md#schedules) |
 | Change the user's watch list, watched marks, ratings, add downloads | write scopes | [server.md](server.md#writes) |

@@ -35,6 +35,9 @@ src/components/desktop.tsx useHost (GET /admin/host), DesktopCard (Settings › 
 src/components/sources-notice.tsx SourcesNotice (Overview, while `overview.sources.notice`: no source plugin, the server reads
                         no torrent site: Add a repository (AddRepositoryDialog of plugin-repositories.tsx), Browse plugins,
                         Don't show again = PUT /admin/settings {plugins: {sourcesNotice: false}}; docs/providers-plan.md §4.4)
+src/components/metadata-providers.tsx MetadataProviders (Settings › Metadata, under its fields: the plugins with metadata.details /
+                        metadata.title from GET /admin/plugins `hooks`, in the server's order; ↑ / ↓ and a switch each, saved at once:
+                        PUT /admin/settings {metadata: {order | disabled}}; docs/providers-plan.md §7.2)
 src/components/dlna.tsx   DlnaPanel (Settings › DLNA, under its two settings: GET /admin/dlna every 10 s: status, the folders'
                         switches (PATCH /admin/library/folders/{id} {dlna}; adults-only ones disabled), "Seen by")
 src/components/common.tsx  PageHeader, Stat, Empty, QueryError, Loading, Spinner, Dot, Confirm (AlertDialog), Mono

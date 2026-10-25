@@ -11,8 +11,8 @@ import { ImdbSeason } from '../imdb.service';
 })
 export class SeasonCurveComponent implements OnChanges {
 
-  // the season's episodes in order (TMDB numbers), ratings from IMDb
-  @Input() episodes:{ episode_number:number }[] = [];
+  // the season's episodes in order (the catalog's numbers), ratings from IMDb
+  @Input() episodes:{ episodeNumber:number }[] = [];
   @Input() imdb:ImdbSeason | null = null;
   @Input() current:number | null = null;
   @Input() highlight:number | null = null;
@@ -29,8 +29,8 @@ export class SeasonCurveComponent implements OnChanges {
     let scale = (r:number) => Math.max(0.06, (r - low) / (10 - low));
 
     this.bars = this.episodes.map(ep => {
-      let rating = ratings.get(ep.episode_number) || null;
-      return { episode: ep.episode_number, rating, height: rating ? scale(rating) * 100 : 0 };
+      let rating = ratings.get(ep.episodeNumber) || null;
+      return { episode: ep.episodeNumber, rating, height: rating ? scale(rating) * 100 : 0 };
     });
     this.averageAt = this.imdb?.rating ? scale(this.imdb.rating) * 100 : 0;
 

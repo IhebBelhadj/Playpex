@@ -62,6 +62,7 @@
     "electron": "44.7.0",
     "electron-builder": "^26.15.3",
     "gsap": "^3.10.4",
+    "hls.js": "1.7.3",
     "jasmine-core": "~4.1.0",
     "karma": "~6.3.0",
     "karma-chrome-launcher": "~3.1.0",

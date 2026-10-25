@@ -19,7 +19,7 @@ import { Badge, CardVariant, ScoreSource } from '../models';
 // `dim` = not available yet (an upcoming episode). `data` = data-* attributes
 // on the focusable element (what the page's listeners read).
 //
-//   <px-card variant="poster" [key]="m.id" [image]="posterBase + m.poster_path" [title]="m.title" (pxSelect)="open(m)"></px-card>
+//   <px-card variant="poster" [key]="m.tmdbId" [image]="posterBase + m.posterPath" [title]="m.title" (pxSelect)="open(m)"></px-card>
 @Component({
   selector: 'px-card',
   templateUrl: './px-card.component.html',

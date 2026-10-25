@@ -106,7 +106,7 @@ tags:
   - name: sessions
     description: What every device is playing (leases on torrents)
   - name: catalog
-    description: Movie / show data (IMDb ratings)
+    description: 'Movies, shows, seasons and people from the server''s metadata provider (TMDB, behind the server: clients need no key), in Playpex''s own shapes; IMDb ratings'
   - name: play
     description: 'What can play a title: files on this server, downloads, torrents, ranked (the play pipeline)'
   - name: releases
@@ -2135,11 +2135,17 @@ paths:
         stopped torrent starts again, 503 `BUSY` past the limit, unless the file is finished on disk).
         A disk file of an adults-only library folder answers 403 `FORBIDDEN` to a kids profile
         (`profile`, else the profile of the device's last keepalive).
+
+        A plugin's live stream (`l_`, format `live`): one continuous Matroska stream remuxed by the
+        server's ffmpeg (video copied, audio AAC), no size and no ranges; past `streaming.maxLive` live
+        streams 503 `BUSY`, without ffmpeg 503 `TRANSCODER_UNAVAILABLE`. An HLS ref (`h_`, format `hls`):
+        302 to its `index.m3u8`.
       parameters:
         - { name: Range, in: header, required: false, schema: { type: string } }
       responses:
         '200': { $ref: '#/components/responses/Media' }
         '206': { $ref: '#/components/responses/Media' }
+        '302': { description: 'An `h_` ref: its playlist (`index.m3u8`)' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '503': { $ref: '#/components/responses/Busy' }
@@ -2159,6 +2165,43 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /media/{ref}/index.m3u8:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+    get:
+      tags: [media]
+      operationId: mediaPlaylist
+      summary: The HLS playlist of an `h_` ref (format hls)
+      description: |
+        The plugin's playlist fetched by the server as the plugin (its headers, its hosts, the address
+        rules on every hop), every URI in it (variant playlists, segments, `#EXT-X-KEY`, `#EXT-X-MAP`,
+        `#EXT-X-MEDIA`, …) rewritten to `r/{token}/{name}` beside it. Live playlists are fetched again on every
+        request. Takes or refreshes the device's lease; a live one past `streaming.maxLive` → 503 `BUSY`.
+        Other refs: 404.
+      responses:
+        '200': { description: 'The playlist', content: { application/vnd.apple.mpegurl: { schema: { type: string } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+        '503': { $ref: '#/components/responses/Busy' }
+  /media/{ref}/r/{token}/{name}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - { name: token, in: path, required: true, description: 'From a playlist the server rewrote (signed: no other URL can be asked)', schema: { type: string, pattern: '^[A-Za-z0-9_.-]{1,4096}$' } }
+      - { name: name, in: path, required: true, description: 'The part''s file name (`seg1.ts`), for players that judge parts by their extension; not read', schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,64}$' } }
+    get:
+      tags: [media]
+      operationId: mediaPlaylistPart
+      summary: A playlist's variant playlist, segment, key or map, through the server
+      description: 'A playlist is rewritten like `index.m3u8`; anything else streams through (`Range` passed on). 404 for a token of another ref.'
+      parameters:
+        - { name: Range, in: header, required: false, schema: { type: string } }
+      responses:
+        '200': { description: 'The bytes' }
+        '206': { description: 'A range of them' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
   /media/{ref}/probe:
     parameters:
       - $ref: '#/components/parameters/MediaRef'
@@ -2566,6 +2609,212 @@ paths:
       summary: Removed in API 2 (was YTS's movie details); answers 410. Torrents are `POST /play/sources`, the rating `/imdb/{imdbId}`
       responses:
         '410': { $ref: '#/components/responses/Gone' }
+  # ── catalog (docs/providers-plan.md §7.1) ───────────────────────────────────
+  /catalog:
+    get:
+      tags: [catalog]
+      operationId: getCatalogInfo
+      summary: Where the catalog comes from, its image base and language
+      responses:
+        '200':
+          description: Catalog
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogInfo' }
+  /catalog/genres/{mediaType}:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+    get:
+      tags: [catalog]
+      operationId: getCatalogGenres
+      summary: The genres of movies or shows (ids for `discover`)
+      responses:
+        '200':
+          description: Genres
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [genres]
+                properties:
+                  genres: { type: array, items: { $ref: '#/components/schemas/CatalogGenre' } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/lists/{mediaType}/{list}:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - name: list
+        in: path
+        required: true
+        description: 'Movies: popular, top_rated, now_playing, upcoming, trending. Shows: popular, top_rated, airing_today, on_the_air, trending (of the week)'
+        schema: { type: string, enum: [popular, top_rated, now_playing, upcoming, airing_today, on_the_air, trending] }
+      - $ref: '#/components/parameters/CatalogPage'
+    get:
+      tags: [catalog]
+      operationId: getCatalogList
+      summary: One of the provider's lists, a page at a time (cached 1 h)
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/discover/{mediaType}:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/CatalogPage'
+      - { name: sort, in: query, schema: { type: string, enum: [popularity, rating, newest], default: popularity } }
+      - { name: genres, in: query, description: 'Genre ids: `,` = all of them, `|` = any', schema: { type: string, pattern: '^\d+([,|]\d+)*$' } }
+      - { name: withoutGenres, in: query, schema: { type: string, pattern: '^\d+([,|]\d+)*$' } }
+      - { name: language, in: query, description: Original language (ISO 639-1), schema: { type: string, pattern: '^[a-z]{2}$' } }
+      - { name: minVotes, in: query, schema: { type: integer, minimum: 0 } }
+      - { name: minRating, in: query, description: 'Minimum score, 0–10', schema: { type: number, minimum: 0 } }
+      - { name: from, in: query, description: 'Released (movies) / first aired (shows) on or after', schema: { type: string, format: date } }
+      - { name: to, in: query, description: '…on or before', schema: { type: string, format: date } }
+    get:
+      tags: [catalog]
+      operationId: discoverCatalog
+      summary: Titles by filters (cached 1 h); never adult titles  # plugins-check: allow (titles left out of the catalog)
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/search/{kind}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        description: '`multi`: movies, shows and people together'
+        schema: { type: string, enum: [multi, movie, tv, person] }
+      - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 200 } }
+      - $ref: '#/components/parameters/CatalogPage'
+    get:
+      tags: [catalog]
+      operationId: searchCatalog
+      summary: Search (cached 1 h); never adult titles  # plugins-check: allow (titles left out of the catalog)
+      responses:
+        '200':
+          description: A page of results (people only for `multi` and `person`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/titles/{mediaType}/{tmdbId}:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    get:
+      tags: [catalog]
+      operationId: getCatalogTitle
+      summary: A movie's / a show's page (cached 6 h)
+      responses:
+        '200':
+          description: Details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogDetails' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/titles/{mediaType}/{tmdbId}/credits:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+    get:
+      tags: [catalog]
+      operationId: getCatalogCredits
+      summary: Cast and crew of a title
+      responses:
+        '200':
+          description: Credits
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogCredits' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/titles/{mediaType}/{tmdbId}/similar:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+      - $ref: '#/components/parameters/CatalogPage'
+    get:
+      tags: [catalog]
+      operationId: getCatalogSimilar
+      summary: Titles like this one
+      responses:
+        '200':
+          description: A page of titles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/titles/{mediaType}/{tmdbId}/extras:
+    parameters:
+      - $ref: '#/components/parameters/MediaType'
+      - $ref: '#/components/parameters/TmdbId'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [catalog]
+      operationId: getCatalogExtras
+      summary: What the server's metadata providers (plugins) add to a title's page, for a profile
+      description: |
+        Ratings, tags, links and meta-line items from plugins with `metadata.details` (or the older
+        `metadata.title`, whose items come as `lines`), in the admin's order (Settings › Metadata),
+        switched-off providers left out. Additions only: never the catalog's own fields. A provider
+        that failed or was late is only left out (`errors`). Not cached: ask once per title and profile,
+        again on `plugin.changed`.
+      responses:
+        '200':
+          description: Additions, by provider
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogExtras' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/titles/tv/{tmdbId}/seasons/{season}:
+    parameters:
+      - $ref: '#/components/parameters/TmdbId'
+      - { name: season, in: path, required: true, description: 0 = specials, schema: { type: integer, minimum: 0 } }
+    get:
+      tags: [catalog]
+      operationId: getCatalogSeason
+      summary: A season of a show and its episodes
+      responses:
+        '200':
+          description: Season
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogSeason' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/people/{personId}/credits:
+    parameters:
+      - { name: personId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      tags: [catalog]
+      operationId: getCatalogPersonCredits
+      summary: A person's movies and shows, as cast (`character`) and crew (`job`)
+      responses:
+        '200':
+          description: Credits
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPersonCredits' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
   /imdb/{imdbId}:
     parameters:
       - $ref: '#/components/parameters/ImdbId'
@@ -2743,7 +2992,8 @@ paths:
     post:
       tags: [plugins]
       operationId: pluginTitleMeta
-      summary: What plugins add to a title page (`metadata.title`)
+      deprecated: true
+      summary: What plugins add to a title page (`metadata.title`); kept through API 2, use `GET /catalog/titles/{mediaType}/{tmdbId}/extras`
       description: |
         Up to 3 items per plugin: `text`, `chip`, `score` (0–10, `votes`, `label`), `seal`
         (`$defs/metaItem` of `@playpex/protocol/plugin-api.schema.json`). Plugins that fail or take longer
@@ -3457,7 +3707,7 @@ components:
       in: path
       required: true
       description: A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN)
-      schema: { type: string, pattern: '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32})$' }
+      schema: { type: string, pattern: '^(t_[0-9a-f]{40}_[0-9a-f]{16}|f_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|r_[0-9a-f]{32}|h_[0-9a-f]{32}|l_[0-9a-f]{32})$' }
     Profile:
       name: profile
       in: query
@@ -3519,6 +3769,10 @@ components:
       name: page
       in: query
       schema: { type: integer, minimum: 1, default: 1 }
+    CatalogPage:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 500, default: 1 }
 
   securitySchemes:
     deviceToken:
@@ -3805,7 +4059,7 @@ components:
         ref: { type: [string, 'null'], description: 'Media ref of the file last streamed (null before the first stream)' }
         torrentName: { type: [string, 'null'], description: 'null until the metadata has arrived, and for a file on disk' }
         file: { type: [string, 'null'], description: 'Path of the file being played (in the torrent, or in its library folder)' }
-        method: { type: [string, 'null'], enum: [direct, audio-transcode, null] }
+        method: { type: [string, 'null'], enum: [direct, audio-transcode, hls, live, null], description: 'hls: a plugin''s HLS stream through the server''s proxy; live: a continuous stream remuxed by ffmpeg' }
         streaming: { type: boolean, description: 'A media response is open right now' }
         since: { type: string, format: date-time }
         lastActivity: { type: string, format: date-time }
@@ -4233,7 +4487,8 @@ components:
       required: [id, type, provider, label, playable, badges, notes]
       properties:
         id: { type: string, description: 'Stable for a source: the media ref of a file, a download''s file or a plugin''s source, `torrent:<infoHash>` of a torrent' }
-        type: { type: string, enum: [file, download, torrent, plugin], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider or a plugin; plugin: a plugin''s HTTPS source, proxied by the server (play its `ref`)' }
+        type: { type: string, enum: [file, download, torrent, plugin], description: 'file: in the library; download: a file of the server''s download of this title; torrent: from a provider or a plugin; plugin: a plugin''s HTTPS source, proxied by the server (play its `ref` as its `format` says)' }
+        format: { $ref: '#/components/schemas/MediaFormat' }
         provider: { type: string, description: 'library, downloads, or the plugin that found it (its id)' }
         handler: { type: string, description: 'The collect handler that found it' }
         label: { type: string, description: 'A file''s or a release''s name' }
@@ -4275,6 +4530,10 @@ components:
           properties:
             name: { type: [string, 'null'] }
             index: { type: [integer, 'null'], minimum: 0 }
+    MediaFormat:
+      type: string
+      enum: [file, hls, live]
+      description: 'How a ref plays (absent = file). file: `GET /media/{ref}` with byte ranges; hls: an HLS playlist, `GET /media/{ref}/index.m3u8` with an HLS player (hls.js: Chromium plays no HLS); live: `GET /media/{ref}` is one continuous Matroska stream (no size, no ranges, no seeking). hls may be live too: the playlist has no `#EXT-X-ENDLIST`'
     PlayGroupName:
       type: string
       enum: [server, stream, torrent]
@@ -4994,6 +5253,215 @@ components:
           description: 'Only with `?definitions=1`: the registry, `{ key: SettingDefinition }`'
           additionalProperties: { $ref: '#/components/schemas/SettingDefinition' }
 
+    # ── catalog
+    CatalogInfo:
+      type: object
+      required: [provider, imageBase, language, region]
+      properties:
+        provider: { type: string, description: 'tmdb' }
+        imageBase: { type: string, description: 'Images are `<imageBase><size>/<path>` (TMDB sizes: w92 … w780, original)' }
+        language: { type: string, description: 'What titles and overviews are written in (Settings › Metadata)' }
+        region: { type: [string, 'null'] }
+    CatalogGenre:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    CatalogTitle:
+      type: object
+      description: A movie or a show in a list. Titles are `(mediaType, tmdbId)` everywhere in the API
+      required: [mediaType, tmdbId, title, originalTitle, releaseDate, year, overview, posterPath, backdropPath, genreIds, voteAverage, voteCount, originalLanguage]
+      properties:
+        mediaType: { $ref: '#/components/schemas/MediaType' }
+        tmdbId: { type: integer }
+        title: { type: string, description: In the catalog's language }
+        originalTitle: { type: [string, 'null'] }
+        releaseDate: { type: [string, 'null'], description: 'A movie''s release, a show''s first air date (YYYY-MM-DD)' }
+        year: { type: [string, 'null'] }
+        overview: { type: string }
+        posterPath: { type: [string, 'null'], description: An image path (`CatalogInfo.imageBase`) }
+        backdropPath: { type: [string, 'null'] }
+        genreIds: { type: array, items: { type: integer } }
+        voteAverage: { type: number, description: TMDB's score, 0–10 }
+        voteCount: { type: integer }
+        originalLanguage: { type: [string, 'null'] }
+    CatalogPerson:
+      type: object
+      required: [mediaType, personId, name, profilePath, knownForDepartment]
+      properties:
+        mediaType: { type: string, enum: [person] }
+        personId: { type: integer }
+        name: { type: string }
+        profilePath: { type: [string, 'null'] }
+        knownForDepartment: { type: [string, 'null'] }
+    CatalogPage:
+      type: object
+      required: [page, totalPages, totalResults, results]
+      properties:
+        page: { type: integer }
+        totalPages: { type: integer, maximum: 500 }
+        totalResults: { type: integer }
+        results:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/CatalogTitle'
+              - $ref: '#/components/schemas/CatalogPerson'
+    CatalogVideo:
+      type: object
+      required: [key, name, site, type, official]
+      properties:
+        key: { type: string, description: 'The site''s id (a YouTube video id: `/youtube/{videoId}`)' }
+        name: { type: string }
+        site: { type: string }
+        type: { type: string, description: 'Trailer, Teaser, Clip…' }
+        official: { type: boolean }
+    CatalogSeasonSummary:
+      type: object
+      required: [seasonNumber, name, overview, airDate, episodeCount, posterPath]
+      properties:
+        seasonNumber: { type: integer, description: 0 = specials }
+        name: { type: string }
+        overview: { type: string }
+        airDate: { type: [string, 'null'] }
+        episodeCount: { type: integer }
+        posterPath: { type: [string, 'null'] }
+    CatalogDetails:
+      description: A title's page; `seasonCount`, `episodeCount` and `seasons` for shows only
+      allOf:
+        - $ref: '#/components/schemas/CatalogTitle'
+        - type: object
+          required: [imdbId, genres, runtime, tagline, status, videos]
+          properties:
+            imdbId: { type: [string, 'null'] }
+            genres: { type: array, items: { $ref: '#/components/schemas/CatalogGenre' } }
+            runtime: { type: [integer, 'null'], description: 'Minutes: a movie''s, a show''s usual episode' }
+            tagline: { type: [string, 'null'] }
+            status: { type: [string, 'null'] }
+            videos: { type: array, items: { $ref: '#/components/schemas/CatalogVideo' } }
+            seasonCount: { type: integer }
+            episodeCount: { type: integer }
+            seasons: { type: array, items: { $ref: '#/components/schemas/CatalogSeasonSummary' } }
+    CatalogCast:
+      type: object
+      required: [personId, name, character, profilePath, creditId, order]
+      properties:
+        personId: { type: integer }
+        name: { type: string }
+        character: { type: [string, 'null'] }
+        profilePath: { type: [string, 'null'] }
+        creditId: { type: string }
+        order: { type: [integer, 'null'] }
+    CatalogCrew:
+      type: object
+      required: [personId, name, job, department, profilePath, creditId]
+      properties:
+        personId: { type: integer }
+        name: { type: string }
+        job: { type: [string, 'null'] }
+        department: { type: [string, 'null'] }
+        profilePath: { type: [string, 'null'] }
+        creditId: { type: string }
+    CatalogCredits:
+      type: object
+      required: [cast, crew]
+      properties:
+        cast: { type: array, items: { $ref: '#/components/schemas/CatalogCast' } }
+        crew: { type: array, items: { $ref: '#/components/schemas/CatalogCrew' } }
+    CatalogEpisode:
+      type: object
+      required: [seasonNumber, episodeNumber, name, overview, airDate, runtime, stillPath, voteAverage, voteCount, crew, guestStars]
+      properties:
+        seasonNumber: { type: integer }
+        episodeNumber: { type: integer }
+        name: { type: string }
+        overview: { type: string }
+        airDate: { type: [string, 'null'], description: null = not announced }
+        runtime: { type: [integer, 'null'] }
+        stillPath: { type: [string, 'null'] }
+        voteAverage: { type: number }
+        voteCount: { type: integer }
+        crew: { type: array, items: { $ref: '#/components/schemas/CatalogCrew' } }
+        guestStars: { type: array, items: { $ref: '#/components/schemas/CatalogCast' } }
+    CatalogSeason:
+      type: object
+      required: [tmdbId, seasonNumber, name, overview, airDate, posterPath, episodes]
+      properties:
+        tmdbId: { type: integer, description: The show's }
+        seasonNumber: { type: integer }
+        name: { type: string }
+        overview: { type: string }
+        airDate: { type: [string, 'null'] }
+        posterPath: { type: [string, 'null'] }
+        episodes: { type: array, items: { $ref: '#/components/schemas/CatalogEpisode' } }
+    CatalogExtras:
+      type: object
+      required: [providers, errors]
+      properties:
+        providers:
+          type: array
+          description: In the admin's order; only providers that added something
+          items:
+            type: object
+            required: [plugin, name, ratings, tags, links, lines]
+            properties:
+              plugin: { type: string }
+              name: { type: string }
+              ratings:
+                type: array
+                items:
+                  type: object
+                  required: [source, value, max, votes, url]
+                  properties:
+                    source: { type: string, description: 'Shown before the value (Trakt, Letterboxd…)' }
+                    value: { type: number }
+                    max: { type: number, description: 'Its scale: 10, 5, 100…' }
+                    votes: { type: [integer, 'null'] }
+                    url: { type: [string, 'null'] }
+              tags: { type: array, items: { type: string } }
+              links:
+                type: array
+                description: To show (a TV doesn't open them)
+                items:
+                  type: object
+                  required: [label, url]
+                  properties:
+                    label: { type: string }
+                    url: { type: string }
+              lines: { type: array, description: 'Meta-line items (as `PluginTitleMeta` items)', items: { type: object } }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [plugin, code]
+            properties:
+              plugin: { type: string }
+              code: { type: string }
+    CatalogPersonCredits:
+      type: object
+      required: [cast, crew]
+      properties:
+        cast:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/CatalogTitle'
+              - type: object
+                required: [character]
+                properties:
+                  character: { type: [string, 'null'] }
+        crew:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/CatalogTitle'
+              - type: object
+                required: [job, department]
+                properties:
+                  job: { type: [string, 'null'] }
+                  department: { type: [string, 'null'] }
+
     # ── library
     MediaType:
       type: string
@@ -5390,7 +5858,7 @@ components:
     Settings:
       type: object
       description: Every server setting (plan §5.3); secrets (`providers.*ApiKey`) masked as `••••<last 4>`
-      required: [general, network, security, storage, streaming, downloads, dlna, plugins, providers, transcoding]
+      required: [general, network, security, storage, streaming, downloads, dlna, plugins, metadata, providers, transcoding]
       properties:
         general:
           type: object
@@ -5420,10 +5888,11 @@ components:
             downloadDir: { type: string, description: 'Empty = the default (<cache>/torrent_data)' }
         streaming:
           type: object
-          required: [maxTorrents, maxTranscodes, idleTimeoutMinutes]
+          required: [maxTorrents, maxTranscodes, maxLive, idleTimeoutMinutes]
           properties:
             maxTorrents: { type: integer, minimum: 1, description: 'Running torrents at once (streams and downloads)' }
             maxTranscodes: { type: integer, minimum: 1 }
+            maxLive: { type: integer, minimum: 1, description: 'Live streams at once (plugins'' live HLS playlists and continuous streams, one per device and stream); past it 503 `BUSY`' }
             idleTimeoutMinutes: { type: integer, minimum: 1 }
         downloads:
           type: object
@@ -5451,11 +5920,19 @@ components:
             publisherKeys: { type: array, items: { type: string }, description: 'ed25519:<base64> public keys whose signed packages install without developer mode' }
             updates: { type: string, enum: [auto, notify, never], description: 'Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn''t look; a plugin may override it' }
             sourcesNotice: { type: boolean, description: 'The Overview''s "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed' }
+        metadata:
+          type: object
+          required: [language, region, order, disabled]
+          properties:
+            language: { type: string, pattern: '^[a-z]{2}(-[A-Z]{2})?$', description: 'What `/catalog/*` answers in (en-US, fr, pt-BR…)' }
+            region: { type: string, pattern: '^([A-Z]{2})?$', description: 'Region of the movie lists (now playing, upcoming…); empty = the provider''s default' }
+            order: { type: array, items: { type: string }, description: 'Metadata providers (plugin ids) whose additions come first, in this order; the others after, by id' }
+            disabled: { type: array, items: { type: string }, description: 'Metadata providers switched off (their hooks aren''t asked for title pages)' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey]
           properties:
-            tmdbApiKey: { type: string }
+            tmdbApiKey: { type: string, description: 'Empty = the TMDB app key Playpex ships' }
             openSubtitlesApiKey: { type: string }
             wyzieApiKey: { type: string }
         transcoding:

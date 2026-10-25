@@ -150,11 +150,11 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     this.opening = true;
     this.navigation.updateNavigation('remove' , {sectionId : "menu"})
     this.navigation.updateNavigation('remove' , {sectionId : "slider"})
-    // the focused one, enriched by movies-page (genres, torrents, imdb id)
+    // the focused one, enriched by movies-page (its page, IMDb rating)
     let selected = this.moviesService.selectedmovie.value;
-    let payload = selected && selected['id'] == item.id ? selected : item;
+    let payload = selected && selected.tmdbId == item.tmdbId ? selected : item;
     gsap.timeline().to(".sliderContainer" , {opacity : 0 , y : dp(100) , duration : .2 , ease : Power2.easeOut , onComplete : () => {
-      this.navigator.open({ screen: this.catalog.detailScreen, params: { id: item.id }, payload });
+      this.navigator.open({ screen: this.catalog.detailScreen, params: { id: item.tmdbId }, payload });
     }});
   }
 
@@ -165,8 +165,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     this.catalog.requestPage(category , Math.floor(count / PAGE_SIZE) + 1);
   }
 
-  trackById(index:Number, movie: { id: any; }) {
-    return movie?.id;
+  trackById(index:Number, movie: { tmdbId: number; }) {
+    return movie?.tmdbId;
   }
 
   trackByCategory(index:Number , category: { key: any; }){
