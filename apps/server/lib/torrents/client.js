@@ -36,6 +36,7 @@ var fs = require('fs'),
   protocol = require('@playpex/protocol'),
   engines = require('./engines'),
   errors = require('./errors'),
+  peerid = require('./peerid'),
   files = require('./files'),
   trackers = require('../trackers'),
   refs = require('../media/refs'),
@@ -46,7 +47,9 @@ var fs = require('fs'),
   userData = require('../userData'),
   log = require('../logger').child('torrent');
 
-var POLL_MS = 2000,
+var SPEED_SAMPLES = 300,  // 10 minutes of polls
+  READ_AHEAD = 16 * 1024 * 1024,   // what a player is about to read, past its position
+  POLL_MS = 2000,
   PERSIST_MS = 30 * 1000,
   TAIL_BYTES = 2 * 1024 * 1024,
   ACTIVE = ['checking', 'downloading', 'seeding'],
@@ -167,6 +170,60 @@ function iso(date) {
   return date ? new Date(date).toISOString() : null;
 }
 
+var PIECE_MAP_SLICES = 100;
+
+// The swarm strip's data (dashboard plan §3.3): the torrent cut into up to
+// 100 slices, each the share of its pieces verified (0–255), base64. The last
+// pieces the engine reported are kept while the torrent is stopped; a
+// completed one without them is full.
+function pieceMap(d) {
+  var pieces = d.pieces;
+  if (!pieces || !pieces.length) {
+    return isDone(d) ? doneMap(d) : null;
+  }
+  var n = Math.min(PIECE_MAP_SLICES, pieces.length), out = Buffer.alloc(n);
+  for (var i = 0; i < n; i++) {
+    var from = Math.floor(i * pieces.length / n), to = Math.floor((i + 1) * pieces.length / n), have = 0;
+    for (var j = from; j < to; j++) {
+      have += pieces[j] ? 1 : 0;
+    }
+    out[i] = Math.round(have / Math.max(1, to - from) * 255);
+  }
+  return out.toString('base64');
+}
+
+// A finished download the engine reported no pieces of (done before a poll,
+// or after a restart): its selected files' bytes are there, the rest not
+function doneMap(d) {
+  if (!d.meta || !d.meta.length) {
+    return Buffer.from([255]).toString('base64');
+  }
+  var n = PIECE_MAP_SLICES, out = Buffer.alloc(n), length = d.meta.length, chosen = selectedOf(d);
+  for (var i = 0; i < n; i++) {
+    var from = i * length / n, to = (i + 1) * length / n, have = 0;
+    chosen.forEach(function (f) {
+      have += Math.max(0, Math.min(to, f.offset + f.size) - Math.max(from, f.offset));
+    });
+    out[i] = Math.round(have / (to - from) * 255);
+  }
+  return out.toString('base64');
+}
+
+// 1-based place in the download queue (oldest first, as pump() starts them)
+function queuePosition(d) {
+  if (d.row.state !== 'queued') {
+    return null;
+  }
+  var ahead = 0;
+  Object.keys(downloads).forEach(function (h) {
+    var o = downloads[h];
+    if (o !== d && o.row.state === 'queued' && o.row.addedAt < d.row.addedAt) {
+      ahead++;
+    }
+  });
+  return ahead + 1;
+}
+
 // The API's Download
 function view(d) {
   var r = d.row, live = isActive(d) ? d.live : null;
@@ -193,6 +250,10 @@ function view(d) {
     addedBy: r.addedBy,
     profileId: r.profileId,
     removeWhenWatched: !!r.removeWhenWatched,
+    label: r.label || null,
+    queuePosition: queuePosition(d),
+    pieceMap: pieceMap(d),
+    savePath: r.name ? path.join(r.saveDir, r.name) : r.saveDir,
     addedAt: iso(r.addedAt),
     completedAt: iso(r.completedAt),
     lastActiveAt: iso(r.lastActiveAt)
@@ -202,7 +263,8 @@ function view(d) {
 function publishUpdate(d, force) {
   var v = view(d),
     key = [v.state, v.error, v.doneBytes, v.uploadedBytes, v.downloadSpeed, v.uploadSpeed, v.peers, v.checking, v.name,
-      v.intent, JSON.stringify(v.selectedFiles), JSON.stringify(v.title), v.removeWhenWatched].join('|');
+      v.intent, JSON.stringify(v.selectedFiles), JSON.stringify(v.title), v.removeWhenWatched, v.label, v.queuePosition,
+      v.pieceMap].join('|');
   if (force || key !== d.published) {
     d.published = key;
     events.publish('download.updated', v);
@@ -242,7 +304,8 @@ function engineAdd(d, paused) {
     // a stream plays one file: its largest until the player names it
     onlyLargest: d.row.intent === 'stream' && !d.row.selectedFiles,
     paused: paused,
-    trackers: trackers.list
+    // the admin's additions (in memory: kept until the server restarts)
+    trackers: trackers.list.concat(d.row.trackers || [])
   }).then(function () {
     d.inEngine = true;
   });
@@ -401,6 +464,9 @@ function poll() {
         return;
       }
       d.live = s;
+      if (s.pieces) {
+        d.pieces = s.pieces;
+      }
       var up = s.uploadedBytes >= d.counters.up ? s.uploadedBytes - d.counters.up : s.uploadedBytes;
       d.counters = { up: s.uploadedBytes, down: s.downloadedBytes };
       if (up) {
@@ -433,6 +499,11 @@ function poll() {
         return;
       }
       d.row.lastActiveAt = new Date();
+      d.speed = d.speed || [];
+      d.speed.push([Date.now(), s.downBps, s.upBps, s.peers]);
+      if (d.speed.length > SPEED_SAMPLES) {
+        d.speed.splice(0, d.speed.length - SPEED_SAMPLES);
+      }
       publishUpdate(d);
     });
     if (Date.now() - lastPersist > PERSIST_MS) {
@@ -590,6 +661,24 @@ function add(link, options) {
   });
 }
 
+// What a link is before adding it (the dashboard's Add dialog): its name and
+// files when they are known without the swarm (a .torrent, or a torrent the
+// server already keeps); a new magnet's files arrive only with its metadata
+function preview(link) {
+  return ready.then(function () {
+    return resolveLink(link);
+  }).then(function (src) {
+    var known = downloads[src.infoHash] || null, meta = src.meta || (known && known.meta) || null;
+    return {
+      infoHash: src.infoHash,
+      name: (meta && meta.name) || src.name || (known && known.row.name) || null,
+      sizeBytes: meta ? meta.length : null,
+      files: meta ? meta.files.map(function (f) { return { path: f.path, size: f.size }; }) : null,
+      known: known ? view(known) : null
+    };
+  });
+}
+
 // ── streaming ──────────────────────────────────────────────────────────────
 
 function fileOf(d, filePath) {
@@ -677,8 +766,27 @@ function stream(hash, filePath, range) {
     }
     return serial(d, function () { return null; }).then(function () {
       return engine.stream(hash, filePath, range);
+    }).then(function (readable) {
+      return reading(d, file, range, readable);
     });
   });
+}
+
+// Where players read (the Pieces tab's streamed range): the bytes pass
+// through a counter while the stream is open
+function reading(d, file, range, readable) {
+  var start = (range && range.start) || 0,
+    read = { path: file.path, offset: file.offset, start: start, position: start, at: Date.now() },
+    counter = new (require('stream').PassThrough)();
+  d.reads = (d.reads || []).concat(read);
+  counter.on('data', function (chunk) {
+    read.position += chunk.length;
+    read.at = Date.now();
+  });
+  require('stream').pipeline(readable, counter, function () {
+    d.reads = d.reads.filter(function (r) { return r !== read; });
+  });
+  return counter;
 }
 
 // Players read a video's index before starting: MKV keeps it (Cues) at the end
@@ -846,6 +954,15 @@ function describe(hash, info) {
   }
 }
 
+// The admin's label (free text, ≤ 40 characters; empty = none)
+function setLabel(hash, value) {
+  return ready.then(function () {
+    var d = find(hash), label = typeof value === 'string' ? value.trim().slice(0, 40) : '';
+    persist(d, { label: label || null });
+    publishUpdate(d);
+  });
+}
+
 function setRemoveWhenWatched(hash, value) {
   return ready.then(function () {
     var d = find(hash);
@@ -879,9 +996,19 @@ function resumeAll() {
 }
 
 // After settings changed (lib/routes/admin.js): limits, seeding rules, pause
+// What setLimits gets: upload slots, and the speed limits where the engine can
+function limits(capabilities) {
+  var out = { uploadSlots: settings.get('downloads.uploadSlots') };
+  if ((capabilities || caps).rateLimits) {
+    out.downBps = settings.get('downloads.downLimitKBps') * 1024;
+    out.upBps = settings.get('downloads.upLimitKBps') * 1024;
+  }
+  return out;
+}
+
 function settingsChanged(keys) {
-  if (keys.indexOf('downloads.uploadSlots') !== -1 && engine) {
-    engine.setLimits({ uploadSlots: settings.get('downloads.uploadSlots') }).catch(function () {});
+  if (engine && keys.some(function (k) { return /^downloads\.(uploadSlots|downLimitKBps|upLimitKBps)$/.test(k); })) {
+    engine.setLimits(limits()).catch(function () {});
   }
   if (keys.indexOf('downloads.paused') !== -1) {
     if (globalPaused()) {
@@ -983,6 +1110,171 @@ function torrentStats(hash) {
   };
 }
 
+// ── a download's detail (docs/dashboard-plan.md §4.3, engine port v2) ───────
+
+function capable(capability, what) {
+  if (!engine) {
+    throw failure('UNAVAILABLE', 'No torrent engine: ' + (engineInfo.error || 'not started'));
+  }
+  if (!caps[capability]) {
+    throw failure('NOT_SUPPORTED', 'The ' + engineInfo.id + ' engine doesn\'t report ' + what);
+  }
+}
+
+/** The connected peers (none while stopped), their client's name, and the availability */
+function peers(hash) {
+  return ready.then(function () {
+    var d = find(hash);
+    capable('peerList', 'its peers');
+    if (!isActive(d) || !d.inEngine) {
+      return { running: false, peers: [], availability: null };
+    }
+    return engine.peers(d.row.infoHash).then(function (answer) {
+      return {
+        running: true,
+        availability: answer.availability,
+        peers: answer.peers.map(function (p) {
+          return {
+            address: p.address,
+            client: p.client || peerid.clientOf(p.peerId) || null,
+            flags: p.flags || '',
+            progress: p.progress,
+            downloadSpeed: Math.round(p.downBps || 0),
+            uploadSpeed: Math.round(p.upBps || 0),
+            downloaded: p.downloaded || 0,
+            uploaded: p.uploaded || 0
+          };
+        }).sort(function (a, b) { return b.downloadSpeed - a.downloadSpeed || b.uploadSpeed - a.uploadSpeed; })
+      };
+    });
+  });
+}
+
+/** Its trackers: the engine's list (and status where it knows it), ours marked */
+function trackersOf(hash) {
+  return ready.then(function () {
+    var d = find(hash);
+    capable('trackerList', 'its trackers');
+    var listed = isActive(d) && d.inEngine ? engine.trackers(d.row.infoHash) : Promise.resolve([]);
+    return listed.then(function (list) {
+      var seen = {}, out = [];
+      list.concat((d.row.trackers || []).concat(trackers.list).map(function (url) { return { url: url, status: null }; }))
+        .forEach(function (t) {
+          if (seen[t.url]) {
+            return;
+          }
+          seen[t.url] = true;
+          out.push({
+            url: t.url,
+            status: !isActive(d) ? 'stopped' : t.status || 'unknown',
+            seeds: t.seeds === undefined ? null : t.seeds,
+            peers: t.peers === undefined ? null : t.peers,
+            message: t.message || null,
+            ours: trackers.list.indexOf(t.url) !== -1
+          });
+        });
+      return { running: isActive(d), trackers: out };
+    });
+  });
+}
+
+/**
+ * Adds announce URLs (http(s) / udp); the engine uses them now or from its
+ * next start. Kept in memory until the server restarts (not in the table).
+ */
+function addTrackers(hash, urls) {
+  return ready.then(function () {
+    var d = find(hash);
+    capable('trackerEdit', 'adding trackers');
+    if (!Array.isArray(urls) || !urls.length || urls.some(function (u) { return typeof u !== 'string' || !/^(https?|udp):\/\/[^\s]+$/i.test(u); })) {
+      throw failure('INVALID', 'trackers must be http(s):// or udp:// announce URLs');
+    }
+    d.row.trackers = (d.row.trackers || []).concat(urls.filter(function (u) { return (d.row.trackers || []).indexOf(u) === -1; }));
+    return d.inEngine ? serial(d, function () { return engine.addTrackers(d.row.infoHash, urls); }) : null;
+  });
+}
+
+/** Every piece verified again (a running torrent) */
+function recheck(hash) {
+  return ready.then(function () {
+    var d = find(hash);
+    capable('recheck', 'a recheck');
+    if (!isActive(d) || !d.inEngine) {
+      throw failure('CONFLICT', 'Start it first: only a running torrent is checked');
+    }
+    log.info('checking ' + hash + ' again (the admin)');
+    // the engine reports `checking` while it verifies (the next polls)
+    return serial(d, function () { return engine.recheck(d.row.infoHash); });
+  });
+}
+
+function bitfield(pieces) {
+  var out = Buffer.alloc(Math.ceil(pieces.length / 8));
+  for (var i = 0; i < pieces.length; i++) {
+    if (pieces[i]) {
+      out[i >> 3] |= 0x80 >> (i & 7);
+    }
+  }
+  return out.toString('base64');
+}
+
+/**
+ * Its pieces (the Pieces tab): the verified ones as a bitfield (base64,
+ * first piece = the first byte's high bit), the selected files' piece
+ * ranges, and where players read now (their position and the read-ahead)
+ */
+function piecesOf(hash) {
+  return ready.then(function () {
+    var d = find(hash);
+    if (!d.meta || !d.meta.pieceLength) {
+      return { pieceLength: null, count: 0, have: null, files: [], reads: [] };
+    }
+    var pl = d.meta.pieceLength, count = Math.ceil(d.meta.length / pl), pieces = d.pieces;
+    if (!pieces || pieces.length !== count) {
+      // stopped without a report: whole pieces of finished files
+      pieces = new Uint8Array(count);
+      if (isDone(d)) {
+        selectedOf(d).forEach(function (f) {
+          for (var i = Math.ceil(f.offset / pl); i < Math.floor((f.offset + f.size) / pl); i++) {
+            pieces[i] = 1;
+          }
+        });
+      }
+    }
+    var piece = function (byte) { return Math.min(count - 1, Math.floor(byte / pl)); };
+    return {
+      pieceLength: pl,
+      count: count,
+      have: bitfield(pieces),
+      files: selectedOf(d).map(function (f) {
+        return { path: f.path, first: piece(f.offset), last: piece(f.offset + Math.max(f.size, 1) - 1) };
+      }),
+      reads: isActive(d) ? (d.reads || []).map(function (r) {
+        return {
+          path: r.path,
+          from: piece(r.offset + r.start),
+          position: piece(r.offset + r.position),
+          ahead: piece(r.offset + r.position + READ_AHEAD),
+          at: new Date(r.at).toISOString()
+        };
+      }) : []
+    };
+  });
+}
+
+/** The last 10 minutes of its speeds and peers, a sample every 2 s */
+function speedOf(hash) {
+  return ready.then(function () {
+    var d = find(hash);
+    return {
+      intervalMs: POLL_MS,
+      samples: (d.speed || []).map(function (s) {
+        return { at: new Date(s[0]).toISOString(), down: Math.round(s[1]), up: Math.round(s[2]), peers: s[3] };
+      })
+    };
+  });
+}
+
 // Sum over the active torrents: speeds, peers, the engine's byte counters
 function totals() {
   return Object.keys(downloads).reduce(function (sum, hash) {
@@ -1049,7 +1341,7 @@ function startEngine(id, options) {
     peerPort: options.peerPort !== undefined ? options.peerPort : settings.get('downloads.peerPort'),
     portForwarding: settings.get('downloads.portForwarding'),
     discovery: options.discovery,
-    limits: { uploadSlots: settings.get('downloads.uploadSlots') },
+    limits: limits(candidate.capabilities),
     log: log
   }).then(function () {
     return candidate.health();
@@ -1070,6 +1362,12 @@ function attach(candidate) {
   candidate.on('metadata', onMetadata);
   candidate.on('done', onDone);
   candidate.on('error', onError);
+  // speed limits: set after the start (sidecars take them over their API)
+  if (caps.rateLimits && (settings.get('downloads.downLimitKBps') || settings.get('downloads.upLimitKBps'))) {
+    candidate.setLimits(limits()).catch(function (err) {
+      log.warn('cannot set the speed limits: ' + err.message);
+    });
+  }
 }
 
 // torrents.json (the hashes the old store kept) → paused downloads, when
@@ -1251,6 +1549,14 @@ module.exports = {
   requeue: requeue,
   describe: describe,
   setRemoveWhenWatched: setRemoveWhenWatched,
+  setLabel: setLabel,
+  preview: preview,
+  peers: peers,
+  trackers: trackersOf,
+  addTrackers: addTrackers,
+  recheck: recheck,
+  pieces: piecesOf,
+  speed: speedOf,
   pauseAll: pauseAll,
   resumeAll: resumeAll,
   settingsChanged: settingsChanged,

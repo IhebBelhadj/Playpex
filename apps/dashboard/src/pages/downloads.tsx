@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Download as DownloadIcon, FileVideo, Pause, Play, Plus, Trash2 } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router'
+import type { ColumnDef } from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, Copy, Download as DownloadIcon, FileUp, FolderOpen, HardDrive, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, Tag, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
+import { AddDownloadDialog } from '@/components/add-download'
+import { Empty, Loading, QueryError, Spinner } from '@/components/common'
+import { DataTable, type RowAction } from '@/components/data-table'
+import { DownloadPane, PANE_TABS, type PaneTab } from '@/components/download-pane'
+import { useOverview } from '@/components/layout'
+import { usePlayer } from '@/components/player'
+import { SwarmStrip, toneOf } from '@/components/swarm-strip'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -13,391 +20,877 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { api, errorMessage, unwrap, type Schemas } from '@/lib/api'
-import { useEvent } from '@/lib/events'
+import { api, errorMessage, unwrap } from '@/lib/api'
+import {
+  canPause,
+  canStart,
+  KINDS,
+  kindOf,
+  magnetOf,
+  RUNNING,
+  stateText,
+  titleOf,
+  useDeviceNames,
+  useDownloadActions,
+  useDownloads,
+  videoToPlay,
+  type Download,
+  type DownloadState,
+} from '@/lib/downloads'
 import { ago, bytes, clock, dateTime, speed } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
-// Every torrent the server keeps (docs/media-server-plan.md §4.5): what runs,
-// what waits, what is done; add, start, pause, choose files, remove. Live
-// through the events socket (download.updated patches the list in place).
+// Downloads as a torrent client (docs/dashboard-plan.md §4, step 2): a filter
+// rail, the list (DataTable: sortable, columns to choose, multi-select, a row
+// menu, the keyboard), the selected download's detail under it (a sheet on a
+// phone), a status bar with the totals, the speed limits, the disk and "Pause
+// all". The URL keeps the filter (?filter=), the open download (?hash=) and
+// its tab (?tab=). Drop a .torrent anywhere on the page to add it.
 
-type Download = Schemas['Download']
-type State = Download['state']
-
-const STATE: Record<State, { label: string; tone: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  downloading: { label: 'Downloading', tone: 'default' },
-  seeding: { label: 'Seeding', tone: 'secondary' },
-  checking: { label: 'Checking', tone: 'secondary' },
-  queued: { label: 'Queued', tone: 'outline' },
-  paused: { label: 'Paused', tone: 'outline' },
-  completed: { label: 'Completed', tone: 'secondary' },
-  error: { label: 'Error', tone: 'destructive' },
-}
-
-const FILTERS: { id: string; label: string; states: State[] | null }[] = [
-  { id: 'all', label: 'All', states: null },
-  { id: 'active', label: 'Active', states: ['downloading', 'seeding', 'checking'] },
-  { id: 'queued', label: 'Queued', states: ['queued'] },
-  { id: 'paused', label: 'Paused', states: ['paused', 'error'] },
+const STATES: { id: string; label: string; states: DownloadState[] }[] = [
+  { id: 'downloading', label: 'Downloading', states: ['downloading', 'checking'] },
+  { id: 'seeding', label: 'Seeding', states: ['seeding'] },
   { id: 'completed', label: 'Completed', states: ['completed'] },
+  { id: 'paused', label: 'Paused', states: ['paused'] },
+  { id: 'queued', label: 'Queued', states: ['queued'] },
+  { id: 'error', label: 'Errors', states: ['error'] },
 ]
 
-const RUNNING: State[] = ['downloading', 'seeding', 'checking']
-
-function titleOf(d: Download): string | null {
-  const t = d.title
-  if (!t) return null
-  const code = t.season ? ` · S${String(t.season).padStart(2, '0')}E${String(t.episode ?? 0).padStart(2, '0')}` : ''
-  return (t.title ?? `TMDB ${t.mediaType} ${t.tmdbId}`) + (t.title?.includes(' · ') ? '' : code)
+function matches(d: Download, filter: string): boolean {
+  if (filter === 'all') return true
+  if (filter.startsWith('kind:')) return kindOf(d) === filter.slice(5)
+  if (filter.startsWith('label:')) return d.label === filter.slice(6)
+  return STATES.find((s) => s.id === filter)?.states.includes(d.state) ?? true
 }
 
-function useDownloads() {
-  const client = useQueryClient()
-  const query = useQuery({
-    queryKey: ['downloads'],
-    queryFn: () => unwrap(api.GET('/downloads')),
-    refetchInterval: 30_000,
-  })
-  // progress every 2 s per torrent: patch the cached list instead of refetching
-  useEvent<Download>('download.updated', (e) => {
-    client.setQueryData<Download[]>(['downloads'], (list) =>
-      list?.some((d) => d.infoHash === e.data.infoHash) ? list.map((d) => (d.infoHash === e.data.infoHash ? e.data : d)) : list,
-    )
-  })
-  return query
+function useIsDesktop() {
+  const query = '(min-width: 768px)'
+  const [desktop, setDesktop] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const m = window.matchMedia(query)
+    const change = () => setDesktop(m.matches)
+    m.addEventListener('change', change)
+    return () => m.removeEventListener('change', change)
+  }, [])
+  return desktop
 }
 
-function useActions() {
-  const client = useQueryClient()
-  const done = (message: string) => () => {
-    toast.success(message)
-    client.invalidateQueries({ queryKey: ['downloads'] })
-    client.invalidateQueries({ queryKey: ['download'] })
+const PANE_KEY = 'playpex.downloads.pane'
+
+function usePaneHeight() {
+  const [height, setHeight] = useState(() => {
+    try {
+      return Number(localStorage.getItem(PANE_KEY)) || 300
+    } catch {
+      return 300
+    }
+  })
+  const drag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const start = height
+    let last = start
+    const move = (ev: PointerEvent) => {
+      last = Math.max(160, Math.min(window.innerHeight * 0.7, start + startY - ev.clientY))
+      setHeight(last)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      try {
+        localStorage.setItem(PANE_KEY, String(Math.round(last)))
+      } catch {
+        // a per-viewer convenience: fine without it
+      }
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
-  const fail = (err: unknown) => toast.error(errorMessage(err))
-  const path = (infoHash: string) => ({ params: { path: { infoHash } } })
-  return {
-    start: useMutation({ mutationFn: (h: string) => unwrap(api.POST('/downloads/{infoHash}/start', path(h))), onSuccess: done('Started'), onError: fail }),
-    pause: useMutation({ mutationFn: (h: string) => unwrap(api.POST('/downloads/{infoHash}/pause', path(h))), onSuccess: done('Paused'), onError: fail }),
-    remove: useMutation({
-      mutationFn: ({ hash, data }: { hash: string; data: 'keep' | 'delete' }) =>
-        unwrap(api.DELETE('/downloads/{infoHash}', { params: { path: { infoHash: hash }, query: { data } } })),
-      onSuccess: (_, { data }) => {
-        done(data === 'delete' ? 'Removed with its files' : 'Removed, files kept')()
-        client.invalidateQueries({ queryKey: ['storage'] })
-      },
-      onError: fail,
-    }),
-  }
+  return { height, drag }
+}
+
+function copy(text: string, what: string) {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(`${what} copied`),
+    () => toast.error(`Couldn't copy the ${what.toLowerCase()}`),
+  )
 }
 
 export function DownloadsPage() {
   const downloads = useDownloads()
-  const actions = useActions()
+  const actions = useDownloadActions()
+  const deviceName = useDeviceNames()
+  const navigate = useNavigate()
+  const desktop = useIsDesktop()
   const [params, setParams] = useSearchParams()
-  const [filter, setFilter] = useState('all')
+  const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
-  const [removing, setRemoving] = useState<Download | null>(null)
+  const [addKey, setAddKey] = useState(0)
+  const [dropped, setDropped] = useState<File | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [removing, setRemoving] = useState<string[] | null>(null)
+  const [labelling, setLabelling] = useState<string[] | null>(null)
+  const pane = usePaneHeight()
+  const player = usePlayer()
+
+  // its video, from the download's file list (the largest selected one)
+  const playDownload = (d: Download) => {
+    unwrap(api.GET('/downloads/{infoHash}', { params: { path: { infoHash: d.infoHash } } }))
+      .then((detail) => {
+        const file = videoToPlay(detail.files)
+        if (!file) {
+          toast.error(detail.files ? 'It has no video to play' : 'Its files aren’t known yet: it needs its metadata first')
+          return
+        }
+        player.play({ ref: file.ref, title: file.name, detail: d.name ?? undefined })
+      })
+      .catch((err) => toast.error(errorMessage(err)))
+  }
+
+  const filter = params.get('filter') ?? 'all'
   const open = params.get('hash')
+  const tab = (PANE_TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as PaneTab) : 'general'
+  const setParam = useCallback(
+    (changes: Record<string, string | null>) =>
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          for (const [k, v] of Object.entries(changes)) {
+            if (v === null) next.delete(k)
+            else next.set(k, v)
+          }
+          return next
+        },
+        { replace: true },
+      ),
+    [setParams],
+  )
 
   const list = useMemo(() => downloads.data ?? [], [downloads.data])
+  const byHash = useMemo(() => new Map(list.map((d) => [d.infoHash, d])), [list])
+  const labels = useMemo(() => [...new Set(list.map((d) => d.label).filter((l): l is string => !!l))].sort(), [list])
   const shown = useMemo(() => {
-    const states = FILTERS.find((f) => f.id === filter)?.states
-    return states ? list.filter((d) => states.includes(d.state)) : list
-  }, [list, filter])
-  const totals = list.reduce((s, d) => ({ down: s.down + d.downloadSpeed, up: s.up + d.uploadSpeed }), { down: 0, up: 0 })
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    return list.filter(
+      (d) =>
+        matches(d, filter) &&
+        words.every((w) => `${d.name ?? ''} ${titleOf(d) ?? ''} ${d.label ?? ''} ${d.infoHash}`.toLowerCase().includes(w)),
+    )
+  }, [list, filter, q])
+
+  // the selection: only downloads that still exist and are shown
+  const [picked, setSelection] = useState<string[]>([])
+  const selection = useMemo(() => {
+    const visible = new Set(shown.map((d) => d.infoHash))
+    return picked.every((h) => visible.has(h)) ? picked : picked.filter((h) => visible.has(h))
+  }, [picked, shown])
+
+  const chosen = selection.map((h) => byHash.get(h)).filter((d): d is Download => !!d)
+  const openPane = (hash: string | null) => setParam({ hash, tab: hash ? (params.get('tab') ?? null) : null })
+
+  // Space: pause what runs, else start
+  const toggleRun = (hashes: string[]) => {
+    const ds = hashes.map((h) => byHash.get(h)).filter((d): d is Download => !!d)
+    const running = ds.filter(canPause)
+    if (running.length) actions.pause.mutate(running.map((d) => d.infoHash))
+    else {
+      const stopped = ds.filter(canStart)
+      if (stopped.length) actions.start.mutate(stopped.map((d) => d.infoHash))
+    }
+  }
+
+  const rowActions = (d: Download): RowAction[] => {
+    const targets = selection.includes(d.infoHash) ? chosen : [d]
+    const hashes = targets.map((t) => t.infoHash)
+    const many = targets.length > 1 ? ` ${targets.length}` : ''
+    return [
+      { label: 'Play here', icon: <MonitorPlay />, shortcut: 'P', disabled: targets.length > 1 || d.name === null, onSelect: () => playDownload(d) },
+      'separator',
+      { label: `Start${many}`, icon: <Play />, shortcut: 'Space', disabled: !targets.some(canStart), onSelect: () => actions.start.mutate(targets.filter(canStart).map((t) => t.infoHash)) },
+      { label: `Pause${many}`, icon: <Pause />, shortcut: 'Space', disabled: !targets.some(canPause), onSelect: () => actions.pause.mutate(targets.filter(canPause).map((t) => t.infoHash)) },
+      {
+        label: 'Check the data again',
+        icon: <RefreshCw />,
+        disabled: !targets.some((t) => RUNNING.includes(t.state)),
+        onSelect: () => actions.recheck.mutate(targets.filter((t) => RUNNING.includes(t.state)).map((t) => t.infoHash)),
+      },
+      'separator',
+      { label: 'Set label…', icon: <Tag />, onSelect: () => setLabelling(hashes) },
+      { label: 'Copy magnet link', icon: <Copy />, disabled: targets.length > 1, onSelect: () => copy(magnetOf(d), 'Magnet link') },
+      { label: 'Show in Storage', icon: <FolderOpen />, onSelect: () => navigate('/storage') },
+      'separator',
+      { label: `Remove${many}…`, icon: <Trash2 />, shortcut: 'Del', destructive: true, onSelect: () => setRemoving(hashes) },
+    ]
+  }
+
+  const columns = useMemo<ColumnDef<Download, unknown>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorFn: (d) => (d.name ?? d.infoHash).toLowerCase(),
+        header: 'Name',
+        meta: { label: 'Name', fixed: true, className: 'w-full max-w-0 min-w-56' },
+        cell: ({ row: { original: d } }) => (
+          <div className="min-w-0">
+            <div className="truncate font-medium" title={d.name ?? d.infoHash}>
+              {d.name ?? <span className="font-mono text-xs text-muted-foreground">{d.infoHash}</span>}
+            </div>
+            {(titleOf(d) || d.label) && (
+              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                {titleOf(d) && <span className="truncate">{titleOf(d)}</span>}
+                {d.label && (
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <Tag className="size-3" />
+                    {d.label}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'size',
+        accessorFn: (d) => d.sizeBytes ?? -1,
+        header: 'Size',
+        meta: { label: 'Size', numeric: true, from: '3xl' },
+        cell: ({ row: { original: d } }) => bytes(d.sizeBytes),
+      },
+      {
+        id: 'done',
+        accessorFn: (d) => d.progress ?? -1,
+        header: 'Done',
+        meta: { label: 'Done', className: 'w-48' },
+        cell: ({ row: { original: d } }) => (
+          <div className="flex items-center gap-2.5">
+            <SwarmStrip map={d.pieceMap} progress={d.progress} tone={toneOf(d)} className="min-w-20 flex-1" />
+            <span className="w-11 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+              {d.progress === null ? '' : `${Math.floor(d.progress * 1000) / 10} %`}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: 'status',
+        accessorFn: (d) => stateText(d),
+        header: 'Status',
+        meta: { label: 'Status', className: 'whitespace-nowrap' },
+        cell: ({ row: { original: d } }) => (
+          <span
+            title={d.error ?? undefined}
+            className={cn(
+              d.state === 'error' && 'font-medium text-destructive',
+              ['paused', 'queued', 'completed'].includes(d.state) && 'text-muted-foreground',
+            )}
+          >
+            {stateText(d)}
+          </span>
+        ),
+      },
+      {
+        id: 'down',
+        accessorFn: (d) => d.downloadSpeed,
+        header: 'Down',
+        meta: { label: 'Download speed', numeric: true, from: '2xl' },
+        cell: ({ row: { original: d } }) =>
+          d.downloadSpeed ? <span className="text-down">{speed(d.downloadSpeed)}</span> : <span className="text-muted-foreground/60">—</span>,
+      },
+      {
+        id: 'up',
+        accessorFn: (d) => d.uploadSpeed,
+        header: 'Up',
+        meta: { label: 'Upload speed', numeric: true, from: '2xl' },
+        cell: ({ row: { original: d } }) =>
+          d.uploadSpeed ? <span className="text-up">{speed(d.uploadSpeed)}</span> : <span className="text-muted-foreground/60">—</span>,
+      },
+      {
+        id: 'eta',
+        accessorFn: (d) => (d.eta !== null && d.state === 'downloading' ? d.eta : Number.MAX_SAFE_INTEGER),
+        header: 'Time left',
+        meta: { label: 'Time left', numeric: true, from: '4xl' },
+        cell: ({ row: { original: d } }) => (d.eta !== null && d.state === 'downloading' ? clock(d.eta) : <span className="text-muted-foreground/60">—</span>),
+      },
+      {
+        id: 'seeds',
+        accessorFn: (d) => d.seeds,
+        header: 'Seeds',
+        meta: { label: 'Seeds (connected)', numeric: true, from: '6xl' },
+        cell: ({ row: { original: d } }) => (canPause(d) ? d.seeds : <span className="text-muted-foreground/60">—</span>),
+      },
+      {
+        id: 'peers',
+        accessorFn: (d) => d.peers,
+        header: 'Peers',
+        meta: { label: 'Peers (connected)', numeric: true, from: '5xl' },
+        cell: ({ row: { original: d } }) => (canPause(d) ? d.peers : <span className="text-muted-foreground/60">—</span>),
+      },
+      {
+        id: 'ratio',
+        accessorFn: (d) => d.ratio ?? -1,
+        header: 'Ratio',
+        meta: { label: 'Ratio', numeric: true, from: '4xl' },
+        cell: ({ row: { original: d } }) => (d.ratio === null ? '—' : d.ratio.toFixed(2)),
+      },
+      {
+        id: 'downloaded',
+        accessorFn: (d) => d.doneBytes,
+        header: 'Downloaded',
+        meta: { label: 'Downloaded', numeric: true },
+        cell: ({ row: { original: d } }) => bytes(d.doneBytes),
+      },
+      {
+        id: 'uploaded',
+        accessorFn: (d) => d.uploadedBytes,
+        header: 'Uploaded',
+        meta: { label: 'Uploaded', numeric: true },
+        cell: ({ row: { original: d } }) => bytes(d.uploadedBytes),
+      },
+      {
+        id: 'added',
+        accessorFn: (d) => d.addedAt,
+        header: 'Added',
+        meta: { label: 'Added', numeric: true },
+        cell: ({ row: { original: d } }) => <span title={dateTime(d.addedAt)}>{ago(d.addedAt)}</span>,
+      },
+      {
+        id: 'completedAt',
+        accessorFn: (d) => d.completedAt ?? '',
+        header: 'Completed',
+        meta: { label: 'Completed', numeric: true },
+        cell: ({ row: { original: d } }) => (d.completedAt ? <span title={dateTime(d.completedAt)}>{ago(d.completedAt)}</span> : '—'),
+      },
+      {
+        id: 'lastActive',
+        accessorFn: (d) => d.lastActiveAt ?? '',
+        header: 'Last active',
+        meta: { label: 'Last active', numeric: true },
+        cell: ({ row: { original: d } }) => (d.lastActiveAt ? ago(d.lastActiveAt) : '—'),
+      },
+      {
+        id: 'label',
+        accessorFn: (d) => d.label ?? '',
+        header: 'Label',
+        meta: { label: 'Label' },
+        cell: ({ row: { original: d } }) => d.label ?? '',
+      },
+      {
+        id: 'addedBy',
+        accessorFn: (d) => deviceName(d.addedBy) ?? '',
+        header: 'Added by',
+        meta: { label: 'Added by', className: 'whitespace-nowrap first-letter:uppercase' },
+        cell: ({ row: { original: d } }) => deviceName(d.addedBy) ?? '—',
+      },
+      {
+        id: 'savePath',
+        accessorFn: (d) => d.savePath,
+        header: 'Saved in',
+        meta: { label: 'Saved in', className: 'max-w-64' },
+        cell: ({ row: { original: d } }) => (
+          <span className="block truncate text-muted-foreground" title={d.savePath}>
+            {d.savePath}
+          </span>
+        ),
+      },
+    ],
+    [deviceName],
+  )
+
+  // a .torrent dropped anywhere on the page
+  const dragOver = (e: DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setDragging(true)
+  }
+  const drop = (e: DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    if (!/\.torrent$/i.test(file.name)) {
+      toast.error(`${file.name} isn't a .torrent file`)
+      return
+    }
+    setDropped(file)
+    setAddKey((k) => k + 1)
+    setAdding(true)
+  }
+
+  // Escape closes the pane (when the list doesn't take it to clear a selection)
+  useEffect(() => {
+    if (!open || !desktop) return
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[role=dialog], [role=menu]')) openPane(null)
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  })
 
   if (downloads.isPending) return <Loading />
   if (downloads.error) return <QueryError error={downloads.error} />
 
+  const counts = (states: DownloadState[]) => list.filter((d) => states.includes(d.state)).length
+
   return (
-    <>
-      <PageHeader
-        title="Downloads"
-        description={
-          <span className="flex flex-wrap items-center gap-3 font-mono text-xs">
-            <span className="flex items-center gap-1">
-              <ArrowDown className="size-3" /> {speed(totals.down)}
-            </span>
-            <span className="flex items-center gap-1">
-              <ArrowUp className="size-3" /> {speed(totals.up)}
-            </span>
-            <span>{list.filter((d) => RUNNING.includes(d.state)).length} running</span>
-          </span>
-        }
-        actions={
-          <div className="flex gap-2">
-            <PauseAllButton />
-            <Button onClick={() => setAdding(true)}>
-              <Plus /> Add
-            </Button>
-          </div>
-        }
-      />
-      {/* scrolls by itself on a phone, not the page */}
-      <Tabs value={filter} onValueChange={setFilter} className="max-w-full overflow-x-auto [scrollbar-width:none]">
-        <TabsList>
-          {FILTERS.map((f) => (
-            <TabsTrigger key={f.id} value={f.id}>
-              {f.label}
-              <span className="ml-1 text-muted-foreground tabular-nums">
-                {f.states ? list.filter((d) => f.states!.includes(d.state)).length : list.length}
-              </span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      {shown.length === 0 ? (
-        <Empty icon={<DownloadIcon />} title={list.length ? 'Nothing here' : 'No downloads yet'}>
-          {list.length
-            ? 'No download is in this state.'
-            : 'Torrents played on a device show up here, kept after the player leaves. Add one to download it without playing.'}
-        </Empty>
-      ) : (
-        <Card className="py-0">
-          <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-48">Progress</TableHead>
-                  <TableHead className="hidden text-right md:table-cell">Speed</TableHead>
-                  <TableHead className="hidden text-right lg:table-cell">Peers</TableHead>
-                  <TableHead className="hidden text-right lg:table-cell">Ratio</TableHead>
-                  <TableHead className="hidden text-right sm:table-cell">Size</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shown.map((d) => (
-                  <DownloadRow
-                    key={d.infoHash}
-                    d={d}
-                    onOpen={() => setParams({ hash: d.infoHash })}
-                    onStart={() => actions.start.mutate(d.infoHash)}
-                    onPause={() => actions.pause.mutate(d.infoHash)}
-                    onRemove={() => setRemoving(d)}
-                  />
+    <div
+      className="relative flex flex-col gap-4 md:h-[calc(100svh-4rem)]"
+      onDragOver={dragOver}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false)
+      }}
+      onDrop={drop}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="mr-2 text-xl font-semibold tracking-tight">Downloads</h1>
+        <Button
+          onClick={() => {
+            setAddKey((k) => k + 1)
+            setAdding(true)
+          }}
+        >
+          <Plus /> Add torrent
+        </Button>
+        <div className="hidden items-center gap-1 border-l pl-2 md:flex">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!chosen.some(canStart)}
+            onClick={() => actions.start.mutate(chosen.filter(canStart).map((d) => d.infoHash))}
+          >
+            <Play /> Start
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!chosen.some(canPause)}
+            onClick={() => actions.pause.mutate(chosen.filter(canPause).map((d) => d.infoHash))}
+          >
+            <Pause /> Pause
+          </Button>
+          <Button variant="ghost" size="sm" className="hidden sm:inline-flex" disabled={!chosen.length} onClick={() => setLabelling(selection)}>
+            <Tag /> Label
+          </Button>
+          <Button variant="ghost" size="sm" disabled={!chosen.length} onClick={() => setRemoving(selection)} className="hover:text-destructive">
+            <Trash2 /> Remove
+          </Button>
+          {chosen.length > 1 && <span className="ml-1 text-sm text-muted-foreground tabular-nums">{chosen.length} selected</span>}
+        </div>
+        <div className="relative ml-auto w-full sm:w-56">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a download" aria-label="Find a download" className="pl-8" />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* the filter rail (a select on phones) */}
+        <nav aria-label="Filter downloads" className="hidden w-44 shrink-0 flex-col gap-4 overflow-y-auto md:flex">
+          <RailGroup>
+            <RailItem label="All" count={list.length} active={filter === 'all'} onClick={() => setParam({ filter: null })} />
+            {STATES.filter((s) => s.id !== 'error' || counts(s.states)).map((s) => (
+              <RailItem
+                key={s.id}
+                label={s.label}
+                count={counts(s.states)}
+                active={filter === s.id}
+                tone={s.id === 'error' ? 'fault' : undefined}
+                onClick={() => setParam({ filter: s.id })}
+              />
+            ))}
+          </RailGroup>
+          <RailGroup title="What it is">
+            {KINDS.map((k) => (
+              <RailItem
+                key={k.id}
+                label={k.label}
+                count={list.filter((d) => kindOf(d) === k.id).length}
+                active={filter === `kind:${k.id}`}
+                onClick={() => setParam({ filter: `kind:${k.id}` })}
+              />
+            ))}
+          </RailGroup>
+          {labels.length > 0 && (
+            <RailGroup title="Labels">
+              {labels.map((l) => (
+                <RailItem
+                  key={l}
+                  label={l}
+                  count={list.filter((d) => d.label === l).length}
+                  active={filter === `label:${l}`}
+                  onClick={() => setParam({ filter: `label:${l}` })}
+                />
+              ))}
+            </RailGroup>
+          )}
+        </nav>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+          <div className="border-b p-2 md:hidden">
+            <Select value={filter} onValueChange={(v) => setParam({ filter: v === 'all' ? null : v })}>
+              <SelectTrigger className="w-full" aria-label="Show">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All ({list.length})</SelectItem>
+                {STATES.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label} ({counts(s.states)})
+                  </SelectItem>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>What it is</SelectLabel>
+                  {KINDS.map((k) => (
+                    <SelectItem key={k.id} value={`kind:${k.id}`}>
+                      {k.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                {labels.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel>Labels</SelectLabel>
+                    {labels.map((l) => (
+                      <SelectItem key={l} value={`label:${l}`}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {shown.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center p-6">
+              <Empty icon={<DownloadIcon />} title={list.length ? 'Nothing matches' : 'No downloads yet'}>
+                {list.length ? (
+                  <>
+                    No download is {q ? `named “${q}” ` : ''}in this view.{' '}
+                    <button
+                      type="button"
+                      className="font-medium text-foreground underline underline-offset-2"
+                      onClick={() => {
+                        setQ('')
+                        setParam({ filter: null })
+                      }}
+                    >
+                      Show all
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Torrents a device plays show up here and stay after the player leaves. Add one, or drop a .torrent file on this page,
+                    to download it without playing.
+                  </>
+                )}
+              </Empty>
+            </div>
+          ) : desktop ? (
+            <DataTable
+              label="Downloads"
+              data={shown}
+              columns={columns}
+              getRowId={(d) => d.infoHash}
+              storageKey="playpex.downloads.columns"
+              defaultHidden={['downloaded', 'uploaded', 'added', 'completedAt', 'lastActive', 'label', 'addedBy', 'savePath']}
+              selection={selection}
+              onSelectionChange={setSelection}
+              active={open}
+              onActiveChange={(id) => openPane(id)}
+              onOpen={(id) => openPane(id)}
+              onKey={(key, ids) => {
+                if (key === 'space') toggleRun(ids)
+                else if (key === 'delete') setRemoving(ids)
+                else if (byHash.get(ids[0])) playDownload(byHash.get(ids[0])!)
+              }}
+              actions={rowActions}
+              className="flex-1"
+            />
+          ) : (
+            <PhoneList downloads={shown} onOpen={(h) => openPane(h)} />
+          )}
+
+          {desktop && open && byHash.has(open) && (
+            <div className="relative flex shrink-0 flex-col border-t" style={{ height: pane.height }}>
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="Resize the details"
+                onPointerDown={pane.drag}
+                className="absolute inset-x-0 -top-1.5 z-20 h-3 cursor-row-resize after:absolute after:inset-x-0 after:top-1.5 after:h-px after:bg-transparent hover:after:bg-primary/60"
+              />
+              <DownloadPane hash={open} tab={tab} onTabChange={(t) => setParam({ tab: t === 'general' ? null : t })} onClose={() => openPane(null)} className="h-full" />
+            </div>
+          )}
+
+          <StatusBar list={list} />
+        </div>
+      </div>
+
+      {/* phones: the detail as a sheet */}
+      {!desktop && (
+        <Sheet open={!!open && byHash.has(open)} onOpenChange={(o) => !o && openPane(null)}>
+          <SheetContent side="bottom" className="flex h-[85svh] flex-col gap-0 p-0">
+            <SheetHeader className="border-b">
+              <SheetTitle className="pr-6 break-all">{open ? (byHash.get(open)?.name ?? open) : ''}</SheetTitle>
+              <SheetDescription>{open && byHash.get(open) ? stateText(byHash.get(open)!) : ''}</SheetDescription>
+            </SheetHeader>
+            {open && (
+              <>
+                <DownloadPane hash={open} tab={tab} onTabChange={(t) => setParam({ tab: t === 'general' ? null : t })} className="min-h-0 flex-1" />
+                <div className="flex gap-2 border-t p-3">
+                  {byHash.get(open) && canPause(byHash.get(open)!) ? (
+                    <Button variant="outline" className="flex-1" onClick={() => actions.pause.mutate([open])}>
+                      <Pause /> Pause
+                    </Button>
+                  ) : (
+                    <Button variant="outline" className="flex-1" disabled={!byHash.get(open) || !canStart(byHash.get(open)!)} onClick={() => actions.start.mutate([open])}>
+                      <Play /> Start
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => setLabelling([open])}>
+                    <Tag /> Label
+                  </Button>
+                  <Button variant="outline" className="text-destructive" onClick={() => setRemoving([open])}>
+                    <Trash2 /> Remove
+                  </Button>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
       )}
-      <AddDialog open={adding} onOpenChange={setAdding} />
+
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/80 backdrop-blur-sm">
+          <p className="flex items-center gap-2 text-lg font-medium">
+            <FileUp className="size-5 text-primary" /> Drop the .torrent to add it
+          </p>
+        </div>
+      )}
+
+      <AddDownloadDialog
+        key={addKey}
+        open={adding}
+        file={dropped}
+        labels={labels}
+        onOpenChange={(o) => {
+          setAdding(o)
+          if (!o) setDropped(null)
+        }}
+      />
       <RemoveDialog
-        download={removing}
+        downloads={(removing ?? []).map((h) => byHash.get(h)).filter((d): d is Download => !!d)}
         onClose={() => setRemoving(null)}
         onRemove={(data) => {
-          if (removing) actions.remove.mutate({ hash: removing.infoHash, data })
-          if (removing?.infoHash === open) setParams({})
+          if (removing) actions.remove.mutate({ hashes: removing, data })
+          if (open && removing?.includes(open)) openPane(null)
+          setSelection((s) => s.filter((h) => !removing?.includes(h)))
           setRemoving(null)
         }}
       />
-      <DetailSheet
-        hash={open}
-        onClose={() => setParams({})}
-        onRemove={(d) => setRemoving(d)}
+      <LabelDialog
+        downloads={(labelling ?? []).map((h) => byHash.get(h)).filter((d): d is Download => !!d)}
+        labels={labels}
+        onClose={() => setLabelling(null)}
+        onSave={(label) => {
+          if (labelling) actions.label.mutate({ hashes: labelling, label })
+          setLabelling(null)
+        }}
       />
-    </>
+    </div>
   )
 }
 
-function StateBadge({ d }: { d: Download }) {
-  const s = STATE[d.state]
+function RailGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <Badge variant={s.tone} title={d.error ?? undefined}>
-      {s.label}
-      {d.state === 'checking' && d.checking !== null && ` ${Math.round(d.checking * 100)} %`}
-    </Badge>
+    <div className="flex flex-col gap-0.5">
+      {title && <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">{title}</p>}
+      {children}
+    </div>
   )
 }
 
-function DownloadRow({
-  d,
-  onOpen,
-  onStart,
-  onPause,
-  onRemove,
-}: {
-  d: Download
-  onOpen: () => void
-  onStart: () => void
-  onPause: () => void
-  onRemove: () => void
-}) {
-  const running = RUNNING.includes(d.state) || d.state === 'queued'
-  const pct = d.progress === null ? null : Math.round(d.progress * 100)
+function RailItem({ label, count, active, tone, onClick }: { label: string; count: number; active: boolean; tone?: 'fault'; onClick: () => void }) {
   return (
-    <TableRow className="cursor-pointer" onClick={onOpen}>
-      <TableCell className="w-full max-w-0">
-        <div className="truncate font-medium" title={d.name ?? d.infoHash}>
-          {d.name ?? <Mono className="text-xs">{d.infoHash}</Mono>}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <StateBadge d={d} />
-          {titleOf(d) && <span className="truncate">{titleOf(d)}</span>}
-          <span>{d.intent === 'stream' ? 'played' : 'download'}</span>
-          {d.addedBy && <span className="hidden truncate sm:inline">by {d.addedBy}</span>}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="space-y-1">
-          <Progress value={pct ?? 0} />
-          <div className="flex justify-between font-mono text-xs text-muted-foreground tabular-nums">
-            <span>{pct === null ? 'waiting for metadata' : `${pct} %`}</span>
-            {d.eta !== null && d.state === 'downloading' && <span>{clock(d.eta)} left</span>}
-          </div>
-        </div>
-      </TableCell>
-      <TableCell className="hidden text-right font-mono text-xs whitespace-nowrap tabular-nums md:table-cell">
-        <div>↓ {speed(d.downloadSpeed)}</div>
-        <div className="text-muted-foreground">↑ {speed(d.uploadSpeed)}</div>
-      </TableCell>
-      <TableCell className="hidden text-right font-mono text-xs tabular-nums lg:table-cell">
-        {d.peers}
-        {d.seeds > 0 && <span className="text-muted-foreground"> ({d.seeds})</span>}
-      </TableCell>
-      <TableCell className="hidden text-right font-mono text-xs tabular-nums lg:table-cell">{d.ratio === null ? '—' : d.ratio.toFixed(2)}</TableCell>
-      <TableCell className="hidden text-right font-mono text-xs whitespace-nowrap tabular-nums sm:table-cell">{bytes(d.sizeBytes)}</TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-end gap-1">
-          {running ? (
-            <Button variant="ghost" size="icon-sm" aria-label="Pause" title="Pause" onClick={onPause}>
-              <Pause />
-            </Button>
-          ) : (
-            <Button variant="ghost" size="icon-sm" aria-label="Start" title="Download to the end" onClick={onStart} disabled={d.state === 'completed' && d.progress === 1}>
-              <Play />
-            </Button>
-          )}
-          <Button variant="ghost" size="icon-sm" aria-label="Remove" title="Remove" onClick={onRemove}>
-            <Trash2 />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'true' : undefined}
+      className={cn(
+        'flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted',
+        active ? 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--primary)]' : 'text-muted-foreground',
+        tone === 'fault' && 'text-destructive',
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className={cn('text-xs tabular-nums', count === 0 && 'opacity-50')}>{count}</span>
+    </button>
   )
 }
 
-// "Pause all downloads" (downloads.paused, the tray's too): downloads wait, streams still play
-function PauseAllButton() {
+// Phones: one line of state, speed and time left under each name
+function PhoneList({ downloads, onOpen }: { downloads: Download[]; onOpen: (hash: string) => void }) {
+  return (
+    <ul className="divide-y">
+      {downloads.map((d) => (
+        <li key={d.infoHash}>
+          <button type="button" onClick={() => onOpen(d.infoHash)} className="w-full space-y-1.5 px-3 py-2.5 text-left active:bg-muted">
+            <div className="truncate text-sm font-medium">{d.name ?? d.infoHash}</div>
+            <div className="flex items-center gap-2.5">
+              <SwarmStrip map={d.pieceMap} progress={d.progress} tone={toneOf(d)} className="flex-1" />
+              <span className="w-11 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                {d.progress === null ? '' : `${Math.floor(d.progress * 100)} %`}
+              </span>
+            </div>
+            <div className="flex gap-3 text-xs text-muted-foreground tabular-nums">
+              <span className={cn(d.state === 'error' && 'text-destructive')}>{stateText(d)}</span>
+              {d.downloadSpeed > 0 && <span className="text-down">↓ {speed(d.downloadSpeed)}</span>}
+              {d.uploadSpeed > 0 && <span className="text-up">↑ {speed(d.uploadSpeed)}</span>}
+              {d.eta !== null && d.state === 'downloading' && <span>{clock(d.eta)} left</span>}
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Totals, the speed limits, the download folder's disk, "Pause all"
+function StatusBar({ list }: { list: Download[] }) {
   const client = useQueryClient()
+  const overview = useOverview()
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => unwrap(api.GET('/admin/settings')) })
-  const paused = settings.data?.settings.downloads.paused ?? false
-  const toggle = useMutation({
-    mutationFn: (value: boolean) => unwrap(api.PUT('/admin/settings', { body: { downloads: { paused: value } } })),
-    onSuccess: (_, value) => {
-      toast.success(value ? 'Downloads paused (streams still play)' : 'Downloads resumed')
+  const dl = settings.data?.settings.downloads
+  const totals = list.reduce((s, d) => ({ down: s.down + d.downloadSpeed, up: s.up + d.uploadSpeed }), { down: 0, up: 0 })
+  const disk = overview.data?.disks.find((d) => d.id === 'downloads')
+  const engine = overview.data?.downloads
+  const save = useMutation({
+    mutationFn: (downloads: Partial<NonNullable<typeof dl>>) => unwrap(api.PUT('/admin/settings', { body: { downloads } })),
+    onSuccess: (_, patch) => {
+      if ('paused' in patch) toast.success(patch.paused ? 'Downloads paused (streams still play)' : 'Downloads resumed')
+      else toast.success('Speed limits saved')
       client.invalidateQueries({ queryKey: ['settings'] })
       client.invalidateQueries({ queryKey: ['downloads'] })
+      client.invalidateQueries({ queryKey: ['overview'] })
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
-  if (!settings.data) return null
+  const limit = (kbps: number | undefined) => (kbps ? ` / ${speed(kbps * 1024)}` : '')
   return (
-    <Button variant="outline" disabled={toggle.isPending} onClick={() => toggle.mutate(!paused)}>
-      {paused ? <Play /> : <Pause />} {paused ? 'Resume all' : 'Pause all'}
-    </Button>
+    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-t bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground tabular-nums">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" className="flex items-center gap-4 rounded-md px-1 py-0.5 hover:bg-muted hover:text-foreground" title="Speed limits">
+            <span className="flex items-center gap-1">
+              <ArrowDown className="size-3.5 text-down" />
+              <span className="text-foreground">{speed(totals.down)}</span>
+              {limit(dl?.downLimitKBps)}
+            </span>
+            <span className="flex items-center gap-1">
+              <ArrowUp className="size-3.5 text-up" />
+              <span className="text-foreground">{speed(totals.up)}</span>
+              {limit(dl?.upLimitKBps)}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-80">
+          {dl && <LimitsForm key={`${dl.downLimitKBps}-${dl.upLimitKBps}`} down={dl.downLimitKBps} up={dl.upLimitKBps} canLimit={!!engine?.capabilities?.rateLimits} engine={engine?.engine ?? null} saving={save.isPending} onSave={(v) => save.mutate(v)} />}
+        </PopoverContent>
+      </Popover>
+      {disk && (
+        <span className="flex items-center gap-1.5" title={disk.path}>
+          <HardDrive className="size-3.5" /> {bytes(disk.free)} free
+        </span>
+      )}
+      {engine?.engine && <span className="hidden sm:inline">Engine {engine.engine}</span>}
+      <label className="ml-auto flex items-center gap-2">
+        {save.isPending && 'paused' in (save.variables ?? {}) ? <Spinner className="size-3" /> : null}
+        <span>Pause all downloads</span>
+        <Switch size="sm" checked={dl?.paused ?? false} disabled={!dl || save.isPending} onCheckedChange={(v) => save.mutate({ paused: v })} />
+      </label>
+    </div>
   )
 }
 
-function AddDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const client = useQueryClient()
-  const [link, setLink] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const add = useMutation({
-    mutationFn: () => {
-      if (file) {
-        const form = new FormData()
-        form.append('file', file)
-        return unwrap(
-          api.POST('/downloads', {
-            body: form as never,
-            bodySerializer: (b: unknown) => b as FormData,
-          }),
-        )
-      }
-      return unwrap(api.POST('/downloads', { body: { link: link.trim() } }))
-    },
-    onSuccess: (d) => {
-      toast.success(`${d.name ?? 'Torrent'} added (${STATE[d.state].label.toLowerCase()})`)
-      client.invalidateQueries({ queryKey: ['downloads'] })
-      setLink('')
-      setFile(null)
-      onOpenChange(false)
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  })
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    if (link.trim() || file) add.mutate()
-  }
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={submit} className="space-y-4">
-          <DialogHeader>
-            <DialogTitle>Add a download</DialogTitle>
-            <DialogDescription>It downloads to the end without a player, then seeds as Settings › Downloads says.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="add-link">Magnet link, info hash or .torrent URL</Label>
-            <Input id="add-link" value={link} disabled={!!file} placeholder="magnet:?xt=urn:btih:…" onChange={(e) => setLink(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="add-file">Or a .torrent file</Label>
-            <Input id="add-file" type="file" accept=".torrent,application/x-bittorrent" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={add.isPending || (!link.trim() && !file)}>
-              {add.isPending && <Spinner />} Add
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function RemoveDialog({
-  download,
-  onClose,
-  onRemove,
+function LimitsForm({
+  down,
+  up,
+  canLimit,
+  engine,
+  saving,
+  onSave,
 }: {
-  download: Download | null
-  onClose: () => void
-  onRemove: (data: 'keep' | 'delete') => void
+  down: number
+  up: number
+  canLimit: boolean
+  engine: string | null
+  saving: boolean
+  onSave: (v: { downLimitKBps: number; upLimitKBps: number }) => void
 }) {
+  const [d, setD] = useState(down ? String(down) : '')
+  const [u, setU] = useState(up ? String(up) : '')
+  const value = (s: string) => Math.max(0, Math.floor(Number(s) || 0))
   return (
-    <AlertDialog open={!!download} onOpenChange={(o) => !o && onClose()}>
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSave({ downLimitKBps: value(d), upLimitKBps: value(u) })
+      }}
+    >
+      <div>
+        <p className="text-sm font-medium">Speed limits</p>
+        <p className="text-xs text-muted-foreground">Every torrent together, in KB/s. Empty means no limit.</p>
+      </div>
+      {!canLimit && (
+        <p className="rounded-md bg-muted px-2.5 py-2 text-xs">
+          The {engine ?? 'running'} engine can't limit speed. Choose torrentd in Settings › Downloads to use these.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="limit-down">Download</Label>
+          <Input id="limit-down" inputMode="numeric" value={d} placeholder="No limit" disabled={!canLimit} onChange={(e) => setD(e.target.value.replace(/\D/g, ''))} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="limit-up">Upload</Label>
+          <Input id="limit-up" inputMode="numeric" value={u} placeholder="No limit" disabled={!canLimit} onChange={(e) => setU(e.target.value.replace(/\D/g, ''))} />
+        </div>
+      </div>
+      <Button type="submit" size="sm" className="w-full" disabled={!canLimit || saving}>
+        Save limits
+      </Button>
+    </form>
+  )
+}
+
+function RemoveDialog({ downloads, onClose, onRemove }: { downloads: Download[]; onClose: () => void; onRemove: (data: 'keep' | 'delete') => void }) {
+  const one = downloads.length === 1 ? downloads[0] : null
+  return (
+    <AlertDialog open={downloads.length > 0} onOpenChange={(o) => !o && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove this download?</AlertDialogTitle>
+          <AlertDialogTitle>{one ? 'Remove this download?' : `Remove ${downloads.length} downloads?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            {download?.name ?? download?.infoHash}: the server forgets it. Its files stay in the download directory, or are deleted
-            with it. Devices playing it are stopped.
+            {one ? <span className="font-medium break-all text-foreground">{one.name ?? one.infoHash}</span> : null}
+            {one ? ': the' : 'The'} server forgets {one ? 'it' : 'them'}. Keep the files in the download folder, or delete them too. Devices
+            playing {one ? 'it' : 'them'} stop.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <Button variant="outline" onClick={() => onRemove('keep')}>
-            Keep files
+            Remove, keep files
           </Button>
           <Button variant="destructive" onClick={() => onRemove('delete')}>
-            Delete files
+            Delete files too
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -405,155 +898,63 @@ function RemoveDialog({
   )
 }
 
-function DetailSheet({ hash, onClose, onRemove }: { hash: string | null; onClose: () => void; onRemove: (d: Download) => void }) {
-  const client = useQueryClient()
-  const detail = useQuery({
-    queryKey: ['download', hash],
-    queryFn: () => unwrap(api.GET('/downloads/{infoHash}', { params: { path: { infoHash: hash! } } })),
-    enabled: !!hash,
-    refetchInterval: 3000,
-  })
-  const [chosen, setChosen] = useState<string[] | null>(null)
-  const d = detail.data
-  const files = useMemo(() => d?.files ?? [], [d])
-  const selected = chosen ?? files.filter((f) => f.selected).map((f) => f.path)
-  const changed = chosen !== null && JSON.stringify([...chosen].sort()) !== JSON.stringify(files.filter((f) => f.selected).map((f) => f.path).sort())
-  const refresh = () => {
-    client.invalidateQueries({ queryKey: ['download', hash] })
-    client.invalidateQueries({ queryKey: ['downloads'] })
-  }
-  const select = useMutation({
-    mutationFn: (paths: string[]) =>
-      unwrap(
-        api.PUT('/downloads/{infoHash}/files', {
-          params: { path: { infoHash: hash! } },
-          body: { files: paths.length === files.length ? null : paths },
-        }),
-      ),
-    onSuccess: () => {
-      toast.success('Files chosen')
-      setChosen(null)
-      refresh()
-    },
-    onError: (err) => toast.error(errorMessage(err)),
-  })
-  const rule = useMutation({
-    mutationFn: (value: boolean) =>
-      unwrap(api.PATCH('/downloads/{infoHash}', { params: { path: { infoHash: hash! } }, body: { removeWhenWatched: value } })),
-    onSuccess: refresh,
-    onError: (err) => toast.error(errorMessage(err)),
-  })
-
+function LabelDialog({
+  downloads,
+  labels,
+  onClose,
+  onSave,
+}: {
+  downloads: Download[]
+  labels: string[]
+  onClose: () => void
+  onSave: (label: string | null) => void
+}) {
+  const current = downloads.length && downloads.every((d) => d.label === downloads[0].label) ? (downloads[0].label ?? '') : ''
+  const [value, setValue] = useState(current)
+  const opened = useRef(false)
+  useEffect(() => {
+    if (downloads.length && !opened.current) setValue(current)
+    opened.current = downloads.length > 0
+  }, [downloads.length, current])
   return (
-    <Sheet
-      open={!!hash}
-      onOpenChange={(o) => {
-        if (!o) {
-          setChosen(null)
-          onClose()
-        }
-      }}
-    >
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle className="pr-6 break-all">{d?.name ?? hash}</SheetTitle>
-          <SheetDescription>{d && titleOf(d)}</SheetDescription>
-        </SheetHeader>
-        {detail.isPending && hash ? (
-          <Loading />
-        ) : detail.error ? (
-          <QueryError error={detail.error} title="Could not load this download" />
-        ) : d ? (
-          <div className="space-y-6 px-4 pb-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <StateBadge d={d} />
-              <span className="text-sm text-muted-foreground">{d.intent === 'stream' ? 'Played on a device' : 'Downloaded to the end'}</span>
+    <Dialog open={downloads.length > 0} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            onSave(value.trim() || null)
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{downloads.length === 1 ? 'Label' : `Label ${downloads.length} downloads`}</DialogTitle>
+            <DialogDescription>Labels group downloads in the list's filters. Any words, up to 40 characters.</DialogDescription>
+          </DialogHeader>
+          <Input autoFocus value={value} maxLength={40} placeholder="Movies for the weekend" onChange={(e) => setValue(e.target.value)} />
+          {labels.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {labels.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setValue(l)}
+                  className={cn('rounded-md border px-2 py-0.5 text-xs hover:bg-muted', value === l && 'border-primary bg-primary/10')}
+                >
+                  {l}
+                </button>
+              ))}
             </div>
-            {d.error && <p className="text-sm text-destructive">{d.error}</p>}
-            <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
-              <dt className="text-muted-foreground">Progress</dt>
-              <dd className="font-mono tabular-nums">
-                {bytes(d.doneBytes)} / {bytes(d.sizeBytes)} {d.progress !== null && `(${Math.round(d.progress * 100)} %)`}
-              </dd>
-              <dt className="text-muted-foreground">Uploaded</dt>
-              <dd className="font-mono tabular-nums">
-                {bytes(d.uploadedBytes)} {d.ratio !== null && `· ratio ${d.ratio.toFixed(2)}`}
-              </dd>
-              <dt className="text-muted-foreground">Added</dt>
-              <dd>
-                {dateTime(d.addedAt)} {d.addedBy && <span className="text-muted-foreground">by {d.addedBy}</span>}
-              </dd>
-              {d.completedAt && (
-                <>
-                  <dt className="text-muted-foreground">Completed</dt>
-                  <dd>{dateTime(d.completedAt)}</dd>
-                </>
-              )}
-              <dt className="text-muted-foreground">Last active</dt>
-              <dd>{d.lastActiveAt ? ago(d.lastActiveAt) : 'never'}</dd>
-              <dt className="text-muted-foreground">Info hash</dt>
-              <dd className="font-mono text-xs break-all">{d.infoHash}</dd>
-            </dl>
-            <div className="flex items-start justify-between gap-4 rounded-md border p-3">
-              <div>
-                <Label htmlFor="remove-watched">Remove when watched</Label>
-                <p className="mt-1 text-xs text-muted-foreground">Deleted with its files once a player reached the end (90 %).</p>
-              </div>
-              <Switch id="remove-watched" checked={d.removeWhenWatched} disabled={rule.isPending} onCheckedChange={(v) => rule.mutate(v)} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Files</h3>
-                {changed && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setChosen(null)}>
-                      Undo
-                    </Button>
-                    <Button size="sm" disabled={select.isPending || selected.length === 0} onClick={() => select.mutate(selected)}>
-                      Save
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {d.files === null ? (
-                <p className="text-sm text-muted-foreground">Waiting for the torrent's metadata.</p>
-              ) : (
-                <ul className="divide-y rounded-md border">
-                  {files.map((f) => {
-                    const on = selected.includes(f.path)
-                    const pct = f.doneBytes === null ? null : Math.floor((f.doneBytes / Math.max(f.size, 1)) * 100)
-                    // inside the torrent's folder: the part that differs
-                    const shown = d.name && f.path.startsWith(d.name + '/') ? f.path.slice(d.name.length + 1) : f.path
-                    return (
-                      <li key={f.path} className="flex items-center gap-3 p-2">
-                        <Checkbox
-                          checked={on}
-                          aria-label={`Download ${f.name}`}
-                          onCheckedChange={(v) => setChosen(v ? [...selected, f.path] : selected.filter((p) => p !== f.path))}
-                        />
-                        <FileVideo className="size-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm" title={f.path}>
-                            {shown}
-                          </div>
-                          {pct !== null && <Progress value={pct} className="mt-1 h-1" />}
-                        </div>
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-                          {pct !== null && `${pct} % · `}
-                          {bytes(f.size)}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-            <Button variant="outline" className="text-destructive" onClick={() => onRemove(d)}>
-              <Trash2 /> Remove…
-            </Button>
-          </div>
-        ) : null}
-      </SheetContent>
-    </Sheet>
+          )}
+          <DialogFooter>
+            {current && (
+              <Button type="button" variant="ghost" className="mr-auto" onClick={() => onSave(null)}>
+                Take the label off
+              </Button>
+            )}
+            <Button type="submit">Save label</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

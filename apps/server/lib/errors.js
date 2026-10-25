@@ -22,8 +22,12 @@ function fail(res, code, message, extra) {
 // unexpected is logged and answered 500
 function failed(res, err) {
   if (err.code === 'BUSY' || err.code === 'NOT_FOUND' || err.code === 'INVALID' || err.code === 'CONFLICT' ||
-    err.code === 'FORBIDDEN' || err.code === 'UPSTREAM') {
+    err.code === 'FORBIDDEN' || err.code === 'UPSTREAM' || err.code === 'NOT_SUPPORTED') {
     return fail(res, err.code, err.message);
+  }
+  if (err.code === 'UNSUPPORTED') {
+    // an engine that can't (EngineError): the dashboard says so
+    return fail(res, 'NOT_SUPPORTED', err.message);
   }
   if (err.code === 'UNAVAILABLE') {
     return fail(res, 'BUSY', err.message);

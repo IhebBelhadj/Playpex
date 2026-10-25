@@ -28,6 +28,7 @@
     "lodash": "^4",
     "mkdirp": "^0.5.5",
     "node-html-parser": "^9.0.5",
+    "peer-wire-protocol": "^0.7.1",
     "pump": "^3.0.0",
     "quickjs-emscripten-core": "^0.32.0",
     "range-parser": "^1.2.0",

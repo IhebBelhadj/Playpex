@@ -286,7 +286,12 @@ function create() {
       rateLimits: false,       // rqbit sets them per torrent when adding, or for the whole process at start
       fileSelection: true,
       streamPriority: true,
-      persistentSession: true
+      persistentSession: true,
+      // engine port v2: not measured on rqbit yet (docs/dashboard-plan.md §4.4: "to verify")
+      peerList: false,
+      trackerList: false,
+      trackerEdit: false,
+      recheck: false
     },
 
     init: function (opts) {

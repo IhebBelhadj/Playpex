@@ -178,6 +178,52 @@ engines.ids().forEach(function (id) {
         });
       });
     }).then(function () {
+      return t.test('port v2: peers, trackers, adding trackers, recheck (per capability)', function () {
+        var caps = engine.capabilities, work = Promise.resolve();
+        if (caps.peerList) {
+          work = work.then(function () {
+            // the seeder, once it is connected again after the start
+            return helpers.until(function () {
+              return engine.peers(hash).then(function (answer) { return answer.peers.length > 0 && answer; });
+            }, 20000, 'a peer');
+          }).then(function (answer) {
+            var p = answer.peers[0];
+            ['address', 'client', 'peerId', 'flags', 'progress', 'downBps', 'upBps', 'downloaded', 'uploaded'].forEach(function (k) {
+              assert.ok(k in p, 'a peer has ' + k);
+            });
+            assert.match(p.address, /:\d+$/);
+            assert.ok(p.progress === null || (p.progress >= 0 && p.progress <= 1));
+            assert.ok(answer.availability === null || answer.availability >= 0);
+          });
+        }
+        if (caps.trackerList) {
+          work = work.then(function () {
+            return caps.trackerEdit ? engine.addTrackers(hash, ['udp://tracker.example.invalid:1337/announce']) : null;
+          }).then(function () {
+            return engine.trackers(hash);
+          }).then(function (list) {
+            assert.ok(Array.isArray(list));
+            list.forEach(function (tr) { assert.equal(typeof tr.url, 'string'); assert.equal(typeof tr.status, 'string'); });
+            if (caps.trackerEdit) {
+              assert.ok(list.some(function (tr) { return tr.url === 'udp://tracker.example.invalid:1337/announce'; }), 'the added tracker');
+            }
+          });
+        }
+        if (caps.recheck) {
+          work = work.then(function () {
+            return engine.recheck(hash);
+          }).then(function () {
+            // checked again: still the selected file, complete
+            return helpers.until(function () {
+              return stat(engine, hash).then(function (s) { return s && s.state === 'seeding' && s; });
+            }, 30000, 'the recheck');
+          }).then(function (s) {
+            assert.equal(s.doneBytes, B.size);
+          });
+        }
+        return work;
+      });
+    }).then(function () {
       return t.test('stop + add again with the .torrent: the data is still there', function () {
         var meta;
         return engine.metadata(hash).then(function (m) {

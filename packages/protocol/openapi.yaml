@@ -775,6 +775,104 @@ paths:
         '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Error' }
+  /admin/storage/places:
+    get:
+      tags: [admin]
+      operationId: storagePlaces
+      summary: Every place Playpex keeps media (the library's folders, the download folder), with its size and disk
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The places
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StoragePlaces' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+  /admin/storage/browse:
+    get:
+      tags: [admin]
+      operationId: storageBrowse
+      summary: One level of a place (folders first), or the names matching `q` anywhere in it (≤ 200)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: place, in: query, required: true, schema: { type: string } }
+        - { name: path, in: query, schema: { type: string }, description: 'Inside the place, / separated; empty = its root' }
+        - { name: sort, in: query, schema: { type: string, enum: [name, size, date] } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: The listing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StorageListing' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/storage/entries:
+    delete:
+      tags: [admin]
+      operationId: storageDelete
+      summary: Delete a file or folder of a place (refused while a running torrent writes there; its library rows go too)
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [place, path]
+              properties:
+                place: { type: string }
+                path: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, freedBytes]
+                properties:
+                  ok: { const: true }
+                  freedBytes: { type: number }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/storage/largest:
+    get:
+      tags: [admin]
+      operationId: storageLargest
+      summary: The 10 biggest title folders of a place (folders whose own files hold most of their size)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: place, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The folders, biggest first (none while the place is measured)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [measuring, folders]
+                properties:
+                  measuring: { type: boolean }
+                  folders:
+                    type: array
+                    items:
+                      type: object
+                      required: [path, bytes]
+                      properties:
+                        path: { type: string }
+                        bytes: { type: number }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /admin/storage/check:
     post:
       tags: [admin]
@@ -2240,6 +2338,56 @@ paths:
         '206': { description: 'A range of them' }
         '404': { $ref: '#/components/responses/NotFound' }
         '502': { $ref: '#/components/responses/Upstream' }
+  /media/{ref}/playback:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - $ref: '#/components/parameters/Profile'
+      - { name: t, in: query, schema: { type: number, minimum: 0 }, description: 'hls: start there (the keyframe at or before it)' }
+      - { name: audio, in: query, schema: { type: integer, minimum: 0 }, description: 'The sound track (its index among the audio streams)' }
+      - { name: mkv, in: query, schema: { type: string, enum: ['0', '1'] }, description: 'The client plays Matroska files' }
+      - { name: hevc, in: query, schema: { type: string, enum: ['0', '1'] }, description: 'The client decodes HEVC' }
+      - { name: ac3, in: query, schema: { type: string, enum: ['0', '1'] } }
+      - { name: eac3, in: query, schema: { type: string, enum: ['0', '1'] } }
+      - { name: dts, in: query, schema: { type: string, enum: ['0', '1'] } }
+      - { name: truehd, in: query, schema: { type: string, enum: ['0', '1'] } }
+    get:
+      tags: [media]
+      operationId: mediaPlayback
+      summary: How this client plays the file (direct, an HLS stream the server makes, or not here)
+      description: |
+        The client says what its player decodes beyond MP4 / WebM, H.264 / VP9 / AV1 and AAC / MP3 / Opus (every
+        browser's); the server probes the file. `hls`: a stream started now (video copied, audio to AAC, fMP4
+        segments), played from `start` seconds of the file: to seek outside it, ask again with `t`. One per device
+        and file (asking again replaces it), counted in `streaming.maxTranscodes`; `DELETE /media/{ref}` ends it.
+      responses:
+        '200':
+          description: The way to play it
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaPlayback' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Busy' }
+  /media/{ref}/hls/{session}/{file}:
+    parameters:
+      - $ref: '#/components/parameters/MediaRef'
+      - $ref: '#/components/parameters/Device'
+      - { name: session, in: path, required: true, schema: { type: string, pattern: '^[0-9a-f]{24}$' } }
+      - { name: file, in: path, required: true, schema: { type: string }, description: '`index.m3u8`, `init.mp4`, `s00000.m4s`…' }
+    get:
+      tags: [media]
+      operationId: mediaPlaybackPart
+      summary: A playback HLS stream's playlist and segments (the device's own; they wait for ffmpeg)
+      responses:
+        '200':
+          description: The playlist (an event playlist until ffmpeg reaches the end) or a segment
+          content:
+            application/vnd.apple.mpegurl: { schema: { type: string } }
+            video/mp4: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
   /media/{ref}/probe:
     parameters:
       - $ref: '#/components/parameters/MediaRef'
@@ -2474,7 +2622,8 @@ paths:
       summary: Add a torrent to download to the end without a client (intent `download`)
       description: |
         Queued past `downloads.maxActive` running downloads. A torrent the server already keeps becomes a
-        download (a paused one is queued again). JSON `{ link, files? }`, or a .torrent as multipart `file`.
+        download (a paused one is queued again). JSON `{ link, files?, label?, paused? }`, or a .torrent as
+        multipart `file` (with `files` as a JSON list, `label`, `paused`).
       requestBody:
         required: true
         content:
@@ -2486,6 +2635,9 @@ paths:
               required: [file]
               properties:
                 file: { type: string, contentMediaType: application/x-bittorrent }
+                files: { type: string, description: 'A JSON list of paths' }
+                label: { type: string }
+                paused: { type: string, enum: ['true', 'false'] }
       responses:
         '200':
           description: The download
@@ -2494,6 +2646,33 @@ paths:
               schema: { $ref: '#/components/schemas/Download' }
         '400': { $ref: '#/components/responses/Invalid' }
         '503': { $ref: '#/components/responses/Busy' }
+  /downloads/preview:
+    post:
+      tags: [downloads]
+      operationId: previewDownload
+      summary: What a link or a .torrent is, before adding it (its name and files when known without the swarm)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [link]
+              properties:
+                link: { type: string }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, contentMediaType: application/x-bittorrent }
+      responses:
+        '200':
+          description: The torrent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadPreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
   /downloads/{infoHash}:
     parameters:
       - $ref: '#/components/parameters/InfoHash'
@@ -2511,16 +2690,17 @@ paths:
     patch:
       tags: [downloads]
       operationId: updateDownload
-      summary: Its rules
+      summary: Its rules and label
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [removeWhenWatched]
+              minProperties: 1
               properties:
                 removeWhenWatched: { type: boolean, description: 'Delete it and its data once a player watched it to the end (90 %)' }
+                label: { type: [string, 'null'], maxLength: 40, description: 'null or empty: no label' }
       responses:
         '200':
           description: The download
@@ -2597,6 +2777,121 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Download' }
         '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /downloads/{infoHash}/peers:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: downloadPeers
+      summary: The connected peers and the availability (admin; engines with `peerList`)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Its peers (none while it is stopped)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadPeers' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501': { $ref: '#/components/responses/NotSupported' }
+  /downloads/{infoHash}/trackers:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: downloadTrackers
+      summary: Its trackers, with their status where the engine knows it (admin; engines with `trackerList`)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Its trackers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadTrackers' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501': { $ref: '#/components/responses/NotSupported' }
+    post:
+      tags: [downloads]
+      operationId: addDownloadTrackers
+      summary: Add announce URLs (admin; engines with `trackerEdit`). Kept until the server restarts.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [add]
+              properties:
+                add: { type: array, minItems: 1, items: { type: string, pattern: '^(https?|udp)://' } }
+      responses:
+        '200':
+          description: Its trackers now
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadTrackers' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '501': { $ref: '#/components/responses/NotSupported' }
+  /downloads/{infoHash}/recheck:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [downloads]
+      operationId: recheckDownload
+      summary: Verify every piece again (admin; a running torrent; engines with `recheck`)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The download (state `checking` while the engine verifies)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '501': { $ref: '#/components/responses/NotSupported' }
+  /downloads/{infoHash}/pieces:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: downloadPieces
+      summary: Its verified pieces, the selected files' piece ranges, and where players read now (admin)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Its pieces
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadPieces' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /downloads/{infoHash}/speed:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: downloadSpeed
+      summary: The last 10 minutes of its speeds and connected peers, a sample every 2 s (admin)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: Samples, oldest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadSpeed' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ── sessions ────────────────────────────────────────────────────────────────
@@ -4011,6 +4306,16 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Not in a state that allows it (`CONFLICT`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotSupported:
+      description: This server can't (`NOT_SUPPORTED`), e.g. the running torrent engine doesn't report it
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     Busy:
       description: A server limit is reached (`BUSY`); try again later
       content:
@@ -4225,7 +4530,7 @@ components:
         ref: { type: [string, 'null'], description: 'Media ref of the file last streamed (null before the first stream)' }
         torrentName: { type: [string, 'null'], description: 'null until the metadata has arrived, and for a file on disk' }
         file: { type: [string, 'null'], description: 'Path of the file being played (in the torrent, or in its library folder)' }
-        method: { type: [string, 'null'], enum: [direct, audio-transcode, hls, live, null], description: 'hls: a plugin''s HLS stream through the server''s proxy; live: a continuous stream remuxed by ffmpeg' }
+        method: { type: [string, 'null'], enum: [direct, audio-transcode, hls, hls-transcode, live, null], description: 'hls: a plugin''s HLS stream through the server''s proxy; hls-transcode: an HLS stream the server makes from the file (GET /media/{ref}/playback); live: a continuous stream remuxed by ffmpeg' }
         streaming: { type: boolean, description: 'A media response is open right now' }
         since: { type: string, format: date-time }
         lastActivity: { type: string, format: date-time }
@@ -4262,7 +4567,7 @@ components:
       description: A torrent the server keeps (docs/media-server-plan.md §4)
       required: [infoHash, name, state, intent, error, sizeBytes, doneBytes, progress, uploadedBytes, ratio,
         downloadSpeed, uploadSpeed, peers, seeds, eta, checking, fileCount, selectedFiles, title, addedBy,
-        profileId, removeWhenWatched, addedAt, completedAt, lastActiveAt]
+        profileId, removeWhenWatched, label, queuePosition, pieceMap, savePath, addedAt, completedAt, lastActiveAt]
       properties:
         infoHash: { type: string }
         name: { type: [string, 'null'], description: 'null until the metadata has arrived' }
@@ -4297,6 +4602,14 @@ components:
         addedBy: { type: [string, 'null'], description: 'A device id, or `admin`' }
         profileId: { type: [string, 'null'] }
         removeWhenWatched: { type: boolean }
+        label: { type: [string, 'null'], description: 'The admin''s label (free text)' }
+        queuePosition: { type: [integer, 'null'], minimum: 1, description: 'Its place in the download queue (state `queued`)' }
+        pieceMap:
+          type: [string, 'null']
+          description: >-
+            The torrent's pieces in up to 100 slices, each byte the share of its pieces verified (0–255), base64
+            (the last ones the engine reported while it is stopped); null when not known
+        savePath: { type: string, description: 'Where its files are on the server' }
         addedAt: { type: string, format: date-time }
         completedAt: { type: [string, 'null'], format: date-time }
         lastActiveAt: { type: [string, 'null'], format: date-time }
@@ -4336,6 +4649,190 @@ components:
             episode: { type: integer, minimum: 0 }
         title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
         profileId: { type: string }
+        label: { type: string, maxLength: 40, description: 'The download''s label' }
+        paused: { type: boolean, description: 'Add it paused (it waits until started)' }
+    StoragePlaces:
+      type: object
+      required: [places]
+      properties:
+        places:
+          type: array
+          items:
+            type: object
+            required: [id, name, kind, root, bytes, measuring, disk, status]
+            properties:
+              id: { type: string, description: '`downloads`, or `folder:<library folder id>`' }
+              name: { type: string }
+              kind: { type: string, enum: [downloads, movies, shows, mixed, other] }
+              root: { type: string, description: 'Its real path on the server' }
+              bytes: { type: [number, 'null'], description: 'On disk; null until it is measured' }
+              measuring: { type: boolean }
+              disk:
+                type: [object, 'null']
+                required: [free, total]
+                properties:
+                  free: { type: number }
+                  total: { type: number }
+              status: { type: string, enum: [online, offline], description: 'offline: its folder isn''t there (an unplugged drive, a share)' }
+    StorageEntry:
+      type: object
+      required: [type, name, path, bytes, items, modifiedAt, what, ref, fileId, download]
+      properties:
+        type: { type: string, enum: [folder, file] }
+        name: { type: string }
+        path: { type: string, description: 'Inside the place' }
+        bytes: { type: [number, 'null'], description: 'A file''s size; a folder''s total on disk (null while measuring)' }
+        onDisk: { type: [number, 'null'], description: 'A file''s allocated bytes (a sparse download holds less)' }
+        items: { type: [integer, 'null'], description: 'A folder''s files and folders' }
+        modifiedAt: { type: [string, 'null'], format: date-time }
+        what:
+          type: [object, 'null']
+          description: What the file is to Playpex
+          required: [kind, text]
+          properties:
+            kind: { type: string, enum: [matched, unmatched, ignored, missing, downloading, subtitles, video, other] }
+            text: { type: string }
+        ref: { type: [string, 'null'], description: 'A media ref to play it (a library file, a download''s video)' }
+        fileId: { type: [string, 'null'], description: 'Its library file (the Library page''s ?file=)' }
+        download:
+          type: [object, 'null']
+          description: The download whose data it is
+          required: [infoHash, active]
+          properties:
+            infoHash: { type: string }
+            active: { type: boolean }
+    StorageListing:
+      type: object
+      required: [place, path, parent, bytes, measuring, search, entries]
+      properties:
+        place: { type: string }
+        path: { type: string }
+        parent: { type: [string, 'null'] }
+        bytes: { type: [number, 'null'] }
+        measuring: { type: boolean }
+        search: { type: [string, 'null'] }
+        entries: { type: array, items: { $ref: '#/components/schemas/StorageEntry' } }
+    MediaPlayback:
+      type: object
+      required: [method, url, start, duration, audio, notes]
+      properties:
+        method: { type: string, enum: [direct, hls, none] }
+        url: { type: [string, 'null'], description: 'Under the API prefix: GET /media/{ref} (direct), or the HLS playlist (hls); null for none' }
+        start: { type: number, description: 'hls: the time of the file the stream starts at (seconds)' }
+        duration: { type: [number, 'null'] }
+        audio: { type: integer, description: 'The sound track played' }
+        notes: { type: array, items: { type: string }, description: 'What the server does, or why it can''t play here, in words' }
+    DownloadPeers:
+      type: object
+      required: [running, peers, availability]
+      properties:
+        running: { type: boolean }
+        availability: { type: [number, 'null'], description: 'Distributed copies among the connected peers' }
+        peers:
+          type: array
+          items:
+            type: object
+            required: [address, client, flags, progress, downloadSpeed, uploadSpeed, downloaded, uploaded]
+            properties:
+              address: { type: string, description: 'ip:port' }
+              client: { type: [string, 'null'], description: 'From its handshake or its peer id' }
+              flags:
+                type: string
+                description: >-
+                  µTorrent's letters the engine knows: D downloading from it, d interested but choked, U uploading
+                  to it, u it is interested but choked, I incoming, X from peer exchange, H from the DHT, P µTP
+              progress: { type: [number, 'null'], description: '0 to 1 of the torrent it has' }
+              downloadSpeed: { type: number }
+              uploadSpeed: { type: number }
+              downloaded: { type: number }
+              uploaded: { type: number }
+    DownloadTrackers:
+      type: object
+      required: [running, trackers]
+      properties:
+        running: { type: boolean }
+        trackers:
+          type: array
+          items:
+            type: object
+            required: [url, status, seeds, peers, message, ours]
+            properties:
+              url: { type: string }
+              status:
+                type: string
+                enum: [working, updating, error, not-contacted, unknown, stopped]
+                description: '`unknown`: the engine does not report it; `stopped`: the torrent is not running'
+              seeds: { type: [integer, 'null'] }
+              peers: { type: [integer, 'null'] }
+              message: { type: [string, 'null'] }
+              ours: { type: boolean, description: 'One of the trackers the server adds to every torrent' }
+    DownloadPieces:
+      type: object
+      required: [pieceLength, count, have, files, reads]
+      properties:
+        pieceLength: { type: [integer, 'null'] }
+        count: { type: integer }
+        have: { type: [string, 'null'], description: 'Verified pieces as a bitfield (base64; piece 0 = the first byte''s high bit)' }
+        files:
+          type: array
+          description: The selected files' piece ranges (inclusive)
+          items:
+            type: object
+            required: [path, first, last]
+            properties:
+              path: { type: string }
+              first: { type: integer }
+              last: { type: integer }
+        reads:
+          type: array
+          description: Where players read now (open streams)
+          items:
+            type: object
+            required: [path, from, position, ahead, at, devices]
+            properties:
+              path: { type: string }
+              from: { type: integer, description: 'The piece the stream started at' }
+              position: { type: integer, description: 'The piece it reads now' }
+              ahead: { type: integer, description: 'The last piece of its read-ahead (16 MB)' }
+              at: { type: string, format: date-time, description: 'Its last read' }
+              devices: { type: array, items: { type: string }, description: 'Devices playing that file' }
+    DownloadSpeed:
+      type: object
+      required: [intervalMs, samples]
+      properties:
+        intervalMs: { type: integer }
+        samples:
+          type: array
+          items:
+            type: object
+            required: [at, down, up, peers]
+            properties:
+              at: { type: string, format: date-time }
+              down: { type: number }
+              up: { type: number }
+              peers: { type: integer }
+    DownloadPreview:
+      type: object
+      description: What a link or a .torrent is, before adding it
+      required: [infoHash, name, sizeBytes, files, known]
+      properties:
+        infoHash: { type: string }
+        name: { type: [string, 'null'] }
+        sizeBytes: { type: [number, 'null'], description: 'Of every file; null when the files are not known yet' }
+        files:
+          type: [array, 'null']
+          description: 'null for a magnet link the server does not keep: its files arrive with its metadata, from the swarm'
+          items:
+            type: object
+            required: [path, size]
+            properties:
+              path: { type: string }
+              size: { type: number }
+        known:
+          oneOf:
+            - $ref: '#/components/schemas/Download'
+            - type: 'null'
+          description: 'The download the server already keeps for this torrent'
     # ── media library
     LibraryFolderKind: { type: string, enum: [movies, shows, mixed, other], description: 'What to match its files as (other: never matched)' }
     LibraryAudience: { type: string, enum: [everyone, adults], description: 'adults: never for kids profiles or over DLNA' }
@@ -6014,6 +6511,10 @@ components:
             active: { type: integer }
             queued: { type: integer }
             paused: { type: boolean, description: 'downloads.paused ("Pause all downloads")' }
+            capabilities:
+              type: object
+              description: 'What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`)'
+              additionalProperties: { type: boolean }
         disks:
           type: array
           items:
@@ -6127,7 +6628,7 @@ components:
             idleTimeoutMinutes: { type: integer, minimum: 1 }
         downloads:
           type: object
-          required: [engine, peerPort, portForwarding, maxActive, seedRatio, seedMinutes, uploadSlots, paused]
+          required: [engine, peerPort, portForwarding, maxActive, seedRatio, seedMinutes, uploadSlots, downLimitKBps, upLimitKBps, paused]
           properties:
             engine: { type: string, description: 'The torrent engine (`SettingsView.engines`: torrent-stream, rqbit); applied after a restart' }
             peerPort: { type: integer, minimum: 1024, maximum: 65535, description: 'BitTorrent port (taken → a free one); applied after a restart' }
@@ -6136,6 +6637,8 @@ components:
             seedRatio: { type: number, minimum: 0, description: 'A finished download seeds until this ratio (0 = no ratio limit)' }
             seedMinutes: { type: integer, minimum: 0, description: '…or this long (0 = no time limit); both 0 = no seeding' }
             uploadSlots: { type: integer, minimum: 0, description: 'Peers uploaded to at once per torrent; 0 = never upload' }
+            downLimitKBps: { type: integer, minimum: 0, description: 'Download speed of every torrent together, KB/s (0 = no limit); only engines with `rateLimits` (Overview `downloads.capabilities`)' }
+            upLimitKBps: { type: integer, minimum: 0, description: 'Upload speed of every torrent together, KB/s (0 = no limit); same' }
             paused: { type: boolean, description: '"Pause all downloads": downloads wait, streams still play' }
         dlna:
           type: object

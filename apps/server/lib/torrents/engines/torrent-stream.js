@@ -17,6 +17,7 @@ var fs = require('fs'),
   events = require('events'),
   stream = require('stream'),
   torrentStream = require('torrent-stream'),
+  Wire = require('peer-wire-protocol'),
   parseTorrent = require('parse-torrent'),
   bncode = require('bncode'),
   paths = require('../../paths'),
@@ -26,6 +27,21 @@ var fs = require('fs'),
 var EngineError = errors.EngineError,
   DEFAULT_PEER_PORT = 6881,
   DEFAULT_UPLOAD_SLOTS = 10;
+
+// Distributed copies (µTorrent's "availability"): the rarest piece's count,
+// plus the share of pieces seen more often than it
+function availability(have) {
+  var min = Infinity, above = 0;
+  for (var i = 0; i < have.length; i++) {
+    min = Math.min(min, have[i]);
+  }
+  for (var j = 0; j < have.length; j++) {
+    if (have[j] > min) {
+      above++;
+    }
+  }
+  return Math.round((min + above / have.length) * 1000) / 1000;
+}
 
 function freePort(port) {
   return new Promise(function (resolve) {
@@ -40,6 +56,14 @@ function freePort(port) {
     tryPort(port);
   });
 }
+
+// peer-wire-protocol announces a peer's id with its handshake but doesn't
+// keep it: kept on the wire for peers() (the client's name)
+var onHandshake = Wire.prototype._onhandshake;
+Wire.prototype._onhandshake = function (infoHash, peerId, extensions) {
+  this.playpexPeerId = peerId;
+  return onHandshake.apply(this, arguments);
+};
 
 // A .torrent from an info dictionary (what torrent-stream itself caches)
 function torrentFileOf(infoBuffer) {
@@ -224,7 +248,11 @@ function create() {
       rateLimits: false,
       fileSelection: true,
       streamPriority: true,
-      persistentSession: false
+      persistentSession: false,
+      peerList: true,
+      trackerList: true,      // the announce list; torrent-stream reports no tracker status
+      trackerEdit: true,      // used from the torrent's next start
+      recheck: true           // its engine made again: torrent-stream checks every piece on start
     },
 
     init: function (opts) {
@@ -457,6 +485,74 @@ function create() {
 
     list: function () {
       return Promise.resolve(Object.keys(torrents));
+    },
+
+    // µTorrent's letters from the wire's choke / interest state: D we download
+    // from it, d we want to but it chokes us, U we upload to it, u it wants to
+    // but we choke it
+    peers: function (hash) {
+      return Promise.resolve().then(function () {
+        var t = get(hash), e = t.engine;
+        if (!e) {
+          return { peers: [], availability: null };
+        }
+        var count = e.torrent ? e.torrent.pieces.length : 0, have = count ? new Uint16Array(count) : null;
+        var peers = e.swarm.wires.map(function (w) {
+          var pieces = 0;
+          for (var i = 0; i < count; i++) {
+            if (w.peerPieces[i]) {
+              pieces++;
+              have[i]++;
+            }
+          }
+          var flags = (w.amInterested ? (w.peerChoking ? 'd' : 'D') : '') + (w.peerInterested ? (w.amChoking ? 'u' : 'U') : '');
+          return {
+            address: w.peerAddress || '',
+            client: null,
+            peerId: w.playpexPeerId ? Buffer.from(w.playpexPeerId).toString('hex') : null,
+            flags: flags,
+            progress: count ? pieces / count : null,
+            downBps: Math.round(w.downloadSpeed()),
+            upBps: Math.round(w.uploadSpeed()),
+            downloaded: w.downloaded,
+            uploaded: w.uploaded
+          };
+        });
+        return { peers: peers, availability: have ? availability(have) : null };
+      });
+    },
+
+    trackers: function (hash) {
+      return Promise.resolve().then(function () {
+        return get(hash).trackers.map(function (url) { return { url: url, status: 'unknown' }; });
+      });
+    },
+
+    addTrackers: function (hash, urls) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        urls.forEach(function (url) {
+          if (t.trackers.indexOf(url) === -1) {
+            t.trackers.push(url);
+          }
+        });
+      });
+    },
+
+    recheck: function (hash) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        if (!t.engine) {
+          throw EngineError('UNSUPPORTED', 'The torrent ' + hash + ' is paused');
+        }
+        log.info('checking the data of ' + hash + ' again');
+        return destroy(t).then(function () {
+          if (!t.source.files && t.meta) {
+            t.source = parseTorrent(torrentFileOf(t.meta.infoBuffer));
+          }
+          spawn(t);
+        });
+      });
     },
 
     on: function (event, fn) {

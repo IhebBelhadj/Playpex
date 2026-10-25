@@ -43,7 +43,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var version = "0.1.0"
+var version = "0.2.0"
 
 const readahead = 16 << 20
 
@@ -439,6 +439,84 @@ func (e *engine) stats(en *entry, withPieces bool) map[string]any {
 	return out
 }
 
+// ── swarm (engine port v2) ──────────────────────────────────────────────────
+
+// The connected peers: address, client, how much of the torrent they have,
+// speeds and bytes both ways, and µTorrent-style flags from what anacrolix
+// tells (D/U traffic, I incoming, X PEX, H DHT, P µTP); availability =
+// distributed copies (the rarest piece's count + the share above it)
+func (e *engine) peers(en *entry) map[string]any {
+	t := en.t
+	out := map[string]any{"peers": []map[string]any{}, "availability": nil}
+	if t == nil {
+		return out
+	}
+	info := t.Info()
+	n := 0
+	if info != nil {
+		n = t.NumPieces()
+	}
+	list := []map[string]any{}
+	for _, pc := range t.PeerConns() {
+		st := pc.Stats()
+		flags := ""
+		if st.DownloadRate > 0 {
+			flags += "D"
+		}
+		if st.LastWriteUploadRate > 0 {
+			flags += "U"
+		}
+		switch pc.Discovery {
+		case torrent.PeerSourceIncoming:
+			flags += "I"
+		case torrent.PeerSourcePex:
+			flags += "X"
+		case torrent.PeerSourceDhtGetPeers, torrent.PeerSourceDhtAnnouncePeer:
+			flags += "H"
+		}
+		if strings.Contains(pc.Network, "udp") || strings.Contains(pc.Network, "utp") {
+			flags += "P"
+		}
+		name, _ := pc.PeerClientName.Load().(string)
+		var progress any
+		if n > 0 {
+			progress = float64(st.RemotePieceCount) / float64(n)
+		}
+		list = append(list, map[string]any{
+			"address": pc.RemoteAddr.String(), "client": name, "peerId": fmt.Sprintf("%x", pc.PeerID[:]),
+			"flags": flags, "progress": progress, "downBps": int64(st.DownloadRate), "upBps": int64(st.LastWriteUploadRate),
+			"downloaded": st.BytesReadUsefulData.Int64(), "uploaded": st.BytesWrittenData.Int64(),
+		})
+	}
+	out["peers"] = list
+	return out
+}
+
+// The torrent's trackers: anacrolix keeps their announce state to itself, so
+// only the list (status "unknown")
+func (e *engine) trackers(en *entry) []map[string]any {
+	seen := map[string]bool{}
+	out := []map[string]any{}
+	add := func(url string) {
+		if url != "" && !seen[url] {
+			seen[url] = true
+			out = append(out, map[string]any{"url": url, "status": "unknown"})
+		}
+	}
+	if en.t != nil {
+		mi := en.t.Metainfo()
+		for _, tier := range mi.UpvertedAnnounceList() {
+			for _, url := range tier {
+				add(url)
+			}
+		}
+	}
+	for _, url := range en.trackers {
+		add(url)
+	}
+	return out
+}
+
 // ── streaming ───────────────────────────────────────────────────────────────
 
 // The bytes of a file, with HTTP ranges (http.ServeContent): a responsive
@@ -623,6 +701,57 @@ func (e *engine) routes(token string) http.Handler {
 	mux.HandleFunc("GET /torrents/{hash}/stream", func(w http.ResponseWriter, r *http.Request) {
 		e.stream(w, r, r.PathValue("hash"))
 	})
+	mux.HandleFunc("GET /torrents/{hash}/peers", func(w http.ResponseWriter, r *http.Request) {
+		e.mu.Lock()
+		en, err := e.get(r.PathValue("hash"))
+		e.mu.Unlock()
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, 200, e.peers(en))
+	})
+	mux.HandleFunc("GET /torrents/{hash}/trackers", func(w http.ResponseWriter, r *http.Request) {
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		en, err := e.get(r.PathValue("hash"))
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, 200, map[string]any{"trackers": e.trackers(en)})
+	})
+	// adds announce URLs (kept for the next start too)
+	mux.HandleFunc("POST /torrents/{hash}/trackers", action(func(en *entry, r *http.Request) error {
+		var body struct {
+			Add []string `json:"add"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			return fail(400, "BAD_TORRENT", "bad request: %v", err)
+		}
+		for _, url := range body.Add {
+			if !contains(en.trackers, url) {
+				en.trackers = append(en.trackers, url)
+			}
+			if en.t != nil {
+				en.t.AddTrackers([][]string{{url}})
+			}
+		}
+		return nil
+	}))
+	// verifies every piece again (in the background: the state is "checking")
+	mux.HandleFunc("POST /torrents/{hash}/recheck", action(func(en *entry, r *http.Request) error {
+		t := en.t
+		if t == nil {
+			return fail(409, "UNSUPPORTED", "the torrent %s is paused", en.hash.HexString())
+		}
+		go func() {
+			if err := t.VerifyData(); err != nil {
+				e.log.Warn("recheck", "hash", en.hash.HexString(), "err", err)
+			}
+		}()
+		return nil
+	}))
 	mux.HandleFunc("PUT /limits", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			DownBps int64 `json:"downBps"`

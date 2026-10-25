@@ -64,6 +64,19 @@ function create() {
     });
   }
 
+  // engine port v2 routes (torrentd 0.2): an older build answers a plain 404
+  function v2(method, urlPath, body, what) {
+    return api(method, urlPath, body === undefined ? {} : { body: body }).then(function (res) {
+      if (res.status === 404 && !res.json) {
+        throw EngineError('UNSUPPORTED', 'This playpex-torrentd is too old for ' + what + ': build or install it again');
+      }
+      if (res.status !== 200) {
+        throw failed(res, what);
+      }
+      return res.json;
+    });
+  }
+
   function url(hash, rest) {
     return '/torrents/' + hash + (rest || '');
   }
@@ -76,7 +89,11 @@ function create() {
       rateLimits: true,
       fileSelection: true,
       streamPriority: true,    // responsive readers with read-ahead: a seek is served first
-      persistentSession: false
+      persistentSession: false,
+      peerList: true,
+      trackerList: true,       // the list: anacrolix keeps the announce state to itself
+      trackerEdit: true,
+      recheck: true
     },
 
     init: function (opts) {
@@ -243,6 +260,22 @@ function create() {
     setLimits: function (next) {
       // uploadSlots: only 0 (never upload) means something here, at start
       return call('PUT', '/limits', { downBps: next.downBps || 0, upBps: next.upBps || 0 }, 'limits').then(function () {});
+    },
+
+    peers: function (hash) {
+      return v2('GET', url(hash, '/peers'), undefined, 'the peers of ' + hash);
+    },
+
+    trackers: function (hash) {
+      return v2('GET', url(hash, '/trackers'), undefined, 'the trackers of ' + hash).then(function (res) { return res.trackers; });
+    },
+
+    addTrackers: function (hash, urls) {
+      return v2('POST', url(hash, '/trackers'), { add: urls }, 'adding trackers to ' + hash).then(function () {});
+    },
+
+    recheck: function (hash) {
+      return v2('POST', url(hash, '/recheck'), {}, 'checking ' + hash).then(function () {});
     },
 
     list: function () {

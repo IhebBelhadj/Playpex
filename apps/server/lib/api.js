@@ -251,7 +251,20 @@ v1.get('/downloads', function (req, res) {
   res.json(torrents.list());
 });
 
-// { link, files?, media?, title?, profileId? } as JSON, or a .torrent as
+// What a link or a .torrent is, before adding it (the dashboard's Add dialog):
+// { infoHash, name, sizeBytes, files (null for a new magnet), known }
+v1.post('/downloads/preview', multipart(), function (req, res) {
+  var link = req.files && req.files.file ? readUpload(req) : Promise.resolve(req.body && req.body.link);
+  link.then(function (source) {
+    return torrents.preview(source);
+  }).then(function (answer) {
+    res.json(answer);
+  }, function (err) {
+    failed(res, err);
+  });
+});
+
+// { link, files?, media?, title?, profileId?, label?, paused? } as JSON, or a .torrent as
 // multipart `file`: a download (runs to the end without a client; queued past
 // downloads.maxActive). `media` (the TMDB title) lets clients find it again.
 v1.post('/downloads', multipart(), function (req, res) {
@@ -259,16 +272,27 @@ v1.post('/downloads', multipart(), function (req, res) {
     media = sessions.mediaRef(req.body && req.body.media),
     title = req.body && typeof req.body.title === 'string' ? req.body.title.slice(0, 300) : null,
     profileId = req.body && typeof req.body.profileId === 'string' ? req.body.profileId : null;
+  var link = req.files && req.files.file ? readUpload(req) : Promise.resolve(req.body && (req.body.link || req.body.infoHash));
+  if (typeof files === 'string') {
+    // multipart: the paths as a JSON list
+    try { files = JSON.parse(files); } catch (e) { return fail(res, 'INVALID', 'files must be a list of paths'); }
+  }
   if (files !== undefined && (!Array.isArray(files) || files.some(function (p) { return typeof p !== 'string'; }))) {
     return fail(res, 'INVALID', 'files must be a list of paths');
   }
-  var link = req.files && req.files.file ? readUpload(req) : Promise.resolve(req.body && (req.body.link || req.body.infoHash));
+  var paused = req.body && (req.body.paused === true || req.body.paused === 'true'),
+    label = req.body && typeof req.body.label === 'string' ? req.body.label : null;
   link.then(function (source) {
     return torrents.add(source, { intent: 'download', by: addedBy(req), files: files });
   }).then(function (infoHash) {
     if (media || profileId) {
       torrents.describe(infoHash, { titleRef: media ? Object.assign(media, title ? { title: title } : {}) : null, profileId: profileId });
     }
+    return Promise.all([
+      label ? torrents.setLabel(infoHash, label) : null,
+      paused ? torrents.pause(infoHash) : null
+    ]).then(function () { return infoHash; });
+  }).then(function (infoHash) {
     res.json(torrents.get(infoHash));
   }, function (err) {
     failed(res, err);
@@ -307,11 +331,73 @@ v1.put('/downloads/:infoHash/files', findDownload, downloadAction(function (req)
     torrents.select(req.infoHash, files);
 }));
 
-// { removeWhenWatched }
+// { removeWhenWatched?, label? } (label: a string, null or '' = none)
 v1.patch('/downloads/:infoHash', findDownload, downloadAction(function (req) {
-  var value = req.body && req.body.removeWhenWatched;
-  return typeof value !== 'boolean' ? Promise.reject(Object.assign(new Error('removeWhenWatched must be true or false'), { code: 'INVALID' })) :
-    torrents.setRemoveWhenWatched(req.infoHash, value);
+  var body = req.body || {}, work = [];
+  var invalid = function (message) { return Promise.reject(Object.assign(new Error(message), { code: 'INVALID' })); };
+  if (body.removeWhenWatched !== undefined) {
+    if (typeof body.removeWhenWatched !== 'boolean') {
+      return invalid('removeWhenWatched must be true or false');
+    }
+    work.push(function () { return torrents.setRemoveWhenWatched(req.infoHash, body.removeWhenWatched); });
+  }
+  if (body.label !== undefined) {
+    if (body.label !== null && typeof body.label !== 'string') {
+      return invalid('label must be a string or null');
+    }
+    work.push(function () { return torrents.setLabel(req.infoHash, body.label); });
+  }
+  if (!work.length) {
+    return invalid('nothing to change: removeWhenWatched or label');
+  }
+  return work.reduce(function (p, fn) { return p.then(fn); }, Promise.resolve());
+}));
+
+// A download's detail for the dashboard (docs/dashboard-plan.md §4.4, engine
+// port v2): the admin only; the pane polls its tab every 2 s while open
+function adminRead(work) {
+  return function (req, res) {
+    work(req).then(function (answer) {
+      res.json(answer);
+    }, function (err) { failed(res, err); });
+  };
+}
+
+v1.get('/downloads/:infoHash/peers', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.peers(req.infoHash);
+}));
+
+v1.get('/downloads/:infoHash/trackers', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.trackers(req.infoHash);
+}));
+
+// { add: [announce URLs] }
+v1.post('/downloads/:infoHash/trackers', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.addTrackers(req.infoHash, req.body && req.body.add).then(function () {
+    return torrents.trackers(req.infoHash);
+  });
+}));
+
+v1.post('/downloads/:infoHash/recheck', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.recheck(req.infoHash).then(function () { return torrents.get(req.infoHash); });
+}));
+
+// the verified pieces, the files' ranges, and where players read (with the
+// devices playing each file)
+v1.get('/downloads/:infoHash/pieces', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.pieces(req.infoHash).then(function (answer) {
+    var playing = sessions.list().filter(function (s) { return s.infoHash === req.infoHash; });
+    answer.reads.forEach(function (r) {
+      r.devices = playing.filter(function (s) { return s.file === r.path || (s.file && r.path.slice(-s.file.length) === s.file); })
+        .map(function (s) { return s.deviceName || s.deviceId; })
+        .filter(function (name, i, all) { return all.indexOf(name) === i; });
+    });
+    return answer;
+  });
+}));
+
+v1.get('/downloads/:infoHash/speed', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.speed(req.infoHash);
 }));
 
 // ?data=keep|delete (required): the only way a download's data is deleted.

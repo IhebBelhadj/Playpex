@@ -11,6 +11,7 @@ import {
   HardDrive,
   MoreHorizontal,
   Pencil,
+  Play,
   RefreshCw,
   Search,
   Trash2,
@@ -18,6 +19,7 @@ import {
   Undo2,
   Wand2,
 } from 'lucide-react'
+import { usePlayer } from '@/components/player'
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -242,7 +244,7 @@ function ScanStatus({ view }: { view: LibraryView }) {
         {total > 0 ? (
           <>
             <Progress value={(processed / total) * 100} />
-            <div className="flex flex-wrap justify-between gap-2 font-mono text-xs text-muted-foreground tabular-nums">
+            <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground tabular-nums">
               <span>
                 {processed} / {total} files probed and matched
               </span>
@@ -648,6 +650,7 @@ function FileList({
   onRetry: () => void
   retrying: boolean
 }) {
+  const player = usePlayer()
   const [state, setStateRaw] = useState<FileState | 'all'>(totals.unmatched ? 'unmatched' : 'all')
   const [folderId, setFolderIdRaw] = useState('all')
   const [typed, setTyped] = useState('')
@@ -752,6 +755,7 @@ function FileList({
                   <TableHead className="hidden md:table-cell">Match</TableHead>
                   <TableHead className="hidden text-right lg:table-cell">Quality</TableHead>
                   <TableHead className="hidden text-right sm:table-cell">Size</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody className={files.isPlaceholderData ? 'opacity-60' : undefined}>
@@ -772,10 +776,23 @@ function FileList({
                     <TableCell className="hidden max-w-64 md:table-cell">
                       <MatchCell file={file} />
                     </TableCell>
-                    <TableCell className="hidden text-right font-mono text-xs whitespace-nowrap text-muted-foreground lg:table-cell">
+                    <TableCell className="hidden text-right text-xs whitespace-nowrap text-muted-foreground lg:table-cell">
                       {quality(file) ?? '—'}
                     </TableCell>
-                    <TableCell className="hidden text-right font-mono text-xs whitespace-nowrap tabular-nums sm:table-cell">{bytes(file.size)}</TableCell>
+                    <TableCell className="hidden text-right text-xs whitespace-nowrap tabular-nums sm:table-cell">{bytes(file.size)}</TableCell>
+                    <TableCell className="pr-2" onClick={(e) => e.stopPropagation()}>
+                      {file.state !== 'missing' && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Play ${fileName(file.relPath)}`}
+                          title="Play here"
+                          onClick={() => player.play({ ref: file.ref, title: fileName(file.relPath), detail: folderPath.get(file.folderId) })}
+                        >
+                          <Play />
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -827,6 +844,7 @@ function MatchCell({ file }: { file: LibraryFile }) {
 
 function FileSheet({ id, folders, onClose }: { id: string | null; folders: LibraryFolder[]; onClose: () => void }) {
   const client = useQueryClient()
+  const player = usePlayer()
   const [fixing, setFixing] = useState(false)
   const detail = useQuery({
     queryKey: ['library-file', id],
@@ -878,6 +896,11 @@ function FileSheet({ id, folders, onClose }: { id: string | null; folders: Libra
           </div>
         ) : file ? (
           <div className="space-y-6 px-4 pb-6">
+            {file.state !== 'missing' && (
+              <Button onClick={() => player.play({ ref: file.ref, title: fileName(file.relPath), detail: folder?.path })}>
+                <Play /> Play here
+              </Button>
+            )}
             <Section title="Match">
               {file.item ? <ItemCard item={file.item} matchedBy={file.matchedBy} /> : <p className="text-sm text-warning">Not matched to a movie or an episode.</p>}
               {file.state === 'missing' && (
@@ -1117,7 +1140,7 @@ function FileFacts({ file }: { file: LibraryFile }) {
       <Section title="File">
         <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">Size</dt>
-          <dd className="font-mono tabular-nums">{bytes(file.size)}</dd>
+          <dd className="tabular-nums">{bytes(file.size)}</dd>
           <dt className="text-muted-foreground">Modified</dt>
           <dd>{dateTime(file.mtime)}</dd>
           <dt className="text-muted-foreground">Added</dt>
@@ -1134,7 +1157,7 @@ function FileFacts({ file }: { file: LibraryFile }) {
         ) : (
           <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
             <dt className="text-muted-foreground">Duration</dt>
-            <dd className="font-mono tabular-nums">{clock(p.duration)}</dd>
+            <dd className="tabular-nums">{clock(p.duration)}</dd>
             <dt className="text-muted-foreground">Video</dt>
             <dd>{[p.video, p.width && p.height && `${p.width}×${p.height}`, p.hdr && 'HDR'].filter(Boolean).join(' · ') || '—'}</dd>
             <dt className="text-muted-foreground">Audio</dt>

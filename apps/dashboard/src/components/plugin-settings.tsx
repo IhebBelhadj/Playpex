@@ -342,7 +342,7 @@ function Field({
             disabled={disabled}
             onChange={(e) => onChange(Number(e.target.value))}
           />
-          <span className="w-16 text-right font-mono text-sm tabular-nums">
+          <span className="w-16 text-right text-sm tabular-nums">
             {String(value ?? '')}
             {d.unit ? ` ${d.unit}` : ''}
           </span>

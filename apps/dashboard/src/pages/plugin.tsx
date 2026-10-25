@@ -487,7 +487,7 @@ function Counts({ title, rows }: { title: string; rows: [string, ReactNode][] })
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-4 px-3 py-1.5 text-sm">
             <span className="min-w-0 truncate">{label}</span>
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">{value}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{value}</span>
           </div>
         ))}
       </div>

@@ -303,6 +303,79 @@ test('ffprobe / ffmpeg read a disk file from its path: AC-3 → transcoded', { s
   });
 });
 
+test('playback: direct when the client decodes it, else an HLS stream ffmpeg makes; seek, release', { skip: !FFMPEG && 'no ffmpeg on the PATH' }, function () {
+  var file = path.join(libraryDir, 'Surround (2022).mkv'), ref, url;
+  var made = childProcess.spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=25:duration=20',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:duration=20', '-c:v', 'libx264', '-g', '50', '-c:a', 'ac3', '-ac', '6', file]);
+  assert.equal(made.status, 0, String(made.stderr));
+  function get(apiPath) {
+    return call('GET', apiPath, undefined, { 'X-Playpex-Device': 'dashboard-1' });
+  }
+  return library().then(function (lib) {
+    return lib.folders().then(function (folders) {
+      return lib.addFile(folders[0].id, { relPath: path.basename(file), size: fs.statSync(file).size });
+    });
+  }).then(function (row) {
+    ref = 'f_' + row.id;
+    // a client that plays MKV and AC-3 (Safari would: E-AC-3 / AC-3, not MKV)
+    return get('/media/' + ref + '/playback?mkv=1&ac3=1');
+  }).then(function (res) {
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.method, 'direct');
+    assert.equal(res.body.url, '/api/v1/media/' + ref);
+    assert.ok(Math.abs(res.body.duration - 20) < 0.5);
+    // a browser that plays neither: HLS from the keyframe at or before 9 s
+    return get('/media/' + ref + '/playback?t=9');
+  }).then(function (res) {
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.method, 'hls');
+    assert.ok(res.body.start <= 9 && res.body.start >= 6, 'from a keyframe: ' + res.body.start);
+    assert.ok(res.body.notes.some(function (n) { return /MKV/.test(n); }) && res.body.notes.some(function (n) { return /AC-3/.test(n); }));
+    url = res.body.url.replace('/api/v1', '');
+    assert.match(url, /^\/media\/f_[^/]+\/hls\/[0-9a-f]{24}\/index\.m3u8$/);
+    return get(url);
+  }).then(function (res) {
+    assert.equal(res.status, 200);
+    assert.match(res.headers['content-type'], /mpegurl/);
+    // its parts carry the device (a native HLS player sends no header)
+    assert.match(res.raw.toString(), /#EXTM3U[\s\S]*#EXT-X-MAP:URI="init\.mp4\?device=dashboard-1"[\s\S]*s00000\.m4s\?device=dashboard-1/);
+    return Promise.all([get(url.replace('index.m3u8', 'init.mp4')), get(url.replace('index.m3u8', 's00000.m4s'))]);
+  }).then(function (parts) {
+    assert.equal(parts[0].status, 200);
+    assert.equal(parts[0].raw.slice(4, 8).toString(), 'ftyp', 'an fMP4 init segment');
+    assert.equal(parts[1].status, 200);
+    assert.ok(parts[1].raw.length > 1000);
+    // ffprobe reads the stream (not spawnSync: this process serves it): H.264 copied, the audio now AAC
+    return new Promise(function (resolve, reject) {
+      childProcess.execFile('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json',
+        'http://127.0.0.1:' + new URL(base).port + '/api/v1' + url + '?device=dashboard-1'], function (err, stdout) {
+        return err ? reject(err) : resolve(stdout);
+      });
+    });
+  }).then(function (stdout) {
+    var codecs = JSON.parse(stdout).streams.map(function (st) { return st.codec_name; }).sort();
+    assert.deepEqual(codecs, ['aac', 'h264']);
+    return get(url.replace(/\/hls\/[0-9a-f]{24}\//, '/hls/' + '0'.repeat(24) + '/'));
+  }).then(function (res) {
+    assert.equal(res.status, 404, 'another session id');
+    return call('GET', url, undefined, { 'X-Playpex-Device': 'someone-else' });
+  }).then(function (res) {
+    assert.equal(res.status, 404, 'not this device\'s stream');
+    // asking again replaces it
+    return get('/media/' + ref + '/playback?t=0');
+  }).then(function (res) {
+    assert.equal(res.body.start, 0);
+    return get(url);
+  }).then(function (res) {
+    assert.equal(res.status, 404, 'the first one is gone');
+    return call('DELETE', '/media/' + ref, undefined, { 'X-Playpex-Device': 'dashboard-1' });
+  }).then(function () {
+    var dirs = fs.readdirSync(path.join(tmp, 'cache', 'hls'));
+    return helpers.until(function () { return fs.readdirSync(path.join(tmp, 'cache', 'hls')).length === 0; }, 5000,
+      'the stream\'s folder removed (' + dirs.length + ')');
+  });
+});
+
 test('a finished download: ffmpeg reads it from its path', function () {
   var hash = movie.infoHash, file = movie.files[0];
   server.settings.update({ downloads: { seedRatio: 0, seedMinutes: 0 } });

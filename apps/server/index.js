@@ -218,6 +218,7 @@ function stop() {
   log.info('stopping');
   system.stop();
   sessions.stop();
+  require('./lib/media/playback').stopAll();
   events.detach();
   return plugins.stop().then(function () {
     return library.stop();

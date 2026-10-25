@@ -47,6 +47,16 @@ var held = {},         // key (info hash / disk ref) → { leases: { deviceId �
 
 // ── devices ────────────────────────────────────────────────────────────────
 
+// The admin's player in the dashboard (docs/dashboard-plan.md §5.3):
+// "Dashboard (Firefox on Linux)" from the browser's user agent
+function dashboardName(req) {
+  var ua = req.get('user-agent') || '',
+    browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : null,
+    os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' :
+      /Linux/.test(ua) ? 'Linux' : null;
+  return 'Dashboard' + (browser ? ' (' + browser + (os ? ' on ' + os : '') + ')' : '');
+}
+
 // { id, name, paired, client, address } of a request's device
 function device(req) {
   var paired = req.auth && req.auth.kind === 'device' ? req.auth.device : null,
@@ -58,7 +68,7 @@ function device(req) {
   }
   return {
     id: id,
-    name: paired ? paired.name || null : null,
+    name: paired ? paired.name || null : req.auth && req.auth.kind === 'admin' && /^dashboard-/.test(id) ? dashboardName(req) : null,
     paired: !!paired,
     client: client && client.name ? client.name + (client.version ? '/' + client.version : '') :
       paired ? paired.client || null : null,

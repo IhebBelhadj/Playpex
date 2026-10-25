@@ -100,7 +100,7 @@ export function PluginChannels({ plugin, enabled }: { plugin: string; enabled: b
           <TableBody>
             {list.slice(0, SHOWN).map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="text-right font-mono tabular-nums">{c.number}</TableCell>
+                <TableCell className="text-right tabular-nums">{c.number}</TableCell>
                 <TableCell>
                   {c.logo && <img src={c.logo.startsWith('/') ? API_PREFIX + c.logo : c.logo} alt="" className="h-6 w-10 object-contain" loading="lazy" />}
                 </TableCell>

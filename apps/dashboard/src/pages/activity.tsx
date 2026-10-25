@@ -2,13 +2,51 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Pause, Play, Radio, Square, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, PageHeader, QueryError } from '@/components/common'
+import { SwarmStrip, toneOf } from '@/components/swarm-strip'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api, errorMessage, unwrap, type Session } from '@/lib/api'
+import { useDownloads } from '@/lib/downloads'
 import { ago, bytes, clock, speed } from '@/lib/format'
+
+const METHOD: Record<string, string> = {
+  direct: 'Direct play',
+  'audio-transcode': 'Sound converted',
+  'hls-transcode': 'Converted for a browser',
+  hls: 'A plugin’s stream',
+  live: 'Live',
+}
+
+// A torrent's pieces and the range this player reads, in gold (the Pieces tab's)
+function SessionSwarm({ session }: { session: Session }) {
+  const downloads = useDownloads()
+  const d = downloads.data?.find((x) => x.infoHash === session.infoHash)
+  const pieces = useQuery({
+    queryKey: ['download-pieces', session.infoHash],
+    queryFn: () => unwrap(api.GET('/downloads/{infoHash}/pieces', { params: { path: { infoHash: session.infoHash! } } })),
+    enabled: !!session.infoHash,
+    refetchInterval: 3000,
+  })
+  if (!d) return null
+  const count = pieces.data?.count ?? 0
+  const marks = count
+    ? (pieces.data?.reads ?? [])
+        .filter((r) => !session.file || r.path === session.file)
+        .map((r) => ({ from: r.position / count, to: (Math.min(r.ahead, count - 1) + 1) / count }))
+    : []
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>The torrent{marks.length ? ', and where this player reads' : ''}</span>
+        <span className="tabular-nums">{d.progress === null ? '' : `${Math.floor(d.progress * 100)} %`}</span>
+      </div>
+      <SwarmStrip map={d.pieceMap} progress={d.progress} tone={toneOf(d)} marks={marks} className="h-2" />
+    </div>
+  )
+}
 
 function useSessions() {
   return useQuery({
@@ -90,34 +128,33 @@ function SessionCard({ session }: { session: Session }) {
               {p.paused ? <Pause /> : <Play />} {p.paused ? 'Paused' : 'Playing'}
             </Badge>
           )}
-          {session.method && (
-            <Badge variant="outline">{session.method === 'audio-transcode' ? 'Audio transcode' : 'Direct play'}</Badge>
-          )}
+          {session.method && <Badge variant="outline">{METHOD[session.method] ?? session.method}</Badge>}
           {session.paired ? <Badge variant="outline">Paired</Badge> : <Badge variant="outline">Local</Badge>}
         </div>
         {position !== null && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Position</span>
-              <span className="font-mono tabular-nums">
+              <span className="tabular-nums">
                 {clock(p?.positionS)} / {clock(p?.durationS)}
               </span>
             </div>
             <Progress value={position} />
           </div>
         )}
+        {session.infoHash && <SessionSwarm session={session} />}
         {t && (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs tabular-nums sm:grid-cols-4">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users className="size-3" /> {t.peers} peers
             </span>
-            <span className="flex items-center gap-1 font-mono text-muted-foreground">
-              <ArrowDown className="size-3" /> {speed(t.downloadSpeed)}
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <ArrowDown className="size-3 text-down" /> {speed(t.downloadSpeed)}
             </span>
-            <span className="flex items-center gap-1 font-mono text-muted-foreground">
-              <ArrowUp className="size-3" /> {speed(t.uploadSpeed)}
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <ArrowUp className="size-3 text-up" /> {speed(t.uploadSpeed)}
             </span>
-            <span className="font-mono text-muted-foreground">
+            <span className="text-muted-foreground">
               {bytes(t.downloaded)}
               {downloaded !== null ? ` · ${downloaded.toFixed(0)} %` : ''}
             </span>
@@ -174,7 +211,7 @@ export function ActivityPage() {
                     <TableCell className="max-w-0 w-full">
                       <Mono>{t.name ?? t.infoHash}</Mono>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-xs">{bytes(t.length)}</TableCell>
+                    <TableCell className="text-right text-xs tabular-nums">{bytes(t.length)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

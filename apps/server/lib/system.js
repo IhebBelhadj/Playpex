@@ -153,7 +153,8 @@ function overview() {
         total: downloads.total,
         active: downloads.active,
         queued: downloads.queued,
-        paused: downloads.paused
+        paused: downloads.paused,
+        capabilities: downloads.capabilities
       },
       disks: results[1],
       ffmpeg: {

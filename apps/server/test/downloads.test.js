@@ -37,6 +37,7 @@ var seedDir = path.join(tmp, 'seed'),
   movie = helpers.make(seedDir, 'Movie.2020', [{ path: 'movie.mkv', size: 3000000 }, { path: 'sample.mkv', size: 200000 }]),
   pack = helpers.make(seedDir, 'Show.S01', [{ path: 'Show.S01E01.mkv', size: 900000 }, { path: 'Show.S01E02.mkv', size: 900000 }]),
   other = helpers.make(seedDir, 'Other.2021', [{ path: 'other.mkv', size: 2000000 }], { folder: true }),
+  labelled = helpers.make(seedDir, 'Labelled.2022', [{ path: 'a.mkv', size: 600000 }, { path: 'b.mkv', size: 600000 }]),
   legacy = helpers.make(path.join(tmp, 'legacy'), 'Legacy.1999', [{ path: 'legacy.mkv', size: 300000 }], { folder: true });
 
 function call(method, apiPath, body, headers) {
@@ -85,7 +86,7 @@ test.before(function () {
 
   logger.configure({ level: 'warn', dir: path.join(tmp, 'logs'), console: false });
   return seeder.init({ dataDir: seedDir, stateDir: path.join(seedDir, '.state'), log: logger.child('torrent') }).then(function () {
-    return Promise.all([movie, pack, other].map(function (t) {
+    return Promise.all([movie, pack, other, labelled].map(function (t) {
       return seeder.add({ infoHash: t.infoHash, torrentFile: t.torrentFile, savePath: seedDir });
     }));
   }).then(start).then(function () {
@@ -268,5 +269,77 @@ test('remove when watched: the player reached the end → removed with its data'
     }, 5000, 'the download to go');
   }).then(function () {
     assert.ok(!fs.existsSync(path.join(downloads, 'Other.2021')), 'its data is deleted');
+  });
+});
+
+// a .torrent as multipart `file` (+ other fields)
+function upload(apiPath, torrentFile, fields) {
+  var boundary = 'playpex' + Date.now(), parts = [];
+  Object.keys(fields || {}).forEach(function (k) {
+    parts.push(Buffer.from('--' + boundary + '\r\nContent-Disposition: form-data; name="' + k + '"\r\n\r\n' + fields[k] + '\r\n'));
+  });
+  parts.push(Buffer.from('--' + boundary + '\r\nContent-Disposition: form-data; name="file"; filename="t.torrent"\r\n' +
+    'Content-Type: application/x-bittorrent\r\n\r\n'), torrentFile, Buffer.from('\r\n--' + boundary + '--\r\n'));
+  return new Promise(function (resolve, reject) {
+    var req = http.request(new URL('/api/v1' + apiPath, base), {
+      method: 'POST', headers: { 'X-Playpex-Device': 'tv-1', 'Content-Type': 'multipart/form-data; boundary=' + boundary }
+    }, function (res) {
+      var chunks = [];
+      res.on('data', function (c) { chunks.push(c); });
+      res.on('end', function () { resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks)) }); });
+    });
+    req.on('error', reject);
+    req.end(Buffer.concat(parts));
+  });
+}
+
+test('the Add dialog: preview, then add paused with a label and some files; labels; the piece map', function () {
+  var hash = labelled.infoHash;
+  return upload('/downloads/preview', labelled.torrentFile).then(function (res) {
+    assert.equal(res.status, 200);
+    assert.equal(res.body.infoHash, hash);
+    assert.equal(res.body.name, 'Labelled.2022');
+    assert.deepEqual(res.body.files.map(function (f) { return f.size; }), [600000, 600000]);
+    assert.equal(res.body.known, null);
+    return call('POST', '/downloads/preview', { link: labelled.magnet });
+  }).then(function (res) {
+    assert.equal(res.status, 200);
+    assert.equal(res.body.files, null, 'a new magnet: its files come from the swarm');
+    return call('POST', '/downloads/preview', { link: 'not a torrent' });
+  }).then(function (res) {
+    assert.equal(res.status, 400);
+    return upload('/downloads', labelled.torrentFile, { files: JSON.stringify([labelled.files[0].path]), label: 'Weekend', paused: 'true' });
+  }).then(function (res) {
+    assert.equal(res.status, 200);
+    assert.equal(res.body.state, 'paused');
+    assert.equal(res.body.label, 'Weekend');
+    assert.deepEqual(res.body.selectedFiles, [labelled.files[0].path]);
+    assert.equal(res.body.queuePosition, null);
+    assert.ok(res.body.savePath.endsWith('Labelled.2022'));
+    return call('POST', '/downloads/preview', { link: labelled.magnet });
+  }).then(function (res) {
+    assert.equal(res.body.known.infoHash, hash, 'known now');
+    assert.equal(res.body.files.length, 2, 'and its files with it');
+    return call('PATCH', '/downloads/' + hash, { label: '  Movies  ' });
+  }).then(function (res) {
+    assert.equal(res.body.label, 'Movies');
+    return call('PATCH', '/downloads/' + hash, {});
+  }).then(function (res) {
+    assert.equal(res.status, 400);
+    return call('PATCH', '/downloads/' + hash, { label: 3 });
+  }).then(function (res) {
+    assert.equal(res.status, 400);
+    return call('POST', '/downloads/' + hash + '/start');
+  }).then(function () {
+    return stateIs(hash, ['seeding', 'completed']);
+  }).then(function (d) {
+    // the first file's pieces only: the strip's first half is full, the second empty
+    var map = Buffer.from(d.pieceMap, 'base64');
+    assert.ok(map.length > 2 && map.length <= 100);
+    assert.equal(map[0], 255);
+    assert.equal(map[map.length - 1], 0);
+    return call('PATCH', '/downloads/' + hash, { label: null });
+  }).then(function (res) {
+    assert.equal(res.body.label, null);
   });
 });

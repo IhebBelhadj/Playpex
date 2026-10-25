@@ -127,7 +127,20 @@ http://192.168.1.20:28470/api/v1/media/t_dd8255ec…_3f2a9c0d41b7e865
 
 Many releases carry Dolby (AC-3, E-AC-3), DTS or TrueHD audio. If your player decodes it, play the file directly. If not (browsers, Electron), the server can re-encode **only the audio** to AAC stereo with ffmpeg and stream that (`features.transcode` in `GET /server` says ffmpeg is there).
 
-**Today the client decides**; a server-side decision per device is planned (plan §6.5: `GET …/files/{path}/playback`, from your declared `capabilities`).
+Two ways: **ask the server** (`/playback`, below: what browsers need, since they can't open MKV files in Firefox / Safari), or decide yourself from a probe (the steps after it: what Playpex TV does).
+
+**Ask the server**: `GET /api/v1/media/{ref}/playback?t=<seconds>&audio=<index>&mkv=1&hevc=1&ac3=1&eac3=1&dts=1&truehd=1`, naming only what your player decodes beyond what every browser does (MP4 / WebM / MOV, H.264 / VP8 / VP9 / AV1, AAC / MP3 / Opus / Vorbis / FLAC: a browser can ask `MediaSource.isTypeSupported` / `canPlayType`). The server probes the file and answers:
+
+```json
+{ "method": "hls", "url": "/api/v1/media/t_…/hls/3f9c…/index.m3u8", "start": 1198.4, "duration": 2732.5, "audio": 0,
+  "notes": ["This browser doesn’t open MKV files: the server repackages it as it plays.", "Its sound is Dolby Digital Plus (E-AC-3): the server converts it to AAC."] }
+```
+
+- `direct`: `url` is the file (`GET /media/{ref}`, byte ranges).
+- `hls`: a stream the server makes now: video copied, audio AAC stereo, fMP4 segments, an event playlist (it grows until ffmpeg reaches the end; `#EXT-X-ENDLIST` then). Play it with an HLS player (hls.js where the browser has MediaSource, else its own). It starts at `start` seconds of the file (the keyframe at or before `t`): your player's 0 is `start`, subtitles' cues shift by it, and to seek outside what the stream holds ask `/playback` again with `t`. Its parts carry `?device=` (a native HLS player sends no header); they are the asking device's only. One per device and file (asking again replaces it), counted in `streaming.maxTranscodes` (`503 BUSY` past it), gone after `DELETE /media/{ref}` or 90 s without a request. `audio`: another sound track (browsers can't switch a file's tracks themselves) makes it `hls` too.
+- `none`: this player can't play it (the video codec: HEVC in Firefox, XviD, VC-1…); `notes` say why in words.
+
+Without ffmpeg the answer is `direct` with a note. The dashboard's player uses this route (`?device=dashboard-<id>`).
 
 1. **Probe** the file: `GET /api/v1/media/{ref}/probe`:
    ```json
@@ -240,7 +253,7 @@ The server keeps every torrent it has played or been asked to download, like a t
 | `completed` | every selected file is done; playing it reads the file from disk |
 | `error` | `error` says why; start it again |
 
-`intent`: `stream` (a player; it pauses when the last one leaves) or `download` (runs to the end without a player: `POST /downloads {link}`, or `POST /downloads/{infoHash}/start` on a known one). A client may add downloads (`POST /downloads` `{link, files?}` or a multipart `.torrent`), start / pause them, choose files (`PUT /downloads/{infoHash}/files {files: [paths] | null}`) and set "remove when watched" (`PATCH /downloads/{infoHash} {removeWhenWatched}`: deleted with its data once a player reached 90 %); only the admin removes one (`DELETE /downloads/{infoHash}?data=keep|delete`). A "Download" button in a client is `POST /downloads` with `media` (`{mediaType, tmdbId, season?, episode?}`, as in the keepalive) and a `title`: the download's `title` then names it, so the title's page finds it again in `GET /downloads` and follows its `download.updated` events (Playpex TV: "Downloading 43 %", then "On this server").
+`intent`: `stream` (a player; it pauses when the last one leaves) or `download` (runs to the end without a player: `POST /downloads {link}`, or `POST /downloads/{infoHash}/start` on a known one). A client may add downloads (`POST /downloads` `{link, files?}` or a multipart `.torrent`), start / pause them, choose files (`PUT /downloads/{infoHash}/files {files: [paths] | null}`) and set "remove when watched" (`PATCH /downloads/{infoHash} {removeWhenWatched?, label?}`: deleted with its data once a player reached 90 %; a free-text label); only the admin removes one (`DELETE /downloads/{infoHash}?data=keep|delete`). Each download also has `queuePosition` (its place while `queued`), `savePath` and `pieceMap` (its pieces in up to 100 slices, each byte the share verified: a progress bar drawn from its pieces). `POST /downloads/preview` (`{link}` or a multipart `.torrent`) tells what a link is before adding it: its name and files when known without the swarm (a `.torrent`, or a torrent the server keeps), and the download the server already has for it. The admin also reads a download's peers, trackers, pieces (and where players read) and speed history (`/downloads/{infoHash}/peers|trackers|pieces|speed`, the dashboard's detail pane). A "Download" button in a client is `POST /downloads` with `media` (`{mediaType, tmdbId, season?, episode?}`, as in the keepalive) and a `title`: the download's `title` then names it, so the title's page finds it again in `GET /downloads` and follows its `download.updated` events (Playpex TV: "Downloading 43 %", then "On this server").
 
 ## Progress and resume
 

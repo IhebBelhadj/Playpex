@@ -34,7 +34,7 @@ export function Stat({ label, value, hint, className }: { label: string; value: 
     <Card size="sm" className={className}>
       <CardHeader>
         <CardDescription>{label}</CardDescription>
-        <div className="font-mono text-2xl font-semibold tabular-nums">{value}</div>
+        <div className="text-2xl font-semibold tabular-nums">{value}</div>
       </CardHeader>
       {hint && <CardContent className="text-xs text-muted-foreground">{hint}</CardContent>}
     </Card>

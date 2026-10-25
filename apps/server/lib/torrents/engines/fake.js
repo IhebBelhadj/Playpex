@@ -176,7 +176,11 @@ function create(opts) {
       rateLimits: false,
       fileSelection: true,
       streamPriority: true,
-      persistentSession: false
+      persistentSession: false,
+      peerList: true,
+      trackerList: true,
+      trackerEdit: true,
+      recheck: true
     }, opts.capabilities),
 
     init: function (initOptions) {
@@ -230,12 +234,58 @@ function create(opts) {
         }
         var t = torrents[hash] = {
           hash: hash, savePath: req.savePath, files: req.files || null, onlyLargest: !!req.onlyLargest, meta: null, done: {},
-          running: !req.paused, priority: {}, waiters: [], down: 0, up: 0, downloaded: 0, uploaded: 0, wasDone: false
+          running: !req.paused, priority: {}, waiters: [], down: 0, up: 0, downloaded: 0, uploaded: 0, wasDone: false,
+          trackerList: (req.trackers || []).slice()
         };
         if (meta) {
           gotMetadata(t, meta);
         }
         return { infoHash: hash, name: meta ? meta.name : null };
+      });
+    },
+
+    // the fake seeder as one peer while a copy is linked, a leecher while seeding
+    peers: function (hash) {
+      return Promise.resolve().then(function () {
+        var t = get(hash), linked = t.running && !!sourceFor(hash, t.savePath), list = [];
+        if (linked || (t.running && t.up)) {
+          list.push({
+            address: '127.0.0.1:6881', client: null, peerId: Buffer.from('-qB4630-fakepeer0001').toString('hex'),
+            flags: linked ? 'D' : 'U', progress: linked ? 1 : 0, downBps: t.down * 1000 / TICK_MS, upBps: t.up * 1000 / TICK_MS,
+            downloaded: t.downloaded, uploaded: t.uploaded
+          });
+        }
+        return { peers: list, availability: linked ? 1 : null };
+      });
+    },
+
+    trackers: function (hash) {
+      return Promise.resolve().then(function () {
+        return get(hash).trackerList.map(function (url) { return { url: url, status: 'unknown' }; });
+      });
+    },
+
+    addTrackers: function (hash, urls) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        urls.forEach(function (url) {
+          if (t.trackerList.indexOf(url) === -1) {
+            t.trackerList.push(url);
+          }
+        });
+      });
+    },
+
+    // pieces verified again: what is on disk counts
+    recheck: function (hash) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        if (!t.running) {
+          throw EngineError('UNSUPPORTED', 'The torrent ' + hash + ' is paused');
+        }
+        if (t.meta) {
+          scan(t);
+        }
       });
     },
 
@@ -362,22 +412,55 @@ function create(opts) {
           return empty;
         }
         t.priority[filePath] = Date.now();
-        return new Promise(function (resolve, reject) {
-          function ready(gone) {
-            if (gone) {
-              reject(EngineError('UNAVAILABLE', 'The torrent ' + hash + ' stopped'));
+        // like a real engine: the bytes as they arrive (the file is copied from its start)
+        var position = start, reading = false, location = files.location(t.savePath, filePath);
+        var out = new stream.Readable({
+          read: function () {
+            if (reading) {
+              return;
+            }
+            reading = true;
+            function pull(gone) {
+              if (out.destroyed) {
+                return true;
+              }
+              if (gone) {
+                reading = false;
+                out.destroy(EngineError('UNAVAILABLE', 'The torrent ' + hash + ' stopped'));
+                return true;
+              }
+              var have = Math.min((t.done[filePath] || 0) - 1, end);
+              if (have < position) {
+                return false;
+              }
+              var length = Math.min(have - position + 1, 256 * 1024), buffer = Buffer.alloc(length);
+              fs.open(location, 'r', function (err, fd) {
+                if (err) {
+                  return out.destroy(err);
+                }
+                fs.read(fd, buffer, 0, length, position, function (readErr, n) {
+                  fs.close(fd, function () {});
+                  reading = false;
+                  if (readErr) {
+                    return out.destroy(readErr);
+                  }
+                  position += n;
+                  var more = out.push(buffer.slice(0, n));
+                  if (position > end) {
+                    out.push(null);
+                  } else if (more) {
+                    out._read();
+                  }
+                });
+              });
               return true;
             }
-            if (t.done[filePath] > end) {
-              resolve(fs.createReadStream(files.location(t.savePath, filePath), { start: start, end: end }));
-              return true;
+            if (!pull()) {
+              t.waiters.push(pull);
             }
-            return false;
-          }
-          if (!ready()) {
-            t.waiters.push(ready);
           }
         });
+        return out;
       });
     },
 

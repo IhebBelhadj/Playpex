@@ -15,7 +15,7 @@
 // Every method answers a Promise, and rejects with an EngineError
 // (./errors.js) for expected failures.
 
-var ENGINE_PORT_VERSION = 1;
+var ENGINE_PORT_VERSION = 2;
 
 // What an adapter declares it can do; the client reads these, never the
 // engine's id
@@ -25,13 +25,36 @@ var CAPABILITIES = {
   rateLimits: 'download / upload speed limits (setLimits)',
   fileSelection: 'per-file selection (select); else every file is downloaded',
   streamPriority: 'stream() prioritises the pieces being read',
-  persistentSession: 'the engine remembers its torrents across its own restarts (list() after init)'
+  persistentSession: 'the engine remembers its torrents across its own restarts (list() after init)',
+  // version 2 (docs/dashboard-plan.md §4.4): what a torrent client's detail shows
+  peerList: 'peers(hash): the connected peers, and the availability',
+  trackerList: 'trackers(hash): the announce URLs (status where the engine knows it)',
+  trackerEdit: 'addTrackers(hash, urls)',
+  recheck: 'recheck(hash): every piece verified again'
 };
 
 // What stats() reports for a torrent the engine holds
 var ENGINE_STATES = ['checking', 'downloading', 'seeding', 'paused', 'error'];
 
 /**
+ * @typedef {object} PeerInfo
+ * @property {string} address        ip:port
+ * @property {string|null} client    the client's own name (extension handshake), when it sent one
+ * @property {string|null} peerId    hex; the torrent client decodes a name from it
+ * @property {string} flags          µTorrent's letters the engine knows (D U d u O S I E P L X H)
+ * @property {number|null} progress  0–1 of the torrent the peer has
+ * @property {number} downBps        from the peer
+ * @property {number} upBps          to the peer
+ * @property {number} downloaded     bytes from the peer (this connection)
+ * @property {number} uploaded
+ *
+ * @typedef {object} TrackerInfo
+ * @property {string} url
+ * @property {string} status         working · updating · error · not-contacted · unknown (the engine can't tell)
+ * @property {number|null} [seeds]   the tracker's own counts, when known
+ * @property {number|null} [peers]
+ * @property {string|null} [message]
+ *
  * @typedef {object} EngineInit
  * @property {string} dataDir      default save path
  * @property {string} stateDir     where the engine may keep its own cache / session
@@ -95,6 +118,10 @@ var ENGINE_STATES = ['checking', 'downloading', 'seeding', 'paused', 'error'];
  *   the bytes of that range (inclusive end), waiting for the engine to be ready; prioritised
  * @property {function({ downBps?: number, upBps?: number, uploadSlots?: number }): Promise<void>} setLimits
  * @property {function(): Promise<string[]>} list               hashes the engine has now
+ * @property {function(string): Promise<{ peers: PeerInfo[], availability: number|null }>} [peers]   capability peerList
+ * @property {function(string): Promise<TrackerInfo[]>} [trackers]   capability trackerList
+ * @property {function(string, string[]): Promise<void>} [addTrackers]   capability trackerEdit
+ * @property {function(string): Promise<void>} [recheck]        capability recheck; the torrent must be running
  * @property {function(string, function): void} on              'metadata' (hash), 'done' (hash), 'error' (hash, EngineError)
  */
 

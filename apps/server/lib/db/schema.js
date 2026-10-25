@@ -196,6 +196,7 @@ var downloads = sqliteTable('downloads', {
   profileId: text('profile_id'),                   // no FK: a download outlives a profile
   titleRef: text('title_ref', { mode: 'json' }),   // { mediaType, tmdbId, season, episode, title }
   removeWhenWatched: integer('remove_when_watched', { mode: 'boolean' }).notNull().default(false),
+  label: text('label'),                            // the admin's free text (dashboard plan §4.5)
   addedAt: timestamp('added_at').notNull(),
   completedAt: timestamp('completed_at'),
   lastActiveAt: timestamp('last_active_at')

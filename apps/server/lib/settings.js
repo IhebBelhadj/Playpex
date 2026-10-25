@@ -26,7 +26,7 @@ var LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
 var POSITIVE_INTEGERS = ['streaming.maxTorrents', 'streaming.maxTranscodes', 'streaming.maxLive', 'streaming.idleTimeoutMinutes',
   'security.pairingRequestMinutes', 'downloads.maxActive'];
 // Whole numbers ≥ 0 (0 = off)
-var NON_NEGATIVE_INTEGERS = ['downloads.seedMinutes', 'downloads.uploadSlots'];
+var NON_NEGATIVE_INTEGERS = ['downloads.seedMinutes', 'downloads.uploadSlots', 'downloads.downLimitKBps', 'downloads.upLimitKBps'];
 // Ports (1024–65535) other than the HTTP one
 var PORTS = ['downloads.peerPort', 'dlna.port'];
 // Numbers ≥ 0
@@ -75,6 +75,10 @@ function defaults() {
       seedRatio: 1,
       seedMinutes: 0,
       uploadSlots: 10,    // peers uploaded to at once per torrent; 0 = never upload
+      // speed limits of every torrent together, KB/s (0 = none), where the
+      // engine can (capability rateLimits); applied at once
+      downLimitKBps: 0,
+      upLimitKBps: 0,
       paused: false       // "Pause all downloads" (the tray): downloads wait, streams still play
     },
     dlna: {

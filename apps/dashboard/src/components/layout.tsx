@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Dot, Spinner } from '@/components/common'
+import { PlayerProvider } from '@/components/player'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,11 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     const next = location.pathname + location.search
     return <Navigate to={next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`} replace />
   }
-  return <EventsProvider enabled>{children}</EventsProvider>
+  return (
+    <EventsProvider enabled>
+      <PlayerProvider>{children}</PlayerProvider>
+    </EventsProvider>
+  )
 }
 
 export function useOverview() {
@@ -65,6 +70,8 @@ const NAV = [
   { to: '/profiles', label: 'Profiles', icon: Users },
   { to: '/about', label: 'About', icon: Info },
 ]
+
+const WIDE = ['/downloads', '/storage']
 
 function Nav({ pending, onNavigate }: { pending: number; onNavigate?: () => void }) {
   return (
@@ -193,7 +200,13 @@ export function AppLayout() {
         <Brand name={name} />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 px-4 py-6 md:px-8 md:py-8">
+      {/* the torrent client and the file browser use the whole width */}
+      <main
+        className={cn(
+          'mx-auto w-full min-w-0 space-y-6 px-4 py-6 md:px-8 md:py-8',
+          WIDE.some((p) => location.pathname.startsWith(p)) ? 'max-w-[110rem]' : 'max-w-6xl',
+        )}
+      >
         {recovery && !location.pathname.startsWith('/settings') && (
           <Alert variant="destructive">
             <AlertTriangle />

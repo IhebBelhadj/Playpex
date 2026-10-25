@@ -16,6 +16,7 @@ var express = require('express'),
   transcode = require('../transcode'),
   tracks = require('../media/tracks'),
   hls = require('../media/hls'),
+  playbackLib = require('../media/playback'),
   ffmpeg = require('../ffmpeg'),
   subtitles = require('../subtitles'),
   sessions = require('../sessions'),
@@ -301,6 +302,43 @@ function subtitleTrackFile(req, res) {
   });
 }
 
+// How this client plays the file: { method: direct | hls | none, url, start,
+// duration, audio, notes } (lib/media/playback.js); ?t= (hls: from that
+// time), ?audio= (a sound track), and what the client decodes (?mkv=1 …)
+function playback(req, res) {
+  playbackLib.playback({
+    media: req.media,
+    input: input(req),
+    probeKey: media.probeKey(req.media),
+    query: req.query,
+    deviceId: req.lease.deviceId,
+    takeSlot: function (slotRes, file) { return sessions.takeTranscodeSlot(req.lease, file, slotRes); }
+  }).then(function (answer) {
+    if (answer.method === 'hls') {
+      req.lease.method = 'hls-transcode';
+    }
+    res.json(answer);
+  }, function (err) {
+    if (err.code === 'ENOENT') {
+      return fail(res, 'TRANSCODER_UNAVAILABLE', 'ffmpeg is not available');
+    }
+    if (err.code === 'BUSY' || err.code === 'UPSTREAM' || err.code === 'NOT_FOUND') {
+      return errors.failed(res, err);
+    }
+    fail(res, 'PROBE_FAILED', err.message);
+  });
+}
+
+// A playback HLS session's playlist, init segment and segments (the device's own)
+function playbackPart(req, res) {
+  sessions.trackStream(req.lease, req, res, req.media, 'hls-transcode');
+  playbackLib.serve(req, res, req.media.ref, req.params.session, req.params.file, req.lease.deviceId).catch(function (err) {
+    if (!res.headersSent && !res.destroyed) {
+      errors.failed(res, err);
+    }
+  });
+}
+
 var ref = '/:ref',
   open = [fromRef, audience, lease],
   file = open.concat(bytes);
@@ -308,6 +346,8 @@ var ref = '/:ref',
 router.get(ref, open, stream);   // and HEAD
 router.get(ref + '/index.m3u8', open, playlist);
 router.get(ref + '/r/:token([A-Za-z0-9_.-]{1,4096})/:name([A-Za-z0-9._-]{1,64})', open, playlist);
+router.get(ref + '/playback', file, playback);
+router.get(ref + '/hls/:session([0-9a-f]{24})/:file([A-Za-z0-9.]{1,32})', file, playbackPart);
 router.get(ref + '/probe', file, probe);
 router.get(ref + '/keyframe', file, keyframe);
 router.get(ref + '/transcode', file, transcoded);
@@ -322,6 +362,7 @@ router.get(ref + '/subtitles/file/:track(f\\d+)', file, subtitleTrackFile);
 router.delete(ref, fromRef, function (req, res) {
   sessions.release(req.media.key, sessions.device(req).id);
   hls.left(req.media.ref, sessions.device(req).id);
+  playbackLib.left(req.media.ref, sessions.device(req).id);
   res.json({ ok: true });
 });
 

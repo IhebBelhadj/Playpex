@@ -17,7 +17,7 @@ var ROOT = path.join(__dirname, '..'),
   SCANNED = ['index.js', 'bin', 'lib'];
 
 var RULES = [
-  { name: 'requires an engine library', re: /require\(\s*['"](torrent-stream|webtorrent|librqbit|rqbit[^'"]*)['"]\s*\)/ },
+  { name: 'requires an engine library', re: /require\(\s*['"](torrent-stream|peer-wire-protocol|webtorrent|librqbit|rqbit[^'"]*)['"]\s*\)/ },
   { name: 'requires an engine adapter directly (use lib/torrents/engines)', re: /require\(\s*['"][^'"]*engines\/(?!index['"])[^'"]+['"]\s*\)/ },
   { name: 'mentions rqbit in code', re: /rqbit/i }
 ];

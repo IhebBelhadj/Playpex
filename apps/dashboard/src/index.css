@@ -127,19 +127,56 @@
   html {
     @apply font-sans;
     }
+  /* numbers in tables line up and don't jitter while they change */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* The swarm strip (components/swarm-strip.tsx): its colour by state */
+@layer components {
+  .strip { --strip-fill: var(--down); }
+  .strip[data-tone='up'] { --strip-fill: var(--up); }
+  .strip[data-tone='idle'] { --strip-fill: color-mix(in oklch, var(--muted-foreground) 65%, transparent); }
+  .strip[data-tone='fault'] { --strip-fill: var(--destructive); }
+  /* no pieces known yet (a magnet's metadata): slow diagonal stripes */
+  .strip[data-waiting] {
+    background-image: repeating-linear-gradient(-45deg, var(--strip-track) 0 4px, color-mix(in oklch, var(--strip-fill) 35%, var(--strip-track)) 4px 8px);
+    background-size: 11.3px 11.3px;
+    animation: strip-wait 1.2s linear infinite;
+  }
+  @keyframes strip-wait { to { background-position: 11.3px 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .strip[data-waiting] { animation: none; }
+  }
 }
 /* Status colours (also readable in light mode) */
 :root {
     --success: oklch(0.6 0.15 150);
     --warning: oklch(0.7 0.15 70);
+    /* Traffic (docs/dashboard-plan.md §3.2): down = download speed and progress (the TV's amber means
+       progress), up = upload, seeding, a ratio reached. Text contrast ≥ 4.5:1 on the ground. */
+    --down: #9a6a0e;
+    --up: #007f69;
+    /* the speed chart's lines (dataviz validator: lightness band, chroma, CVD separation) */
+    --chart-down: #9a6a0e;
+    --chart-up: #007f69;
+    --strip-track: oklch(0.922 0 0);
 }
 .dark {
     --success: oklch(0.75 0.15 150);
     --warning: oklch(0.8 0.14 80);
+    --down: #e0a93b;
+    --up: #5fb3a6;
+    --chart-down: #c18620;
+    --chart-up: #36a894;
+    --strip-track: oklch(1 0 0 / 9%);
 }
 @theme inline {
     --color-success: var(--success);
     --color-warning: var(--warning);
+    --color-down: var(--down);
+    --color-up: var(--up);
     --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, Consolas, monospace;
 }
 

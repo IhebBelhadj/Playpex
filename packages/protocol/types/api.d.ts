@@ -565,6 +565,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/storage/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every place Playpex keeps media (the library's folders, the download folder), with its size and disk */
+        get: operations["storagePlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/storage/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One level of a place (folders first), or the names matching `q` anywhere in it (≤ 200) */
+        get: operations["storageBrowse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/storage/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a file or folder of a place (refused while a running torrent writes there; its library rows go too) */
+        delete: operations["storageDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/storage/largest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The 10 biggest title folders of a place (folders whose own files hold most of their size) */
+        get: operations["storageLargest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/storage/check": {
         parameters: {
             query?: never;
@@ -1848,6 +1916,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{ref}/playback": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                /** @description hls: start there (the keyframe at or before it) */
+                t?: number;
+                /** @description The sound track (its index among the audio streams) */
+                audio?: number;
+                /** @description The client plays Matroska files */
+                mkv?: "0" | "1";
+                /** @description The client decodes HEVC */
+                hevc?: "0" | "1";
+                ac3?: "0" | "1";
+                eac3?: "0" | "1";
+                dts?: "0" | "1";
+                truehd?: "0" | "1";
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        /**
+         * How this client plays the file (direct, an HLS stream the server makes, or not here)
+         * @description The client says what its player decodes beyond MP4 / WebM, H.264 / VP9 / AV1 and AAC / MP3 / Opus (every
+         *     browser's); the server probes the file. `hls`: a stream started now (video copied, audio to AAC, fMP4
+         *     segments), played from `start` seconds of the file: to seek outside it, ask again with `t`. One per device
+         *     and file (asking again replaces it), counted in `streaming.maxTranscodes`; `DELETE /media/{ref}` ends it.
+         */
+        get: operations["mediaPlayback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{ref}/hls/{session}/{file}": {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                session: string;
+                /** @description `index.m3u8`, `init.mp4`, `s00000.m4s`… */
+                file: string;
+            };
+            cookie?: never;
+        };
+        /** A playback HLS stream's playlist and segments (the device's own; they wait for ffmpeg) */
+        get: operations["mediaPlaybackPart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/{ref}/probe": {
         parameters: {
             query?: {
@@ -2133,9 +2278,27 @@ export interface paths {
         /**
          * Add a torrent to download to the end without a client (intent `download`)
          * @description Queued past `downloads.maxActive` running downloads. A torrent the server already keeps becomes a
-         *     download (a paused one is queued again). JSON `{ link, files? }`, or a .torrent as multipart `file`.
+         *     download (a paused one is queued again). JSON `{ link, files?, label?, paused? }`, or a .torrent as
+         *     multipart `file` (with `files` as a JSON list, `label`, `paused`).
          */
         post: operations["addDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What a link or a .torrent is, before adding it (its name and files when known without the swarm) */
+        post: operations["previewDownload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2162,7 +2325,7 @@ export interface paths {
         delete: operations["removeDownload"];
         options?: never;
         head?: never;
-        /** Its rules */
+        /** Its rules and label */
         patch: operations["updateDownload"];
         trace?: never;
     };
@@ -2216,6 +2379,102 @@ export interface paths {
         get?: never;
         /** Which files to download */
         put: operations["selectDownloadFiles"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/peers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** The connected peers and the availability (admin; engines with `peerList`) */
+        get: operations["downloadPeers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/trackers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** Its trackers, with their status where the engine knows it (admin; engines with `trackerList`) */
+        get: operations["downloadTrackers"];
+        put?: never;
+        /** Add announce URLs (admin; engines with `trackerEdit`). Kept until the server restarts. */
+        post: operations["addDownloadTrackers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/recheck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify every piece again (admin; a running torrent; engines with `recheck`) */
+        post: operations["recheckDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/pieces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** Its verified pieces, the selected files' piece ranges, and where players read now (admin) */
+        get: operations["downloadPieces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/speed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** The last 10 minutes of its speeds and connected peers, a sample every 2 s (admin) */
+        get: operations["downloadSpeed"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -3538,10 +3797,10 @@ export interface components {
             /** @description Path of the file being played (in the torrent, or in its library folder) */
             file: string | null;
             /**
-             * @description hls: a plugin's HLS stream through the server's proxy; live: a continuous stream remuxed by ffmpeg
+             * @description hls: a plugin's HLS stream through the server's proxy; hls-transcode: an HLS stream the server makes from the file (GET /media/{ref}/playback); live: a continuous stream remuxed by ffmpeg
              * @enum {string|null}
              */
-            method: "direct" | "audio-transcode" | "hls" | "live" | null;
+            method: "direct" | "audio-transcode" | "hls" | "hls-transcode" | "live" | null;
             /** @description A media response is open right now */
             streaming: boolean;
             /** Format: date-time */
@@ -3623,6 +3882,14 @@ export interface components {
             addedBy: string | null;
             profileId: string | null;
             removeWhenWatched: boolean;
+            /** @description The admin's label (free text) */
+            label: string | null;
+            /** @description Its place in the download queue (state `queued`) */
+            queuePosition: number | null;
+            /** @description The torrent's pieces in up to 100 slices, each byte the share of its pieces verified (0–255), base64 (the last ones the engine reported while it is stopped); null when not known */
+            pieceMap: string | null;
+            /** @description Where its files are on the server */
+            savePath: string;
             /** Format: date-time */
             addedAt: string;
             /** Format: date-time */
@@ -3658,6 +3925,173 @@ export interface components {
             /** @description For people, e.g. "Breaking Bad · S02E05" */
             title?: string;
             profileId?: string;
+            /** @description The download's label */
+            label?: string;
+            /** @description Add it paused (it waits until started) */
+            paused?: boolean;
+        };
+        StoragePlaces: {
+            places: {
+                /** @description `downloads`, or `folder:<library folder id>` */
+                id: string;
+                name: string;
+                /** @enum {string} */
+                kind: "downloads" | "movies" | "shows" | "mixed" | "other";
+                /** @description Its real path on the server */
+                root: string;
+                /** @description On disk; null until it is measured */
+                bytes: number | null;
+                measuring: boolean;
+                disk: {
+                    free: number;
+                    total: number;
+                } | null;
+                /**
+                 * @description offline: its folder isn't there (an unplugged drive, a share)
+                 * @enum {string}
+                 */
+                status: "online" | "offline";
+            }[];
+        };
+        StorageEntry: {
+            /** @enum {string} */
+            type: "folder" | "file";
+            name: string;
+            /** @description Inside the place */
+            path: string;
+            /** @description A file's size; a folder's total on disk (null while measuring) */
+            bytes: number | null;
+            /** @description A file's allocated bytes (a sparse download holds less) */
+            onDisk?: number | null;
+            /** @description A folder's files and folders */
+            items: number | null;
+            /** Format: date-time */
+            modifiedAt: string | null;
+            /** @description What the file is to Playpex */
+            what: {
+                /** @enum {string} */
+                kind: "matched" | "unmatched" | "ignored" | "missing" | "downloading" | "subtitles" | "video" | "other";
+                text: string;
+            } | null;
+            /** @description A media ref to play it (a library file, a download's video) */
+            ref: string | null;
+            /** @description Its library file (the Library page's ?file=) */
+            fileId: string | null;
+            /** @description The download whose data it is */
+            download: {
+                infoHash: string;
+                active: boolean;
+            } | null;
+        };
+        StorageListing: {
+            place: string;
+            path: string;
+            parent: string | null;
+            bytes: number | null;
+            measuring: boolean;
+            search: string | null;
+            entries: components["schemas"]["StorageEntry"][];
+        };
+        MediaPlayback: {
+            /** @enum {string} */
+            method: "direct" | "hls" | "none";
+            /** @description Under the API prefix: GET /media/{ref} (direct), or the HLS playlist (hls); null for none */
+            url: string | null;
+            /** @description hls: the time of the file the stream starts at (seconds) */
+            start: number;
+            duration: number | null;
+            /** @description The sound track played */
+            audio: number;
+            /** @description What the server does, or why it can't play here, in words */
+            notes: string[];
+        };
+        DownloadPeers: {
+            running: boolean;
+            /** @description Distributed copies among the connected peers */
+            availability: number | null;
+            peers: {
+                /** @description ip:port */
+                address: string;
+                /** @description From its handshake or its peer id */
+                client: string | null;
+                /** @description µTorrent's letters the engine knows: D downloading from it, d interested but choked, U uploading to it, u it is interested but choked, I incoming, X from peer exchange, H from the DHT, P µTP */
+                flags: string;
+                /** @description 0 to 1 of the torrent it has */
+                progress: number | null;
+                downloadSpeed: number;
+                uploadSpeed: number;
+                downloaded: number;
+                uploaded: number;
+            }[];
+        };
+        DownloadTrackers: {
+            running: boolean;
+            trackers: {
+                url: string;
+                /**
+                 * @description `unknown`: the engine does not report it; `stopped`: the torrent is not running
+                 * @enum {string}
+                 */
+                status: "working" | "updating" | "error" | "not-contacted" | "unknown" | "stopped";
+                seeds: number | null;
+                peers: number | null;
+                message: string | null;
+                /** @description One of the trackers the server adds to every torrent */
+                ours: boolean;
+            }[];
+        };
+        DownloadPieces: {
+            pieceLength: number | null;
+            count: number;
+            /** @description Verified pieces as a bitfield (base64; piece 0 = the first byte's high bit) */
+            have: string | null;
+            /** @description The selected files' piece ranges (inclusive) */
+            files: {
+                path: string;
+                first: number;
+                last: number;
+            }[];
+            /** @description Where players read now (open streams) */
+            reads: {
+                path: string;
+                /** @description The piece the stream started at */
+                from: number;
+                /** @description The piece it reads now */
+                position: number;
+                /** @description The last piece of its read-ahead (16 MB) */
+                ahead: number;
+                /**
+                 * Format: date-time
+                 * @description Its last read
+                 */
+                at: string;
+                /** @description Devices playing that file */
+                devices: string[];
+            }[];
+        };
+        DownloadSpeed: {
+            intervalMs: number;
+            samples: {
+                /** Format: date-time */
+                at: string;
+                down: number;
+                up: number;
+                peers: number;
+            }[];
+        };
+        /** @description What a link or a .torrent is, before adding it */
+        DownloadPreview: {
+            infoHash: string;
+            name: string | null;
+            /** @description Of every file; null when the files are not known yet */
+            sizeBytes: number | null;
+            /** @description null for a magnet link the server does not keep: its files arrive with its metadata, from the swarm */
+            files: {
+                path: string;
+                size: number;
+            }[] | null;
+            /** @description The download the server already keeps for this torrent */
+            known: components["schemas"]["Download"] | null;
         };
         /**
          * @description What to match its files as (other: never matched)
@@ -5311,6 +5745,10 @@ export interface components {
                 queued: number;
                 /** @description downloads.paused ("Pause all downloads") */
                 paused: boolean;
+                /** @description What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`) */
+                capabilities?: {
+                    [key: string]: boolean;
+                };
             };
             disks: {
                 /** @enum {string} */
@@ -5424,6 +5862,10 @@ export interface components {
                 seedMinutes: number;
                 /** @description Peers uploaded to at once per torrent; 0 = never upload */
                 uploadSlots: number;
+                /** @description Download speed of every torrent together, KB/s (0 = no limit); only engines with `rateLimits` (Overview `downloads.capabilities`) */
+                downLimitKBps: number;
+                /** @description Upload speed of every torrent together, KB/s (0 = no limit); same */
+                upLimitKBps: number;
                 /** @description "Pause all downloads": downloads wait, streams still play */
                 paused: boolean;
             };
@@ -5789,6 +6231,24 @@ export interface components {
         };
         /** @description A provider failed (`UPSTREAM`) */
         Upstream: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Not in a state that allows it (`CONFLICT`) */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description This server can't (`NOT_SUPPORTED`), e.g. the running torrent engine doesn't report it */
+        NotSupported: {
             headers: {
                 [name: string]: unknown;
             };
@@ -6745,6 +7205,123 @@ export interface operations {
             401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Error"];
+        };
+    };
+    storagePlaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The places */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoragePlaces"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    storageBrowse: {
+        parameters: {
+            query: {
+                place: string;
+                /** @description Inside the place, / separated; empty = its root */
+                path?: string;
+                sort?: "name" | "size" | "date";
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The listing */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageListing"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    storageDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    place: string;
+                    path: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        ok: true;
+                        freedBytes: number;
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    storageLargest: {
+        parameters: {
+            query: {
+                place: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The folders, biggest first (none while the place is measured) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        measuring: boolean;
+                        folders: {
+                            path: string;
+                            bytes: number;
+                        }[];
+                    };
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     checkDirectory: {
@@ -8736,6 +9313,90 @@ export interface operations {
             502: components["responses"]["Upstream"];
         };
     };
+    mediaPlayback: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                /** @description hls: start there (the keyframe at or before it) */
+                t?: number;
+                /** @description The sound track (its index among the audio streams) */
+                audio?: number;
+                /** @description The client plays Matroska files */
+                mkv?: "0" | "1";
+                /** @description The client decodes HEVC */
+                hevc?: "0" | "1";
+                ac3?: "0" | "1";
+                eac3?: "0" | "1";
+                dts?: "0" | "1";
+                truehd?: "0" | "1";
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The way to play it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaPlayback"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Busy"];
+        };
+    };
+    mediaPlaybackPart: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The calling device, for local clients (no token) and media URLs that can't carry the
+                 *     `X-Playpex-Device` header. Letters, digits and `._:-`, up to 64. Without either, the server
+                 *     uses the client's address. Ignored for paired devices (their token names them).
+                 */
+                device?: components["parameters"]["Device"];
+            };
+            header?: never;
+            path: {
+                /** @description A media ref from the server (`TorrentFile.ref`, …); opaque (`@playpex/protocol` MEDIA_REF_PATTERN) */
+                ref: components["parameters"]["MediaRef"];
+                session: string;
+                /** @description `index.m3u8`, `init.mp4`, `s00000.m4s`… */
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The playlist (an event playlist until ffmpeg reaches the end) or a segment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.apple.mpegurl": string;
+                    "video/mp4": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
     probeMedia: {
         parameters: {
             query?: {
@@ -9130,6 +9791,11 @@ export interface operations {
                 "application/json": components["schemas"]["AddDownloadRequest"];
                 "multipart/form-data": {
                     file: string;
+                    /** @description A JSON list of paths */
+                    files?: string;
+                    label?: string;
+                    /** @enum {string} */
+                    paused?: "true" | "false";
                 };
             };
         };
@@ -9145,6 +9811,36 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             503: components["responses"]["Busy"];
+        };
+    };
+    previewDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    link: string;
+                };
+                "multipart/form-data": {
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The torrent */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadPreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
         };
     };
     getDownload: {
@@ -9202,7 +9898,9 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @description Delete it and its data once a player watched it to the end (90 %) */
-                    removeWhenWatched: boolean;
+                    removeWhenWatched?: boolean;
+                    /** @description null or empty: no label */
+                    label?: string | null;
                 };
             };
         };
@@ -9294,6 +9992,162 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    downloadPeers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its peers (none while it is stopped) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadPeers"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            501: components["responses"]["NotSupported"];
+        };
+    };
+    downloadTrackers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its trackers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadTrackers"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            501: components["responses"]["NotSupported"];
+        };
+    };
+    addDownloadTrackers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    add: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Its trackers now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadTrackers"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            501: components["responses"]["NotSupported"];
+        };
+    };
+    recheckDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download (state `checking` while the engine verifies) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            501: components["responses"]["NotSupported"];
+        };
+    };
+    downloadPieces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its pieces */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadPieces"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    downloadSpeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Samples, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadSpeed"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
         };
     };

@@ -105,6 +105,8 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
       { key: 'downloads.seedRatio', label: 'Seed up to ratio', kind: 'number', min: 0, step: 0.1, help: 'A finished download keeps uploading until it sent this many times its size. 0 = no ratio limit.' },
       { key: 'downloads.seedMinutes', label: 'Seed for (minutes)', kind: 'number', min: 0, help: '…or this long, whichever comes first. 0 = no time limit; both 0 = no seeding.' },
       { key: 'downloads.uploadSlots', label: 'Upload slots per torrent', kind: 'number', min: 0, help: 'Peers uploaded to at once. 0 = never upload. Applies to torrents started from now on.' },
+      { key: 'downloads.downLimitKBps', label: 'Download speed limit (KB/s)', kind: 'number', min: 0, help: 'Every torrent together. 0 = no limit. Only engines that can limit speed (torrentd); also in the Downloads page’s status bar.' },
+      { key: 'downloads.upLimitKBps', label: 'Upload speed limit (KB/s)', kind: 'number', min: 0, help: 'Every torrent together. 0 = no limit.' },
       { key: 'downloads.peerPort', label: 'Peer port', kind: 'number', min: 1024, help: 'Where other BitTorrent clients reach this server. Taken: another free port is used. Applied after a restart.' },
       { key: 'downloads.portForwarding', label: 'Forward the peer port (UPnP)', kind: 'switch', help: 'Ask the router to open the peer port: more peers, faster downloads. rqbit only. Applied after a restart.' },
       { key: 'downloads.paused', label: 'Pause all downloads', kind: 'switch', help: 'Downloads wait in the queue (streams still play). Kept across restarts; the tray icon toggles it too.' },

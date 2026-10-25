@@ -15,6 +15,7 @@ var express = require('express'),
   logger = require('../logger'),
   system = require('../system'),
   storage = require('../storage'),
+  storageBrowser = require('../storageBrowser'),
   torrents = require('../torrents/client'),
   host = require('../host'),
   discovery = require('../discovery'),
@@ -367,6 +368,23 @@ router.delete('/storage/items/:name', function (req, res) {
 });
 
 // body: { dir } → whether it can be the download directory
+// The file browser (docs/dashboard-plan.md §6): places, one level of one, delete, the largest folders
+router.get('/storage/places', function (req, res) {
+  answer(res, storageBrowser.places());
+});
+
+router.get('/storage/browse', function (req, res) {
+  answer(res, storageBrowser.browse({ place: req.query.place, path: req.query.path, sort: req.query.sort, q: req.query.q }));
+});
+
+router.delete('/storage/entries', function (req, res) {
+  answer(res, storageBrowser.remove(req.body));
+});
+
+router.get('/storage/largest', function (req, res) {
+  answer(res, storageBrowser.largest(req.query.place));
+});
+
 router.post('/storage/check', function (req, res) {
   answer(res, storage.checkDir(req.body && req.body.dir));
 });
