@@ -59,7 +59,8 @@ module.exports = function downloadsService(repositories, options) {
         var row = Object.assign({
           name: null, magnet: null, torrentFile: null, error: null, selectedFiles: null, sizeBytes: null,
           doneBytes: 0, uploadedBytes: 0, addedBy: null, profileId: null, titleRef: null,
-          removeWhenWatched: false, label: null, addedAt: now(), completedAt: null, lastActiveAt: null
+          removeWhenWatched: false, label: null, queueOrder: null, forced: false, seedRatio: null, seedMinutes: null,
+          downLimitKBps: null, upLimitKBps: null, trackers: null, addedAt: now(), completedAt: null, lastActiveAt: null
         }, record);
         return repo.insert(row).then(function (inserted) {
           return inserted || repo.find(record.infoHash);

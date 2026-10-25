@@ -10,6 +10,7 @@ import {
   PictureInPicture2,
   Play,
   Settings2,
+  UserRound,
   Volume2,
   VolumeX,
   X,
@@ -37,9 +38,12 @@ import { cn } from '@/lib/utils'
 // How it plays: GET /media/{ref}/playback with what this browser decodes →
 // direct (the file's bytes), hls (a stream the server makes: video copied,
 // audio to AAC; hls.js, or Safari's own; to seek outside it the player asks
-// again with ?t=) or none (why, in words). Nothing is saved for a profile
-// (decision B): the admin isn't one. Leases: the device `dashboard-<id>`;
-// closing the player releases the file (DELETE /media/{ref}).
+// again with ?t=) or none (why, in words). Nothing is saved by default
+// (decision B: the admin isn't a profile); "Watch as <profile>" (kept per
+// browser) saves the position for that profile, where the server knows the
+// title (`playback.title`), and offers to resume. A torrent's file shows what
+// is downloaded on the timeline (GET /downloads/{h}/pieces). Leases: the
+// device `dashboard-<id>`; closing the player releases the file (DELETE /media/{ref}).
 
 export type PlayItem = {
   ref: string
@@ -72,6 +76,46 @@ function deviceId(): string {
 }
 
 const DEVICE = deviceId()
+
+const WATCH_KEY = 'playpex.dashboard.watchAs'
+
+/** The profile this browser's player saves progress for, or null (nobody) */
+function storedWatchAs(): string | null {
+  try {
+    return localStorage.getItem(WATCH_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storeWatchAs(id: string | null) {
+  try {
+    if (id) localStorage.setItem(WATCH_KEY, id)
+    else localStorage.removeItem(WATCH_KEY)
+  } catch {
+    // a per-viewer convenience: chosen again next time
+  }
+}
+
+/** The downloaded runs of one file's pieces, as fractions of the file: [[from, to]…] */
+function downloadedRuns(p: Schemas['DownloadPieces'] | undefined, path: string): [number, number][] {
+  const file = p?.files.find((f) => f.path === path)
+  if (!p?.have || !file) return []
+  const bits = atob(p.have)
+  const has = (i: number) => (bits.charCodeAt(i >> 3) & (0x80 >> (i & 7))) !== 0
+  const n = file.last - file.first + 1
+  const runs: [number, number][] = []
+  let start = -1
+  for (let i = file.first; i <= file.last + 1; i++) {
+    const on = i <= file.last && has(i)
+    if (on && start < 0) start = i
+    if (!on && start >= 0) {
+      runs.push([(start - file.first) / n, (i - file.first) / n])
+      start = -1
+    }
+  }
+  return runs
+}
 
 /** What this browser's video element decodes beyond what every browser does */
 function capabilities(): Record<string, string> {
@@ -147,6 +191,14 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
   const [subtitle, setSubtitle] = useState<string>('off')
   const [hoverAt, setHoverAt] = useState<number | null>(null)
   const pending = useRef<number | null>(null)
+  const [watchAs, setWatchAs] = useState<string | null>(storedWatchAs)
+  const [resumeDismissed, setResumeDismissed] = useState(false)
+  const lastPosition = useRef(0)
+
+  const profiles = useQuery({ queryKey: ['profiles'], queryFn: () => unwrap(api.GET('/profiles')), staleTime: 60_000 })
+  const profile = profiles.data?.profiles.find((p) => p.id === watchAs) ?? null
+  const title = answer?.title ?? null
+  const saving = !!(profile && title)
 
   const tracks = useQuery({
     queryKey: ['media-tracks', item.ref],
@@ -216,7 +268,7 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
     }
   }, [load])
 
-  // the server's Activity: what plays and where (every 60 s; no profile, nothing saved)
+  // the server's Activity: what plays and where (every 60 s), for the profile it's watched as
   useEffect(() => {
     const send = () => {
       const el = video.current
@@ -225,18 +277,88 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ positionS: position(), durationS: duration ?? undefined, paused: el.paused, title: item.title }),
+        body: JSON.stringify({
+          positionS: position(),
+          durationS: duration ?? undefined,
+          paused: el.paused,
+          title: item.title,
+          profileId: saving ? profile!.id : undefined,
+        }),
       }).catch(() => {})
     }
     send()
     const timer = setInterval(send, 60_000)
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answer, item.ref, playing])
+  }, [answer, item.ref, playing, saving])
 
   const offset = answer?.method === 'hls' ? answer.start : 0
   const duration = answer?.duration ?? (video.current && Number.isFinite(video.current.duration) ? video.current.duration : null)
   const position = () => offset + (video.current?.currentTime ?? 0)
+
+  // "Watch as": the position saved for that profile (every 15 s while it plays,
+  // on pause, on close), where the server knows the title. The latest values
+  // in a ref: the close happens after the video element is gone.
+  const saveProgress = useRef<() => void>(() => {})
+  saveProgress.current = () => {
+    const pos = lastPosition.current
+    if (!profile || !title || !answer || !duration || pos < 5) return
+    fetch(`${API_PREFIX}/profiles/${encodeURIComponent(profile.id)}/progress/${title.mediaType}/${title.tmdbId}`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        positionS: Math.round(pos),
+        durationS: Math.round(duration),
+        ...(title.mediaType === 'tv' && title.season !== null && title.episode !== null ? { season: title.season, episode: title.episode } : {}),
+        ...(title.title ? { title: title.title } : {}),
+        ...(title.posterPath ? { posterPath: title.posterPath } : {}),
+        infoHash: answer.download?.infoHash ?? null,
+        filePath: answer.download?.path ?? null,
+        fileId: answer.fileId ?? null,
+      }),
+    }).catch(() => {})
+  }
+  useEffect(() => {
+    if (!playing || !saving) return
+    const timer = setInterval(() => saveProgress.current(), 15_000)
+    return () => clearInterval(timer)
+  }, [playing, saving])
+  useEffect(() => () => saveProgress.current(), [])
+
+  // where that profile stopped (offered once, under the video)
+  const resume = useQuery({
+    queryKey: ['progress', profile?.id, title?.mediaType, title?.tmdbId, title?.season, title?.episode],
+    enabled: saving,
+    // once per opening: the last one saved it
+    staleTime: Infinity,
+    gcTime: 0,
+    queryFn: () =>
+      unwrap(
+        api.GET('/profiles/{profileId}/progress/{mediaType}/{tmdbId}', {
+          params: {
+            path: { profileId: profile!.id, mediaType: title!.mediaType, tmdbId: title!.tmdbId },
+            query: title!.mediaType === 'tv' && title!.season !== null ? { season: title!.season, episode: title!.episode ?? undefined } : {},
+          },
+        }),
+      ),
+  })
+  const resumeAt = saving && !resumeDismissed && resume.data?.resume && resume.data.resume.positionS > 30 ? resume.data.resume.positionS : null
+
+  // a torrent's file: what of it is downloaded (the pieces), while it isn't all there
+  const pieces = useQuery({
+    queryKey: ['download-pieces', answer?.download?.infoHash],
+    enabled: !!answer?.download,
+    queryFn: () => unwrap(api.GET('/downloads/{infoHash}/pieces', { params: { path: { infoHash: answer!.download!.infoHash } } })),
+    refetchInterval: (q) => {
+      const runs = answer?.download ? downloadedRuns(q.state.data, answer.download.path) : []
+      return runs.length === 1 && runs[0][0] === 0 && runs[0][1] === 1 ? false : 4000
+    },
+    retry: false,
+  })
+  const downloaded = answer?.download ? downloadedRuns(pieces.data, answer.download.path) : []
+  const whole = downloaded.length === 1 && downloaded[0][0] === 0 && downloaded[0][1] === 1
 
   const seek = (t: number) => {
     const el = video.current
@@ -368,7 +490,10 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
             onClick={togglePlay}
             onDoubleClick={fullscreen}
             onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
+            onPause={() => {
+              setPlaying(false)
+              saveProgress.current()
+            }}
             onWaiting={() => setLoading(true)}
             onPlaying={() => setLoading(false)}
             onCanPlay={() => setLoading(false)}
@@ -377,7 +502,10 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
               pending.current = null
               e.currentTarget.playbackRate = rate
             }}
-            onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+            onTimeUpdate={(e) => {
+              setTime(e.currentTarget.currentTime)
+              lastPosition.current = offset + e.currentTarget.currentTime
+            }}
             onProgress={(e) => {
               const b = e.currentTarget.buffered
               setBuffered(Array.from({ length: b.length }, (_, i) => [b.start(i), b.end(i)]))
@@ -399,6 +527,24 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
               <Loader2 className="size-8 animate-spin text-white/80" />
             </div>
           )}
+          {resumeAt !== null && current < resumeAt - 5 && !error && (
+            <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/75 py-1 pr-1 pl-3 text-xs text-white shadow">
+              <button
+                type="button"
+                className="font-medium hover:underline"
+                onClick={() => {
+                  seek(resumeAt)
+                  setResumeDismissed(true)
+                }}
+              >
+                Resume at {clock(resumeAt)}
+              </button>
+              <span className="text-white/60">for {profile?.name}</span>
+              <button type="button" aria-label="Start from here" className="rounded-full p-1 hover:bg-white/15" onClick={() => setResumeDismissed(true)}>
+                <X className="size-3" />
+              </button>
+            </div>
+          )}
           {(error || answer?.method === 'none') && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 p-6 text-center text-sm text-white">
               <p className="font-medium">{error ? 'It doesn’t play' : 'This browser can’t play it'}</p>
@@ -413,7 +559,7 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
         </div>
 
         <div className="space-y-1.5 px-3 pt-2 pb-2.5">
-          {/* the timeline: what the browser holds, and the stream's start */}
+          {/* the timeline: what is downloaded (a torrent's file), what the browser holds, the position */}
           <div
             className="group/bar relative h-4 cursor-pointer touch-none"
             role="slider"
@@ -434,6 +580,10 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
             }}
           >
             <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-(--strip-track) transition-[height] group-hover/bar:h-1.5">
+              {!whole &&
+                downloaded.map(([a, b], i) => (
+                  <span key={`d${i}`} className="absolute inset-y-0 bg-down/45" style={{ left: `${a * 100}%`, width: `${(b - a) * 100}%` }} />
+                ))}
               {buffered.map(([a, b], i) => (
                 <span
                   key={i}
@@ -486,6 +636,7 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
             </span>
             <div className="min-w-0 flex-1 truncate px-2 text-right text-xs" title={item.detail ? `${item.title}\n${item.detail}` : item.title}>
               <span className="font-medium">{item.title}</span>
+              {saving && <span className="text-muted-foreground"> · as {profile!.name}</span>}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -525,6 +676,31 @@ function PlayerDock({ item, onClose }: { item: PlayItem; onClose: () => void }) 
                   ))}
                 </DropdownMenuRadioGroup>
                 {subtitleTracks.length === 0 && <p className="px-2 pb-1.5 text-xs text-muted-foreground">None this browser can show.</p>}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Watch as</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={profile ? profile.id : 'none'}
+                  onValueChange={(v) => {
+                    const id = v === 'none' ? null : v
+                    saveProgress.current()
+                    setWatchAs(id)
+                    storeWatchAs(id)
+                    setResumeDismissed(false)
+                  }}
+                >
+                  <DropdownMenuRadioItem value="none">Nobody: nothing saved</DropdownMenuRadioItem>
+                  {(profiles.data?.profiles ?? []).map((p) => (
+                    <DropdownMenuRadioItem key={p.id} value={p.id}>
+                      <UserRound className="size-3.5 text-muted-foreground" />
+                      {p.name}
+                      {p.isKid ? <span className="text-xs text-muted-foreground">kid</span> : null}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                {profile && answer && !title && (
+                  <p className="px-2 pb-1.5 text-xs text-muted-foreground">Playpex doesn’t know which title this file is: nothing is saved for {profile.name}.</p>
+                )}
+                {saving && <p className="px-2 pb-1.5 text-xs text-muted-foreground">Where you stop is saved for {profile!.name}: their Continue watching.</p>}
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Speed</DropdownMenuLabel>
                 <DropdownMenuRadioGroup

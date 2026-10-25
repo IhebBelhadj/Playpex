@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { api, errorMessage, unwrap, type Schemas } from '@/lib/api'
+import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { useEvent } from '@/lib/events'
 
 // What the Downloads page and its pane share: the list (live through
@@ -64,6 +64,34 @@ export function useDownloadActions() {
       onSuccess: counted('Checking the data of'),
       onError: fail,
     }),
+    force: useMutation({
+      mutationFn: ({ hashes, on }: { hashes: string[]; on: boolean }) =>
+        many(hashes, (h) => unwrap(api.PATCH('/downloads/{infoHash}', { ...path(h), body: { force: on } }))),
+      onSuccess: (r, { on }) => counted(on ? 'Force started' : 'Back under the queue’s rules:')(r),
+      onError: fail,
+    }),
+    // one download to a place in the queue (1 = next to start)
+    move: useMutation({
+      mutationFn: ({ hash, position }: { hash: string; position: number }) =>
+        unwrap(api.PATCH('/downloads/{infoHash}', { ...path(hash), body: { queuePosition: position } })),
+      onSuccess: (d) => {
+        toast.success(`Now #${d.queuePosition} in the queue`)
+        refresh()
+      },
+      onError: fail,
+    }),
+    reannounce: useMutation({
+      mutationFn: (hashes: string[]) => many(hashes, (h) => unwrap(api.POST('/downloads/{infoHash}/reannounce', path(h)))),
+      onSuccess: counted('Announced again:'),
+      onError: fail,
+    }),
+    // seeding goals and speed limits (null: the server's goal / no limit)
+    rules: useMutation({
+      mutationFn: ({ hashes, body }: { hashes: string[]; body: Rules }) =>
+        many(hashes, (h) => unwrap(api.PATCH('/downloads/{infoHash}', { ...path(h), body }))),
+      onSuccess: counted('Saved for'),
+      onError: fail,
+    }),
     label: useMutation({
       mutationFn: ({ hashes, label }: { hashes: string[]; label: string | null }) =>
         many(hashes, (h) => unwrap(api.PATCH('/downloads/{infoHash}', { ...path(h), body: { label } }))),
@@ -82,6 +110,26 @@ export function useDownloadActions() {
   }
 }
 
+export type Rules = { seedRatio?: number | null; seedMinutes?: number | null; downLimitKBps?: number | null; upLimitKBps?: number | null }
+
+/** What the running engine can do (Overview `downloads.capabilities`): engine port v2 / v3 */
+export function useEngineCaps() {
+  const overview = useQuery({ queryKey: ['overview'], queryFn: () => unwrap(api.GET('/admin/overview')), staleTime: 5000 })
+  const caps = overview.data?.downloads.capabilities ?? {}
+  return { engine: overview.data?.downloads.engine ?? null, can: (c: string) => !!caps[c] }
+}
+
+/** Its .torrent (an attachment: the admin's cookie goes with a plain link) */
+export function torrentFileUrl(d: Download) {
+  return `${API_PREFIX}/downloads/${d.infoHash}/torrent`
+}
+
+/** Connected, and the swarm from the last scrape: "3 (120)" */
+export function swarmText(connected: number, inSwarm: number | null | undefined, running: boolean) {
+  const swarm = inSwarm === null || inSwarm === undefined ? '' : ` (${inSwarm})`
+  return running ? `${connected}${swarm}` : swarm ? swarm.trim() : '—'
+}
+
 /** A running (or waiting) download pauses; a stopped one starts. */
 export function canPause(d: Download) {
   return RUNNING.includes(d.state) || d.state === 'queued'
@@ -95,12 +143,13 @@ export function canStart(d: Download) {
 export function stateText(d: Download): string {
   switch (d.state) {
     case 'downloading':
-      return d.name === null || d.sizeBytes === null ? 'Getting the file list' : 'Downloading'
+      return d.name === null || d.sizeBytes === null ? 'Getting the file list' : d.forced ? 'Downloading (forced)' : 'Downloading'
     case 'seeding':
-      return 'Seeding'
+      return d.forced ? 'Seeding (forced)' : 'Seeding'
     case 'checking':
       return d.checking === null ? 'Checking' : `Checking ${Math.floor(d.checking * 100)} %`
     case 'queued':
+      if (d.forced) return 'Forced, waiting'
       return d.queuePosition ? `Queued #${d.queuePosition}` : 'Queued'
     case 'paused':
       return 'Paused'

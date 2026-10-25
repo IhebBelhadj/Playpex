@@ -48,24 +48,32 @@ src/components/data-table.tsx  DataTable (docs/dashboard-plan.md §4.1): TanStac
                         `from` (a container width: the list's own width hides columns, not the window's), fixed
 src/components/swarm-strip.tsx  SwarmStrip: a download's progress from its `pieceMap` (a CSS gradient; `tone` down / up / idle / fault from
                         `toneOf(d)`; no pieces known: waiting stripes while it runs; `marks`: players' read ranges in gold)
-src/lib/downloads.ts    useDownloads (patched by download.updated), useDownloadActions (start / pause / recheck / label / remove on
-                        many hashes, one toast), stateText, kindOf (Movies / Shows / Other), titleOf, useDeviceNames, magnetOf, videoToPlay
+src/lib/downloads.ts    useDownloads (patched by download.updated), useDownloadActions (start / pause / recheck / force / move (queue) /
+                        reannounce / rules (goals, limits) / label / remove on many hashes, one toast), useEngineCaps (Overview's
+                        capabilities: menus offer only what the engine can), stateText ("Forced, waiting"), swarmText ("3 (120)": connected,
+                        in the swarm from the scrape), torrentFileUrl, kindOf (Movies / Shows / Other), titleOf, useDeviceNames, magnetOf, videoToPlay
 src/pages/downloads.tsx /downloads: the filter rail (?filter= all | a state | kind:movies | label:<name>), DataTable, the toolbar, the status
                         bar (totals, speed limits popover: PUT /admin/settings {downloads: {downLimitKBps, upLimitKBps}}, the disk,
                         Pause all), the detail pane under the list (?hash=, ?tab=; resizable, height in localStorage; a Sheet on
                         phones), Remove / Label dialogs, a .torrent dropped on the page → the Add dialog
+src/components/download-rules.tsx  RulesDialog: a download's (or several's) seeding goal (ratio / minutes, empty = the server's) and speed
+                        limits (KB/s; engines with torrentLimits) → PATCH /downloads/{h}; from the row menu and General
 src/components/add-download.tsx  the Add dialog: POST /downloads/preview (a link, debounced, or a .torrent) → its files to choose, the download
                         already kept; label, Start now / Add paused → POST /downloads (multipart `files` as JSON). Remounted per opening (key)
-src/components/download-pane.tsx  DownloadPane: tabs General (facts, Remove when watched, copy magnet, Check the data again), Files (selection,
+src/components/download-pane.tsx  DownloadPane: tabs General (facts incl. the swarm, seeding goal and limits; Remove when watched, copy magnet,
+                        Check the data again, Announce again, Seeding goal and limits, Export .torrent), Files (selection,
                         per-file strip, Play), and download-tabs.tsx: Peers (GET /downloads/{h}/peers, flags legend), Trackers (…/trackers,
-                        add: POST), Pieces (…/pieces: a canvas map, the read-ahead in gold), Speed (…/speed: SVG chart, crosshair); each polls
+                        add / remove: POST {add | remove}, each one's scrape, Announce again), Pieces (…/pieces: a canvas map, the read-ahead in gold), Speed (…/speed: SVG chart, crosshair); each polls
                         every 2 s while shown (keys download-peers / -trackers / -pieces / -speed + hash); a 501 NOT_SUPPORTED says the
                         engine doesn't report it, with its name
 src/components/player.tsx  PlayerProvider (inside RequireAdmin: stays across pages) + usePlayer().play({ref, title, detail}); the dock
                         (Expand → theatre, PiP, full screen); GET /media/{ref}/playback with this browser's flags (mkv, hevc, ac3, eac3)
                         → direct src / hls.js (MediaSource; else the browser's own HLS) / why not; seeks inside the stream, else asks
                         again with ?t=; sound tracks (?audio=), subtitles (GET …/tracks; cues shifted by the stream's start), speed,
-                        volume, keys (Space/K, ←/→ 10 s, ↑/↓, M, F, C, Esc); keepalive every 60 s; DELETE /media/{ref} on close / pagehide.
+                        volume, keys (Space/K, ←/→ 10 s, ↑/↓, M, F, C, Esc); keepalive every 60 s; DELETE /media/{ref} on close / pagehide. "Watch as" (the menu; localStorage
+                        `playpex.dashboard.watchAs`): nobody, or a profile: progress saved with the answer's `title` / `download` / `fileId`
+                        (PUT /profiles/{id}/progress/…, every 15 s, on pause, on close), "Resume at …" from its GET; a torrent's file: the
+                        downloaded runs on the timeline (GET /downloads/{h}/pieces, key download-pieces + hash, every 4 s until whole).
                         Device `dashboard-<random>` (localStorage), shown as "Dashboard (Browser on OS)" in Activity
 src/pages/storage.tsx   /storage (?place=&path=&q=): places (GET /admin/storage/places: sizes, disk fill, offline), a folder listing
                         (GET /admin/storage/browse: breadcrumbs, search, order; what each file is; Play, Open in the Library (?file=),

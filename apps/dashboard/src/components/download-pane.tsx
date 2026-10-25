@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, FileVideo, File as FileIcon, Play, RefreshCw, Subtitles, X } from 'lucide-react'
+import { Copy, FileDown, FileVideo, File as FileIcon, Gauge, Play, Radio, RefreshCw, Subtitles, X } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Loading, QueryError, Spinner } from '@/components/common'
+import { RulesDialog } from '@/components/download-rules'
 import { PeersTab, PiecesTab, SpeedTab, TrackersTab } from '@/components/download-tabs'
 import { usePlayer } from '@/components/player'
 import { SwarmStrip, toneOf } from '@/components/swarm-strip'
@@ -11,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, errorMessage, unwrap } from '@/lib/api'
-import { magnetOf, stateText, titleOf, useDeviceNames, type Download } from '@/lib/downloads'
+import { magnetOf, stateText, titleOf, torrentFileUrl, useDeviceNames, useDownloadActions, useEngineCaps, type Download } from '@/lib/downloads'
 import { ago, bytes, clock, dateTime, speed } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -139,7 +140,17 @@ function General({ d }: { d: Download }) {
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
+  const actions = useDownloadActions()
+  const caps = useEngineCaps()
+  const [ruling, setRuling] = useState(false)
   const running = ['downloading', 'seeding', 'checking'].includes(d.state)
+  const goal =
+    d.seedRatio === null && d.seedMinutes === null
+      ? null
+      : d.seedRatio === 0 || d.seedMinutes === 0
+        ? 'None: it stops once downloaded'
+        : [d.seedRatio !== null ? `ratio ${d.seedRatio}` : null, d.seedMinutes !== null ? `${d.seedMinutes} min` : null].filter(Boolean).join(' or ')
+  const limits = [d.downLimitKBps ? `↓ ${speed(d.downLimitKBps * 1024)}` : null, d.upLimitKBps ? `↑ ${speed(d.upLimitKBps * 1024)}` : null].filter(Boolean).join('  ')
   const pct = d.progress === null ? null : Math.floor(d.progress * 1000) / 10
   return (
     <div className="space-y-5">
@@ -165,6 +176,17 @@ function General({ d }: { d: Download }) {
           {d.peers} {d.peers === 1 ? 'peer' : 'peers'}
           {d.seeds ? `, ${d.seeds} ${d.seeds === 1 ? 'seed' : 'seeds'}` : ''}
         </Fact>
+        <Fact label="In the swarm">
+          {d.swarm ? (
+            <span title={`The most any tracker counted, ${dateTime(d.swarm.at)}`}>
+              {d.swarm.seeds} {d.swarm.seeds === 1 ? 'seed' : 'seeds'}, {d.swarm.peers} {d.swarm.peers === 1 ? 'leecher' : 'leechers'}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Not asked yet</span>
+          )}
+        </Fact>
+        <Fact label="Seeding goal">{goal ?? <span className="text-muted-foreground">The server’s</span>}</Fact>
+        <Fact label="Speed limits">{limits || <span className="text-muted-foreground">None of its own</span>}</Fact>
         <Fact label="Uploaded">
           {bytes(d.uploadedBytes)}
           {d.ratio !== null && <span className="text-muted-foreground"> · ratio {d.ratio.toFixed(2)}</span>}
@@ -202,7 +224,38 @@ function General({ d }: { d: Download }) {
         >
           {recheck.isPending ? <Spinner /> : <RefreshCw />} Check the data again
         </Button>
+        {caps.can('reannounce') && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!running || actions.reannounce.isPending}
+            title={running ? 'Ask its trackers for peers now' : 'Start it first: only a running torrent announces'}
+            onClick={() => actions.reannounce.mutate([d.infoHash])}
+          >
+            {actions.reannounce.isPending ? <Spinner /> : <Radio />} Announce again
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => setRuling(true)}>
+          <Gauge /> Seeding goal and limits
+        </Button>
+        {d.name !== null && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={torrentFileUrl(d)} download>
+              <FileDown /> Export .torrent
+            </a>
+          </Button>
+        )}
       </div>
+      <RulesDialog
+        downloads={ruling ? [d] : []}
+        canLimit={caps.can('torrentLimits')}
+        engine={caps.engine}
+        onClose={() => setRuling(false)}
+        onSave={(body) => {
+          actions.rules.mutate({ hashes: [d.infoHash], body })
+          setRuling(false)
+        }}
+      />
     </div>
   )
 }

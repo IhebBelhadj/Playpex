@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, HelpCircle, Plus } from 'lucide-react'
+import { Copy, HelpCircle, Plus, Radio, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Loading, QueryError, Spinner } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ApiError, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
-import type { Download } from '@/lib/downloads'
-import { bytes, speed } from '@/lib/format'
+import { RUNNING, useDownloadActions, useEngineCaps, type Download } from '@/lib/downloads'
+import { ago, bytes, speed } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // The detail pane's swarm tabs (docs/dashboard-plan.md §4.3, step 4): Peers,
@@ -152,13 +152,16 @@ const STATUS: Record<string, string> = {
 export function TrackersTab({ d }: { d: Download }) {
   const client = useQueryClient()
   const engine = useEngineName()
+  const caps = useEngineCaps()
+  const actions = useDownloadActions()
   const [adding, setAdding] = useState(false)
   const [text, setText] = useState('')
   const key = ['download-trackers', d.infoHash]
   const trackers = useQuery({
     queryKey: key,
     queryFn: () => unwrap(api.GET('/downloads/{infoHash}/trackers', { params: { path: { infoHash: d.infoHash } } })),
-    refetchInterval: POLL * 5,
+    // faster while a scrape's answers come in
+    refetchInterval: (q) => (q.state.data?.scraping ? POLL : POLL * 5),
     retry: false,
   })
   const add = useMutation({
@@ -166,11 +169,18 @@ export function TrackersTab({ d }: { d: Download }) {
       unwrap(api.POST('/downloads/{infoHash}/trackers', { params: { path: { infoHash: d.infoHash } }, body: { add: urls } })),
     onSuccess: (answer, urls) => {
       client.setQueryData(key, answer)
-      toast.success(urls.length === 1 ? 'Tracker added' : `${urls.length} trackers added`, {
-        description: 'Kept until the server restarts.',
-      })
+      toast.success(urls.length === 1 ? 'Tracker added' : `${urls.length} trackers added`)
       setText('')
       setAdding(false)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  const remove = useMutation({
+    mutationFn: (url: string) =>
+      unwrap(api.POST('/downloads/{infoHash}/trackers', { params: { path: { infoHash: d.infoHash } }, body: { remove: [url] } })),
+    onSuccess: (answer) => {
+      client.setQueryData(key, answer)
+      toast.success('Tracker removed', { description: 'Left out from its next start: the engine may still announce to it until then.' })
     },
     onError: (err) => toast.error(errorMessage(err)),
   })
@@ -189,9 +199,29 @@ export function TrackersTab({ d }: { d: Download }) {
           {list.length} {list.length === 1 ? 'tracker' : 'trackers'}
         </span>
         {unknown && <span>The {engine} engine doesn't report how each tracker answers.</span>}
-        <Button variant="ghost" size="xs" className="ml-auto" onClick={() => setAdding((a) => !a)}>
-          <Plus /> Add trackers
-        </Button>
+        {trackers.data.scraping && (
+          <span className="flex items-center gap-1.5">
+            <Spinner className="size-3" /> Asking them…
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-1">
+          {caps.can('reannounce') && (
+            <Button
+              variant="ghost"
+              size="xs"
+              disabled={!RUNNING.includes(d.state) || actions.reannounce.isPending}
+              title={RUNNING.includes(d.state) ? 'Ask its trackers for peers now' : 'Start it first: only a running torrent announces'}
+              onClick={() => actions.reannounce.mutate([d.infoHash])}
+            >
+              <Radio /> Announce again
+            </Button>
+          )}
+          {caps.can('trackerEdit') && (
+            <Button variant="ghost" size="xs" onClick={() => setAdding((a) => !a)}>
+              <Plus /> Add trackers
+            </Button>
+          )}
+        </span>
       </div>
       {adding && (
         <form
@@ -230,8 +260,17 @@ export function TrackersTab({ d }: { d: Download }) {
               {t.url}
             </span>
             {t.ours && <span className="shrink-0 text-xs text-muted-foreground">Added by Playpex</span>}
+            {t.added && <span className="shrink-0 text-xs text-muted-foreground">Added by you</span>}
             {t.seeds !== null && <span className="shrink-0 text-xs tabular-nums">{t.seeds} seeds</span>}
             {t.peers !== null && <span className="shrink-0 text-xs tabular-nums">{t.peers} peers</span>}
+            {t.seeds === null && t.swarm && (
+              <span
+                className={cn('shrink-0 text-xs tabular-nums', t.swarm.error ? 'text-muted-foreground' : '')}
+                title={t.swarm.error ? `${t.swarm.error} (${ago(t.swarm.at)})` : `Its scrape, ${ago(t.swarm.at)}${t.swarm.downloaded !== null ? `: ${t.swarm.downloaded} downloads done` : ''}`}
+              >
+                {t.swarm.error ? 'No answer' : `${t.swarm.seeds ?? '?'} seeds · ${t.swarm.peers ?? '?'} leechers`}
+              </span>
+            )}
             {STATUS[t.status] && (
               <span className={cn('shrink-0 text-xs', t.status === 'error' ? 'text-destructive' : 'text-muted-foreground')} title={t.message ?? undefined}>
                 {STATUS[t.status]}
@@ -246,6 +285,19 @@ export function TrackersTab({ d }: { d: Download }) {
             >
               <Copy />
             </Button>
+            {caps.can('trackerRemove') && (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Remove ${t.url}`}
+                title="Remove it from this torrent"
+                disabled={remove.isPending}
+                className="opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                onClick={() => remove.mutate(t.url)}
+              >
+                <X />
+              </Button>
+            )}
           </li>
         ))}
       </ul>

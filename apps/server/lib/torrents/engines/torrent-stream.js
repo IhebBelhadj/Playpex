@@ -252,7 +252,10 @@ function create() {
       peerList: true,
       trackerList: true,      // the announce list; torrent-stream reports no tracker status
       trackerEdit: true,      // used from the torrent's next start
-      recheck: true           // its engine made again: torrent-stream checks every piece on start
+      recheck: true,          // its engine made again: torrent-stream checks every piece on start
+      trackerRemove: true,    // from the torrent's next start
+      reannounce: false,      // its discovery is private
+      torrentLimits: false
     },
 
     init: function (opts) {
@@ -536,6 +539,17 @@ function create() {
             t.trackers.push(url);
           }
         });
+      });
+    },
+
+    removeTrackers: function (hash, urls) {
+      return Promise.resolve().then(function () {
+        var t = get(hash), keep = function (url) { return urls.indexOf(url) === -1; };
+        t.trackers = t.trackers.filter(keep);
+        // the metainfo's own list is announced to as well
+        if (t.source && Array.isArray(t.source.announce)) {
+          t.source.announce = t.source.announce.filter(keep);
+        }
       });
     },
 

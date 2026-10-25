@@ -43,7 +43,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var version = "0.2.0"
+var version = "0.3.0"
 
 const readahead = 16 << 20
 
@@ -65,6 +65,16 @@ type entry struct {
 	downBps, upBps        int64
 	// counters of the anacrolix torrent at the last sample (they restart with it)
 	readTotal, writtenTotal int64
+	// its own speed limits (bytes/s, 0 = none), kept while paused: a token
+	// bucket per direction over the torrent's counters (limitTick)
+	limDown, limUp         int64
+	tokDown, tokUp         float64
+	limRead, limWritten    int64
+	blockedDown, blockedUp bool
+	limT                   *torrent.Torrent
+	// a running recheck (stopVerify ends it before the torrent is dropped)
+	verifyCancel context.CancelFunc
+	verifyDone   chan struct{}
 }
 
 type engine struct {
@@ -312,7 +322,20 @@ func (e *engine) metadata(en *entry) (map[string]any, error) {
 	}, nil
 }
 
+// Ends a running recheck and waits for it. It must end before the torrent is
+// dropped: anacrolix 1.61's Piece.VerifyDataContext returns on a closed
+// torrent with the client's lock still held, and every torrent hangs.
+func (e *engine) stopVerify(en *entry) {
+	if en.verifyCancel == nil {
+		return
+	}
+	en.verifyCancel()
+	<-en.verifyDone
+	en.verifyCancel, en.verifyDone = nil, nil
+}
+
 func (e *engine) pause(en *entry) {
+	e.stopVerify(en)
 	if en.t != nil {
 		if en.infoBytes == nil && en.t.Info() != nil {
 			en.infoBytes = en.t.Metainfo().InfoBytes
@@ -437,6 +460,64 @@ func (e *engine) stats(en *entry, withPieces bool) map[string]any {
 		out["state"] = "seeding"
 	}
 	return out
+}
+
+// ── per-torrent speed limits (engine port v3) ───────────────────────────────
+
+// anacrolix limits the whole client only; a torrent's own limit is kept by
+// stopping its traffic that way while it is over its budget: a bucket one
+// second deep, refilled at the limit, emptied by what the counters moved
+func bucket(limit int64, tokens *float64, used int64, dt float64) bool {
+	if limit <= 0 {
+		*tokens = 0
+		return false
+	}
+	*tokens += float64(limit)*dt - float64(used)
+	if *tokens > float64(limit) {
+		*tokens = float64(limit)
+	}
+	if floor := -5 * float64(limit); *tokens < floor {
+		*tokens = floor
+	}
+	return *tokens < 0
+}
+
+func (e *engine) limitTick(dt float64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, en := range e.entries {
+		t := en.t
+		if t == nil {
+			continue
+		}
+		s := t.Stats()
+		read, written := s.BytesReadUsefulData.Int64(), s.BytesWrittenData.Int64()
+		if en.limT != t {
+			// started again: new counters, traffic allowed
+			en.limT, en.limRead, en.limWritten = t, read, written
+			en.tokDown, en.tokUp = float64(en.limDown), float64(en.limUp)
+			en.blockedDown, en.blockedUp = false, false
+		}
+		down := bucket(en.limDown, &en.tokDown, max(0, read-en.limRead), dt)
+		up := bucket(en.limUp, &en.tokUp, max(0, written-en.limWritten), dt)
+		en.limRead, en.limWritten = read, written
+		if down != en.blockedDown {
+			if down {
+				t.DisallowDataDownload()
+			} else {
+				t.AllowDataDownload()
+			}
+			en.blockedDown = down
+		}
+		if up != en.blockedUp {
+			if up {
+				t.DisallowDataUpload()
+			} else {
+				t.AllowDataUpload()
+			}
+			en.blockedUp = up
+		}
+	}
 }
 
 // ── swarm (engine port v2) ──────────────────────────────────────────────────
@@ -721,10 +802,12 @@ func (e *engine) routes(token string) http.Handler {
 		}
 		writeJSON(w, 200, map[string]any{"trackers": e.trackers(en)})
 	})
-	// adds announce URLs (kept for the next start too)
+	// adds announce URLs (now), removes some (kept for the next start too;
+	// anacrolix may still announce to a removed one until then)
 	mux.HandleFunc("POST /torrents/{hash}/trackers", action(func(en *entry, r *http.Request) error {
 		var body struct {
-			Add []string `json:"add"`
+			Add    []string `json:"add"`
+			Remove []string `json:"remove"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			return fail(400, "BAD_TORRENT", "bad request: %v", err)
@@ -737,6 +820,46 @@ func (e *engine) routes(token string) http.Handler {
 				en.t.AddTrackers([][]string{{url}})
 			}
 		}
+		if len(body.Remove) > 0 {
+			kept := []string{}
+			for _, url := range en.trackers {
+				if !contains(body.Remove, url) {
+					kept = append(kept, url)
+				}
+			}
+			en.trackers = kept
+			if en.t != nil {
+				tiers := [][]string{}
+				for _, url := range kept {
+					tiers = append(tiers, []string{url})
+				}
+				en.t.ModifyTrackers(tiers)
+			}
+		}
+		return nil
+	}))
+	// announces again: the torrent leaves the client and comes back from its
+	// info (verified pieces are in the database: nothing is checked again);
+	// open streams of it end
+	mux.HandleFunc("POST /torrents/{hash}/reannounce", action(func(en *entry, r *http.Request) error {
+		if en.t == nil {
+			return fail(409, "UNSUPPORTED", "the torrent %s is paused", en.hash.HexString())
+		}
+		e.pause(en)
+		e.log.Info("announcing again", "hash", en.hash.HexString())
+		return e.spawn(en)
+	}))
+	// its own speed limits in bytes/s (0 = none), kept while it is paused
+	mux.HandleFunc("PUT /torrents/{hash}/limits", action(func(en *entry, r *http.Request) error {
+		var body struct {
+			DownBps int64 `json:"downBps"`
+			UpBps   int64 `json:"upBps"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			return fail(400, "BAD_TORRENT", "bad request: %v", err)
+		}
+		en.limDown, en.limUp = max(0, body.DownBps), max(0, body.UpBps)
+		en.tokDown, en.tokUp = float64(en.limDown), float64(en.limUp)
 		return nil
 	}))
 	// verifies every piece again (in the background: the state is "checking")
@@ -745,8 +868,13 @@ func (e *engine) routes(token string) http.Handler {
 		if t == nil {
 			return fail(409, "UNSUPPORTED", "the torrent %s is paused", en.hash.HexString())
 		}
+		e.stopVerify(en)
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		en.verifyCancel, en.verifyDone = cancel, done
 		go func() {
-			if err := t.VerifyData(); err != nil {
+			defer close(done)
+			if err := t.VerifyDataContext(ctx); err != nil && ctx.Err() == nil {
 				e.log.Warn("recheck", "hash", en.hash.HexString(), "err", err)
 			}
 		}()
@@ -891,6 +1019,12 @@ func main() {
 	go func() {
 		for range time.Tick(time.Second) {
 			e.sample()
+		}
+	}()
+	go func() {
+		const tick = 100 * time.Millisecond
+		for range time.Tick(tick) {
+			e.limitTick(tick.Seconds())
 		}
 	}()
 	srv := &http.Server{Handler: e.routes(token), ReadHeaderTimeout: 10 * time.Second}

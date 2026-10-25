@@ -230,9 +230,60 @@ function probeKey(media) {
   return media.kind === 'file' ? media.ref + ':' + media.size + ':' + media.mtime : media.ref;
 }
 
+function orNull(v) {
+  return v === undefined || v === null ? null : v;
+}
+
+/**
+ * What a media is to a player that saves progress for a profile (GET
+ * /media/{ref}/playback): its title (a library file's match, the title a
+ * download was played as), the download and file, or the library file.
+ * @returns {Promise<{ title: object|null, download: object|null, fileId: string|null }>}
+ */
+function describe(media) {
+  if (media.kind === 'torrent') {
+    var d = torrents.get(media.infoHash), t = d && d.title;
+    return Promise.resolve({
+      title: t && t.mediaType && t.tmdbId ? {
+        mediaType: t.mediaType, tmdbId: t.tmdbId, season: orNull(t.season), episode: orNull(t.episode),
+        // a player's "Show · S01E02": the show's name
+        title: t.title ? t.title.replace(/ · S\d+E\d+$/, '') : null, posterPath: null
+      } : null,
+      download: { infoHash: media.infoHash, path: media.path },
+      fileId: null
+    });
+  }
+  if (media.kind !== 'file') {
+    return Promise.resolve({ title: null, download: null, fileId: null });
+  }
+  var id = refs.parse(media.ref).id;
+  return userData.services().then(function (s) {
+    return s.library.file(id).then(function (row) {
+      return row && row.itemId ? s.library.item(row.itemId) : null;
+    });
+  }).then(function (item) {
+    var episode = item && item.kind === 'episode';
+    return {
+      title: item && (episode ? item.showTmdbId : item.tmdbId) ? {
+        mediaType: episode ? 'tv' : 'movie',
+        tmdbId: episode ? item.showTmdbId : item.tmdbId,
+        season: episode ? orNull(item.season) : null,
+        episode: episode ? orNull(item.episode) : null,
+        title: orNull(item.title),
+        posterPath: item.artwork && item.artwork.posterPath || null
+      } : null,
+      download: null,
+      fileId: id
+    };
+  }, function () {
+    return { title: null, download: null, fileId: id };
+  });
+}
+
 module.exports = {
   refs: refs,
   resolve: resolve,
+  describe: describe,
   torrentFile: torrentFile,
   allowed: allowed,
   open: open,

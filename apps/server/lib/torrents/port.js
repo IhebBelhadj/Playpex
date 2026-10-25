@@ -15,7 +15,7 @@
 // Every method answers a Promise, and rejects with an EngineError
 // (./errors.js) for expected failures.
 
-var ENGINE_PORT_VERSION = 2;
+var ENGINE_PORT_VERSION = 3;
 
 // What an adapter declares it can do; the client reads these, never the
 // engine's id
@@ -30,7 +30,11 @@ var CAPABILITIES = {
   peerList: 'peers(hash): the connected peers, and the availability',
   trackerList: 'trackers(hash): the announce URLs (status where the engine knows it)',
   trackerEdit: 'addTrackers(hash, urls)',
-  recheck: 'recheck(hash): every piece verified again'
+  recheck: 'recheck(hash): every piece verified again',
+  // version 3 (docs/dashboard-plan.md §12): the rest of a torrent client's controls
+  trackerRemove: 'removeTrackers(hash, urls): left out from the next start (and now, where the engine can)',
+  reannounce: 'reannounce(hash): announce to the trackers now (a running torrent; may restart its traffic)',
+  torrentLimits: 'torrentLimits(hash, { downBps, upBps }): speed limits of one torrent (0 = none), kept while it is paused'
 };
 
 // What stats() reports for a torrent the engine holds
@@ -122,6 +126,9 @@ var ENGINE_STATES = ['checking', 'downloading', 'seeding', 'paused', 'error'];
  * @property {function(string): Promise<TrackerInfo[]>} [trackers]   capability trackerList
  * @property {function(string, string[]): Promise<void>} [addTrackers]   capability trackerEdit
  * @property {function(string): Promise<void>} [recheck]        capability recheck; the torrent must be running
+ * @property {function(string, string[]): Promise<void>} [removeTrackers]   capability trackerRemove
+ * @property {function(string): Promise<void>} [reannounce]     capability reannounce; the torrent must be running
+ * @property {function(string, { downBps: number, upBps: number }): Promise<void>} [torrentLimits]   capability torrentLimits
  * @property {function(string, function): void} on              'metadata' (hash), 'done' (hash), 'error' (hash, EngineError)
  */
 

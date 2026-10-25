@@ -182,10 +182,15 @@ engines.ids().forEach(function (id) {
         var caps = engine.capabilities, work = Promise.resolve();
         if (caps.peerList) {
           work = work.then(function () {
-            // the seeder, once it is connected again after the start
+            // the seeder, connected while there is something left to fetch from it
+            // (an engine with every selected file may not connect again: rqbit)
+            return engine.select(hash, null);
+          }).then(function () {
             return helpers.until(function () {
               return engine.peers(hash).then(function (answer) { return answer.peers.length > 0 && answer; });
             }, 20000, 'a peer');
+          }).then(function (answer) {
+            return engine.select(hash, [B.path]).then(function () { return answer; });
           }).then(function (answer) {
             var p = answer.peers[0];
             ['address', 'client', 'peerId', 'flags', 'progress', 'downBps', 'upBps', 'downloaded', 'uploaded'].forEach(function (k) {
@@ -217,6 +222,41 @@ engines.ids().forEach(function (id) {
             return helpers.until(function () {
               return stat(engine, hash).then(function (s) { return s && s.state === 'seeding' && s; });
             }, 30000, 'the recheck');
+          }).then(function (s) {
+            assert.equal(s.doneBytes, B.size);
+          });
+        }
+        return work;
+      });
+    }).then(function () {
+      return t.test('port v3: removing trackers, announcing again, limits per torrent (per capability)', function () {
+        var caps = engine.capabilities, work = Promise.resolve(), url = 'udp://removed.example.invalid:1337/announce';
+        if (caps.trackerRemove) {
+          work = work.then(function () {
+            return caps.trackerEdit ? engine.addTrackers(hash, [url]) : null;
+          }).then(function () {
+            return engine.removeTrackers(hash, [url]);
+          }).then(function () {
+            return caps.trackerList ? engine.trackers(hash) : [];
+          }).then(function (list) {
+            assert.ok(!list.some(function (tr) { return tr.url === url; }), 'the removed tracker is gone');
+          });
+        }
+        if (caps.torrentLimits) {
+          work = work.then(function () {
+            return engine.torrentLimits(hash, { downBps: 512 * 1024, upBps: 64 * 1024 });
+          }).then(function () {
+            return engine.torrentLimits(hash, { downBps: 0, upBps: 0 });
+          });
+        }
+        if (caps.reannounce) {
+          work = work.then(function () {
+            return engine.reannounce(hash);
+          }).then(function () {
+            // still the torrent, still complete
+            return helpers.until(function () {
+              return stat(engine, hash).then(function (s) { return s && s.state === 'seeding' && s; });
+            }, 30000, 'the torrent after announcing again');
           }).then(function (s) {
             assert.equal(s.doneBytes, B.size);
           });

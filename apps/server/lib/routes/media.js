@@ -317,7 +317,10 @@ function playback(req, res) {
     if (answer.method === 'hls') {
       req.lease.method = 'hls-transcode';
     }
-    res.json(answer);
+    // what it is: where a player saves progress for a profile
+    return media.describe(req.media).then(function (what) {
+      res.json(Object.assign(answer, what));
+    });
   }, function (err) {
     if (err.code === 'ENOENT') {
       return fail(res, 'TRANSCODER_UNAVAILABLE', 'ffmpeg is not available');

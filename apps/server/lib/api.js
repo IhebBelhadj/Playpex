@@ -331,7 +331,8 @@ v1.put('/downloads/:infoHash/files', findDownload, downloadAction(function (req)
     torrents.select(req.infoHash, files);
 }));
 
-// { removeWhenWatched?, label? } (label: a string, null or '' = none)
+// { removeWhenWatched?, label?, queuePosition?, force?, seedRatio?, seedMinutes?, downLimitKBps?, upLimitKBps? }
+// (label: a string, null or '' = none; goals and limits: null = the server's / none)
 v1.patch('/downloads/:infoHash', findDownload, downloadAction(function (req) {
   var body = req.body || {}, work = [];
   var invalid = function (message) { return Promise.reject(Object.assign(new Error(message), { code: 'INVALID' })); };
@@ -347,8 +348,23 @@ v1.patch('/downloads/:infoHash', findDownload, downloadAction(function (req) {
     }
     work.push(function () { return torrents.setLabel(req.infoHash, body.label); });
   }
+  if (body.seedRatio !== undefined || body.seedMinutes !== undefined) {
+    work.push(function () { return torrents.setSeedGoal(req.infoHash, { ratio: body.seedRatio, minutes: body.seedMinutes }); });
+  }
+  if (body.downLimitKBps !== undefined || body.upLimitKBps !== undefined) {
+    work.push(function () { return torrents.setTorrentLimits(req.infoHash, { down: body.downLimitKBps, up: body.upLimitKBps }); });
+  }
+  if (body.force !== undefined) {
+    if (typeof body.force !== 'boolean') {
+      return invalid('force must be true or false');
+    }
+    work.push(function () { return torrents.setForce(req.infoHash, body.force); });
+  }
+  if (body.queuePosition !== undefined) {
+    work.push(function () { return torrents.moveInQueue(req.infoHash, body.queuePosition); });
+  }
   if (!work.length) {
-    return invalid('nothing to change: removeWhenWatched or label');
+    return invalid('nothing to change: removeWhenWatched, label, queuePosition, force, seedRatio, seedMinutes, downLimitKBps or upLimitKBps');
   }
   return work.reduce(function (p, fn) { return p.then(fn); }, Promise.resolve());
 }));
@@ -371,12 +387,29 @@ v1.get('/downloads/:infoHash/trackers', authHttp.requireAdmin, findDownload, adm
   return torrents.trackers(req.infoHash);
 }));
 
-// { add: [announce URLs] }
+// { add?: [announce URLs], remove?: [announce URLs] } (kept with the download)
 v1.post('/downloads/:infoHash/trackers', authHttp.requireAdmin, findDownload, adminRead(function (req) {
-  return torrents.addTrackers(req.infoHash, req.body && req.body.add).then(function () {
+  var body = req.body || {};
+  return torrents.editTrackers(req.infoHash, { add: body.add, remove: body.remove }).then(function () {
     return torrents.trackers(req.infoHash);
   });
 }));
+
+// announce now (a running torrent no player reads)
+v1.post('/downloads/:infoHash/reannounce', authHttp.requireAdmin, findDownload, adminRead(function (req) {
+  return torrents.reannounce(req.infoHash).then(function () { return torrents.get(req.infoHash); });
+}));
+
+// its .torrent, with the trackers it announces to
+v1.get('/downloads/:infoHash/torrent', authHttp.requireAdmin, findDownload, function (req, res) {
+  torrents.torrentFile(req.infoHash).then(function (file) {
+    var name = file.name.replace(/[\\/:*?"<>|\r\n]+/g, ' ').trim() || req.infoHash;
+    res.set('Content-Type', 'application/x-bittorrent');
+    res.set('Content-Disposition', 'attachment; filename="' + name.replace(/[^\x20-\x7e]/g, '_') + '.torrent"; filename*=UTF-8\'\'' +
+      encodeURIComponent(name + '.torrent'));
+    res.send(file.buffer);
+  }, function (err) { failed(res, err); });
+});
 
 v1.post('/downloads/:infoHash/recheck', authHttp.requireAdmin, findDownload, adminRead(function (req) {
   return torrents.recheck(req.infoHash).then(function () { return torrents.get(req.infoHash); });

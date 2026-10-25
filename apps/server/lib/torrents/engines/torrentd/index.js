@@ -93,7 +93,10 @@ function create() {
       peerList: true,
       trackerList: true,       // the list: anacrolix keeps the announce state to itself
       trackerEdit: true,
-      recheck: true
+      recheck: true,
+      trackerRemove: true,     // from the next start (anacrolix may announce to it until then)
+      reannounce: true,        // the torrent leaves the client and comes back (fast resume: nothing is checked)
+      torrentLimits: true      // its traffic stops each way while it is over its budget
     },
 
     init: function (opts) {
@@ -276,6 +279,20 @@ function create() {
 
     recheck: function (hash) {
       return v2('POST', url(hash, '/recheck'), {}, 'checking ' + hash).then(function () {});
+    },
+
+    // engine port v3 (playpex-torrentd 0.3)
+    removeTrackers: function (hash, urls) {
+      return v2('POST', url(hash, '/trackers'), { remove: urls }, 'removing trackers of ' + hash).then(function () {});
+    },
+
+    reannounce: function (hash) {
+      return v2('POST', url(hash, '/reannounce'), {}, 'announcing ' + hash + ' again').then(function () {});
+    },
+
+    torrentLimits: function (hash, next) {
+      return v2('PUT', url(hash, '/limits'), { downBps: next.downBps || 0, upBps: next.upBps || 0 }, 'limiting ' + hash)
+        .then(function () {});
     },
 
     list: function () {

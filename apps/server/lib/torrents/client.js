@@ -18,12 +18,19 @@
 //   prepareStream(hash, path) / stream(hash, path, range) / prefetchTail(hash, path)
 //   pause · start · resume · select · remove · released (the last lease went)
 //   pauseAll / resumeAll (downloads.paused) · requeue (a stream needs the slot)
-//   get / list / files / torrent / torrentStats / totals / info
+//   moveInQueue · setForce · setSeedGoal · setTorrentLimits · editTrackers · reannounce
+//   get / list / files / torrent / torrentStats / totals / info / torrentFile
 //
 // Limits: `downloads.maxActive` download-intent torrents run at once (the
-// others wait, `queued`); all active torrents together stay under
+// others wait, `queued`, in the admin's order, then oldest first); a force
+// started one runs past it; all active torrents together stay under
 // `streaming.maxTorrents`: a stream past it asks the admission hook
 // (lib/sessions.js#canAdd), which makes room or answers BUSY.
+//
+// Trackers: a torrent's own, the server's (lib/trackers.js) and the admin's,
+// less the ones the admin removed (`trackers` of the row). Every 30 minutes
+// they are scraped (./scrape.js, whatever the engine): the swarm's seeds and
+// leechers.
 //
 // Events (lib/events.js): download.added, download.updated (state changes at
 // once, progress at most every POLL_MS), download.removed.
@@ -38,6 +45,7 @@ var fs = require('fs'),
   errors = require('./errors'),
   peerid = require('./peerid'),
   files = require('./files'),
+  scraper = require('./scrape'),
   trackers = require('../trackers'),
   refs = require('../media/refs'),
   mediaFiles = require('../media/files'),
@@ -51,6 +59,10 @@ var SPEED_SAMPLES = 300,  // 10 minutes of polls
   READ_AHEAD = 16 * 1024 * 1024,   // what a player is about to read, past its position
   POLL_MS = 2000,
   PERSIST_MS = 30 * 1000,
+  SCRAPE_MS = 30 * 60 * 1000,      // every download's trackers
+  SCRAPE_FIRST_MS = 60 * 1000,     // after the start
+  SCRAPE_STALE_MS = 5 * 60 * 1000, // the Trackers tab asks again past this
+  SCRAPE_PARALLEL = 8,             // trackers asked at once
   TAIL_BYTES = 2 * 1024 * 1024,
   ACTIVE = ['checking', 'downloading', 'seeding'],
   HASH = /^[0-9a-f]{40}$/;
@@ -61,6 +73,9 @@ var engine = null,
   downloads = {},        // infoHash → d (below)
   ready = Promise.resolve(),
   pollTimer = null,
+  scrapeTimer = null,
+  scraping = null,       // the running scrape (a Promise)
+  discovery = true,      // false: no tracker is ever asked (tests)
   lastPersist = 0,
   admission = null,      // hash → Error | null (lib/sessions.js#canAdd)
   store = null,          // services.downloads, null without a database
@@ -70,7 +85,8 @@ var engine = null,
 // d = { row (the `downloads` row), meta ({ name, length, pieceLength, files } | null),
 //       live (the engine's last stats while active), inEngine, counters ({ up, down }:
 //       the engine's last counters), seedingSince, tails ({ path: true }: tail read),
-//       op (engine calls run one at a time per torrent), dirty, published }
+//       op (engine calls run one at a time per torrent), dirty, published,
+//       own (its own trackers, cached), scrape ({ url: { seeds, peers, downloaded, at, error } }) }
 
 function failure(code, message) {
   var err = new Error(message);
@@ -164,6 +180,81 @@ function saveTorrentFile(d, buffer) {
   }
 }
 
+// ── trackers ───────────────────────────────────────────────────────────────
+
+function unique(list) {
+  return list.filter(function (url, i) { return url && list.indexOf(url) === i; });
+}
+
+// The admin's edits: { added, removed }
+function edits(d) {
+  var t = d.row.trackers;
+  return { added: (t && Array.isArray(t.added)) ? t.added : [], removed: (t && Array.isArray(t.removed)) ? t.removed : [] };
+}
+
+// The torrent's own announce URLs (its .torrent, its magnet)
+function ownTrackers(d) {
+  if (!d.own) {
+    var own = [];
+    try {
+      var buffer = readTorrentFile(d);
+      own = own.concat(buffer ? parseTorrent(buffer).announce || [] : []);
+    } catch (e) { /* unreadable: none */ }
+    try {
+      own = own.concat(d.row.magnet ? parseTorrent(d.row.magnet).announce || [] : []);
+    } catch (e) { /* none */ }
+    d.own = unique(own);
+  }
+  return d.own;
+}
+
+// What the torrent announces to: its own, the server's, the admin's, less
+// the removed ones
+function trackerList(d) {
+  var e = edits(d);
+  return unique(ownTrackers(d).concat(trackers.list, e.added)).filter(function (url) { return e.removed.indexOf(url) === -1; });
+}
+
+// The .torrent an engine gets: its announce list is ours (an engine adds a
+// file's own trackers to the ones it is given: removed ones stay out)
+function torrentFileFor(d) {
+  var buffer = readTorrentFile(d);
+  if (!buffer || !edits(d).removed.length) {
+    return buffer;
+  }
+  try {
+    var decoded = bncode.decode(buffer);
+    return bncode.encode({ info: decoded.info, 'announce-list': trackerList(d).map(function (url) { return [url]; }) });
+  } catch (e) {
+    return buffer;
+  }
+}
+
+function magnetFor(d) {
+  var removed = edits(d).removed;
+  if (!d.row.magnet || !removed.length) {
+    return d.row.magnet;
+  }
+  return d.row.magnet.split('&').filter(function (part) {
+    return !/^tr=/i.test(part) || removed.indexOf(decodeURIComponent(part.slice(3))) === -1;
+  }).join('&');
+}
+
+// The most seeds and leechers any tracker counted (a scrape), or null
+function swarmOf(d) {
+  var best = null;
+  Object.keys(d.scrape || {}).forEach(function (url) {
+    var s = d.scrape[url];
+    if (s.error || s.seeds === null) {
+      return;
+    }
+    if (!best || s.seeds + (s.peers || 0) > best.seeds + best.peers) {
+      best = { seeds: s.seeds, peers: s.peers || 0, at: s.at };
+    }
+  });
+  return best ? { seeds: best.seeds, peers: best.peers, at: new Date(best.at).toISOString() } : null;
+}
+
 // ── views ──────────────────────────────────────────────────────────────────
 
 function iso(date) {
@@ -209,19 +300,21 @@ function doneMap(d) {
   return out.toString('base64');
 }
 
-// 1-based place in the download queue (oldest first, as pump() starts them)
+// The queue's order: the admin's (queueOrder), then the others oldest first
+function queueCompare(a, b) {
+  var qa = a.row.queueOrder === null || a.row.queueOrder === undefined ? Infinity : a.row.queueOrder,
+    qb = b.row.queueOrder === null || b.row.queueOrder === undefined ? Infinity : b.row.queueOrder;
+  return qa !== qb ? (qa < qb ? -1 : 1) : a.row.addedAt - b.row.addedAt;
+}
+
+function queued() {
+  return Object.keys(downloads).map(function (h) { return downloads[h]; })
+    .filter(function (d) { return d.row.state === 'queued'; }).sort(queueCompare);
+}
+
+// 1-based place in the download queue (the order pump() starts them in)
 function queuePosition(d) {
-  if (d.row.state !== 'queued') {
-    return null;
-  }
-  var ahead = 0;
-  Object.keys(downloads).forEach(function (h) {
-    var o = downloads[h];
-    if (o !== d && o.row.state === 'queued' && o.row.addedAt < d.row.addedAt) {
-      ahead++;
-    }
-  });
-  return ahead + 1;
+  return d.row.state === 'queued' ? queued().indexOf(d) + 1 : null;
 }
 
 // The API's Download
@@ -252,6 +345,12 @@ function view(d) {
     removeWhenWatched: !!r.removeWhenWatched,
     label: r.label || null,
     queuePosition: queuePosition(d),
+    forced: !!r.forced,
+    seedRatio: r.seedRatio === undefined ? null : r.seedRatio,
+    seedMinutes: r.seedMinutes === undefined ? null : r.seedMinutes,
+    downLimitKBps: r.downLimitKBps || null,
+    upLimitKBps: r.upLimitKBps || null,
+    swarm: swarmOf(d),
     pieceMap: pieceMap(d),
     savePath: r.name ? path.join(r.saveDir, r.name) : r.saveDir,
     addedAt: iso(r.addedAt),
@@ -264,7 +363,7 @@ function publishUpdate(d, force) {
   var v = view(d),
     key = [v.state, v.error, v.doneBytes, v.uploadedBytes, v.downloadSpeed, v.uploadSpeed, v.peers, v.checking, v.name,
       v.intent, JSON.stringify(v.selectedFiles), JSON.stringify(v.title), v.removeWhenWatched, v.label, v.queuePosition,
-      v.pieceMap].join('|');
+      v.forced, v.seedRatio, v.seedMinutes, v.downLimitKBps, v.upLimitKBps, JSON.stringify(v.swarm), v.pieceMap].join('|');
   if (force || key !== d.published) {
     d.published = key;
     events.publish('download.updated', v);
@@ -284,6 +383,15 @@ function setState(d, state, extra) {
   if (state !== d.row.state) {
     fields.state = state;
     log.info(d.row.infoHash + ': ' + d.row.state + ' → ' + state);
+    // queued again after a stop: at the back of the queue (one that waits for
+    // a slot back, from running, keeps its place)
+    if (state === 'queued' && !isActive(d) && d.row.queueOrder !== null && d.row.queueOrder !== undefined) {
+      fields.queueOrder = null;
+    }
+    // a force start lasts until it stops for good
+    if (d.row.forced && ['paused', 'completed', 'error'].indexOf(state) !== -1) {
+      fields.forced = false;
+    }
   }
   if (ACTIVE.indexOf(state) !== -1) {
     fields.lastActiveAt = new Date();
@@ -297,18 +405,27 @@ function setState(d, state, extra) {
 function engineAdd(d, paused) {
   return engine.add({
     infoHash: d.row.infoHash,
-    magnet: d.row.magnet || undefined,
-    torrentFile: readTorrentFile(d) || undefined,
+    magnet: magnetFor(d) || undefined,
+    torrentFile: torrentFileFor(d) || undefined,
     savePath: d.row.saveDir,
     files: d.row.selectedFiles,
     // a stream plays one file: its largest until the player names it
     onlyLargest: d.row.intent === 'stream' && !d.row.selectedFiles,
     paused: paused,
-    // the admin's additions (in memory: kept until the server restarts)
-    trackers: trackers.list.concat(d.row.trackers || [])
+    // the server's, the admin's, less the removed ones
+    trackers: trackerList(d)
   }).then(function () {
     d.inEngine = true;
   });
+}
+
+// Its own speed limits (engines with torrentLimits), after each start
+function applyTorrentLimits(d) {
+  if (!caps.torrentLimits || !d.inEngine || (!d.row.downLimitKBps && !d.row.upLimitKBps && !d.limited)) {
+    return Promise.resolve();
+  }
+  d.limited = !!(d.row.downLimitKBps || d.row.upLimitKBps);
+  return engine.torrentLimits(d.row.infoHash, { downBps: (d.row.downLimitKBps || 0) * 1024, upBps: (d.row.upLimitKBps || 0) * 1024 });
 }
 
 // Runs the torrent (the state changes now; the engine follows)
@@ -327,6 +444,10 @@ function activate(d) {
     // selection: ours is the truth
     var selecting = d.meta ? engine.select(d.row.infoHash, d.row.selectedFiles) : Promise.resolve();
     return selecting.then(function () { return engine.start(d.row.infoHash); });
+  }).then(function () {
+    return applyTorrentLimits(d).catch(function (err) {
+      log.warn('cannot limit the speed of ' + d.row.infoHash + ': ' + err.message);
+    });
   }).catch(function (err) {
     log.warn('cannot start ' + d.row.infoHash + ': ' + err.message);
     setState(d, 'error', { error: err.message });
@@ -362,21 +483,22 @@ function globalPaused() {
   return settings.get('downloads.paused');
 }
 
-// Starts queued downloads while there is room (oldest first)
+// Starts queued downloads while there is room, in the queue's order; force
+// started ones first, past downloads.maxActive (never past maxTorrents)
 function pump() {
   if (!engine || globalPaused()) {
     return;
   }
   var all = Object.keys(downloads).map(function (h) { return downloads[h]; }),
     active = all.filter(isActive),
-    running = active.filter(function (d) { return d.row.intent === 'download'; }).length,
+    running = active.filter(function (d) { return d.row.intent === 'download' && !d.row.forced; }).length,
     maxTorrents = settings.get('streaming.maxTorrents'),
-    maxActive = settings.get('downloads.maxActive');
-  all.filter(function (d) { return d.row.state === 'queued'; })
-    .sort(function (a, b) { return a.row.addedAt - b.row.addedAt; })
+    maxActive = settings.get('downloads.maxActive'),
+    waiting = queued();
+  waiting.filter(function (d) { return d.row.forced; }).concat(waiting.filter(function (d) { return !d.row.forced; }))
     .forEach(function (d) {
-      if (running < maxActive && active.length < maxTorrents) {
-        running++;
+      if ((d.row.forced || running < maxActive) && active.length < maxTorrents) {
+        running += d.row.forced ? 0 : 1;
         active.push(d);
         activate(d).catch(function () {});
       }
@@ -384,10 +506,11 @@ function pump() {
 }
 
 // Seeding rules (download intent): stop at the ratio or after the time,
-// whichever comes first; neither set = no seeding
+// whichever comes first; neither set = no seeding. A download's own goals
+// replace the server's.
 function seedingOver(d) {
-  var ratio = settings.get('downloads.seedRatio'),
-    minutes = settings.get('downloads.seedMinutes');
+  var ratio = d.row.seedRatio !== null && d.row.seedRatio !== undefined ? d.row.seedRatio : settings.get('downloads.seedRatio'),
+    minutes = d.row.seedMinutes !== null && d.row.seedMinutes !== undefined ? d.row.seedMinutes : settings.get('downloads.seedMinutes');
   if (!ratio && !minutes) {
     return true;
   }
@@ -408,6 +531,7 @@ function onMetadata(hash) {
     }
     d.meta = { name: meta.name, length: meta.length, pieceLength: meta.pieceLength, files: meta.files };
     var fields = { name: meta.name, torrentFile: saveTorrentFile(d, meta.torrentFile) };
+    d.own = null;
     // a stream without a choice yet: its largest file (the player narrows it)
     if (!d.row.selectedFiles && d.row.intent === 'stream') {
       var largest = meta.files.reduce(function (a, b) { return a.size >= b.size ? a : b; });
@@ -971,6 +1095,107 @@ function setRemoveWhenWatched(hash, value) {
   });
 }
 
+// Moves a queued download to `position` (1-based; past the end: last). The
+// queue's order is then the admin's for every queued one.
+function moveInQueue(hash, position) {
+  return ready.then(function () {
+    var d = find(hash);
+    if (d.row.state !== 'queued') {
+      throw failure('CONFLICT', 'Only a queued download has a place in the queue');
+    }
+    if (typeof position !== 'number' || !(position >= 1) || Math.floor(position) !== position) {
+      throw failure('INVALID', 'queuePosition must be a whole number from 1');
+    }
+    var order = queued().filter(function (o) { return o !== d; });
+    order.splice(Math.min(position, order.length + 1) - 1, 0, d);
+    order.forEach(function (o, i) {
+      if (o.row.queueOrder !== i + 1) {
+        persist(o, { queueOrder: i + 1 });
+        publishUpdate(o);
+      }
+    });
+    log.info(hash + ' moved to #' + (order.indexOf(d) + 1) + ' in the queue');
+    pump();
+  });
+}
+
+// Force start (µTorrent's): a download that runs past downloads.maxActive,
+// until it is paused or done; off = the queue's rules again
+function setForce(hash, on) {
+  return ready.then(function () {
+    var d = find(hash);
+    if (!on) {
+      if (d.row.forced) {
+        persist(d, { forced: false });
+        publishUpdate(d);
+        // a running one keeps going; the queue counts it from now on
+      }
+      return;
+    }
+    var fields = { forced: true };
+    if (d.row.intent !== 'download') {
+      fields.intent = 'download';
+    }
+    if (d.row.state === 'completed' && isDone(d)) {
+      throw failure('CONFLICT', 'It is downloaded: nothing to start');
+    }
+    persist(d, fields);
+    log.info('force start of ' + hash);
+    if (!isActive(d)) {
+      setState(d, 'queued');
+    }
+    publishUpdate(d, true);
+    pump();
+  });
+}
+
+function goal(value, integer) {
+  return value === null || (typeof value === 'number' && value >= 0 && isFinite(value) && (!integer || Math.floor(value) === value));
+}
+
+// Its own seeding goals (null: the server's downloads.seedRatio / seedMinutes)
+function setSeedGoal(hash, goals) {
+  return ready.then(function () {
+    var d = find(hash), fields = {};
+    if (goals.ratio !== undefined) {
+      if (!goal(goals.ratio)) {
+        throw failure('INVALID', 'seedRatio must be a number from 0, or null');
+      }
+      fields.seedRatio = goals.ratio === null ? null : Math.round(goals.ratio * 100) / 100;
+    }
+    if (goals.minutes !== undefined) {
+      if (!goal(goals.minutes, true)) {
+        throw failure('INVALID', 'seedMinutes must be a whole number from 0, or null');
+      }
+      fields.seedMinutes = goals.minutes;
+    }
+    persist(d, fields);
+    publishUpdate(d);
+    // a seeding download past its new goal stops at the next poll
+  });
+}
+
+// Its own speed limits in KB/s (0 / null: none); engines with torrentLimits
+function setTorrentLimits(hash, limitsKBps) {
+  return ready.then(function () {
+    var d = find(hash), fields = {};
+    capable('torrentLimits', 'speed limits per torrent');
+    ['down', 'up'].forEach(function (way) {
+      var v = limitsKBps[way];
+      if (v === undefined) {
+        return;
+      }
+      if (!goal(v, true)) {
+        throw failure('INVALID', way + 'LimitKBps must be a whole number from 0, or null');
+      }
+      fields[way + 'LimitKBps'] = v || null;
+    });
+    persist(d, fields);
+    publishUpdate(d);
+    return isActive(d) ? serial(d, function () { return applyTorrentLimits(d); }) : null;
+  });
+}
+
 // The tray's "Pause all downloads" (downloads.paused, kept across restarts):
 // downloads go back to the queue and wait; streams still play
 function pauseAll() {
@@ -1150,48 +1375,190 @@ function peers(hash) {
   });
 }
 
-/** Its trackers: the engine's list (and status where it knows it), ours marked */
+/**
+ * Its trackers: the engine's list (and status where it knows it) with ours
+ * and the admin's, less the removed ones; what each answered to the last
+ * scrape. A scrape older than 5 minutes starts again (its answer follows).
+ */
 function trackersOf(hash) {
   return ready.then(function () {
     var d = find(hash);
     capable('trackerList', 'its trackers');
     var listed = isActive(d) && d.inEngine ? engine.trackers(d.row.infoHash) : Promise.resolve([]);
     return listed.then(function (list) {
-      var seen = {}, out = [];
-      list.concat((d.row.trackers || []).concat(trackers.list).map(function (url) { return { url: url, status: null }; }))
-        .forEach(function (t) {
-          if (seen[t.url]) {
-            return;
-          }
-          seen[t.url] = true;
-          out.push({
-            url: t.url,
-            status: !isActive(d) ? 'stopped' : t.status || 'unknown',
-            seeds: t.seeds === undefined ? null : t.seeds,
-            peers: t.peers === undefined ? null : t.peers,
-            message: t.message || null,
-            ours: trackers.list.indexOf(t.url) !== -1
-          });
+      var seen = {}, out = [], e = edits(d), oldest = Infinity;
+      list.concat(trackerList(d).map(function (url) { return { url: url, status: null }; })).forEach(function (t) {
+        if (seen[t.url] || e.removed.indexOf(t.url) !== -1) {
+          return;
+        }
+        seen[t.url] = true;
+        var scraped = d.scrape && d.scrape[t.url];
+        oldest = Math.min(oldest, scraped ? scraped.at : 0);
+        out.push({
+          url: t.url,
+          status: !isActive(d) ? 'stopped' : t.status || 'unknown',
+          seeds: t.seeds === undefined ? null : t.seeds,
+          peers: t.peers === undefined ? null : t.peers,
+          message: t.message || null,
+          ours: trackers.list.indexOf(t.url) !== -1,
+          added: e.added.indexOf(t.url) !== -1,
+          swarm: scraped ? {
+            seeds: scraped.seeds, peers: scraped.peers, downloaded: scraped.downloaded,
+            at: new Date(scraped.at).toISOString(), error: scraped.error
+          } : null
         });
-      return { running: isActive(d), trackers: out };
+      });
+      if (out.length && Date.now() - oldest > SCRAPE_STALE_MS && !d.scraping) {
+        scrapeSome([d]);
+      }
+      return { running: isActive(d), scraping: !!d.scraping, trackers: out };
     });
   });
 }
 
 /**
- * Adds announce URLs (http(s) / udp); the engine uses them now or from its
- * next start. Kept in memory until the server restarts (not in the table).
+ * Adds and removes announce URLs, kept with the download (its `trackers`).
+ * Added ones are announced to now where the engine can, else from the next
+ * start; removed ones are left out from the next start (and now, where the
+ * engine can).
  */
-function addTrackers(hash, urls) {
+function editTrackers(hash, change) {
+  return ready.then(function () {
+    var d = find(hash), add = change && change.add, remove = change && change.remove;
+    if (add !== undefined) {
+      capable('trackerEdit', 'adding trackers');
+      if (!Array.isArray(add) || !add.length || add.some(function (u) { return typeof u !== 'string' || !/^(https?|udp):\/\/[^\s]+$/i.test(u); })) {
+        throw failure('INVALID', 'trackers must be http(s):// or udp:// announce URLs');
+      }
+    }
+    if (remove !== undefined) {
+      capable('trackerRemove', 'removing trackers');
+      if (!Array.isArray(remove) || !remove.length || remove.some(function (u) { return typeof u !== 'string'; })) {
+        throw failure('INVALID', 'remove must be a list of announce URLs');
+      }
+    }
+    if (add === undefined && remove === undefined) {
+      throw failure('INVALID', 'nothing to change: add or remove');
+    }
+    var e = edits(d), added = add || [], removed = remove || [];
+    var next = {
+      added: unique(e.added.concat(added)).filter(function (u) { return removed.indexOf(u) === -1; }),
+      removed: unique(e.removed.filter(function (u) { return added.indexOf(u) === -1; }).concat(removed))
+    };
+    persist(d, { trackers: next });
+    log.info('trackers of ' + hash + ': +' + added.length + ' −' + removed.length);
+    if (!d.inEngine) {
+      return null;
+    }
+    return serial(d, function () {
+      return (added.length ? engine.addTrackers(d.row.infoHash, added) : Promise.resolve()).then(function () {
+        return removed.length ? engine.removeTrackers(d.row.infoHash, removed) : null;
+      });
+    });
+  });
+}
+
+/** Announces to its trackers now: a running torrent no player reads (engines restart its traffic for it) */
+function reannounce(hash) {
   return ready.then(function () {
     var d = find(hash);
-    capable('trackerEdit', 'adding trackers');
-    if (!Array.isArray(urls) || !urls.length || urls.some(function (u) { return typeof u !== 'string' || !/^(https?|udp):\/\/[^\s]+$/i.test(u); })) {
-      throw failure('INVALID', 'trackers must be http(s):// or udp:// announce URLs');
+    capable('reannounce', 'announcing again');
+    if (!isActive(d) || !d.inEngine) {
+      throw failure('CONFLICT', 'Start it first: only a running torrent announces');
     }
-    d.row.trackers = (d.row.trackers || []).concat(urls.filter(function (u) { return (d.row.trackers || []).indexOf(u) === -1; }));
-    return d.inEngine ? serial(d, function () { return engine.addTrackers(d.row.infoHash, urls); }) : null;
+    if ((d.reads || []).length) {
+      throw failure('CONFLICT', 'A player is reading it: announcing again would restart its stream');
+    }
+    log.info('announcing ' + hash + ' again (the admin)');
+    return serial(d, function () { return engine.reannounce(d.row.infoHash); }).then(function () {
+      return applyTorrentLimits(d).catch(function () {});
+    });
   });
+}
+
+/** Its .torrent with the trackers it announces to: { name, buffer }; CONFLICT before its metadata */
+function torrentFile(hash) {
+  return ready.then(function () {
+    var d = find(hash), buffer = readTorrentFile(d);
+    if (!buffer) {
+      throw failure('CONFLICT', 'Its metadata hasn\'t arrived yet: no .torrent to give');
+    }
+    var decoded = bncode.decode(buffer), list = trackerList(d);
+    var out = { info: decoded.info, 'announce-list': list.map(function (url) { return [url]; }) };
+    if (list.length) {
+      out.announce = list[0];
+    }
+    return { name: d.row.name || d.row.infoHash, buffer: bncode.encode(out) };
+  });
+}
+
+// ── scrapes (./scrape.js) ───────────────────────────────────────────────────
+
+// Asks every tracker of these downloads (grouped: one request per tracker,
+// several hashes in it), a few trackers at once
+function scrapeSome(list) {
+  if (!discovery) {
+    return Promise.resolve();
+  }
+  var byTracker = {};
+  list.forEach(function (d) {
+    d.scraping = true;
+    trackerList(d).forEach(function (url) {
+      (byTracker[url] = byTracker[url] || []).push(d);
+    });
+  });
+  var urls = Object.keys(byTracker), changed = {};
+  function one(url) {
+    var ds = byTracker[url], hashes = ds.map(function (d) { return d.row.infoHash; }), at = Date.now();
+    return scraper.scrape(url, hashes).then(function (answer) {
+      ds.forEach(function (d) {
+        var a = answer[d.row.infoHash];
+        d.scrape = d.scrape || {};
+        d.scrape[url] = a ? { seeds: a.seeds, peers: a.peers, downloaded: a.downloaded, at: at, error: null } :
+          { seeds: null, peers: null, downloaded: null, at: at, error: 'The tracker doesn\'t know this torrent' };
+        changed[d.row.infoHash] = d;
+      });
+    }, function (err) {
+      ds.forEach(function (d) {
+        d.scrape = d.scrape || {};
+        d.scrape[url] = { seeds: null, peers: null, downloaded: null, at: at, error: err.message };
+      });
+    });
+  }
+  var next = 0;
+  function worker() {
+    if (next >= urls.length) {
+      return Promise.resolve();
+    }
+    return one(urls[next++]).then(worker);
+  }
+  var workers = [];
+  for (var i = 0; i < Math.min(SCRAPE_PARALLEL, urls.length); i++) {
+    workers.push(worker());
+  }
+  return Promise.all(workers).then(function () {
+    list.forEach(function (d) { d.scraping = false; });
+    Object.keys(changed).forEach(function (h) {
+      if (downloads[h]) {
+        publishUpdate(downloads[h]);
+      }
+    });
+  });
+}
+
+// Every download whose trackers are known, every 30 minutes
+function scrapeAll() {
+  if (scraping) {
+    return scraping;
+  }
+  var list = Object.keys(downloads).map(function (h) { return downloads[h]; })
+    .filter(function (d) { return !d.scraping && trackerList(d).length; });
+  scraping = scrapeSome(list).catch(function (err) {
+    log.warn('scraping trackers: ' + err.message);
+  }).then(function () {
+    scraping = null;
+  });
+  return scraping;
 }
 
 /** Every piece verified again (a running torrent) */
@@ -1485,6 +1852,7 @@ function init(options) {
   downloads = {};
   saveDir = options.dataDir;
   torrentDir = path.join(options.configDir, 'torrents');
+  discovery = options.discovery !== false;
   var requested = options.engine || settings.get('downloads.engine');
   engineInfo = { id: null, requested: requested, error: null };
   ready = userData.services().then(function (s) {
@@ -1507,6 +1875,17 @@ function init(options) {
     log.info(Object.keys(downloads).length + ' downloads, engine ' + engine.id + ', in ' + saveDir);
     pollTimer = setInterval(poll, POLL_MS);
     pollTimer.unref();
+    if (discovery) {
+      scrapeTimer = setTimeout(function again() {
+        scrapeAll().then(function () {
+          if (scrapeTimer) {
+            scrapeTimer = setTimeout(again, SCRAPE_MS);
+            scrapeTimer.unref();
+          }
+        });
+      }, SCRAPE_FIRST_MS);
+      scrapeTimer.unref();
+    }
     pump();
   }).catch(function (err) {
     engineInfo.error = engineInfo.error || err.message;
@@ -1519,6 +1898,8 @@ function init(options) {
 function close() {
   clearInterval(pollTimer);
   pollTimer = null;
+  clearTimeout(scrapeTimer);
+  scrapeTimer = null;
   return ready.then(function () {
     var current = engine;
     engine = null;
@@ -1550,10 +1931,17 @@ module.exports = {
   describe: describe,
   setRemoveWhenWatched: setRemoveWhenWatched,
   setLabel: setLabel,
+  moveInQueue: moveInQueue,
+  setForce: setForce,
+  setSeedGoal: setSeedGoal,
+  setTorrentLimits: setTorrentLimits,
+  editTrackers: editTrackers,
+  reannounce: reannounce,
+  torrentFile: torrentFile,
+  scrape: scrapeAll,
   preview: preview,
   peers: peers,
   trackers: trackersOf,
-  addTrackers: addTrackers,
   recheck: recheck,
   pieces: piecesOf,
   speed: speedOf,

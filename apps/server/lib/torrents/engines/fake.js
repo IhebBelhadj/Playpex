@@ -8,6 +8,7 @@
 // peer takes UPLOAD bytes per tick (so seeding ratios move).
 //
 //   create({ capabilities: { pause: false, … }, rate, upload })   for tests of the client's fallbacks
+//   latest().inspect(hash) → { announces, limits, trackers }     what the client asked of it
 
 var fs = require('fs'),
   path = require('path'),
@@ -180,7 +181,10 @@ function create(opts) {
       peerList: true,
       trackerList: true,
       trackerEdit: true,
-      recheck: true
+      recheck: true,
+      trackerRemove: true,
+      reannounce: true,
+      torrentLimits: true
     }, opts.capabilities),
 
     init: function (initOptions) {
@@ -274,6 +278,37 @@ function create(opts) {
           }
         });
       });
+    },
+
+    removeTrackers: function (hash, urls) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        t.trackerList = t.trackerList.filter(function (url) { return urls.indexOf(url) === -1; });
+      });
+    },
+
+    // counted, for tests (`announces`)
+    reannounce: function (hash) {
+      return Promise.resolve().then(function () {
+        var t = get(hash);
+        if (!t.running) {
+          throw EngineError('UNSUPPORTED', 'The torrent ' + hash + ' is paused');
+        }
+        t.announces = (t.announces || 0) + 1;
+      });
+    },
+
+    // kept, for tests (`limits`): the fake transfers at its own rate
+    torrentLimits: function (hash, next) {
+      return Promise.resolve().then(function () {
+        get(hash).limits = { downBps: next.downBps || 0, upBps: next.upBps || 0 };
+      });
+    },
+
+    // what a test reads of a torrent: { announces, limits, trackers }
+    inspect: function (hash) {
+      var t = get(hash);
+      return { announces: t.announces || 0, limits: t.limits || null, trackers: t.trackerList.slice() };
     },
 
     // pieces verified again: what is on disk counts
@@ -484,7 +519,11 @@ function create(opts) {
     }
   };
 
+  latest = engine;
   return engine;
 }
 
-module.exports = { create: create };
+var latest = null;
+
+// the last fake engine made (a test reads it: inspect(hash))
+module.exports = { create: create, latest: function () { return latest; } };

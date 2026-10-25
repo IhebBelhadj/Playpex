@@ -197,6 +197,13 @@ var downloads = sqliteTable('downloads', {
   titleRef: text('title_ref', { mode: 'json' }),   // { mediaType, tmdbId, season, episode, title }
   removeWhenWatched: integer('remove_when_watched', { mode: 'boolean' }).notNull().default(false),
   label: text('label'),                            // the admin's free text (dashboard plan §4.5)
+  queueOrder: integer('queue_order'),              // its place in the queue once the admin moved one; null: by addedAt, after them
+  forced: integer('forced', { mode: 'boolean' }).notNull().default(false),   // force started: past downloads.maxActive
+  seedRatio: real('seed_ratio'),                   // its seeding goals; null: the server's settings
+  seedMinutes: integer('seed_minutes'),
+  downLimitKBps: integer('down_limit_kbps'),       // its own speed limits (engines with torrentLimits); null: none
+  upLimitKBps: integer('up_limit_kbps'),
+  trackers: text('trackers', { mode: 'json' }),    // the admin's edits: { added: [urls], removed: [urls] }
   addedAt: timestamp('added_at').notNull(),
   completedAt: timestamp('completed_at'),
   lastActiveAt: timestamp('last_active_at')

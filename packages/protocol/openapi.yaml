@@ -2701,6 +2701,14 @@ paths:
               properties:
                 removeWhenWatched: { type: boolean, description: 'Delete it and its data once a player watched it to the end (90 %)' }
                 label: { type: [string, 'null'], maxLength: 40, description: 'null or empty: no label' }
+                queuePosition: { type: integer, minimum: 1, description: 'Move it to this place in the queue (a queued download; past the end = last)' }
+                force:
+                  type: boolean
+                  description: 'true: force start (a download, started past downloads.maxActive); false: back under the queue''s rules. Pausing it ends a force start.'
+                seedRatio: { type: [number, 'null'], minimum: 0, description: 'Its seeding goal (0 = stop once done); null: the server''s' }
+                seedMinutes: { type: [integer, 'null'], minimum: 0, description: 'Its seeding goal in minutes; null: the server''s' }
+                downLimitKBps: { type: [integer, 'null'], minimum: 0, description: 'Its download limit in KB/s (0 / null: none; engines with `torrentLimits`, else 501)' }
+                upLimitKBps: { type: [integer, 'null'], minimum: 0, description: 'Its upload limit in KB/s (0 / null: none)' }
       responses:
         '200':
           description: The download
@@ -2817,8 +2825,12 @@ paths:
         '501': { $ref: '#/components/responses/NotSupported' }
     post:
       tags: [downloads]
-      operationId: addDownloadTrackers
-      summary: Add announce URLs (admin; engines with `trackerEdit`). Kept until the server restarts.
+      operationId: editDownloadTrackers
+      summary: Add or remove announce URLs (admin; adding needs `trackerEdit`, removing `trackerRemove`). Kept with the download.
+      description: >-
+        Added trackers are announced to now where the engine can, else from the torrent's next start; a removed one
+        (its own, one the admin added, or one of the server's) is left out from its next start (torrent-stream and
+        torrentd may still announce to it until then).
       security:
         - adminSession: []
       requestBody:
@@ -2827,9 +2839,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [add]
+              minProperties: 1
               properties:
                 add: { type: array, minItems: 1, items: { type: string, pattern: '^(https?|udp)://' } }
+                remove: { type: array, minItems: 1, items: { type: string } }
       responses:
         '200':
           description: Its trackers now
@@ -2859,6 +2872,44 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '501': { $ref: '#/components/responses/NotSupported' }
+  /downloads/{infoHash}/reannounce:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    post:
+      tags: [downloads]
+      operationId: reannounceDownload
+      summary: Announce to its trackers now (admin; a running torrent no player reads; engines with `reannounce`)
+      description: The engines that can do it restart the torrent's traffic for it, which would cut a player's stream (409 then).
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The download
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Download' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '501': { $ref: '#/components/responses/NotSupported' }
+  /downloads/{infoHash}/torrent:
+    parameters:
+      - $ref: '#/components/parameters/InfoHash'
+    get:
+      tags: [downloads]
+      operationId: exportDownloadTorrent
+      summary: Its .torrent file, with its trackers (admin; once its metadata arrived)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The metainfo (attachment `<name>.torrent`)
+          content:
+            application/x-bittorrent:
+              schema: { type: string, format: binary }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /downloads/{infoHash}/pieces:
     parameters:
       - $ref: '#/components/parameters/InfoHash'
@@ -4567,7 +4618,8 @@ components:
       description: A torrent the server keeps (docs/media-server-plan.md §4)
       required: [infoHash, name, state, intent, error, sizeBytes, doneBytes, progress, uploadedBytes, ratio,
         downloadSpeed, uploadSpeed, peers, seeds, eta, checking, fileCount, selectedFiles, title, addedBy,
-        profileId, removeWhenWatched, label, queuePosition, pieceMap, savePath, addedAt, completedAt, lastActiveAt]
+        profileId, removeWhenWatched, label, queuePosition, forced, seedRatio, seedMinutes, downLimitKBps, upLimitKBps,
+        swarm, pieceMap, savePath, addedAt, completedAt, lastActiveAt]
       properties:
         infoHash: { type: string }
         name: { type: [string, 'null'], description: 'null until the metadata has arrived' }
@@ -4604,6 +4656,19 @@ components:
         removeWhenWatched: { type: boolean }
         label: { type: [string, 'null'], description: 'The admin''s label (free text)' }
         queuePosition: { type: [integer, 'null'], minimum: 1, description: 'Its place in the download queue (state `queued`)' }
+        forced: { type: boolean, description: 'Force started: runs past downloads.maxActive (not past streaming.maxTorrents or Pause all)' }
+        seedRatio: { type: [number, 'null'], description: 'Its own seeding goal (ratio); null: the server''s downloads.seedRatio' }
+        seedMinutes: { type: [integer, 'null'], description: 'Its own seeding goal (minutes); null: the server''s downloads.seedMinutes' }
+        downLimitKBps: { type: [integer, 'null'], description: 'Its own download speed limit (engines with `torrentLimits`); null: none' }
+        upLimitKBps: { type: [integer, 'null'], description: 'Its own upload speed limit; null: none' }
+        swarm:
+          type: [object, 'null']
+          description: 'The whole swarm as its trackers count it (a scrape: the most any tracker answered); null before one answered'
+          required: [seeds, peers, at]
+          properties:
+            seeds: { type: integer }
+            peers: { type: integer, description: 'Leechers' }
+            at: { type: string, format: date-time }
         pieceMap:
           type: [string, 'null']
           description: >-
@@ -4714,9 +4779,28 @@ components:
         entries: { type: array, items: { $ref: '#/components/schemas/StorageEntry' } }
     MediaPlayback:
       type: object
-      required: [method, url, start, duration, audio, notes]
+      required: [method, url, start, duration, audio, notes, title, download]
       properties:
         method: { type: string, enum: [direct, hls, none] }
+        title:
+          type: [object, 'null']
+          description: 'What it is (a library file''s match, the title a download was played as): where a player saves progress for a profile'
+          required: [mediaType, tmdbId, season, episode, title, posterPath]
+          properties:
+            mediaType: { $ref: '#/components/schemas/MediaType' }
+            tmdbId: { type: integer, description: 'The movie''s, or the show''s' }
+            season: { type: [integer, 'null'] }
+            episode: { type: [integer, 'null'] }
+            title: { type: [string, 'null'] }
+            posterPath: { type: [string, 'null'] }
+        download:
+          type: [object, 'null']
+          description: 'A torrent''s file: which (GET /downloads/{infoHash}/pieces draws what is downloaded); null for a file on disk'
+          required: [infoHash, path]
+          properties:
+            infoHash: { type: string }
+            path: { type: string }
+        fileId: { type: [string, 'null'], description: 'A library file''s id' }
         url: { type: [string, 'null'], description: 'Under the API prefix: GET /media/{ref} (direct), or the HLS playlist (hls); null for none' }
         start: { type: number, description: 'hls: the time of the file the stream starts at (seconds)' }
         duration: { type: [number, 'null'] }
@@ -4748,14 +4832,15 @@ components:
               uploaded: { type: number }
     DownloadTrackers:
       type: object
-      required: [running, trackers]
+      required: [running, scraping, trackers]
       properties:
         running: { type: boolean }
+        scraping: { type: boolean, description: 'A scrape of its trackers is under way (the counts follow)' }
         trackers:
           type: array
           items:
             type: object
-            required: [url, status, seeds, peers, message, ours]
+            required: [url, status, seeds, peers, message, ours, added, swarm]
             properties:
               url: { type: string }
               status:
@@ -4766,6 +4851,17 @@ components:
               peers: { type: [integer, 'null'] }
               message: { type: [string, 'null'] }
               ours: { type: boolean, description: 'One of the trackers the server adds to every torrent' }
+              added: { type: boolean, description: 'One the admin added' }
+              swarm:
+                type: [object, 'null']
+                description: 'What it answered to the server''s last scrape (every engine); null before it was asked'
+                required: [seeds, peers, downloaded, at, error]
+                properties:
+                  seeds: { type: [integer, 'null'] }
+                  peers: { type: [integer, 'null'], description: 'Leechers' }
+                  downloaded: { type: [integer, 'null'], description: 'Completed downloads it counted' }
+                  at: { type: string, format: date-time }
+                  error: { type: [string, 'null'] }
     DownloadPieces:
       type: object
       required: [pieceLength, count, have, files, reads]
@@ -6513,7 +6609,7 @@ components:
             paused: { type: boolean, description: 'downloads.paused ("Pause all downloads")' }
             capabilities:
               type: object
-              description: 'What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`)'
+              description: 'What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`; port v2: `peerList`, `trackerList`, `trackerEdit`, `recheck`; v3: `trackerRemove`, `reannounce`, `torrentLimits`)'
               additionalProperties: { type: boolean }
         disks:
           type: array

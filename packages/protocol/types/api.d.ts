@@ -2417,8 +2417,11 @@ export interface paths {
         /** Its trackers, with their status where the engine knows it (admin; engines with `trackerList`) */
         get: operations["downloadTrackers"];
         put?: never;
-        /** Add announce URLs (admin; engines with `trackerEdit`). Kept until the server restarts. */
-        post: operations["addDownloadTrackers"];
+        /**
+         * Add or remove announce URLs (admin; adding needs `trackerEdit`, removing `trackerRemove`). Kept with the download.
+         * @description Added trackers are announced to now where the engine can, else from the torrent's next start; a removed one (its own, one the admin added, or one of the server's) is left out from its next start (torrent-stream and torrentd may still announce to it until then).
+         */
+        post: operations["editDownloadTrackers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2438,6 +2441,47 @@ export interface paths {
         put?: never;
         /** Verify every piece again (admin; a running torrent; engines with `recheck`) */
         post: operations["recheckDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/reannounce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Announce to its trackers now (admin; a running torrent no player reads; engines with `reannounce`)
+         * @description The engines that can do it restart the torrent's traffic for it, which would cut a player's stream (409 then).
+         */
+        post: operations["reannounceDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/downloads/{infoHash}/torrent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        /** Its .torrent file, with its trackers (admin; once its metadata arrived) */
+        get: operations["exportDownloadTorrent"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3886,6 +3930,24 @@ export interface components {
             label: string | null;
             /** @description Its place in the download queue (state `queued`) */
             queuePosition: number | null;
+            /** @description Force started: runs past downloads.maxActive (not past streaming.maxTorrents or Pause all) */
+            forced: boolean;
+            /** @description Its own seeding goal (ratio); null: the server's downloads.seedRatio */
+            seedRatio: number | null;
+            /** @description Its own seeding goal (minutes); null: the server's downloads.seedMinutes */
+            seedMinutes: number | null;
+            /** @description Its own download speed limit (engines with `torrentLimits`); null: none */
+            downLimitKBps: number | null;
+            /** @description Its own upload speed limit; null: none */
+            upLimitKBps: number | null;
+            /** @description The whole swarm as its trackers count it (a scrape: the most any tracker answered); null before one answered */
+            swarm: {
+                seeds: number;
+                /** @description Leechers */
+                peers: number;
+                /** Format: date-time */
+                at: string;
+            } | null;
             /** @description The torrent's pieces in up to 100 slices, each byte the share of its pieces verified (0–255), base64 (the last ones the engine reported while it is stopped); null when not known */
             pieceMap: string | null;
             /** @description Where its files are on the server */
@@ -3995,6 +4057,23 @@ export interface components {
         MediaPlayback: {
             /** @enum {string} */
             method: "direct" | "hls" | "none";
+            /** @description What it is (a library file's match, the title a download was played as): where a player saves progress for a profile */
+            title: {
+                mediaType: components["schemas"]["MediaType"];
+                /** @description The movie's, or the show's */
+                tmdbId: number;
+                season: number | null;
+                episode: number | null;
+                title: string | null;
+                posterPath: string | null;
+            } | null;
+            /** @description A torrent's file: which (GET /downloads/{infoHash}/pieces draws what is downloaded); null for a file on disk */
+            download: {
+                infoHash: string;
+                path: string;
+            } | null;
+            /** @description A library file's id */
+            fileId?: string | null;
             /** @description Under the API prefix: GET /media/{ref} (direct), or the HLS playlist (hls); null for none */
             url: string | null;
             /** @description hls: the time of the file the stream starts at (seconds) */
@@ -4026,6 +4105,8 @@ export interface components {
         };
         DownloadTrackers: {
             running: boolean;
+            /** @description A scrape of its trackers is under way (the counts follow) */
+            scraping: boolean;
             trackers: {
                 url: string;
                 /**
@@ -4038,6 +4119,19 @@ export interface components {
                 message: string | null;
                 /** @description One of the trackers the server adds to every torrent */
                 ours: boolean;
+                /** @description One the admin added */
+                added: boolean;
+                /** @description What it answered to the server's last scrape (every engine); null before it was asked */
+                swarm: {
+                    seeds: number | null;
+                    /** @description Leechers */
+                    peers: number | null;
+                    /** @description Completed downloads it counted */
+                    downloaded: number | null;
+                    /** Format: date-time */
+                    at: string;
+                    error: string | null;
+                } | null;
             }[];
         };
         DownloadPieces: {
@@ -5745,7 +5839,7 @@ export interface components {
                 queued: number;
                 /** @description downloads.paused ("Pause all downloads") */
                 paused: boolean;
-                /** @description What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`) */
+                /** @description What the running engine can do (`rateLimits`, `pause`, `fastResume`, `fileSelection`, `streamPriority`, `persistentSession`; port v2: `peerList`, `trackerList`, `trackerEdit`, `recheck`; v3: `trackerRemove`, `reannounce`, `torrentLimits`) */
                 capabilities?: {
                     [key: string]: boolean;
                 };
@@ -9901,6 +9995,18 @@ export interface operations {
                     removeWhenWatched?: boolean;
                     /** @description null or empty: no label */
                     label?: string | null;
+                    /** @description Move it to this place in the queue (a queued download; past the end = last) */
+                    queuePosition?: number;
+                    /** @description true: force start (a download, started past downloads.maxActive); false: back under the queue's rules. Pausing it ends a force start. */
+                    force?: boolean;
+                    /** @description Its seeding goal (0 = stop once done); null: the server's */
+                    seedRatio?: number | null;
+                    /** @description Its seeding goal in minutes; null: the server's */
+                    seedMinutes?: number | null;
+                    /** @description Its download limit in KB/s (0 / null: none; engines with `torrentLimits`, else 501) */
+                    downLimitKBps?: number | null;
+                    /** @description Its upload limit in KB/s (0 / null: none) */
+                    upLimitKBps?: number | null;
                 };
             };
         };
@@ -10045,7 +10151,7 @@ export interface operations {
             501: components["responses"]["NotSupported"];
         };
     };
-    addDownloadTrackers: {
+    editDownloadTrackers: {
         parameters: {
             query?: never;
             header?: never;
@@ -10057,7 +10163,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    add: string[];
+                    add?: string[];
+                    remove?: string[];
                 };
             };
         };
@@ -10101,6 +10208,57 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             501: components["responses"]["NotSupported"];
+        };
+    };
+    reannounceDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Download"];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            501: components["responses"]["NotSupported"];
+        };
+    };
+    exportDownloadTorrent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                infoHash: components["parameters"]["InfoHash"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The metainfo (attachment `<name>.torrent`) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-bittorrent": string;
+                };
+            };
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     downloadPieces: {

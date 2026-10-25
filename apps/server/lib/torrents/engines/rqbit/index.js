@@ -287,11 +287,17 @@ function create() {
       fileSelection: true,
       streamPriority: true,
       persistentSession: true,
-      // engine port v2: not measured on rqbit yet (docs/dashboard-plan.md §4.4: "to verify")
-      peerList: false,
-      trackerList: false,
+      // engine port v2 / v3, measured on rqbit 9.0.1 (docs/dashboard-plan.md §12): its peer
+      // stats (address, client name, byte counters, tcp / µTP; speeds from two polls), the
+      // trackers it was given; no tracker edits on a running torrent, no recheck, no
+      // per-torrent limits; pause + start announces again
+      peerList: true,
+      trackerList: true,
       trackerEdit: false,
-      recheck: false
+      recheck: false,
+      trackerRemove: false,
+      reannounce: true,
+      torrentLimits: false
     },
 
     init: function (opts) {
@@ -618,6 +624,60 @@ function create() {
           throw EngineError('UNSUPPORTED', 'Speed limits are not supported with rqbit yet');
         }
         // uploadSlots: rqbit has no upload slots; it uploads to the peers it serves
+      });
+    },
+
+    // rqbit's peer_stats (live ones): counters, no speeds or progress; the
+    // speeds come from the counters' change since the previous call
+    peers: function (hash) {
+      return known(hash).then(function (entry) {
+        if (!entry.inRqbit) {
+          return { peers: [], availability: null };
+        }
+        return api('GET', url(hash, '/peer_stats'), { query: { state: 'live' } }).then(function (res) {
+          if (res.status !== 200 || !res.json) {
+            throw failed(res, 'the peers of ' + hash);
+          }
+          var now = Date.now(), before = entry.peerSamples || {}, samples = {}, all = res.json.peers || {};
+          var peers = Object.keys(all).map(function (address) {
+            var p = all[address], c = p.counters || {}, prev = before[address],
+              seconds = prev ? (now - prev.at) / 1000 : 0,
+              down = prev && seconds > 0 ? Math.max(0, (c.fetched_bytes - prev.fetched) / seconds) : 0,
+              up = prev && seconds > 0 ? Math.max(0, (c.uploaded_bytes - prev.uploaded) / seconds) : 0;
+            samples[address] = { at: now, fetched: c.fetched_bytes || 0, uploaded: c.uploaded_bytes || 0 };
+            var flags = (down > 0 ? 'D' : '') + (up > 0 ? 'U' : '') +
+              (c.incoming_connections > 0 && !c.connections ? 'I' : '') + (p.conn_kind === 'utp' ? 'P' : '');
+            return {
+              address: address, client: p.client_name || null, peerId: null, flags: flags, progress: null,
+              downBps: Math.round(down), upBps: Math.round(up), downloaded: c.fetched_bytes || 0, uploaded: c.uploaded_bytes || 0
+            };
+          });
+          entry.peerSamples = samples;
+          return { peers: peers, availability: null };
+        });
+      });
+    },
+
+    // the announce URLs it was given (rqbit keeps their state to itself)
+    trackers: function (hash) {
+      return known(hash).then(function (entry) {
+        return (entry.trackers || []).map(function (t) { return { url: t, status: 'unknown' }; });
+      });
+    },
+
+    // a pause and a start: rqbit announces to its trackers on every start
+    reannounce: function (hash) {
+      return known(hash).then(function (entry) {
+        if (!entry.inRqbit || entry.wanted !== 'running') {
+          throw EngineError('UNSUPPORTED', 'The torrent ' + hash + ' is not running');
+        }
+        return api('POST', url(hash, '/pause')).then(function () {
+          return api('POST', url(hash, '/start'));
+        }).then(function (res) {
+          if (res.status !== 200) {
+            throw failed(res, 'announcing ' + hash + ' again');
+          }
+        });
       });
     },
 

@@ -1,10 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, Copy, Download as DownloadIcon, FileUp, FolderOpen, HardDrive, MonitorPlay, Pause, Play, Plus, RefreshCw, Search, Tag, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
+  Copy,
+  Download as DownloadIcon,
+  FileDown,
+  FileUp,
+  FolderOpen,
+  Gauge,
+  HardDrive,
+  MonitorPlay,
+  Pause,
+  Play,
+  Plus,
+  Radio,
+  RefreshCw,
+  Search,
+  Tag,
+  Trash2,
+  Zap,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { AddDownloadDialog } from '@/components/add-download'
+import { RulesDialog } from '@/components/download-rules'
 import { Empty, Loading, QueryError, Spinner } from '@/components/common'
 import { DataTable, type RowAction } from '@/components/data-table'
 import { DownloadPane, PANE_TABS, type PaneTab } from '@/components/download-pane'
@@ -37,10 +60,13 @@ import {
   magnetOf,
   RUNNING,
   stateText,
+  swarmText,
   titleOf,
+  torrentFileUrl,
   useDeviceNames,
   useDownloadActions,
   useDownloads,
+  useEngineCaps,
   videoToPlay,
   type Download,
   type DownloadState,
@@ -138,8 +164,10 @@ export function DownloadsPage() {
   const [dragging, setDragging] = useState(false)
   const [removing, setRemoving] = useState<string[] | null>(null)
   const [labelling, setLabelling] = useState<string[] | null>(null)
+  const [ruling, setRuling] = useState<string[] | null>(null)
   const pane = usePaneHeight()
   const player = usePlayer()
+  const caps = useEngineCaps()
 
   // its video, from the download's file list (the largest selected one)
   const playDownload = (d: Download) => {
@@ -207,24 +235,66 @@ export function DownloadsPage() {
     }
   }
 
+  const queueLength = list.filter((x) => x.state === 'queued').length
+
   const rowActions = (d: Download): RowAction[] => {
     const targets = selection.includes(d.infoHash) ? chosen : [d]
     const hashes = targets.map((t) => t.infoHash)
     const many = targets.length > 1 ? ` ${targets.length}` : ''
+    const forced = targets.every((t) => t.forced)
+    const running = targets.filter((t) => RUNNING.includes(t.state))
+    const queue: RowAction[] =
+      targets.length === 1 && d.state === 'queued' && d.queuePosition && !d.forced
+        ? [
+            'separator',
+            { label: 'Move to the front', icon: <ArrowUpToLine />, disabled: d.queuePosition === 1, onSelect: () => actions.move.mutate({ hash: d.infoHash, position: 1 }) },
+            { label: 'Move up', icon: <ArrowUp />, disabled: d.queuePosition === 1, onSelect: () => actions.move.mutate({ hash: d.infoHash, position: d.queuePosition! - 1 }) },
+            { label: 'Move down', icon: <ArrowDown />, disabled: d.queuePosition >= queueLength, onSelect: () => actions.move.mutate({ hash: d.infoHash, position: d.queuePosition! + 1 }) },
+            { label: 'Move to the back', icon: <ArrowDownToLine />, disabled: d.queuePosition >= queueLength, onSelect: () => actions.move.mutate({ hash: d.infoHash, position: queueLength }) },
+          ]
+        : []
     return [
       { label: 'Play here', icon: <MonitorPlay />, shortcut: 'P', disabled: targets.length > 1 || d.name === null, onSelect: () => playDownload(d) },
       'separator',
       { label: `Start${many}`, icon: <Play />, shortcut: 'Space', disabled: !targets.some(canStart), onSelect: () => actions.start.mutate(targets.filter(canStart).map((t) => t.infoHash)) },
       { label: `Pause${many}`, icon: <Pause />, shortcut: 'Space', disabled: !targets.some(canPause), onSelect: () => actions.pause.mutate(targets.filter(canPause).map((t) => t.infoHash)) },
+      forced
+        ? { label: 'Stop forcing', icon: <Zap />, onSelect: () => actions.force.mutate({ hashes, on: false }) }
+        : {
+            label: `Force start${many}`,
+            icon: <Zap />,
+            disabled: targets.every((t) => t.state === 'completed' && t.progress === 1),
+            onSelect: () => actions.force.mutate({ hashes: targets.filter((t) => !t.forced && !(t.state === 'completed' && t.progress === 1)).map((t) => t.infoHash), on: true }),
+          },
+      ...queue,
+      'separator',
+      { label: 'Seeding goal and speed limits…', icon: <Gauge />, onSelect: () => setRuling(hashes) },
       {
         label: 'Check the data again',
         icon: <RefreshCw />,
-        disabled: !targets.some((t) => RUNNING.includes(t.state)),
-        onSelect: () => actions.recheck.mutate(targets.filter((t) => RUNNING.includes(t.state)).map((t) => t.infoHash)),
+        disabled: !caps.can('recheck') || !running.length,
+        onSelect: () => actions.recheck.mutate(running.map((t) => t.infoHash)),
+      },
+      {
+        label: 'Announce again',
+        icon: <Radio />,
+        disabled: !caps.can('reannounce') || !running.length,
+        onSelect: () => actions.reannounce.mutate(running.map((t) => t.infoHash)),
       },
       'separator',
       { label: 'Set label…', icon: <Tag />, onSelect: () => setLabelling(hashes) },
       { label: 'Copy magnet link', icon: <Copy />, disabled: targets.length > 1, onSelect: () => copy(magnetOf(d), 'Magnet link') },
+      {
+        label: 'Export .torrent',
+        icon: <FileDown />,
+        disabled: targets.length > 1 || d.name === null,
+        onSelect: () => {
+          const a = document.createElement('a')
+          a.href = torrentFileUrl(d)
+          a.download = ''
+          a.click()
+        },
+      },
       { label: 'Show in Storage', icon: <FolderOpen />, onSelect: () => navigate('/storage') },
       'separator',
       { label: `Remove${many}…`, icon: <Trash2 />, shortcut: 'Del', destructive: true, onSelect: () => setRemoving(hashes) },
@@ -322,15 +392,23 @@ export function DownloadsPage() {
         id: 'seeds',
         accessorFn: (d) => d.seeds,
         header: 'Seeds',
-        meta: { label: 'Seeds (connected)', numeric: true, from: '6xl' },
-        cell: ({ row: { original: d } }) => (canPause(d) ? d.seeds : <span className="text-muted-foreground/60">—</span>),
+        meta: { label: 'Seeds (connected, in the swarm)', numeric: true, from: '6xl' },
+        cell: ({ row: { original: d } }) => (
+          <span title={d.swarm ? `${d.swarm.seeds} in the swarm (trackers, ${ago(d.swarm.at)})` : undefined}>
+            {swarmText(d.seeds, d.swarm?.seeds, RUNNING.includes(d.state))}
+          </span>
+        ),
       },
       {
         id: 'peers',
         accessorFn: (d) => d.peers,
         header: 'Peers',
-        meta: { label: 'Peers (connected)', numeric: true, from: '5xl' },
-        cell: ({ row: { original: d } }) => (canPause(d) ? d.peers : <span className="text-muted-foreground/60">—</span>),
+        meta: { label: 'Peers (connected, in the swarm)', numeric: true, from: '5xl' },
+        cell: ({ row: { original: d } }) => (
+          <span title={d.swarm ? `${d.swarm.peers} leechers in the swarm (trackers, ${ago(d.swarm.at)})` : undefined}>
+            {swarmText(d.peers, d.swarm?.peers, RUNNING.includes(d.state))}
+          </span>
+        ),
       },
       {
         id: 'ratio',
@@ -695,6 +773,16 @@ export function DownloadsPage() {
           setRemoving(null)
         }}
       />
+      <RulesDialog
+        downloads={(ruling ?? []).map((h) => byHash.get(h)).filter((d): d is Download => !!d)}
+        canLimit={caps.can('torrentLimits')}
+        engine={caps.engine}
+        onClose={() => setRuling(null)}
+        onSave={(body) => {
+          if (ruling) actions.rules.mutate({ hashes: ruling, body })
+          setRuling(null)
+        }}
+      />
       <LabelDialog
         downloads={(labelling ?? []).map((h) => byHash.get(h)).filter((d): d is Download => !!d)}
         labels={labels}
@@ -958,3 +1046,4 @@ function LabelDialog({
     </Dialog>
   )
 }
+
