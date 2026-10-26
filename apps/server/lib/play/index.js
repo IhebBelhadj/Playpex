@@ -29,6 +29,7 @@
 //              ref? (file, download, plugin), infoHash? / path? (download, torrent), magnet? (torrent),
 //              seeds?, peers?, progress? (download), codec?, audio?, plugin? (a plugin's),
 //              resolver? { plugin, label } (a torrent a plugin serves at once),
+//              tryResolver? { plugin, label } (a torrent a service that can't tell is asked for first, at start()),
 //              file? { name?, index? } (torrent: the file a plugin named),
 //              group: 'server' | 'stream' | 'torrent', readiness: 'instant' | 'seconds' | 'slow' | 'unknown' }
 
@@ -350,7 +351,7 @@ function start(body) {
       if (stop) {
         return stop;
       }
-      return (source.resolver ? bridge().resolve(asked.title, source, asked.context) : Promise.resolve(source)).then(function (played) {
+      return (source.resolver || source.tryResolver ? bridge().resolve(asked.title, source, asked.context) : Promise.resolve(source)).then(function (played) {
         return { action: 'play', source: played };
       });
     });

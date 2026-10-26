@@ -116,9 +116,9 @@ export function LibraryPage() {
 
       <ScanStatus view={library.data} />
 
-      <div className="grid gap-6 md:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
         {/* the rail on desktop, a select on phones */}
-        <nav aria-label="Library" className="hidden flex-col gap-0.5 md:flex">
+        <nav aria-label="Library" className="hidden flex-col gap-0.5 lg:flex">
           <RailItem icon={LayoutGrid} label="Titles" count={titles} active={view === 'titles'} onClick={() => go({ view: 'titles' })} />
           <RailItem
             icon={Wand2}
@@ -154,7 +154,7 @@ export function LibraryPage() {
             <FolderPlus className="size-4" /> Add a folder
           </button>
         </nav>
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <Select
             value={place ? `place:${place.id}` : view}
             onValueChange={(v) => (v.startsWith('place:') ? go({ place: v.slice(6) }) : go({ view: v as 'titles' | 'fix' }))}
@@ -248,11 +248,11 @@ function RailItem({
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted',
-        active && 'bg-muted shadow-[inset_2px_0_0_var(--primary)]',
+        'group flex h-[34px] items-center gap-2 rounded-full px-3 text-left text-sm transition-colors',
+        active && 'bg-muted',
       )}
     >
-      <Icon className={cn('size-4 shrink-0', active ? 'text-foreground' : 'text-muted-foreground')} />
+      <Icon className={cn('size-4 shrink-0', active ? 'text-gold' : 'text-muted-foreground')} />
       <span className={cn('min-w-0 flex-1 truncate', active ? 'font-medium' : 'text-muted-foreground group-hover:text-foreground')}>{label}</span>
       <span className={cn('text-xs tabular-nums', tone === 'warn' ? 'text-warning' : 'text-muted-foreground')}>{count}</span>
     </button>
@@ -281,13 +281,13 @@ function PlaceItem({
   return (
     <div
       className={cn(
-        'group relative flex flex-col gap-1.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted',
-        active && 'bg-muted shadow-[inset_2px_0_0_var(--primary)]',
+        'group relative flex flex-col gap-1.5 rounded-2xl px-3 py-2.5 transition-colors',
+        active && 'bg-muted',
       )}
     >
-      <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined} className="absolute inset-0 rounded-lg" aria-label={place.name} />
+      <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined} className="absolute inset-0 rounded-2xl" aria-label={place.name} />
       <span className="pointer-events-none flex items-center gap-2 text-sm">
-        <Icon className={cn('size-4 shrink-0', active ? 'text-foreground' : 'text-muted-foreground')} />
+        <Icon className={cn('size-4 shrink-0', active ? 'text-gold' : 'text-muted-foreground')} />
         <span className={cn('min-w-0 flex-1 truncate', active ? 'font-medium' : 'text-muted-foreground group-hover:text-foreground')} title={place.root}>
           {place.name}
         </span>

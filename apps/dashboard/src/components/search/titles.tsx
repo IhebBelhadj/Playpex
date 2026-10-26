@@ -19,22 +19,23 @@ import { cn } from '@/lib/utils'
 
 type PlaySource = Schemas['PlaySource']
 
-/** Posters: a grid, or one strip that scrolls sideways (`strip`: the overview) */
+/** Posters: a grid, or one row of them (`strip`: the overview) */
 export function TitlePosters({ titles, onOpen, limit, strip }: { titles: CatalogTitle[]; onOpen: (t: CatalogTitle) => void; limit?: number; strip?: boolean }) {
   return (
     <ul
       className={cn(
         strip
-          ? 'flex snap-x gap-4 overflow-x-auto pb-2 [scrollbar-width:thin]'
+          ? // one row, never a sideways scroller: 3, 4, 6 or 8 posters as the width allows
+            'grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 [&>li:nth-child(n+4)]:hidden sm:[&>li:nth-child(n+4)]:block sm:[&>li:nth-child(n+5)]:hidden lg:[&>li:nth-child(n+5)]:block lg:[&>li:nth-child(n+7)]:hidden xl:[&>li:nth-child(n+7)]:block'
           : 'grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-x-4 gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]',
       )}
     >
       {titles.slice(0, limit ?? titles.length).map((t) => {
         const poster = tmdbImage(t.posterPath, 'w342')
         return (
-          <li key={`${t.mediaType}:${t.tmdbId}`} className={cn(strip && 'w-28 shrink-0 snap-start')}>
+          <li key={`${t.mediaType}:${t.tmdbId}`}>
             <button type="button" onClick={() => onOpen(t)} className="group block w-full rounded-md text-left outline-none" title={t.title}>
-              <span className="relative block aspect-2/3 overflow-hidden rounded-md bg-muted ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-primary group-focus-visible:ring-2 group-focus-visible:ring-primary">
+              <span className="relative block aspect-2/3 overflow-hidden rounded-md bg-muted ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-foreground/60 group-focus-visible:ring-2 group-focus-visible:ring-foreground">
                 {poster ? (
                   <img src={poster} alt="" loading="lazy" className="size-full object-cover" />
                 ) : (
@@ -148,8 +149,8 @@ export function TitleSourcesSheet({ title, onClose, onAdd }: { title: CatalogTit
                         title={e.name}
                         aria-pressed={episode === e.episodeNumber}
                         className={cn(
-                          'h-8 min-w-10 rounded-md border px-2 text-sm tabular-nums transition-colors',
-                          episode === e.episodeNumber ? 'border-primary bg-primary/10 font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          'h-8 min-w-10 rounded-full px-3 text-sm tabular-nums transition-colors',
+                          episode === e.episodeNumber ? 'bg-gold font-medium text-gold-foreground' : 'bg-muted text-muted-foreground hover:text-foreground',
                         )}
                       >
                         {e.episodeNumber}
@@ -190,7 +191,7 @@ function SourceGroups({ answer, what, onAdd }: { answer: Schemas['PlaySources'];
           <h3 className="text-sm font-medium">
             {GROUPS[g.group] ?? g.group} <span className="font-normal text-muted-foreground tabular-nums">{g.count}</span>
           </h3>
-          <ul className="divide-y rounded-lg border">
+          <ul className="divide-y">
             {g.sources.map((s) => (
               <SourceRow key={s.id} source={s} what={what} act={act} onAdd={onAdd} />
             ))}

@@ -4,10 +4,10 @@ import { Link, useSearchParams } from 'react-router'
 import { AddDownloadDialog } from '@/components/add-download'
 import { Empty, Spinner } from '@/components/common'
 import { useLibraryHome } from '@/components/library-titles'
-import { RailGroup, RailItem, useIsDesktop } from '@/components/rail'
+import { RAIL_WIDTH, useIsDesktop } from '@/components/rail'
 import { LinkView } from '@/components/search/link'
 import { StreamRows, TorrentRows } from '@/components/search/offers'
-import { Facets, keep, NO_FILTERS, PhoneFacets, sameSource, SectionHead, SourceDot, SourcesLine, type Filters } from '@/components/search/parts'
+import { FilterBar, keep, NO_FILTERS, sameSource, SectionHead, SourcesSummary, type Filters } from '@/components/search/parts'
 import { LiveResults, ServerResults } from '@/components/search/server'
 import { TitlePosters, TitleSourcesSheet } from '@/components/search/titles'
 import { TorrentTable } from '@/components/search/torrents'
@@ -41,6 +41,9 @@ import { cn } from '@/lib/utils'
 // sites answer loosely, the server marks names that hold every word).
 // A link in the field (a page, a video, a playlist, a magnet, a .torrent) is
 // read by the server instead: what it is, what it links to, each with its actions.
+// Layout (2026-10-26): the field, one sentence on the sources (a popover lists
+// them), tabs for the groups that found something, Top results led by what is
+// on this server and the titles, then "Watch now" and "Download" side by side.
 
 type View = 'all' | 'server' | 'titles' | 'streams' | 'torrents' | 'live'
 const VIEWS: View[] = ['all', 'server', 'titles', 'streams', 'torrents', 'live']
@@ -113,7 +116,7 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   const [adding, setAdding] = useState<{ link: string; name: string } | null>(null)
   const [titleOpen, setTitleOpen] = useState<CatalogTitle | null>(null)
   const input = useRef<HTMLInputElement>(null)
-  const desktop = useIsDesktop()
+  const railed = useIsDesktop(RAIL_WIDTH)
 
   const link = isLink(q)
   const words = link ? '' : q.slice(0, 100)
@@ -139,7 +142,10 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   const kept = useMemo(() => new Set((downloads.data ?? []).map((d) => d.infoHash.toLowerCase())), [downloads.data])
   const labels = useMemo(() => [...new Set((downloads.data ?? []).map((d) => d.label).filter((l): l is string => !!l))].sort(), [downloads.data])
   const allTorrents = shown(torrents.items)
-  const allStreams = shown(streams.items)
+  // a plugin that is both (OpenScrapers, The Crew): "<name> files", "<name> torrents"; its torrents among its
+  // files are the ones its torrent search lists too, so Streams keeps only what plays without a torrent
+  const both = new Set(sources.streams.filter((s) => sources.torrents.some((t) => t.id === s.id)).map((s) => s.id))
+  const allStreams = shown(streams.items).filter((x) => !(x.kind === 'torrent' && [...both].some((id) => sameSource(x.provider, id))))
   const torrentList = allTorrents.filter((t) => keep(t, torrentFilters)).sort((a, b) => b.seeds - a.seeds)
   const streamList = allStreams.filter((s) => keep(s, streamFilters))
   const channels = live.items.filter((c) => !off.includes(c.plugin))
@@ -153,9 +159,9 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   }
   const serverCount = server.titles.length + server.downloads.length + server.direct.length
   const close = <T extends { matches?: boolean }>(list: T[]) => list.filter((t) => t.matches !== false).length
+  // what plays right away (a plugin's torrents among its files belong with the torrents)
+  const watchable = streamList.filter((x) => x.kind !== 'torrent' && x.matches !== false)
 
-  // a plugin that is both (OpenScrapers): "<name> files", "<name> torrents"
-  const both = new Set(sources.streams.filter((s) => sources.torrents.some((t) => t.id === s.id)).map((s) => s.id))
   const states: SourceState[] = [
     ...sources.streams.map((s) =>
       stateOf({ id: s.id, name: both.has(s.id) ? `${s.name} files` : s.name, group: 'streams' as const }, streams.states.find((x) => x.id === s.id), !!words),
@@ -184,87 +190,75 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   const addTorrent = (t: Release) => setAdding({ link: t.magnet, name: t.name })
   const noPlugins = !sources.pending && !sources.torrents.length && !sources.streams.length
 
+  // a group gets a tab when it can answer; once the search is done, only if it found something
   const groups: { id: View; label: string; shown: boolean }[] = [
-    { id: 'all', label: 'All results', shown: true },
-    { id: 'server', label: 'On this server', shown: true },
+    { id: 'all', label: 'Top results', shown: true },
     { id: 'titles', label: 'Movies & shows', shown: true },
-    { id: 'streams', label: 'Streams & files', shown: sources.streams.length > 0 },
+    { id: 'streams', label: 'Streams', shown: sources.streams.length > 0 },
     { id: 'torrents', label: 'Torrents', shown: sources.torrents.length > 0 },
+    { id: 'server', label: 'On this server', shown: true },
     { id: 'live', label: 'Live TV', shown: sources.live.length > 0 },
   ]
+  const tabs = groups.filter((g) => g.shown && (g.id === 'all' || g.id === view || counts[g.id] > 0 || searching))
+  const fixed: SourceState[] = [
+    { source: { id: 'server', name: 'This server', group: 'streams' }, state: !words ? 'idle' : 'done', count: serverCount, loose: 0, error: null },
+    {
+      source: { id: 'catalog', name: 'The catalog (TMDB)', group: 'streams' },
+      state: !words ? 'idle' : titles.isFetching ? 'searching' : titles.error ? 'failed' : 'done',
+      count: catalog.length,
+      loose: 0,
+      error: titles.error ?? null,
+    },
+  ]
+  const nothing = !searching && Object.values(counts).every((n) => n === 0)
 
   return (
-    <div className="flex flex-col gap-5 md:h-[calc(100svh-4rem)]">
-      {/* the field: the page's first thing */}
+    <div className="space-y-6">
+      {/* the field is the page: no button beside it (Enter searches), the kind sits with the tabs */}
       <form onSubmit={submit} className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-xl font-semibold tracking-tight">Search</h1>
-          <div role="radiogroup" aria-label="What to find" className="inline-flex rounded-lg border bg-card p-0.5 sm:ml-auto">
-            {KINDS.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                role="radio"
-                aria-checked={kind === k.id}
-                onClick={() => onSearch({ q, kind: k.id })}
-                className={cn('rounded-md px-3 py-1 text-sm transition-colors', kind === k.id ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              >
-                {k.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={input}
-              autoFocus={!q}
-              value={text}
-              maxLength={4096}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="A title, or paste a link: a page, a video, a magnet"
-              aria-label="Search, or paste a link"
-              className="h-12 rounded-xl pr-10 pl-11 text-base md:text-lg"
-            />
+        <h1 className="text-xl font-semibold tracking-tight">Search</h1>
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={input}
+            autoFocus={!q}
+            value={text}
+            maxLength={4096}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="A movie, a show, or a link to read"
+            aria-label="Search, or paste a link"
+            className="h-14 border-transparent bg-card pr-36 pl-13 text-base md:text-lg dark:bg-card"
+          />
+          <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
             {text && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-sm"
                 aria-label="Clear"
                 onClick={() => {
                   setText('')
                   input.current?.focus()
                 }}
-                className="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <X className="size-4" />
-              </button>
+                <X />
+              </Button>
             )}
+            <Button type="submit" size="sm" className="h-10 px-4" disabled={!text.trim()}>
+              {isLink(text) ? 'Read link' : 'Search'}
+            </Button>
           </div>
-          <Button type="submit" className="h-12 rounded-xl px-5" disabled={!text.trim()}>
-            {isLink(text) ? 'Read link' : 'Search'}
-          </Button>
         </div>
-        {!link && (
-          <SourcesLine
-            states={states}
-            off={off}
-            onToggle={(id) => setOff((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))}
-            extra={
-              <>
-                <Fixed label="This server" state={!words ? 'idle' : 'done'} count={serverCount} />
-                <Fixed label="Catalog" state={!words ? 'idle' : titles.isFetching ? 'searching' : titles.error ? 'failed' : 'done'} count={catalog.length} />
-              </>
-            }
-          />
+        {q && !link && (
+          <SourcesSummary states={states} fixed={fixed} off={off} onToggle={(id) => setOff((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))} />
         )}
       </form>
 
       {!q ? (
         <Start
           kind={kind}
-          sources={[...sources.streams.map((s) => s.name), ...sources.torrents.map((s) => s.name), ...sources.live.map((l) => l.name)]}
           noPlugins={noPlugins}
+          sourceCount={states.length}
           recent={recent.filter((r) => r.kind === kind)}
           onPick={(r) => {
             setText(r.q)
@@ -276,159 +270,176 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
           }}
         />
       ) : link ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <LinkView url={q} onAdd={(l, name) => setAdding({ link: l, name })} />
-        </div>
+        <LinkView url={q} onAdd={(l, name) => setAdding({ link: l, name })} />
       ) : (
-        <div className="flex min-h-0 flex-1 gap-6">
-          {desktop && (
-            <nav aria-label="Results" className="flex w-48 shrink-0 flex-col gap-5 overflow-y-auto pb-4 [scrollbar-width:thin]">
-              <RailGroup>
-                {groups
-                  .filter((g) => g.shown)
-                  .map((g) => (
-                    <RailItem key={g.id} label={g.label} count={g.id === 'all' ? Object.values(counts).reduce((a, b) => a + b, 0) : counts[g.id]} active={view === g.id} onClick={() => onView(g.id)} />
-                  ))}
-              </RailGroup>
-              {view === 'torrents' && allTorrents.length > 0 && (
-                <Facets all={allTorrents} filters={torrentFilters} set={(p) => setTorrentFilters((f) => ({ ...f, ...p }))} torrents shows={kind !== 'movie'} />
-              )}
-              {view === 'streams' && allStreams.length > 0 && (
-                <Facets all={allStreams} filters={streamFilters} set={(p) => setStreamFilters((f) => ({ ...f, ...p }))} torrents={false} shows={kind !== 'movie'} />
-              )}
-            </nav>
-          )}
-
-          <section aria-label="Results" className="flex min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto pb-6">
-            {!desktop && (
-              <div className="space-y-2">
+        <div className="space-y-6">
+          {/* what to look at: the tabs, and what kind of title (it searches again) */}
+          <div className="flex items-center gap-3 border-b">
+            {railed ? (
+              <div role="tablist" aria-label="Results" className="-mb-px flex min-w-0 flex-1 gap-6 overflow-x-auto [scrollbar-width:none]">
+                {tabs.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === g.id}
+                    onClick={() => onView(g.id)}
+                    className={cn(
+                      'flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-sm transition-colors',
+                      view === g.id ? 'border-gold font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {g.label}
+                    {g.id !== 'all' && <span className="text-xs text-muted-foreground tabular-nums">{counts[g.id]}</span>}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1 pb-3">
                 <Select value={view} onValueChange={(v) => onView(v as View)}>
                   <SelectTrigger aria-label="Results" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {groups
-                      .filter((g) => g.shown)
-                      .map((g) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.label} {g.id !== 'all' ? counts[g.id] : ''}
-                        </SelectItem>
-                      ))}
+                    {tabs.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.label} {g.id !== 'all' ? counts[g.id] : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                {view === 'torrents' && <PhoneFacets filters={torrentFilters} set={(p) => setTorrentFilters((f) => ({ ...f, ...p }))} torrents shows={kind !== 'movie'} />}
-                {view === 'streams' && <PhoneFacets filters={streamFilters} set={(p) => setStreamFilters((f) => ({ ...f, ...p }))} torrents={false} shows={kind !== 'movie'} />}
               </div>
             )}
+            <div className={cn('shrink-0', !railed && 'pb-3')}>
+              <Select value={kind} onValueChange={(v) => onSearch({ q, kind: v as SearchKind })}>
+                <SelectTrigger size="sm" aria-label="What to find" className="border-transparent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {KINDS.map((k) => (
+                    <SelectItem key={k.id} value={k.id}>
+                      {k.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-            {view === 'all' && (
-              <Overview
-                searching={searching}
-                empty={!searching && Object.values(counts).every((n) => n === 0)}
-                q={words}
-                kind={kind}
-                sections={[
-                  serverCount > 0 && (
-                    <section key="server" className="space-y-3">
-                      <SectionHead title="On this server" count={serverCount} onAll={serverCount > 6 ? () => onView('server') : undefined} />
-                      <ServerResults titles={server.titles} downloads={server.downloads} direct={server.direct} limit={6} />
-                    </section>
-                  ),
-                  catalog.length > 0 && (
-                    <section key="titles" className="space-y-3">
-                      <SectionHead title="Movies & shows" count={catalog.length} onAll={catalog.length > 12 ? () => onView('titles') : undefined} />
-                      <TitlePosters titles={catalog} onOpen={setTitleOpen} limit={12} strip />
-                    </section>
-                  ),
-                  streamList.length > 0 && (
-                    <section key="streams" className="space-y-3">
-                      <SectionHead title="Streams & files" count={counts.streams} onAll={() => onView('streams')} />
-                      <StreamRows items={streamList.filter((s) => s.matches !== false).slice(0, 5)} sourceName={nameOf} />
-                    </section>
-                  ),
-                  torrentList.length > 0 && (
-                    <section key="torrents" className="space-y-3">
-                      <SectionHead title="Torrents" count={counts.torrents} onAll={() => onView('torrents')} />
-                      <TorrentRows releases={torrentList.slice(0, 6)} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
-                    </section>
-                  ),
-                  channels.length > 0 && (
-                    <section key="live" className="space-y-3">
-                      <SectionHead title="Live TV" count={channels.length} onAll={channels.length > 6 ? () => onView('live') : undefined} />
-                      <LiveResults channels={channels} names={nameOf} limit={6} />
-                    </section>
-                  ),
-                ]}
-              />
-            )}
-
-            {view === 'server' &&
-              (serverCount ? (
-                <ServerResults titles={server.titles} downloads={server.downloads} direct={server.direct} />
-              ) : (
-                <Empty icon={<SearchX />} title="Nothing on this server">
-                  No title in the library and no download has “{words}” in its name.
-                </Empty>
-              ))}
-
-            {view === 'titles' &&
-              (titles.isPending ? (
-                <Asking what="the catalog" />
-              ) : catalog.length ? (
-                <TitlePosters titles={catalog} onOpen={setTitleOpen} />
-              ) : (
-                <Empty icon={<SearchX />} title={titles.error ? 'The catalog didn’t answer' : 'No movie or show by that name'}>
-                  {titles.error ? 'Try again in a moment.' : 'Try fewer words, or the original title.'}
-                </Empty>
-              ))}
-
-            {view === 'streams' && (
-              <Group
-                searching={streams.searching}
-                total={allStreams.length}
-                list={streamList}
-                loose={allStreams.filter((s) => s.matches === false && keep(s, streamFilters, 'loose')).length}
-                filters={streamFilters}
-                setFilters={setStreamFilters}
-                hasMore={streams.hasMore}
-                onMore={streams.loadMore}
-                what="streams and files"
-              >
-                <StreamRows items={streamList} sourceName={nameOf} />
-              </Group>
-            )}
-
-            {view === 'torrents' && (
-              <Group
-                searching={torrents.searching}
-                total={allTorrents.length}
-                list={torrentList}
-                loose={allTorrents.filter((t) => t.matches === false && keep(t, torrentFilters, 'loose')).length}
-                filters={torrentFilters}
-                setFilters={setTorrentFilters}
-                hasMore={torrents.hasMore}
-                onMore={torrents.loadMore}
-                what="torrents"
-              >
-                {desktop ? (
-                  <TorrentTable releases={torrentList} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
-                ) : (
-                  <TorrentRows releases={torrentList} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
+          {view === 'all' &&
+            (nothing ? (
+              <Empty icon={<SearchX />} title={`Nothing found for “${words}”`}>
+                Try fewer words, or the title as it was released. {kind === 'tv' ? 'Shows are often listed as “Title S01E05”.' : 'Adding the year helps with common titles.'}
+              </Empty>
+            ) : (
+              <div className="space-y-10">
+                {serverCount > 0 && (
+                  <section className="space-y-3">
+                    <SectionHead title="On this server" count={serverCount} onAll={serverCount > 3 ? () => onView('server') : undefined} />
+                    <ServerResults titles={server.titles} downloads={server.downloads} direct={server.direct} limit={3} />
+                  </section>
                 )}
-              </Group>
-            )}
+                {catalog.length > 0 ? (
+                  <section className="space-y-3">
+                    <SectionHead title="Movies & shows" count={catalog.length} onAll={catalog.length > 8 ? () => onView('titles') : undefined} />
+                    <TitlePosters titles={catalog} onOpen={setTitleOpen} limit={8} strip />
+                  </section>
+                ) : (
+                  titles.isFetching && <Asking what="the catalog" />
+                )}
+                {(watchable.length > 0 || torrentList.length > 0) && (
+                  <div className={cn('grid items-start gap-x-6 gap-y-10', watchable.length > 0 && torrentList.length > 0 && 'xl:grid-cols-2')}>
+                    {watchable.length > 0 && (
+                      <section className="min-w-0 space-y-3">
+                        <SectionHead title="Watch now" count={watchable.length} onAll={watchable.length > 4 ? () => onView('streams') : undefined} />
+                        <StreamRows items={watchable.slice(0, 4)} sourceName={nameOf} />
+                      </section>
+                    )}
+                    {torrentList.length > 0 && (
+                      <section className="min-w-0 space-y-3">
+                        <SectionHead title="Download" count={counts.torrents} onAll={counts.torrents > 4 ? () => onView('torrents') : undefined} />
+                        <TorrentRows releases={torrentList.slice(0, 4)} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
+                      </section>
+                    )}
+                  </div>
+                )}
+                {channels.length > 0 && (
+                  <section className="space-y-3">
+                    <SectionHead title="Live TV" count={channels.length} onAll={channels.length > 4 ? () => onView('live') : undefined} />
+                    <LiveResults channels={channels} names={nameOf} limit={4} />
+                  </section>
+                )}
+              </div>
+            ))}
 
-            {view === 'live' &&
-              (live.searching && !channels.length ? (
-                <Asking what="the live plugins" />
-              ) : channels.length ? (
-                <LiveResults channels={channels} names={nameOf} />
+          {view === 'server' &&
+            (serverCount ? (
+              <ServerResults titles={server.titles} downloads={server.downloads} direct={server.direct} />
+            ) : (
+              <Empty icon={<SearchX />} title="Nothing on this server">
+                No title in the library and no download has “{words}” in its name.
+              </Empty>
+            ))}
+
+          {view === 'titles' &&
+            (titles.isPending ? (
+              <Asking what="the catalog" />
+            ) : catalog.length ? (
+              <TitlePosters titles={catalog} onOpen={setTitleOpen} />
+            ) : (
+              <Empty icon={<SearchX />} title={titles.error ? 'The catalog didn’t answer' : 'No movie or show by that name'}>
+                {titles.error ? 'Try again in a moment.' : 'Try fewer words, or the original title.'}
+              </Empty>
+            ))}
+
+          {view === 'streams' && (
+            <Group
+              searching={streams.searching}
+              total={allStreams.length}
+              list={streamList}
+              loose={allStreams.filter((x) => x.matches === false && keep(x, streamFilters, 'loose')).length}
+              filters={streamFilters}
+              setFilters={setStreamFilters}
+              hasMore={streams.hasMore}
+              onMore={streams.loadMore}
+              what="streams and files"
+              bar={<FilterBar all={allStreams} filters={streamFilters} set={(f) => setStreamFilters((o) => ({ ...o, ...f }))} torrents={false} shows={kind !== 'movie'} />}
+            >
+              <StreamRows items={streamList} sourceName={nameOf} />
+            </Group>
+          )}
+
+          {view === 'torrents' && (
+            <Group
+              searching={torrents.searching}
+              total={allTorrents.length}
+              list={torrentList}
+              loose={allTorrents.filter((t) => t.matches === false && keep(t, torrentFilters, 'loose')).length}
+              filters={torrentFilters}
+              setFilters={setTorrentFilters}
+              hasMore={torrents.hasMore}
+              onMore={torrents.loadMore}
+              what="torrents"
+              bar={<FilterBar all={allTorrents} filters={torrentFilters} set={(f) => setTorrentFilters((o) => ({ ...o, ...f }))} torrents shows={kind !== 'movie'} />}
+            >
+              {railed ? (
+                <TorrentTable releases={torrentList} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
               ) : (
-                <Empty icon={<SearchX />} title="No channel by that name">
-                  A channel’s name, number or group must start with each word.
-                </Empty>
-              ))}
-          </section>
+                <TorrentRows releases={torrentList} kept={kept} sourceName={(t) => nameOf(t.provider)} onAdd={addTorrent} />
+              )}
+            </Group>
+          )}
+
+          {view === 'live' &&
+            (live.searching && !channels.length ? (
+              <Asking what="the live plugins" />
+            ) : channels.length ? (
+              <LiveResults channels={channels} names={nameOf} />
+            ) : (
+              <Empty icon={<SearchX />} title="No channel by that name">
+                A channel’s name, number or group must start with each word.
+              </Empty>
+            ))}
         </div>
       )}
 
@@ -466,50 +477,11 @@ function stateOf(
   }
 }
 
-/** A source that can't be left out (this server, the catalog): its state and count */
-function Fixed({ label, state, count }: { label: string; state: SourceState['state']; count: number }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1">
-      <SourceDot state={state} found={count > 0} />
-      <span className="text-foreground">{label}</span>
-      {state === 'searching' ? (
-        <span className="text-xs text-muted-foreground">searching</span>
-      ) : state === 'done' ? (
-        <span className="text-xs text-muted-foreground tabular-nums">{count || 'nothing'}</span>
-      ) : state === 'failed' ? (
-        <span className="text-xs text-destructive">failed</span>
-      ) : null}
-    </span>
-  )
-}
-
 function Asking({ what }: { what: string }) {
   return (
     <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
       <Spinner /> Asking {what}…
     </p>
-  )
-}
-
-/** The overview: each group's best, as they arrive */
-function Overview({ sections, searching, empty, q, kind }: { sections: (ReactNode | false)[]; searching: boolean; empty: boolean; q: string; kind: SearchKind }) {
-  const shown = sections.filter(Boolean)
-  if (empty) {
-    return (
-      <Empty icon={<SearchX />} title={`Nothing found for “${q}”`}>
-        Try fewer words, or the title as it was released. {kind === 'tv' ? 'Shows are often listed as “Title S01E05”.' : 'Adding the year helps with common titles.'}
-      </Empty>
-    )
-  }
-  return (
-    <div className="space-y-8">
-      {searching && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner /> Still asking some sources: results join as they answer
-        </p>
-      )}
-      {shown}
-    </div>
   )
 }
 
@@ -525,6 +497,7 @@ function Group({
   hasMore,
   onMore,
   what,
+  bar,
 }: {
   children: ReactNode
   searching: boolean
@@ -536,6 +509,7 @@ function Group({
   hasMore: boolean
   onMore: () => void
   what: string
+  bar: ReactNode
 }) {
   const filtered = JSON.stringify({ ...filters, loose: false }) !== JSON.stringify(NO_FILTERS)
   if (searching && !total) return <Asking what={`the sources for ${what}`} />
@@ -546,19 +520,21 @@ function Group({
       </Empty>
     )
   }
+  const link = 'text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground'
   return (
-    <>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-        <span className="font-medium tabular-nums">
+    <div className="space-y-4">
+      {bar}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span className="tabular-nums">
           {list.length} {what}
         </span>
-        {!filters.loose && loose > 0 && (
-          <button type="button" className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setFilters({ ...filters, loose: true })}>
-            {loose} more don’t have every word in their name
+        {loose > 0 && (
+          <button type="button" className={link} onClick={() => setFilters({ ...filters, loose: !filters.loose })}>
+            {filters.loose ? 'Hide' : 'Show'} {loose} near {loose === 1 ? 'match' : 'matches'}
           </button>
         )}
         {filtered && (
-          <button type="button" className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={() => setFilters({ ...NO_FILTERS, loose: filters.loose })}>
+          <button type="button" className={link} onClick={() => setFilters({ ...NO_FILTERS, loose: filters.loose })}>
             Clear filters
           </button>
         )}
@@ -584,36 +560,34 @@ function Group({
           </Button>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
 /** Before a search: what is asked, recent searches */
 function Start({
   kind,
-  sources,
   noPlugins,
+  sourceCount,
   recent,
   onPick,
   onForget,
 }: {
   kind: SearchKind
-  sources: string[]
   noPlugins: boolean
+  sourceCount: number
   recent: Recent[]
   onPick: (r: Recent) => void
   onForget: () => void
 }) {
-  const asked = ['this server', 'the catalog', ...sources]
-  const list = `${asked.slice(0, -1).join(', ')} and ${asked.at(-1)}`
   return (
-    <div className="max-w-2xl space-y-6 pt-2">
+    <div className="space-y-8">
       <p className="text-sm text-muted-foreground">
-        Searches {list} at once{kind === 'all' ? '' : kind === 'movie' ? ', for movies' : ', for shows'}. Spelling is forgiving: “breaking bad”, “Breaking.Bad” and
-        “breakingbad” find the same releases. Paste a link instead, a web page, a video, a stream, a magnet or a .torrent, to see what it holds.
+        Searches this server, the catalog{sourceCount ? ` and ${sourceCount} ${sourceCount === 1 ? 'plugin source' : 'plugin sources'}` : ''} at once
+        {kind === 'all' ? '' : kind === 'movie' ? ', for movies' : ', for shows'}. Or paste a link (a page, a video, a magnet, a .torrent) to see what it holds.
       </p>
       {noPlugins && (
-        <div className="flex items-start gap-3 rounded-lg border bg-card p-3 text-sm">
+        <div className="flex items-start gap-3 rounded-xl bg-card p-4 text-sm">
           <Puzzle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="space-y-2">
             <p>No source plugins are installed: Search only finds what is on this server and in the catalog. Torrent sites and streaming services come as plugins.</p>
@@ -624,23 +598,24 @@ function Start({
         </div>
       )}
       {recent.length > 0 && (
-        <div className="space-y-2">
+        <section className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium">Recent searches</h2>
-            <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={onForget}>
+            <h2 className="text-base font-medium">Recent searches</h2>
+            <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={onForget}>
               Forget them
             </button>
           </div>
-          <ul className="flex flex-wrap gap-2">
+          <ul className="divide-y overflow-hidden rounded-xl bg-card">
             {recent.map((r) => (
               <li key={r.q}>
-                <Button variant="outline" size="sm" onClick={() => onPick(r)}>
-                  <Search /> {r.q}
-                </Button>
+                <button type="button" onClick={() => onPick(r)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent">
+                  <Search className="size-4 text-muted-foreground" />
+                  <span className="truncate">{r.q}</span>
+                </button>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
     </div>
   )

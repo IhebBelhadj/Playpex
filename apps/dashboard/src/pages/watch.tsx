@@ -683,10 +683,10 @@ function Player({ item }: { item: PlayItem }) {
                   style={{ left: `${fraction(offset + a) * 100}%`, width: `${(fraction(offset + b) - fraction(offset + a)) * 100}%` }}
                 />
               ))}
-              <span className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${fraction(offset + time) * 100}%` }} />
+              <span className="absolute inset-y-0 left-0 bg-gold" style={{ width: `${fraction(offset + time) * 100}%` }} />
             </div>
             <span
-              className="pointer-events-none absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary opacity-0 shadow transition-opacity group-hover/bar:opacity-100"
+              className="pointer-events-none absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold opacity-0 shadow transition-opacity group-hover/bar:opacity-100"
               style={{ left: `${fraction(offset + time) * 100}%` }}
             />
             {hoverAt !== null && duration ? (
@@ -743,7 +743,7 @@ function Player({ item }: { item: PlayItem }) {
               aria-label="Subtitles"
               aria-pressed={panel}
               title="Subtitles (S)"
-              className={cn(subtitle !== 'off' && 'text-primary! hover:text-primary!')}
+              className={cn(subtitle !== 'off' && 'text-gold! hover:text-gold!')}
               onClick={() => setPanel((p) => !p)}
             >
               <Captions />

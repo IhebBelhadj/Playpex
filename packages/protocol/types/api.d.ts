@@ -4689,6 +4689,11 @@ export interface components {
                 /** @description Real-Debrid…: "Cached on <label>" */
                 label: string;
             };
+            /** @description torrent: a plugin's service that can't tell whether it has it (Real-Debrid) is asked first when it's picked (POST /play/start); the torrent plays when it hasn't */
+            tryResolver?: {
+                plugin: string;
+                label: string;
+            };
             /** @description download, torrent */
             infoHash?: string;
             /** @description download: the file's path in its torrent */
@@ -6191,6 +6196,8 @@ export interface components {
                 state: "off" | "starting" | "advertising" | "error";
                 /** @description The mDNS instance name advertised */
                 name: string | null;
+                /** @description The name people type to reach this server (`network.hostname` + .local, e.g. playpex.local; playpex-2.local when another device answers to it); null when none is claimed */
+                host: string | null;
                 error: string | null;
             };
             udp: {
@@ -6231,6 +6238,8 @@ export interface components {
                 lanSharing: boolean;
                 /** @description Advertise on the LAN (mDNS + UDP 28471); only with lanSharing */
                 discovery: boolean;
+                /** @description The name on the network: answered as <hostname>.local by the server's mDNS (default playpex); empty = none */
+                hostname: string;
                 allowedHosts: string[];
                 corsOrigins: string[];
             };

@@ -157,7 +157,7 @@ const MATCHED_BY: Record<string, string> = { auto: 'matched from its name', nfo:
 function ItemCard({ item, matchedBy }: { item: LibraryItem; matchedBy: string | null }) {
   const art = item.artwork
   return (
-    <div className="flex gap-3 rounded-md border p-3">
+    <div className="flex gap-3 rounded-2xl bg-muted p-4">
       <Poster path={art?.posterPath} />
       <div className="min-w-0 space-y-0.5 text-sm">
         <div className="font-medium">
@@ -176,7 +176,7 @@ function ItemCard({ item, matchedBy }: { item: LibraryItem; matchedBy: string | 
         <div className="flex flex-wrap gap-x-3 font-mono text-xs">
           {(item.kind === 'movie' ? item.tmdbId : item.showTmdbId) && (
             <a
-              className="text-primary underline-offset-4 hover:underline"
+              className="underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
               href={`https://www.themoviedb.org/${item.kind === 'movie' ? `movie/${item.tmdbId}` : `tv/${item.showTmdbId}/season/${item.season}/episode/${item.episode}`}`}
               target="_blank"
               rel="noreferrer"
@@ -185,7 +185,7 @@ function ItemCard({ item, matchedBy }: { item: LibraryItem; matchedBy: string | 
             </a>
           )}
           {item.imdbId && (
-            <a className="text-primary underline-offset-4 hover:underline" href={`https://www.imdb.com/title/${item.imdbId}/`} target="_blank" rel="noreferrer">
+            <a className="underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground" href={`https://www.imdb.com/title/${item.imdbId}/`} target="_blank" rel="noreferrer">
               IMDb {item.imdbId}
             </a>
           )}
@@ -235,7 +235,7 @@ function MatchPicker({ file, folder, onDone }: { file: LibraryFile; folder: Libr
   }
 
   return (
-    <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+    <div className="space-y-3 rounded-2xl bg-muted p-4">
       <form onSubmit={search} className="space-y-2">
         <Tabs value={kind} onValueChange={(v) => setKind(v as 'movie' | 'tv')}>
           <TabsList>
@@ -261,7 +261,7 @@ function MatchPicker({ file, folder, onDone }: { file: LibraryFile; folder: Libr
         <form onSubmit={pickEpisode} className="space-y-2">
           <p className="text-sm">
             <span className="font-medium">{show.title}</span>{' '}
-            <button type="button" className="text-xs text-primary underline-offset-4 hover:underline" onClick={() => setShow(null)}>
+            <button type="button" className="text-xs underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground" onClick={() => setShow(null)}>
               change
             </button>
           </p>
@@ -284,7 +284,7 @@ function MatchPicker({ file, folder, onDone }: { file: LibraryFile; folder: Libr
         (results.data.results.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing found on TMDB{asked?.year ? `; try without the year` : ''}.</p>
         ) : (
-          <ul className="max-h-80 divide-y overflow-y-auto rounded-md border bg-background">
+          <ul className="max-h-80 divide-y divide-background overflow-y-auto rounded-2xl bg-muted">
             {results.data.results.map((r) => (
               <li key={r.tmdbId}>
                 <button

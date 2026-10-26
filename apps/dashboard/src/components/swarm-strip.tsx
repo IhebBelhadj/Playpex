@@ -77,7 +77,7 @@ export function SwarmStrip({
       {marks?.map((m, i) => (
         <span
           key={i}
-          className="absolute inset-y-0 min-w-0.5 bg-primary"
+          className="absolute inset-y-0 min-w-0.5 bg-gold"
           style={{ left: `${m.from * 100}%`, width: `${Math.max(0, m.to - m.from) * 100}%` }}
         />
       ))}

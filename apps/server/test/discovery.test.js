@@ -27,6 +27,7 @@ var protocol = require('@playpex/protocol'),
   discovery = require('../lib/discovery');
 
 var NAME = 'Playpex test ' + process.pid,
+  HOST = 'playpex-test-' + process.pid,   // network.hostname: never the real playpex.local
   udpPort = null,
   info = null,
   bonjour = null,
@@ -101,7 +102,7 @@ test.before(function () {
   return freeUdpPort().then(function (port) {
     udpPort = port;
     server.settings.load();
-    server.settings.update({ general: { serverName: NAME } });
+    server.settings.update({ general: { serverName: NAME }, network: { hostname: HOST } });
     return server.start({ port: 0, console: false, library: false, discoveryPort: udpPort });
   }).then(function (started) {
     info = started;
@@ -121,9 +122,12 @@ test.after(function () {
 });
 
 test('UDP responder answers the query, and only the query', function () {
-  return ask(protocol.DISCOVERY.QUERY).then(function (answer) {
+  // `host` is set once the name is claimed (about a second after the start)
+  return waitState(function (s) { return s.mdns.state === 'advertising'; }, 8000).then(function () {
+    return ask(protocol.DISCOVERY.QUERY);
+  }).then(function (answer) {
     assert.deepEqual(answer, {
-      id: info.id, name: NAME, port: info.port,
+      id: info.id, name: NAME, host: HOST + '.local', port: info.port,
       apiVersion: protocol.API_VERSION, minApiVersion: protocol.MIN_API_VERSION,
       version: require('../package.json').version
     });
@@ -154,12 +158,83 @@ test('mDNS advertises _playpex._tcp with the id, versions and name', function ()
     assert.equal(service.txt.v, String(protocol.API_VERSION));
     assert.equal(service.txt.ver, require('../package.json').version);
     assert.equal(service.txt.name, NAME);
-    assert.equal(service.host, 'playpex-' + info.id.slice(0, 8) + '.local');
+    assert.equal(service.host, HOST + '.local');
     return waitState(function (s) { return s.mdns.state === 'advertising'; });
   }).then(function (s) {
     assert.equal(s.enabled, true);
     assert.equal(s.mdns.name, NAME);
+    assert.equal(s.mdns.host, HOST + '.local');
+    assert.equal(discovery.hostName(), HOST + '.local');
   });
+});
+
+// The A records of `fqdn` as another device on the network sees them
+function resolve(fqdn) {
+  return new Promise(function (done) {
+    var found = [];
+    function on(packet) {
+      packet.answers.concat(packet.additionals || []).forEach(function (rr) {
+        if (rr.type === 'A' && String(rr.name).toLowerCase() === fqdn) {
+          found.push(rr.data);
+        }
+      });
+    }
+    bonjour.server.mdns.on('response', on);
+    bonjour.server.mdns.query(fqdn, 'A');
+    setTimeout(function () {
+      bonjour.server.mdns.removeListener('response', on);
+      done(found);
+    }, 1200);
+  });
+}
+
+test('the name on the network resolves to this machine, and the server accepts it as a Host', function () {
+  return resolve(HOST + '.local').then(function (addresses) {
+    assert.ok(addresses.length > 0, 'no A record for ' + HOST + '.local');
+    var mine = mdnsSocket.interfaces();
+    assert.ok(addresses.some(function (a) { return mine.indexOf(a) !== -1; }), addresses.join(', '));
+    var middleware = require('../lib/middleware');
+    assert.equal(middleware.allowedHost(HOST + '.local'), true);
+    assert.equal(middleware.allowedHost(HOST + '-2.local'), true);
+    assert.equal(middleware.allowedHost('evil.example'), false);
+  });
+});
+
+test('a name another device answers to: the server takes <name>-2', function () {
+  var clash = 'playpex-clash-' + process.pid;
+  // a device elsewhere (192.0.2.5: not this machine) that answers to it
+  function other(query) {
+    query.questions.forEach(function (q) {
+      if (String(q.name).toLowerCase() === clash + '.local') {
+        bonjour.server.mdns.respond({ answers: [{ name: clash + '.local', type: 'A', ttl: 120, data: '192.0.2.5' }] });
+      }
+    });
+  }
+  bonjour.server.mdns.on('query', other);
+  server.settings.update({ network: { hostname: clash } });
+  return discovery.refresh().then(function () {
+    return waitState(function (s) { return s.mdns.state === 'advertising'; }, 8000);
+  }).then(function (s) {
+    assert.equal(s.mdns.host, clash + '-2.local');
+    return ask(protocol.DISCOVERY.QUERY);
+  }).then(function (answer) {
+    assert.equal(answer.host, clash + '-2.local');
+  }).finally(function () {
+    bonjour.server.mdns.removeListener('query', other);
+    server.settings.update({ network: { hostname: HOST } });
+    return discovery.refresh().then(function () {
+      return waitState(function (s) { return s.mdns.state === 'advertising'; }, 8000);
+    });
+  });
+});
+
+test('the setting takes a DNS label only', function () {
+  var settings = server.settings;
+  assert.throws(function () { settings.update({ network: { hostname: 'my server' } }); });
+  assert.throws(function () { settings.update({ network: { hostname: '-bad' } }); });
+  settings.update({ network: { hostname: 'Living-Room.local' } });
+  assert.equal(settings.get('network.hostname'), 'living-room');
+  settings.update({ network: { hostname: HOST } });
 });
 
 test('a new server name is advertised at once', function () {
@@ -171,7 +246,7 @@ test('a new server name is advertised at once', function () {
     return ask(protocol.DISCOVERY.QUERY);
   }).then(function (answer) {
     assert.equal(answer.name, renamed);
-    server.settings.update({ general: { serverName: NAME } });
+    server.settings.update({ general: { serverName: NAME }, network: { hostname: HOST } });
     return discovery.refresh();
   });
 });
@@ -206,4 +281,18 @@ test('turned off: no answers, goodbye sent, reason in the status', function () {
   }).then(function () {
     return waitState(function (s) { return s.udp.state === 'listening'; });
   });
+});
+
+test('each network gets only its own addresses in an answer', function () {
+  var wifi = { address: '10.80.232.68', addresses: ['10.80.232.68', '10.80.232.67'] },
+    mine = { '10.80.232.68': true, '10.80.232.67': true, '172.18.0.1': true, '10.99.0.1': true },
+    packet = {
+      answers: [{ name: 'playpex.local', type: 'A', data: '10.80.232.68' }, { name: 'playpex.local', type: 'A', data: '172.18.0.1' }, { name: 's', type: 'SRV', data: {} }],
+      additionals: [{ name: 'playpex.local', type: 'A', data: '10.99.0.1' }, { name: 'other.local', type: 'A', data: '192.0.2.5' }]
+    },
+    copy = mdnsSocket.forNetwork(packet, wifi, mine);
+  assert.deepEqual(copy.answers.map(function (rr) { return rr.data; }), ['10.80.232.68', {}]);
+  // a Docker bridge's or a VPN's address never reaches the Wi-Fi; another device's record is left alone
+  assert.deepEqual(copy.additionals.map(function (rr) { return rr.data; }), ['192.0.2.5']);
+  assert.equal(packet.answers.length, 3, 'the packet itself is not changed');
 });

@@ -408,7 +408,7 @@ export interface HookIO {
   'play.rank': { input: { title: PluginTitleRef; sources: RankedSource[] }; output: { order?: string[]; hide?: { id: string; reason: string }[] } };
   'play.resolve': {
     input: { mode: 'check'; hashes: string[] } | { mode: 'resolve'; title: PluginTitleRef; source: PluginSource };
-    output: { hashes: Record<string, { cached: boolean; label?: string }> } | { source: PluginSource | null };
+    output: { hashes: Record<string, { cached: boolean; tries?: boolean; label?: string }> } | { source: PluginSource | null };
   };
   'play.before': {
     input: { title: PluginTitleRef; source: RankedSource };

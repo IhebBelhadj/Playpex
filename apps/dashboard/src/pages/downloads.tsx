@@ -511,7 +511,7 @@ export function DownloadsPage() {
 
   return (
     <div
-      className="relative flex flex-col gap-4 md:h-[calc(100svh-4rem)]"
+      className="relative flex flex-col gap-4 md:h-[calc(100svh-7.5rem)]"
       onDragOver={dragOver}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false)
@@ -533,7 +533,7 @@ export function DownloadsPage() {
             <Search /> Search
           </Link>
         </Button>
-        <div className="hidden items-center gap-1 border-l pl-2 md:flex">
+        <div className="hidden items-center gap-1 md:flex lg:border-l lg:pl-2">
           <Button
             variant="ghost"
             size="sm"
@@ -558,15 +558,15 @@ export function DownloadsPage() {
           </Button>
           {chosen.length > 1 && <span className="ml-1 text-sm text-muted-foreground tabular-nums">{chosen.length} selected</span>}
         </div>
-        <div className="relative ml-auto w-full sm:w-56">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a download" aria-label="Find a download" className="pl-8" />
+        <div className="relative w-full min-w-48 sm:flex-1 lg:ml-auto lg:w-56 lg:flex-none">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a download" aria-label="Find a download" className="pl-9" />
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 gap-4">
         {/* the filter rail (a select on phones) */}
-        <nav aria-label="Filter downloads" className="hidden w-44 shrink-0 flex-col gap-4 overflow-y-auto md:flex">
+        <nav aria-label="Filter downloads" className="hidden w-44 shrink-0 flex-col gap-4 overflow-y-auto lg:flex">
           <RailGroup>
             <RailItem label="All" count={list.length} active={filter === 'all'} onClick={() => setParam({ filter: null })} />
             {STATES.filter((s) => s.id !== 'error' || counts(s.states)).map((s) => (
@@ -611,8 +611,8 @@ export function DownloadsPage() {
           )}
         </nav>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
-          <div className="border-b p-2 md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-card">
+          <div className="border-b p-2 lg:hidden">
             <Select value={filter} onValueChange={(v) => setParam({ filter: v === 'all' ? null : v })}>
               <SelectTrigger className="w-full" aria-label="Show">
                 <SelectValue />
@@ -707,7 +707,7 @@ export function DownloadsPage() {
                 aria-orientation="horizontal"
                 aria-label="Resize the details"
                 onPointerDown={pane.drag}
-                className="absolute inset-x-0 -top-1.5 z-20 h-3 cursor-row-resize after:absolute after:inset-x-0 after:top-1.5 after:h-px after:bg-transparent hover:after:bg-primary/60"
+                className="absolute inset-x-0 -top-1.5 z-20 h-3 cursor-row-resize after:absolute after:inset-x-0 after:top-1.5 after:h-px after:bg-transparent hover:after:bg-foreground/40"
               />
               <DownloadPane hash={open} tab={tab} onTabChange={(t) => setParam({ tab: t === 'general' ? null : t })} onClose={() => openPane(null)} className="h-full" />
             </div>
@@ -752,9 +752,9 @@ export function DownloadsPage() {
       )}
 
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/80 backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-foreground/50 bg-background/90">
           <p className="flex items-center gap-2 text-lg font-medium">
-            <FileUp className="size-5 text-primary" /> Drop the .torrent to add it
+            <FileUp className="size-5" /> Drop the .torrent to add it
           </p>
         </div>
       )}
@@ -1005,7 +1005,7 @@ function LabelDialog({
                   key={l}
                   type="button"
                   onClick={() => setValue(l)}
-                  className={cn('rounded-md border px-2 py-0.5 text-xs hover:bg-muted', value === l && 'border-primary bg-primary/10')}
+                  className={cn('rounded-full bg-muted px-3 py-1 text-xs hover:text-foreground', value === l && 'bg-gold text-gold-foreground')}
                 >
                   {l}
                 </button>

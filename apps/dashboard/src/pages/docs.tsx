@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Braces, Menu } from 'lucide-react'
+import { ArrowLeft, Menu } from 'lucide-react'
 import { Children, isValidElement, lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router'
@@ -100,25 +100,28 @@ const COMPONENTS: Components = {
 function DocsNav({ onNavigate }: { onNavigate?: () => void }) {
   const item = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-      isActive && 'bg-muted font-medium text-foreground',
+      'flex h-[34px] items-center rounded-full px-3 text-sm text-muted-foreground transition-colors hover:text-foreground',
+      isActive && 'font-medium text-foreground',
     )
   return (
-    <nav className="flex flex-col gap-0.5">
-      {CHAPTERS.map(({ slug, title }) => (
-        <NavLink key={slug} to={`/docs${slug ? `/${slug}` : ''}`} end onClick={onNavigate} className={item}>
-          <BookOpen className="size-4 shrink-0" />
-          <span className="truncate">{title}</span>
+    <nav className="flex flex-col gap-6">
+      <div className="flex flex-col">
+        <p className="px-3 pb-1.5 text-xs text-muted-foreground/80">Guide</p>
+        {CHAPTERS.map(({ slug, title }) => (
+          <NavLink key={slug} to={`/docs${slug ? `/${slug}` : ''}`} end onClick={onNavigate} className={item}>
+            <span className="truncate">{title}</span>
+          </NavLink>
+        ))}
+      </div>
+      <div className="flex flex-col">
+        <p className="px-3 pb-1.5 text-xs text-muted-foreground/80">Reference</p>
+        <NavLink to="/docs/reference" onClick={onNavigate} className={item}>
+          API reference
         </NavLink>
-      ))}
-      <NavLink to="/docs/reference" onClick={onNavigate} className={item}>
-        <Braces className="size-4 shrink-0" />
-        <span>API reference</span>
-      </NavLink>
-      <a href="/api/v1/openapi.yaml" className={item({ isActive: false })}>
-        <Braces className="size-4 shrink-0 opacity-0" />
-        <span>openapi.yaml</span>
-      </a>
+        <a href="/api/v1/openapi.yaml" className={item({ isActive: false })}>
+          openapi.yaml
+        </a>
+      </div>
     </nav>
   )
 }
@@ -152,7 +155,7 @@ export function DocsLayout() {
         </Link>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-2 md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Chapters">

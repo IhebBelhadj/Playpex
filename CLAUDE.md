@@ -158,9 +158,12 @@ With a server, the app opens on `/profiles` (Netflix-style picker, under the spl
 │                                 setting type; copy it into <config>/plugins-dev/ to try it), velvet/ (Velvet: the 18+ section, `audience: adults`: its own
 │                                 repository, never the official one), trakt/ (Trakt: scrobbling, sync both ways, rows, its rating as a metadata provider; the official repository), archive/ (Internet Archive: public-domain films by keywords
 │                                 (sources.search) and in Play (play.collect), direct MP4 / Matroska files), openscrapers/ (a GPL-3.0 port of the Kodi
-│                                 add-on OpenScrapers, kept in docs/script.module.openscrapers: its scrapers that still work, BnW Movies and netzkino
+│                                 add-on OpenScrapers (script.module.openscrapers 0.0.2.012): its scrapers that still work, BnW Movies and netzkino
 │                                 (direct files) and LimeTorrents, TorrentDownload, Nyaa (torrents), each a switch; its own repository, never the
-│                                 official one), m3u/ (Live TV (M3U):
+│                                 official one), thecrew/ (a GPL-3.0 port of the Kodi add-on The
+│                                 Crew (plugin.video.thecrew 3.2.2 + script.module.thecrew 3.2.26): Torrentio and Knaben (torrents) and
+│                                 direct play through Real-Debrid, AllDebrid, Premiumize, TorBox (play.resolve; the first two only `tries`);
+│                                 its own repository, never the official one), m3u/ (Live TV (M3U):
 │                                 the admin's M3U playlist and XMLTV guide as channels; the official repository), torrents/ (yts, eztv, therarbg, piratebay: the
 │                                 torrent sites as source plugins, a repository of their own, never the official one); not npm workspaces
 ├── engines/
@@ -212,6 +215,7 @@ The server's settings live in **`<config dir>/settings.json`** (`apps/server/lib
 | `PLAYPEX_PORT` (or `STREAMER_PORT`) | server HTTP port (default **28470**, fixed: if another program holds it, the headless server enters recovery mode, see Commands; env-set values are read-only in the dashboard) |
 | `PLAYPEX_LAN_SHARING` | `0` = loopback only; default on (all interfaces; LAN clients pair first, plan step 4) |
 | `PLAYPEX_DISCOVERY` | `0` = don't advertise on the LAN (mDNS `_playpex._tcp` + UDP responder on 28471, plan step 8); default on, only with LAN sharing |
+| `PLAYPEX_HOSTNAME` | the server's name on the network (`network.hostname`, default `playpex`): people type `http://playpex.local:28470`, answered by the server's own mDNS (`playpex-2.local` when another device has the name); empty = none |
 | `PLAYPEX_DLNA` | `1` = the DLNA / UPnP AV media server on (default off; Settings › DLNA, `dlna.enabled`; its port `dlna.port`, 28472): TVs on the LAN browse the folders marked "include in DLNA" (never adults-only ones) without pairing; only with LAN sharing |
 | `PLAYPEX_LOG_LEVEL`, `PLAYPEX_DOWNLOAD_DIR`, `FFMPEG_PATH`, `FFPROBE_PATH` | log level (`debug`…`error`), download dir, ffmpeg binaries (else bundled, else the PATH) |
 | `PLAYPEX_CONFIG_DIR`, `PLAYPEX_CACHE_DIR`, `PLAYPEX_LOG_DIR` | override where state (`settings.json`, `server.json`, `playpex.db`, `torrents/`), downloads and logs go; defaults are per-OS user dirs, see `lib/paths.js` |

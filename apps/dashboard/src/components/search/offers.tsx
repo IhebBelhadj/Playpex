@@ -8,86 +8,57 @@ import { episodeCode } from '@/lib/media'
 import type { Release, StreamItem } from '@/lib/search'
 import { cn } from '@/lib/utils'
 
-// Search's compact rows: streams and files (Play, Download), torrents in the
-// overview and on phones (Add, Add and start). One line of name, one of what
-// Playpex reads in it; numbers on the right.
+// Search's rows: streams and files (Play, Download), torrents in the overview and
+// on phones (Add). The name, one line of what it is (episode, quality, size,
+// where from), a torrent's seeds, one action.
 
-function Row({
-  thumb,
-  name,
-  reading,
-  numbers,
-  source,
-  actions,
-  dim,
-}: {
-  thumb?: ReactNode
-  name: string
-  reading: ReactNode
-  numbers: ReactNode
-  source: string
-  actions: ReactNode
-  dim?: boolean
-}) {
+function Row({ thumb, name, meta, side, actions, dim }: { thumb?: ReactNode; name: string; meta: ReactNode; side?: ReactNode; actions: ReactNode; dim?: boolean }) {
   return (
-    <li className={cn('flex items-center gap-3 px-3 py-2', dim && 'opacity-70')}>
+    <li className={cn('flex items-center gap-3 px-4 py-3', dim && 'opacity-60')}>
       {thumb}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium" title={name}>
           {name}
         </div>
-        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">{reading}</div>
+        <div className="mt-0.5 truncate text-[13px] text-muted-foreground">{meta}</div>
       </div>
-      <div className="hidden shrink-0 items-center gap-4 text-sm tabular-nums sm:flex">{numbers}</div>
-      <span className="hidden w-28 shrink-0 truncate text-sm text-muted-foreground lg:block" title={source}>
-        {source}
-      </span>
+      {side && <div className="hidden shrink-0 text-sm tabular-nums sm:block">{side}</div>}
       <div className="flex shrink-0 items-center gap-1">{actions}</div>
     </li>
   )
 }
 
-function Quality({ value }: { value: string }) {
-  return <span className="w-12 text-right">{value === 'unknown' ? <span className="text-muted-foreground">—</span> : value}</span>
-}
+/** What Playpex reads in a name, then quality, size and where it comes from: one line */
+const line = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(', ')
+const quality = (q: string) => (q === 'unknown' ? null : q)
 
 export function StreamRows({ items, sourceName }: { items: StreamItem[]; sourceName: (provider: string) => string }) {
   const act = useSearchActions()
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="divide-y overflow-hidden rounded-xl bg-card">
       {items.map((s) => {
         // what it is first (a provider's title), its file's name under it
         const what = s.title ? `${s.title}${s.year ? ` (${s.year})` : ''}` : null
-        const reading = [
-          what && what !== s.label ? s.label : null,
+        const meta = line(
           s.season != null && s.episode != null ? episodeCode(s.season, s.episode) : null,
-          s.kind === 'hls' ? 'Stream (HLS)' : s.kind === 'torrent' ? 'Torrent' : 'File',
-          s.codec,
+          quality(qualityOf(s)),
+          s.size ? bytes(s.size) : null,
+          s.kind === 'hls' ? 'stream' : s.kind === 'torrent' ? 'torrent' : null,
           s.audio === 'unsupported' ? 'Dolby or DTS sound' : null,
-        ].filter(Boolean)
+          sourceName(s.provider),
+          what && what !== s.label ? s.label : null,
+        )
         return (
           <Row
             key={s.ref ?? s.infoHash ?? s.label}
             dim={s.matches === false}
             thumb={
-              <span className="flex h-12 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
+              <span className="flex h-12 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                 {s.poster ? <img src={s.poster} alt="" loading="lazy" className="size-full object-cover" /> : s.kind === 'hls' ? <Radio className="size-4 text-muted-foreground" /> : <Film className="size-4 text-muted-foreground" />}
               </span>
             }
             name={what ?? s.label}
-            reading={
-              <>
-                <span className="truncate">{reading.join(', ')}</span>
-                {s.matches === false && <span className="shrink-0">not every word</span>}
-              </>
-            }
-            numbers={
-              <>
-                <Quality value={qualityOf(s)} />
-                <span className="w-16 text-right">{s.size ? bytes(s.size) : <span className="text-muted-foreground">—</span>}</span>
-              </>
-            }
-            source={sourceName(s.provider)}
+            meta={meta}
             actions={
               s.kind === 'torrent' ? (
                 <Button variant="ghost" size="xs" onClick={() => s.magnet && act.startTorrent(s.magnet, s.label)}>
@@ -114,35 +85,23 @@ export function StreamRows({ items, sourceName }: { items: StreamItem[]; sourceN
 export function TorrentRows({ releases, kept, sourceName, onAdd }: { releases: Release[]; kept: Set<string>; sourceName: (t: Release) => string; onAdd: (t: Release) => void }) {
   const navigate = useNavigate()
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="divide-y overflow-hidden rounded-xl bg-card">
       {releases.map((t) => {
-        const reading = [
-          t.title ? `${t.title}${t.year ? ` (${t.year})` : ''}` : null,
+        const meta = line(
           t.pack && t.season != null ? `Season ${t.season}, whole` : null,
           !t.pack && t.season != null && t.episode != null ? episodeCode(t.season, t.episode) : null,
+          quality(qualityOf(t)),
+          t.size ? bytes(t.size) : null,
           t.audio === 'unsupported' ? 'Dolby or DTS sound' : null,
-        ].filter(Boolean)
+          sourceName(t),
+        )
         return (
           <Row
             key={t.hash}
             dim={t.matches === false}
             name={t.name}
-            reading={
-              <>
-                {kept.has(t.hash) && <span className="shrink-0 text-up">In Downloads</span>}
-                <span className="truncate">{reading.join(', ')}</span>
-              </>
-            }
-            numbers={
-              <>
-                <Quality value={qualityOf(t)} />
-                <span className="w-16 text-right">{t.size ? bytes(t.size) : <span className="text-muted-foreground">—</span>}</span>
-                <span className="w-16">
-                  <Seeds seeds={t.seeds} />
-                </span>
-              </>
-            }
-            source={sourceName(t)}
+            meta={kept.has(t.hash) ? <><span className="text-up">In Downloads</span>, {meta}</> : meta}
+            side={<Seeds seeds={t.seeds} />}
             actions={
               kept.has(t.hash) ? (
                 <Button variant="ghost" size="xs" className="text-up" onClick={() => navigate(`/downloads?hash=${t.hash}`)}>

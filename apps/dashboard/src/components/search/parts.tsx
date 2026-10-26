@@ -1,17 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
-import { RailGroup, RailItem } from '@/components/rail'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ChevronDown } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { api, errorMessage, unwrap } from '@/lib/api'
 import { useDirectActions } from '@/lib/direct'
 import { usePlayer } from '@/lib/player'
 import type { Release, SourceState, StreamItem } from '@/lib/search'
 import { cn } from '@/lib/utils'
 
-// What Search's groups share: the facets (torrents and streams alike: names
+// What Search's groups share: the filters (torrents and streams alike: names
 // that hold every word, quality, size; torrents also episodes, season, plays
-// as is), the seed bars, the sources line, the actions.
+// as is), the seed bars, the sources' summary, the actions.
 
 export type Quality = '2160p' | '1080p' | '720p' | 'SD' | 'unknown'
 type SizeBand = 's' | 'm' | 'l' | 'xl'
@@ -63,96 +65,74 @@ export function keep(t: Offer, f: Filters, except?: keyof Filters) {
   return true
 }
 
-/** The rail's facets for a list of offers (`torrents`: episodes, season, plays as is too) */
-export function Facets({ all, filters, set, torrents, shows }: { all: Offer[]; filters: Filters; set: (p: Partial<Filters>) => void; torrents: boolean; shows: boolean }) {
+const ANY = 'any'
+
+/** One row of small selects above a list of torrents or streams; each option counts what choosing it would leave */
+export function FilterBar({ all, filters, set, torrents, shows }: { all: Offer[]; filters: Filters; set: (p: Partial<Filters>) => void; torrents: boolean; shows: boolean }) {
   const count = (except: keyof Filters, test: (t: Offer) => boolean) => all.filter((t) => keep(t, filters, except) && test(t)).length
   const seasons = [...new Set(all.map((t) => t.season).filter((s): s is number => s != null))].sort((a, b) => a - b)
+  const qualities = QUALITIES.map((x) => ({ ...x, n: count('quality', (t) => qualityOf(t) === x.id) })).filter((x) => x.n || filters.quality === x.id)
   return (
-    <>
-      <RailGroup title="Names">
-        <RailItem label="Hold every word" count={count('loose', (t) => t.matches !== false)} active={!filters.loose} onClick={() => set({ loose: false })} />
-        <RailItem label="Everything found" count={count('loose', () => true)} active={filters.loose} onClick={() => set({ loose: true })} />
-      </RailGroup>
-      <RailGroup title="Quality">
-        <RailItem label="Any" count={count('quality', () => true)} active={!filters.quality} onClick={() => set({ quality: null })} />
-        {QUALITIES.map((x) => ({ ...x, n: count('quality', (t) => qualityOf(t) === x.id) }))
-          .filter((x) => x.n || filters.quality === x.id)
-          .map((x) => (
-            <RailItem key={x.id} label={x.label} count={x.n} active={filters.quality === x.id} onClick={() => set({ quality: x.id })} />
-          ))}
-      </RailGroup>
-      <RailGroup title="Size">
-        <RailItem label="Any" count={count('size', () => true)} active={!filters.size} onClick={() => set({ size: null })} />
-        {SIZES.map((x) => (
-          <RailItem key={x.id} label={x.label} count={count('size', (t) => !!t.size && x.test(t.size))} active={filters.size === x.id} onClick={() => set({ size: x.id })} />
-        ))}
-      </RailGroup>
+    <div role="group" aria-label="Filters" className="flex flex-wrap items-center gap-2">
+      <Pick label="Quality" value={filters.quality ?? ANY} onChange={(v) => set({ quality: v === ANY ? null : (v as Quality) })} options={[{ id: ANY, label: 'Any quality' }, ...qualities.map((x) => ({ id: x.id, label: x.label, n: x.n }))]} />
+      <Pick
+        label="Size"
+        value={filters.size ?? ANY}
+        onChange={(v) => set({ size: v === ANY ? null : (v as SizeBand) })}
+        options={[{ id: ANY, label: 'Any size' }, ...SIZES.map((x) => ({ id: x.id, label: x.label, n: count('size', (t) => !!t.size && x.test(t.size)) }))]}
+      />
       {torrents && shows && (
-        <RailGroup title="Episodes">
-          <RailItem label="Any" count={count('shape', () => true)} active={!filters.shape} onClick={() => set({ shape: null })} />
-          <RailItem
-            label="Single episodes"
-            count={count('shape', (t) => !('pack' in t && t.pack) && t.episode != null)}
-            active={filters.shape === 'episode'}
-            onClick={() => set({ shape: 'episode' })}
-          />
-          <RailItem label="Season packs" count={count('shape', (t) => 'pack' in t && !!t.pack)} active={filters.shape === 'pack'} onClick={() => set({ shape: 'pack' })} />
-        </RailGroup>
+        <Pick
+          label="Episodes"
+          value={filters.shape ?? ANY}
+          onChange={(v) => set({ shape: v === ANY ? null : (v as Shape) })}
+          options={[
+            { id: ANY, label: 'Episodes and packs' },
+            { id: 'episode', label: 'Single episodes', n: count('shape', (t) => !('pack' in t && t.pack) && t.episode != null) },
+            { id: 'pack', label: 'Season packs', n: count('shape', (t) => 'pack' in t && !!t.pack) },
+          ]}
+        />
       )}
       {shows && seasons.length > 1 && (
-        <RailGroup title="Season">
-          <RailItem label="Any" count={count('season', () => true)} active={filters.season === null} onClick={() => set({ season: null })} />
-          {seasons.map((s) => (
-            <RailItem key={s} label={s === 0 ? 'Specials' : `Season ${s}`} count={count('season', (t) => t.season === s)} active={filters.season === s} onClick={() => set({ season: s })} />
-          ))}
-        </RailGroup>
+        <Pick
+          label="Season"
+          value={filters.season === null ? ANY : String(filters.season)}
+          onChange={(v) => set({ season: v === ANY ? null : Number(v) })}
+          options={[{ id: ANY, label: 'Every season' }, ...seasons.map((x) => ({ id: String(x), label: x === 0 ? 'Specials' : `Season ${x}`, n: count('season', (t) => t.season === x) }))]}
+        />
       )}
       {torrents && (
-        <RailGroup title="On Playpex TV">
-          <RailItem label="Any" count={count('plays', () => true)} active={!filters.plays} onClick={() => set({ plays: false })} />
-          <RailItem label="Plays as is" count={count('plays', playsAsIs)} active={filters.plays} onClick={() => set({ plays: true })} />
-        </RailGroup>
+        <button
+          type="button"
+          aria-pressed={filters.plays}
+          onClick={() => set({ plays: !filters.plays })}
+          className={cn(
+            'h-8 rounded-full px-3.5 text-sm transition-colors',
+            filters.plays ? 'bg-gold text-gold-foreground' : 'border border-input text-muted-foreground hover:text-foreground',
+          )}
+        >
+          Plays on the TV as is
+        </button>
       )}
-    </>
+    </div>
   )
 }
 
-/** The facets on a phone: two selects */
-export function PhoneFacets({ filters, set, torrents, shows }: { filters: Filters; set: (p: Partial<Filters>) => void; torrents: boolean; shows: boolean }) {
+function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { id: string; label: string; n?: number }[] }) {
   return (
-    <div className="flex gap-2">
-      <Select value={filters.quality ?? 'any'} onValueChange={(v) => set({ quality: v === 'any' ? null : (v as Quality) })}>
-        <SelectTrigger size="sm" aria-label="Quality" className="flex-1">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="any">Any quality</SelectItem>
-          {QUALITIES.map((x) => (
-            <SelectItem key={x.id} value={x.id}>
-              {x.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.shape ?? (filters.plays ? 'plays' : filters.loose ? 'loose' : 'any')}
-        onValueChange={(v) => set({ shape: v === 'episode' || v === 'pack' ? v : null, plays: v === 'plays', loose: v === 'loose' })}
-      >
-        <SelectTrigger size="sm" aria-label="Narrow" className="flex-1">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>Show</SelectLabel>
-            <SelectItem value="any">Close matches</SelectItem>
-            <SelectItem value="loose">Everything found</SelectItem>
-            {torrents && <SelectItem value="plays">Plays as is on Playpex TV</SelectItem>}
-            {torrents && shows && <SelectItem value="episode">Single episodes</SelectItem>}
-            {torrents && shows && <SelectItem value="pack">Season packs</SelectItem>}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger size="sm" aria-label={label} className={cn(value !== ANY && 'border-gold text-foreground')}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.id} value={o.id}>
+            {o.label}
+            {o.n !== undefined && <span className="ml-auto pl-3 text-xs text-muted-foreground tabular-nums">{o.n}</span>}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -171,31 +151,51 @@ export function Seeds({ seeds }: { seeds: number }) {
   )
 }
 
-/** Each source and how its part of the search went; a click leaves it out of the results (or back in) */
-export function SourcesLine({ states, off, onToggle, extra }: { states: SourceState[]; off: string[]; onToggle: (id: string) => void; extra?: ReactNode }) {
+/** How the search went, in one sentence; the sources themselves (and switches to leave one out) in a popover */
+export function SourcesSummary({ states, fixed, off, onToggle }: { states: SourceState[]; fixed: SourceState[]; off: string[]; onToggle: (id: string) => void }) {
+  const all = [...fixed, ...states]
+  const asking = all.filter((s) => s.state === 'searching').length
+  const failed = all.filter((s) => s.state === 'failed').length
+  const found = all.filter((s) => s.state === 'done' && (s.count > 0 || s.loose > 0)).length
+  const left = states.filter((s) => off.includes(s.source.id)).length
+  const sentence = asking
+    ? `Asking ${all.length} sources, ${all.length - asking} answered so far.`
+    : `${all.length} sources answered, ${found} found something.`
   return (
-    <div role="group" aria-label="Sources" className="flex flex-wrap items-center gap-1.5 text-sm">
-      {extra}
-      {states.map((s) => {
-        const hidden = off.includes(s.source.id)
-        return (
-          <button
-            key={s.source.group + s.source.id}
-            type="button"
-            aria-pressed={!hidden}
-            onClick={() => onToggle(s.source.id)}
-            title={s.state === 'failed' ? errorMessage(s.error) : hidden ? `Show ${s.source.name}'s results` : `Hide ${s.source.name}'s results`}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-full border px-3 py-1 transition-colors hover:bg-muted',
-              hidden ? 'border-dashed text-muted-foreground line-through decoration-muted-foreground/60' : 'bg-card',
-            )}
-          >
-            <SourceDot state={s.state} found={s.count > 0} />
-            <span className={cn(!hidden && 'text-foreground')}>{s.source.name}</span>
-            <SourceCount state={s} />
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+      {asking > 0 && <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-down" />}
+      <span aria-live="polite">
+        {sentence}
+        {failed > 0 && <span className="text-destructive"> {failed} failed.</span>}
+        {left > 0 && ` ${left} left out.`}
+      </span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" className="inline-flex items-center gap-0.5 text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground">
+            Sources <ChevronDown className="size-3.5" />
           </button>
-        )
-      })}
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-80 p-2">
+          <ul className="max-h-80 overflow-x-hidden overflow-y-auto">
+            {all.map((s) => {
+              const optional = !fixed.includes(s)
+              const hidden = off.includes(s.source.id)
+              return (
+                <li key={s.source.group + s.source.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                  <SourceDot state={s.state} found={s.count > 0} />
+                  <span className="min-w-0 flex-1">
+                    <span className={cn('block truncate text-sm', hidden && 'text-muted-foreground')}>{s.source.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      <SourceCount state={s} />
+                    </span>
+                  </span>
+                  {optional && <Switch size="sm" checked={!hidden} onCheckedChange={() => onToggle(s.source.id)} aria-label={`Use ${s.source.name}`} />}
+                </li>
+              )
+            })}
+          </ul>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -216,17 +216,13 @@ export function SourceDot({ state, found }: { state: SourceState['state']; found
 }
 
 function SourceCount({ state: s }: { state: SourceState }) {
-  if (s.state === 'searching') return <span className="text-xs text-muted-foreground">searching</span>
-  if (s.state === 'failed') return <span className="text-xs text-destructive">failed</span>
-  if (s.state !== 'done') return null
+  if (s.state === 'idle') return <>waiting for a search</>
+  if (s.state === 'searching') return <>searching…</>
+  if (s.state === 'failed') return <span className="text-destructive">{errorMessage(s.error)}</span>
+  if (!s.count && !s.loose) return <>nothing found</>
   return (
     <>
-      <span className="text-xs text-muted-foreground tabular-nums">{s.count || (s.loose ? 0 : 'nothing')}</span>
-      {s.loose > 0 && (
-        <span className="-ml-1 text-xs text-muted-foreground/70 tabular-nums" title={`${s.loose} more without every word in their name`}>
-          +{s.loose} loose
-        </span>
-      )}
+      {s.count} found{s.loose > 0 && `, ${s.loose} near ${s.loose === 1 ? 'match' : 'matches'}`}
     </>
   )
 }

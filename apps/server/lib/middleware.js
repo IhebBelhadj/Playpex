@@ -27,14 +27,20 @@ function allowedHost(host) {
   if (net.isIP(host) || host === 'localhost' || /\.localhost$/.test(host)) {
     return true;
   }
-  var me = os.hostname().toLowerCase();
+  var me = os.hostname().toLowerCase(),
+    label = settings.get('network.hostname');
   return host === me || host === me + '.local' || host === me.replace(/\.local$/, '') ||
+    // the name this server answers to on the LAN (playpex.local, or playpex-2.local
+    // when another device had the name: lib/discovery.js)
+    host === require('./discovery').hostName() ||
+    (!!label && (host === label + '.local' || new RegExp('^' + label + '-[2-9]\\.local$').test(host))) ||
     settings.get('network.allowedHosts').some(function (h) { return h.toLowerCase() === host; });
 }
 
 // DNS rebinding: a web page on evil.example that re-points its name at
 // 127.0.0.1 or a LAN address still sends "Host: evil.example". IP literals,
-// localhost, this machine's name (+ .local) and network.allowedHosts pass.
+// localhost, this machine's name (+ .local), the server's own .local name
+// (network.hostname) and network.allowedHosts pass.
 function hostCheck(req, res, next) {
   var host = hostname(req.headers.host);
   if (!host || allowedHost(host)) {

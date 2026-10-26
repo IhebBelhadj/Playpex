@@ -12,7 +12,7 @@ import { useSession, useSetupState, useSignIn } from '@/lib/auth'
 
 export function AuthShell({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-[radial-gradient(ellipse_at_top,var(--color-muted),transparent_60%)] px-4 py-10">
+    <div className="flex min-h-svh items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="flex items-center justify-center gap-3">
           <img src="/logo.svg" alt="" className="size-9" />

@@ -1,0 +1,750 @@
+[ 2707709ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5190/@vite/client:1082
+[ 2708666ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2709144ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2710146ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2710667ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2712148ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2714112ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2714669ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2715114ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2717115ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2717150ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2718151ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2720153ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2722670ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2725155ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2726158ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2728160ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2729109ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2729135ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2729201ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage:0
+[ 2730111ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2730136ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2730203ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage:0
+[ 2732113ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2732123ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2732138ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2733124ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2733162ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2734164ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2735126ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2736166ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2737672ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2741168ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2742170ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2744172ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2749174ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2750129ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2750176ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2751131ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2752178ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2752674ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2753133ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2757180ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2758182ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2760183ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2762115ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2762140ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2763117ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2763142ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2765119ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2765143ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2765185ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2766186ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2767675ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2768135ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2768188ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2769136ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2771138ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2773189ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2774191ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2776193ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2781194ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2782196ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2782679ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2784198ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2786140ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2787142ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2789143ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2789200ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2790202ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2792204ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2795121ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2795145ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2796122ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2796146ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2797205ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2797684ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2798124ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2798148ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2798207ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2800209ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2804145ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2805148ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2805211ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2806214ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2807149ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2808216ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2812692ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2813218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2814220ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2816222ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2821224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2822151ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2822226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2823153ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2824229ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2825155ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2827718ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2828126ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2828150ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2829128ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2829152ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2829231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2830232ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2831129ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2831154ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2832234ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2837236ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2838238ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2840157ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2840240ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2841159ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2842788ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2843160ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2845242ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2846243ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2848245ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2853247ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2854249ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2856251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2857855ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2858162ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2859164ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2861131ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2861156ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2861165ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2861253ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2862133ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2862157ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2862255ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2864135ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2864160ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2864257ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2869259ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2870261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2872263ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2872999ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2876167ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2877168ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2877264ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2878266ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2879170ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2880268ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2885270ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2886271ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2888273ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2888560ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2893275ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2894137ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2894161ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2894172ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2894277ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2895139ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2895163ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2895173ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2896278ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2897141ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2897165ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2897174ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2901280ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2902282ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2903850ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2904284ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2909286ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2910287ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2912177ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2912289ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2913178ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2915179ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2917291ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2918293ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2920294ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2923351ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2925297ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2926298ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2927143ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2927166ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2928145ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2928168ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2928300ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2930148ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2930170ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2930181ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2931183ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2933184ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2933302ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2934303ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2936305ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2941308ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2942309ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2942700ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2944311ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2948186ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2949188ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2949313ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2950315ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2951190ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2952317ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2957319ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2958321ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2960150ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2960171ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2960323ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2961152ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2961173ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2961341ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2963154ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2963174ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2965325ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2966191ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2966327ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2967193ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2968329ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2969195ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2973330ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2974332ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2976334ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2980119ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2981336ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2982337ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2984197ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2984339ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2985200ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2987202ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 2989341ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2990344ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2992345ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2993155ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2993176ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2994157ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2994177ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2996158ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 2996179ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 2997254ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 2997347ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 2998349ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3000350ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3002204ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3003205ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3005207ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3005352ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3006353ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3008355ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3013357ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3014359ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3016069ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3016360ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3020208ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3021210ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3021362ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3022363ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3023212ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3024365ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3026160ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3026181ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3027162ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3027183ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3029164ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3029184ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3029367ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3030369ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3032371ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3033296ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3037372ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3038213ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3038374ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3039215ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3040376ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3041217ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3045377ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3046379ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3048381ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3050171ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3053383ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3054386ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3056218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3056388ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3057220ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3059166ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3059185ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3059221ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3060169ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3060187ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3061390ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3062170ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3062189ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3062392ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3064393ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3069314ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3069395ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3070397ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3072398ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3074224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3075226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3077228ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3077401ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3078402ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3080404ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3085407ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3085840ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3086408ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3088410ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3092172ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3092190ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3092230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3093174ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3093192ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3093232ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3093413ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3094418ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3095176ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3095194ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3095233ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3096421ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3101422ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3102424ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3102942ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3104426ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3109428ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3110235ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3110429ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3111237ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3112431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3113238ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3117433ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3118434ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3120436ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3121713ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3125178ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3125196ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3125437ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3126180ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3126197ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3126438ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3128185ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3128201ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3128241ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3128442ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3129244ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3131246ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3133444ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3134446ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3136447ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3136715ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3141449ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3142451ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3144453ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3146247ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3147249ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3149250ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3149454ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3150456ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3152457ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3154102ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3157460ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3158187ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3158202ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3158462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3159188ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3159204ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3160463ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3161190ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3161205ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3164253ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3165255ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3165465ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3166466ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3167256ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3168468ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3171175ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3173471ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3174474ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3176476ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3181477ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3182258ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3182479ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3183260ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3184481ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3185261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3189482ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3189498ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3190484ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3191191ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3191206ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3192193ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3192207ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3192485ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3194194ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3194209ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3197487ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3198489ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3200263ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3200490ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3201265ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3203267ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3205492ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3206494ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3208496ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3209080ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3213498ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3214499ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3216501ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3218268ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3219270ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3221271ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3221503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3222504ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3224196ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3224210ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3224506ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3225198ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3225212ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3227199ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3227213ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3228036ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3229508ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3230510ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3232512ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3236273ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3237275ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3237513ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3238515ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3239276ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3240516ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3245103ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3245518ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3246519ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3248524ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3253525ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3254277ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3254526ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3255279ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3256528ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3257201ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3257214ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3257280ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3258202ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3258216ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3260136ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3260205ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3260217ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3261529ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3262531ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3264534ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3269536ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3270537ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3272285ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3272542ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3273291ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3275298ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3277543ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3278545ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3279709ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3280547ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3285548ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3286550ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3288551ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3290206ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3290219ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3290301ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3291208ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3291220ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3291303ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3293209ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3293221ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3293305ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3293553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3294554ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3296556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3298223ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3301557ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3302559ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3304560ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3308306ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3309311ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3309563ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3310565ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3311313ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3312567ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3317080ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3317569ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3318572ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3320574ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3323211ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3323222ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3324213ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3324224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3325577ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3326215ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3326226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3326315ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3326579ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3327317ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3328581ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3329319ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3333583ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3334466ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3334585ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3336587ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3341589ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3342591ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3344321ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3344593ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3345323ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3347325ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3349594ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3350596ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3352598ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3353827ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3356217ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3356227ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3357219ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3357229ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3357600ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3358601ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3359221ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3359230ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3360603ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3362327ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3363329ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3365331ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3365605ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3366607ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3368609ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3373078ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3373611ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3374612ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3376613ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3380333ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3381335ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3381615ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3382617ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3383337ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3384619ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3389223ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3389231ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3389620ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3389723ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3390224ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3390233ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3390622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3392226ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/library:0
+[ 3392234ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/storage/places:0
+[ 3392623ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3397625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3398339ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3398626ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3399341ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3400628ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3401343ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3405630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3406632ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3408634ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3409509ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3413905ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3414045ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3424611ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3424751ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3426342ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3426413ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3429039ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3429111ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3441044ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3441119ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3450384ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3450470ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3544191ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3544269ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3555543ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3555615ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3565099ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3565191ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3574396ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3574490ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3584948ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3585014ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3615689ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3615772ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3676908ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3676987ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3686190ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3686260ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3695698ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3695771ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3726302ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5190/node_modules/.vite/deps/react-dom_client.js?v=ee6596c0:15804
+[ 3726383ms] [WARNING] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: WebSocket is closed before the connection is established. @ http://localhost:5190/src/lib/events.tsx:90
+[ 3744080ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5190/@vite/client:1082
+[ 3745026ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3746479ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3747027ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3747481ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3749482ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3751029ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3754484ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3755486ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3756427ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3756491ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3757429ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3757488ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3757493ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3759030ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3759430ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3759494ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3762490ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3763492ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3765494ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3770496ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3771498ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3773500ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3774032ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3774497ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3775499ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3777500ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3778502ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3779504ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3781506ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3786427ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3786508ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3787429ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3787510ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3789035ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3789431ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3789432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3789511ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3790434ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3792436ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3792502ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3793504ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3794513ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3795506ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3795515ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3797517ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3802519ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3803521ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3804037ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3805523ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3810508ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3810525ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3811510ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3811526ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3813512ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3813528ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3818530ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3819042ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3819532ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3821534ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3822438ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3823440ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3825442ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3826537ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3827539ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3828514ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3829516ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3829541ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3831518ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3834051ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3834543ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3835545ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3837547ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3842549ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3843551ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3845553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3846520ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3847522ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3849060ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3849432ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3849524ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3850434ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3850556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3851558ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3852436ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3853560ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3855444ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3856446ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3858448ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3858562ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3859564ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3861567ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3864238ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3864526ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3865528ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3866569ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3867530ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3867571ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3869573ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3874575ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3875578ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3877580ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3882185ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3882532ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3882581ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3883534ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3883583ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3885536ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3885585ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3888450ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3889452ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3890588ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3891454ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3891590ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3893592ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3898593ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3899595ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3900538ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3901514ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3901540ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3901597ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3903541ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3906598ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3907600ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3909602ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3912438ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3913440ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3914604ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3915442ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads/direct:0
+[ 3915606ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3917608ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3918543ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3919545ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3920448ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3921456ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3921547ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3922458ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3922610ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3923612ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3924460ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3925614ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3930616ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3931618ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3933620ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3936548ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3937550ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3938622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3939311ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3939551ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3939623ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3941625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3946626ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3947628ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3949629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3954462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3954553ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3954632ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3955463ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3955555ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3955634ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0
+[ 3956700ms] [ERROR] WebSocket connection to 'ws://localhost:5190/api/v1/events' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/src/lib/events.tsx:57
+[ 3957465ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/downloads:0
+[ 3957557ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/pairing:0
+[ 3957635ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5190/api/v1/admin/overview:0

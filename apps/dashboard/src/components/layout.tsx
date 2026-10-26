@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowDown, ArrowUp, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Dot, Spinner } from '@/components/common'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { api, unwrap, type PairingRequest } from '@/lib/api'
 import { adminName, useSession, useSetupState, useSignOut } from '@/lib/auth'
 import { EventsProvider, useEvent, useEventsConnected } from '@/lib/events'
+import { speed } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /** Sends to /setup while the admin has no password, to /login when signed out. */
@@ -54,83 +55,146 @@ export function usePairingRequests() {
   })
 }
 
-const NAV = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/activity', label: 'Activity', icon: Activity },
-  { to: '/devices', label: 'Devices', icon: MonitorSmartphone },
-  { to: '/library', label: 'Library', icon: Clapperboard },
-  { to: '/downloads', label: 'Downloads', icon: Download },
-  { to: '/search', label: 'Search', icon: Search },
-  { to: '/plugins', label: 'Plugins', icon: Puzzle },
-  { to: '/logs', label: 'Logs', icon: ScrollText },
-  { to: '/settings', label: 'Settings', icon: Settings },
-  { to: '/profiles', label: 'Profiles', icon: Users },
-  { to: '/about', label: 'About', icon: Info },
+// The nav in groups: what's watched, who watches, the server itself
+const NAV: {
+  group?: string
+  items: { to: string; label: string; icon: typeof Activity; end?: boolean }[]
+}[] = [
+  { items: [{ to: '/', label: 'Overview', icon: LayoutDashboard, end: true }] },
+  {
+    group: 'Media',
+    items: [
+      { to: '/library', label: 'Library', icon: Clapperboard },
+      { to: '/search', label: 'Search', icon: Search },
+      { to: '/downloads', label: 'Downloads', icon: Download },
+    ],
+  },
+  {
+    group: 'People',
+    items: [
+      { to: '/activity', label: 'Activity', icon: Activity },
+      { to: '/devices', label: 'Devices', icon: MonitorSmartphone },
+      { to: '/profiles', label: 'Profiles', icon: Users },
+    ],
+  },
+  {
+    group: 'Server',
+    items: [
+      { to: '/plugins', label: 'Plugins', icon: Puzzle },
+      { to: '/settings', label: 'Settings', icon: Settings },
+      { to: '/logs', label: 'Logs', icon: ScrollText },
+      { to: '/about', label: 'About', icon: Info },
+    ],
+  },
 ]
 
-const WIDE = ['/downloads', '/library', '/search']
+const WIDE = ['/downloads', '/library']
 
+// The active item is its label in full ink and its icon in gold: no pill, no bar
 function Nav({ pending, onNavigate }: { pending: number; onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-0.5">
-      {NAV.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-              isActive && 'bg-muted font-medium text-foreground',
-            )
-          }
-        >
-          <Icon className="size-4" />
-          <span className="flex-1">{label}</span>
-          {to === '/devices' && pending > 0 && <Badge>{pending}</Badge>}
-        </NavLink>
+    <nav className="flex flex-col gap-6">
+      {NAV.map(({ group, items }, i) => (
+        <div key={group ?? i} className="flex flex-col">
+          {group && <p className="px-3 pb-1.5 text-xs text-muted-foreground/80">{group}</p>}
+          {items.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                cn(
+                  'flex h-[34px] items-center gap-3 rounded-full px-3 text-sm text-muted-foreground transition-colors hover:text-foreground',
+                  isActive && 'font-medium text-foreground [&_svg]:text-gold',
+                )
+              }
+            >
+              <Icon className="size-4 text-muted-foreground/80" />
+              <span className="flex-1">{label}</span>
+              {to === '/devices' && pending > 0 && (
+                <span className="text-xs font-medium text-gold tabular-nums" aria-label={`${pending} waiting`}>
+                  {pending}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   )
 }
 
-function Brand({ name }: { name?: string }) {
+function Brand() {
   return (
-    <div className="flex items-center gap-2.5 px-2.5">
-      <img src="/logo.svg" alt="" className="size-6" />
-      <div className="min-w-0 leading-tight">
-        <div className="text-sm font-semibold">Playpex</div>
-        <div className="truncate text-xs text-muted-foreground">{name ?? 'Media Server'}</div>
-      </div>
-    </div>
+    <Link to="/" className="flex items-center gap-2.5 px-3">
+      <img src="/logo.svg" alt="" className="size-[22px]" />
+      <span className="text-[17px] font-medium tracking-tight">Playpex</span>
+    </Link>
   )
 }
 
-function Footer() {
+// The top bar's field: a title, a magnet or a link → Search
+function QuickSearch() {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  return (
+    <form
+      role="search"
+      className="relative w-full max-w-md"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const text = q.trim()
+        navigate(text ? `/search?q=${encodeURIComponent(text)}` : '/search')
+        setQ('')
+      }}
+    >
+      <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search titles, or paste a link"
+        aria-label="Search"
+        className="border-transparent bg-muted pl-9 dark:bg-muted"
+      />
+    </form>
+  )
+}
+
+// The server this dashboard runs, whether live updates flow, and the admin's sign-out
+function ServerCorner({ name, traffic }: { name?: string; traffic?: { down: number; up: number } }) {
   const session = useSession()
   const signOut = useSignOut()
   const navigate = useNavigate()
   const connected = useEventsConnected()
   return (
-    <div className="flex items-center gap-2 border-t px-2.5 pt-3">
+    <div className="flex items-center gap-3 self-stretch md:gap-4">
+      {traffic && (
+        <Link to="/downloads" className="hidden items-center gap-3 text-sm tabular-nums text-muted-foreground hover:text-foreground lg:flex" aria-label="Traffic">
+          <span className="flex items-center gap-1">
+            <ArrowDown className="size-3.5 text-down" />
+            {speed(traffic.down)}
+          </span>
+          <span className="flex items-center gap-1">
+            <ArrowUp className="size-3.5 text-up" />
+            {speed(traffic.up)}
+          </span>
+        </Link>
+      )}
+      <span className="hidden h-full border-l lg:block" aria-hidden />
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="flex items-center">
+          <span className="flex min-w-0 items-center gap-2 text-sm">
             <Dot state={connected ? 'ok' : 'warn'} />
+            <span className="truncate font-medium">{name ?? 'Media server'}</span>
           </span>
         </TooltipTrigger>
         <TooltipContent>{connected ? 'Live updates on' : 'Reconnecting to the server…'}</TooltipContent>
       </Tooltip>
-      <span className="flex-1 truncate text-sm">{adminName(session.data)}</span>
+      <span className="hidden text-sm text-muted-foreground sm:inline">{adminName(session.data)}</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Sign out"
-            onClick={() => signOut.mutate(undefined, { onSettled: () => navigate('/login') })}
-          >
+          <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={() => signOut.mutate(undefined, { onSettled: () => navigate('/login') })}>
             <LogOut />
           </Button>
         </TooltipTrigger>
@@ -147,7 +211,10 @@ function PairingToasts() {
     const r = event.data
     toast.info('A device asks to pair', {
       description: `${r?.client ?? r?.clientId ?? 'A client'} from ${r?.address ?? 'the network'}: code ${r?.userCode ?? ''}`,
-      action: { label: 'Review', onClick: () => navigate(`/link?user_code=${encodeURIComponent(r?.userCode ?? '')}`) },
+      action: {
+        label: 'Review',
+        onClick: () => navigate(`/link?user_code=${encodeURIComponent(r?.userCode ?? '')}`),
+      },
       duration: 15_000,
     })
   })
@@ -162,67 +229,84 @@ export function AppLayout() {
   const name = overview.data?.server.name
   const recovery = overview.data?.server.recovery
   const pending = pairing.data?.length ?? 0
+  const column = WIDE.some((p) => location.pathname.startsWith(p)) ? 'max-w-[110rem]' : 'max-w-6xl'
 
   useEffect(() => {
     document.title = name ? `${name} · Playpex` : 'Playpex Media Server'
   }, [name])
 
   return (
-    <div className="min-h-svh md:grid md:grid-cols-[15rem_1fr]">
+    <div className="min-h-svh md:grid md:grid-cols-[13.75rem_minmax(0,1fr)]">
       <PairingToasts />
-      <aside className="sticky top-0 hidden h-svh flex-col gap-6 border-r bg-sidebar py-4 md:flex">
-        <Brand name={name} />
-        <div className="flex-1 overflow-y-auto px-2">
+      {/* the shell: sidebar and top bar on the page's own ground, split by 1px rules */}
+      <aside className="sticky top-0 hidden h-svh flex-col border-r bg-sidebar md:flex">
+        <div className="flex h-16 shrink-0 items-center">
+          <Brand />
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 pt-4 pb-6">
           <Nav pending={pending} />
         </div>
-        <Footer />
       </aside>
 
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/90 px-4 py-2 backdrop-blur md:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Menu">
-              <Menu />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="flex w-64 flex-col gap-6 py-4">
-            <SheetTitle className="sr-only">Menu</SheetTitle>
-            <Brand name={name} />
-            <div className="flex-1 px-2">
-              <Nav pending={pending} onNavigate={() => setOpen(false)} />
+      <div className="flex min-w-0 flex-col">
+        {/* the bar's rule runs the whole width; its contents keep the page's column */}
+        <header className="sticky top-0 z-20 h-14 shrink-0 border-b bg-background md:h-16">
+          <div className={cn('mx-auto flex h-full w-full items-center gap-3 px-4 md:px-8', column)}>
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Menu" className="-ml-2 md:hidden">
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex w-64 flex-col gap-4 py-5">
+                <SheetTitle className="sr-only">Menu</SheetTitle>
+                <Brand />
+                <div className="flex-1 overflow-y-auto px-2">
+                  <Nav pending={pending} onNavigate={() => setOpen(false)} />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <div className="md:hidden">
+              <Brand />
             </div>
-            <Footer />
-          </SheetContent>
-        </Sheet>
-        <Brand name={name} />
-      </header>
+            <div className="hidden flex-1 md:block">{!location.pathname.startsWith('/search') && <QuickSearch />}</div>
+            <div className="ml-auto flex h-full items-center">
+              <ServerCorner
+                name={name}
+                traffic={
+                  overview.data
+                    ? {
+                        down: overview.data.network.downloadSpeed,
+                        up: overview.data.network.uploadSpeed,
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        </header>
 
-      {/* the torrent client and the file browser use the whole width */}
-      <main
-        className={cn(
-          'mx-auto w-full min-w-0 space-y-6 px-4 py-6 md:px-8 md:py-8',
-          WIDE.some((p) => location.pathname.startsWith(p)) ? 'max-w-[110rem]' : 'max-w-6xl',
-        )}
-      >
-        {recovery && !location.pathname.startsWith('/settings') && (
-          <Alert variant="destructive">
-            <AlertTriangle />
-            <AlertTitle>Recovery mode: port {recovery.port} is in use</AlertTitle>
-            <AlertDescription>
-              <p>
-                {recovery.owner
-                  ? `${recovery.owner.name ?? 'Another program'} (pid ${recovery.owner.pid}) holds it. `
-                  : 'Another program holds it. '}
-                Clients aren't served until the server listens on a free port.
-              </p>
-              <Button asChild size="sm" variant="outline" className="mt-2">
-                <NavLink to="/settings/general">Choose another port</NavLink>
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        <Outlet />
-      </main>
+        {/* the torrent client and the file browser use the whole width; the others a column, centred
+            in the space beside the sidebar */}
+        <main className={cn('mx-auto w-full min-w-0 space-y-6 px-4 py-6 md:px-8 md:py-7', column)}>
+          {recovery && !location.pathname.startsWith('/settings') && (
+            <Alert variant="destructive">
+              <AlertTriangle />
+              <AlertTitle>Recovery mode: port {recovery.port} is in use</AlertTitle>
+              <AlertDescription>
+                <p>
+                  {recovery.owner ? `${recovery.owner.name ?? 'Another program'} (pid ${recovery.owner.pid}) holds it. ` : 'Another program holds it. '}
+                  Clients aren't served until the server listens on a free port.
+                </p>
+                <Button asChild size="sm" variant="outline" className="mt-2">
+                  <NavLink to="/settings/general">Choose another port</NavLink>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

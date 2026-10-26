@@ -1,6 +1,6 @@
 # OpenScrapers
 
-A port of the Kodi add-on [OpenScrapers](https://github.com/a4k-openproject/script.module.openscrapers) (`script.module.openscrapers` 0.0.2.012, GPL-3.0; the original is in `docs/script.module.openscrapers/`) to a Playpex plugin. Like its source it is GPL-3.0 (`LICENSE`).
+A port of the Kodi add-on [OpenScrapers](https://github.com/a4k-openproject/script.module.openscrapers) (`script.module.openscrapers` 0.0.2.012, GPL-3.0) to a Playpex plugin. Like its source it is GPL-3.0 (`LICENSE`).
 
 OpenScrapers is ~130 Python scrapers for Kodi. A Playpex plugin is JavaScript in the server's sandbox, so each scraper is rewritten, and only the ones that still work and give something Playpex plays made it (checked 2026-10-25):
 

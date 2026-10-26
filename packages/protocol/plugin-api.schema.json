@@ -2050,7 +2050,7 @@
           ]
         },
         "output": {
-          "description": "check: which hashes it can serve ({ <hash>: { cached, label } }); resolve: an http source for the chosen one, or null",
+          "description": "check: which hashes it can serve ({ <hash>: { cached, tries?, label } }); resolve: an http source for the chosen one, or null",
           "oneOf": [
             {
               "type": "object",
@@ -2073,6 +2073,10 @@
                     ],
                     "properties": {
                       "cached": {
+                        "type": "boolean"
+                      },
+                      "tries": {
+                        "description": "Not known to be cached (a service that can't tell, like Real-Debrid): asked to resolve it first when it's picked, the torrent plays otherwise",
                         "type": "boolean"
                       },
                       "label": {

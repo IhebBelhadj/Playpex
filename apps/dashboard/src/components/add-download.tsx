@@ -156,7 +156,7 @@ export function AddDownloadDialog({
           </DialogHeader>
 
           {file ? (
-            <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3">
               <FileUp className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
               <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)}>
@@ -182,8 +182,8 @@ export function AddDownloadDialog({
                 onDragLeave={() => setOver(false)}
                 onDrop={drop}
                 className={cn(
-                  'flex items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground transition-colors',
-                  over && 'border-primary bg-primary/5 text-foreground',
+                  'flex items-center justify-center gap-2 rounded-2xl border border-dashed border-input px-3 py-3 text-sm text-muted-foreground transition-colors',
+                  over && 'border-foreground bg-muted text-foreground',
                 )}
               >
                 <FileUp className="size-4" />
@@ -251,7 +251,7 @@ export function AddDownloadDialog({
                   {startNow ? ' (everything downloads until you do).' : ' before you start it.'}
                 </p>
               ) : (
-                <div className="max-h-64 overflow-y-auto rounded-lg border">
+                <div className="max-h-64 overflow-y-auto rounded-2xl bg-muted">
                   <label className="sticky top-0 flex items-center gap-3 border-b bg-background px-3 py-2 text-sm font-medium">
                     <Checkbox
                       checked={all ? true : chosen.size ? 'indeterminate' : false}
@@ -295,7 +295,7 @@ export function AddDownloadDialog({
                 ))}
               </datalist>
             </div>
-            <label className="flex items-center justify-between gap-3 self-end rounded-lg border px-3 py-2">
+            <label className="flex items-center justify-between gap-3 self-end rounded-full bg-muted px-4 py-2">
               <span className="text-sm">Start now</span>
               <Switch checked={startNow} onCheckedChange={setStartNow} />
             </label>

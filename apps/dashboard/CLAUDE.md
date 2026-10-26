@@ -2,7 +2,7 @@
 
 The Playpex Media Server's admin web UI (plan §7, step 5): desktop web and phones, **not** the 10-foot TV UI. Started from Vite's `react-ts` template, with shadcn/ui on top.
 
-**Stack**: React 19, TypeScript 6, Vite 8, Tailwind CSS 4, **shadcn/ui** (style `radix-nova`, `radix-ui` primitives, Lucide icons, Geist font), TanStack Query 5 (server state), React Router 8 (library mode, `createBrowserRouter`), **openapi-fetch** typed from `@playpex/protocol/types/api` (generated from `packages/protocol/openapi.yaml`), sonner (toasts); for `/docs` only: react-markdown + remark-gfm, Scalar (`@scalar/api-reference-react`, pinned). Lint: oxlint (`npm run lint`).
+**Stack**: React 19, TypeScript 6, Vite 8, Tailwind CSS 4, **shadcn/ui** (style `radix-nova`, `radix-ui` primitives, Lucide icons; restyled, see Look), Jost (`@fontsource-variable/jost`: the open Futura of Playpex TV's titles), TanStack Query 5 (server state), React Router 8 (library mode, `createBrowserRouter`), **openapi-fetch** typed from `@playpex/protocol/types/api` (generated from `packages/protocol/openapi.yaml`), sonner (toasts); for `/docs` only: react-markdown + remark-gfm, Scalar (`@scalar/api-reference-react`, pinned). Lint: oxlint (`npm run lint`).
 
 ## Run / build
 | Goal | Command (repo root) |
@@ -70,12 +70,15 @@ src/lib/search.ts       Search's data (docs/search-plan.md): useSearchSources(ki
 src/lib/direct.ts       useDirectDownloads (GET /downloads/direct, key `direct-downloads`; patched by `direct.updated`, `direct.removed`),
                         useDirectActions (add a ref, start, pause, remove with its file)
 src/pages/search.tsx    /search (?q=&kind=all|movie|tv&view=all|server|titles|streams|torrents|live; keyed by kind + q: a new search starts with no
-                        filters): the field ("Read link" when it holds one), the sources' line (this server, the catalog, then every stream / torrent /
-                        live source: state, close-match count, "+n loose"; a click leaves one out), the rail (the groups with counts, then the chosen
-                        group's facets), All = each group's best (posters in one strip, 5 streams, 6 torrents, 6 channels, "See all n"); before a
-                        search: what is asked, recent searches (localStorage `playpex.dashboard.recentSearches`), a hint when no source plugin is
-                        installed. A link in the field → components/search/link.tsx instead
-src/components/search/  parts.tsx (Filters / keep / Facets / PhoneFacets for torrents and streams alike, Seeds signal bars, SourcesLine, SectionHead,
+                        filters; redesigned 2026-10-26 "title first"): the field (no kind switch above it; Enter or its Search / Read link button), one
+                        sentence on the sources (SourcesSummary: a popover lists each with its state and a switch to leave it out), underline tabs
+                        for the groups that found something (a select on narrow screens) with the kind select at the row's end; Top results = On
+                        this server (3), Movies & shows (one row of posters, never a sideways scroller), then "Watch now" (streams that play without a
+                        torrent, 4) and "Download" (torrents by seeds, 4) side by side, Live TV (4); Streams and Torrents tabs: a FilterBar (selects)
+                        above the list, "Show n near matches"; Streams leaves out a both-kind plugin's torrents (its Torrents list has them); the
+                        torrent table from RAIL_WIDTH, rows below. Before a search: what is asked, recent searches (localStorage
+                        `playpex.dashboard.recentSearches`), a hint when no source plugin is installed. A link in the field → components/search/link.tsx
+src/components/search/  parts.tsx (Filters / keep / FilterBar for torrents and streams alike, Seeds signal bars, SourcesSummary, SectionHead,
                         useSearchActions: play a ref, download it (POST /downloads/direct), start a torrent, copy), torrents.tsx (TorrentTable: the
                         DataTable, key `playpex.search.columns`; row menu Add…, Add and start, Copy magnet; kept ones → /downloads?hash=), offers.tsx
                         (StreamRows: Play, Download; TorrentRows: the overview and phones), titles.tsx (TitlePosters; TitleSourcesSheet: details,
@@ -83,7 +86,10 @@ src/components/search/  parts.tsx (Filters / keep / Facets / PhoneFacets for tor
                         library titles → /library?title=, downloads, direct downloads; LiveResults: POST /live/{plugin}/channels/{id}/play → the
                         player), link.tsx (LinkView: POST /admin/links/inspect, key `link-inspect`: what it is, its videos / streams / torrent files
                         / magnets with their actions)
-src/components/rail.tsx RailGroup, RailItem (a filter rail: Downloads, Search), useIsDesktop (md)
+src/components/rail.tsx RailGroup, RailItem (a filter rail: Downloads, Search, Library), useIsDesktop(minWidth = 768); rails show from
+                        RAIL_WIDTH (lg, 1024: under it the app's sidebar leaves too little room), a select below
+src/components/tab-row.tsx TabRow: a page's tabs inside <Tabs> (Settings, Plugins, a plugin's page): the row where it fits (`from`
+                        sm / lg / xl), a select below, never a row cut off at the screen's edge or wrapped in its track
 src/components/direct-list.tsx  Downloads › Direct downloads (?filter=direct, the rail's "Over HTTP"): files fetched over HTTP: name, kind, a bar
                         (amber running, teal done), sizes, speed, source; Pause / Start / Try again, Play once the library scanned it, Remove (with
                         its file, Confirm)
@@ -178,9 +184,10 @@ src/pages/docs-reference.tsx  Scalar on `/api/v1/openapi.yaml`, its own lazy chu
 ## Conventions
 - **All data through `api` + `unwrap` in React Query** (`queryKey` = the resource: `overview`, `sessions`, `devices`, `pairing`, `settings`, `storage`, `storage-places`, `storage-browse` (+ place, path, sort, q), `storage-largest`, `media-tracks` (+ ref), `subtitle-providers`, `subtitle-search` (+ query), `release-providers` (+ kind), `release-search` (+ kind, q, source, page), `search-providers`, `stream-search` (+ kind, q, source, page), `catalog-search` (+ kind, q), `live`, `live-search` (+ q, plugin), `link-inspect` (+ url), `play-sources` (+ title), `direct-downloads`, `catalog-title` (+ type, id), `download-peers` / `download-trackers` / `download-pieces` / `download-speed` (+ hash), `logs`, `profiles`, `torrents`, `downloads`, `download` (+ hash), `library`, `library-home`, `library-title` (+ movie:<id> / tv:<id>), `library-files` (+ filters), `library-file` (+ id), `library-search`, `fs` (+ path), `host`, `dlna`, `admin-plugins`, `admin-plugin` (+ id), `admin-plugin-settings` (+ id), `admin-plugin-links` (+ id), `plugin-catalog`, `plugin-updates`, `plugin-repositories`; `plugin.changed` invalidates them and `library`; `library.changed` invalidates `library-home`, `library-title`, `storage-browse`). Frequent events patch the cache instead of invalidating it: `download.updated` → `setQueryData(['downloads'])` in `pages/downloads.tsx`; `library.scan` progress → `setQueryData(['library'])` in `components/library-common.tsx` (its end invalidates the library keys). The events socket invalidates by those keys; add yours to `INVALIDATES` in `events.tsx` when a new event topic exists.
 - **API first**: a new page needs its route in `openapi.yaml` (+ `npm run generate -w packages/protocol`, server, contract test) before the UI; the types then flow here. Don't hand-write response types.
-- Theme tokens only (`bg-card`, `text-muted-foreground`, `text-success`, `text-warning`, `bg-destructive`…, defined in `src/index.css`); the accent (`--primary`) is the gold of the Playpex logo: selection, primary buttons, the active filter, what a player reads. `text-down` / `bg-down` (amber: download speed and progress, the TV's "progress") and `text-up` (teal: upload, seeding, done), `--strip-track`; charts' lines `--chart-down` / `--chart-up` (dataviz-validated). Dark unless the OS prefers light (`index.html` script toggles `.dark`).
+- Theme tokens only (`bg-card`, `text-muted-foreground`, `text-success`, `text-warning`, `bg-destructive`…, defined in `src/index.css`). `--primary` is the inverted ink (white on black, black on white): primary buttons, a chosen chip. `text-gold` / `bg-gold` (`text-gold-foreground` on it) is the logo's gold: what moves (what a player reads, what's being streamed, a scan running) and what is chosen or on (switches, checkboxes, the active tab's underline, the current page's nav icon, a filter rail's chosen count, chosen chips and the toggle that's on). Never a button's fill. `text-down` / `bg-down` (amber: download speed and progress, the TV's "progress") and `text-up` (teal: upload, seeding, done), `--strip-track`; charts' lines `--chart-down` / `--chart-up` (dataviz-validated). Dark unless the OS prefers light (`index.html` script toggles `.dark`).
 - **Numbers**: tables are `tabular-nums` (index.css); numbers right-aligned; no monospace for numbers (hashes, paths, codes keep `font-mono`). State is a word (and the strip's colour), badges only for exceptions.
-- `/downloads`, `/library` and `/search` use the whole width (`WIDE` in layout.tsx); the other pages `max-w-6xl`.
+- `/downloads` and `/library` use the whole width (`WIDE` in layout.tsx); the other pages, Search included, `max-w-6xl`. The column is centred in the space beside the sidebar, and the top bar's contents keep the same column.
+- **Look** (true-black flat, chosen 2026-10-26 with the design-taste skill's app sheet): surfaces are set apart by lightness alone (ground `bg-background`, card `bg-card` one step up, a nested panel `bg-muted`), with no border or shadow at rest; 1px rules only inside a surface (table rows, the KPI strip, the shell's frame). One radius family: cards `rounded-xl` (20px), nested panels `rounded-2xl`, controls, chips and nav items `rounded-full`; never a coloured left edge (`border-l`, an inset shadow bar) on a rounded thing: a chosen item is a grey step (`bg-muted`), the nav's active item is its label in full ink with its icon in gold. The shell (layout.tsx): sidebar (grouped nav) and a top bar (quick search → /search, live traffic, the server, sign out) on one ground split by 1px rules. Page tabs are underline tabs on a full-width rule (`TabRow`); small switches are a round segmented track. Section headings sit outside their cards (Overview's rail). No backdrop blur, no gradients but scrims over pictures.
 - Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`).
 - `@/` = `src/` (tsconfig `paths`, Vite alias). **After `npx shadcn add`, check the new files' imports**: on init the CLI wrote `import { cn } from "cn"` (an unrelated npm package) instead of `@/lib/utils`; that was fixed by hand.
 - Fast-refresh warnings from oxlint (`only-export-components`) are accepted for files exporting hooks next to components.

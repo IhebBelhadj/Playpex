@@ -332,12 +332,11 @@ export function DataTable<T>({
                 onDoubleClick={() => onOpen?.(id)}
                 className={cn(
                   'group/row cursor-default select-none',
-                  isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                  isSelected ? 'bg-muted' : 'hover:bg-muted/50',
                   rowClassName?.(row.original),
                 )}
               >
-                {/* the selected rows' gold edge */}
-                <td className={cn('relative border-b px-3 py-1.5', isSelected && 'shadow-[inset_2px_0_0_var(--primary)]')} onClick={(e) => e.stopPropagation()}>
+                <td className="relative border-b px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                   <Checkbox aria-label="Select" checked={isSelected} onCheckedChange={(v) => toggle(id, !!v)} />
                 </td>
                 {row.getVisibleCells().map((cell) => {

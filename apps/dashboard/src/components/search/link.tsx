@@ -61,7 +61,7 @@ export function LinkView({ url, onAdd }: { url: string; onAdd: (link: string, na
     <div className="max-w-4xl space-y-6">
       <div className="space-y-1">
         <p className="text-sm text-muted-foreground">
-          {WHAT[page.kind]} on {hostOf(page.url)}
+          {WHAT[page.kind]}{hostOf(page.url) ? ` on ${hostOf(page.url)}` : ''}
           {page.kind === 'page' && `, linking to ${page.items.length} ${page.items.length === 1 ? 'thing' : 'things'} Playpex can use`}
         </p>
         {page.title && <h2 className="text-xl font-semibold tracking-tight">{page.title}</h2>}
@@ -81,7 +81,7 @@ export function LinkView({ url, onAdd }: { url: string; onAdd: (link: string, na
               <span className="text-sm text-muted-foreground tabular-nums">{g.items.length}</span>
               <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{g.hint}</span>
             </div>
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y overflow-hidden rounded-xl bg-card">
               {g.items.map((item) => (
                 <li key={item.kind + item.url} className="flex items-center gap-3 px-3 py-2">
                   <div className="min-w-0 flex-1">

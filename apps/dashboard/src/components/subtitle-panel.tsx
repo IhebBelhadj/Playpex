@@ -184,14 +184,14 @@ export function SubtitlePanel({
             <p className="text-xs text-muted-foreground" id="sub-size">
               Size
             </p>
-            <div className="flex rounded-md border p-0.5" role="radiogroup" aria-labelledby="sub-size">
+            <div className="flex rounded-full bg-muted p-0.5" role="radiogroup" aria-labelledby="sub-size">
               {SIZES.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   role="radio"
                   aria-checked={size === s.id}
-                  className={cn('flex-1 rounded-[5px] py-0.5 text-xs', size === s.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                  className={cn('flex-1 rounded-full py-1 text-xs', size === s.id ? 'bg-gold text-gold-foreground' : 'hover:bg-muted')}
                   onClick={() => onSize(s.id)}
                 >
                   {s.label}
@@ -334,7 +334,7 @@ function FindOnline({ title, fileId, onAdd }: { title: Title | null; fileId: str
       <p className="text-xs text-muted-foreground">
         Playpex doesn’t know which title this file is, so it can’t search for it.{' '}
         {fileId ? (
-          <Link className="text-primary underline-offset-4 hover:underline" to={`/library?file=${fileId}`}>
+          <Link className="underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground" to={`/library?file=${fileId}`}>
             Match it in the Library
           </Link>
         ) : (
@@ -386,7 +386,7 @@ function FindOnline({ title, fileId, onAdd }: { title: Title | null; fileId: str
               {results.data.unsupported ? 'This provider doesn’t cover this kind of title.' : 'Nothing found in these languages. Try another provider.'}
             </p>
           ) : (
-            <ul className="max-h-72 divide-y overflow-y-auto rounded-md border">
+            <ul className="max-h-72 divide-y divide-background overflow-y-auto rounded-2xl bg-muted">
               {results.data.subtitles.map((s) => (
                 <li key={s.ref}>
                   <button
@@ -505,7 +505,7 @@ function ServerPicker({
                 </span>
               ))}
           </nav>
-          <div className={cn('h-72 overflow-y-auto rounded-md border', listing.isPlaceholderData && 'opacity-60')}>
+          <div className={cn('h-72 overflow-y-auto rounded-2xl bg-muted', listing.isPlaceholderData && 'opacity-60')}>
             {listing.error ? (
               <p className="p-3 text-sm text-destructive">{errorMessage(listing.error)}</p>
             ) : listing.isPending ? (
@@ -529,7 +529,7 @@ function ServerPicker({
                       className="flex w-full min-w-0 items-center gap-2 px-3 py-1.5 text-left hover:bg-muted disabled:opacity-60"
                       onClick={() => (e.type === 'folder' ? setPath(e.path) : read(e.path, e.name))}
                     >
-                      {e.type === 'folder' ? <Folder className="size-4 shrink-0 text-primary" /> : <FileText className="size-4 shrink-0 text-muted-foreground" />}
+                      {e.type === 'folder' ? <Folder className="size-4 shrink-0 text-foreground" /> : <FileText className="size-4 shrink-0 text-muted-foreground" />}
                       <span className="min-w-0 flex-1 truncate">{e.name}</span>
                       {reading === e.path && <Spinner />}
                     </button>

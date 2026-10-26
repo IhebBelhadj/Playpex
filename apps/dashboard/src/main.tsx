@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { isSignedOut } from '@/lib/api'
 import { router } from '@/router'
-import '@fontsource-variable/geist'
+import '@fontsource-variable/jost'
 import './index.css'
 
 // A 401 from any admin route means the session ended (expired, password

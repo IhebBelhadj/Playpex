@@ -43,7 +43,8 @@ export function Stat({ label, value, hint, className }: { label: string; value: 
 
 export function Empty({ icon, title, children }: { icon?: ReactNode; title: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-12 text-center">
+    // an empty section: a card of its own on the page, seamless inside a card (the same step)
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-card px-6 py-12 text-center">
       {icon && <div className="text-muted-foreground [&_svg]:size-8">{icon}</div>}
       <p className="font-medium">{title}</p>
       {children && <div className="max-w-md text-sm text-muted-foreground">{children}</div>}

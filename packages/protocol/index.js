@@ -44,7 +44,7 @@ var DISCOVERY_PORT = 28471;
 //     `name` (the full server name; the instance name may be shortened)
 //   UDP: send the datagram QUERY to DISCOVERY_PORT (broadcast, or unicast to
 //     one address); each server answers the sender with one JSON datagram
-//     { id, name, port, apiVersion, minApiVersion, version }
+//     { id, name, host, port, apiVersion, minApiVersion, version } (host: the .local name, or null)
 var DISCOVERY = {
   MDNS_TYPE: 'playpex',                  // bonjour-style name of `_playpex._tcp`
   MDNS_SERVICE: '_playpex._tcp.local',

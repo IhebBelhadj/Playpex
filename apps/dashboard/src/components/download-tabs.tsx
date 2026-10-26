@@ -241,7 +241,7 @@ export function TrackersTab({ d }: { d: Download }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="udp://tracker.example.org:1337/announce"
-            className="w-full rounded-md border bg-background px-2.5 py-2 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="w-full rounded-2xl border border-input bg-transparent px-3.5 py-2.5 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(false)}>
@@ -421,7 +421,7 @@ function PieceMap({ p, done }: { p: Pieces; done: boolean }) {
         <Legend swatch={done ? 'bg-up' : 'bg-down'}>Have</Legend>
         <Legend swatch="bg-(--strip-track)">Missing</Legend>
         <Legend swatch="bg-border opacity-50">Not downloaded (files left out)</Legend>
-        <Legend swatch="bg-primary">Being streamed</Legend>
+        <Legend swatch="bg-gold">Being streamed</Legend>
         <Legend swatch="bg-foreground">Read now</Legend>
       </div>
       <div ref={box} className="w-full">
@@ -449,7 +449,7 @@ function PieceMap({ p, done }: { p: Pieces; done: boolean }) {
         <ul className="space-y-1 text-sm">
           {p.reads.map((r, i) => (
             <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-              <span className="inline-block size-2 rounded-[2px] bg-primary" aria-hidden />
+              <span className="inline-block size-2 rounded-[2px] bg-gold" aria-hidden />
               <span className="font-medium">{name(r.path)}</span>
               {r.devices.length > 0 && <span className="text-muted-foreground">on {r.devices.join(', ')}</span>}
               <span className="text-xs text-muted-foreground tabular-nums">

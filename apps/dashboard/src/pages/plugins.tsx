@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabRow } from '@/components/tab-row'
 import { BrowseTab, RepositoriesTab, UpdatesTab } from '@/components/plugin-repositories'
 import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { ago } from '@/lib/format'
@@ -56,28 +57,34 @@ export function PluginsPage() {
     <>
       <PageHeader
         title="Plugins"
-        description="What plugins this server runs. Clients only show what they add: everything is set up here."
+        description="What this server runs. Clients show what plugins add; you set them up here."
         actions={
           <Button onClick={() => setInstalling(true)}>
             <Plus /> Install from a file or link
           </Button>
         }
       />
-      <Tabs value={tab} onValueChange={setTab} className="gap-4">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="installed">Installed</TabsTrigger>
-          <TabsTrigger value="browse">Browse</TabsTrigger>
-          <TabsTrigger value="updates">
-            Updates
-            {waiting > 0 && (
-              <Badge className="ml-1 h-4 min-w-4 px-1 text-[0.65rem]" variant="default">
-                {waiting}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="repositories">Repositories</TabsTrigger>
-          <TabsTrigger value="developer">Developer</TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="gap-6">
+        <TabRow
+          label="Plugins"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: 'installed', label: 'Installed' },
+            { value: 'browse', label: 'Browse' },
+            {
+              value: 'updates',
+              label: 'Updates',
+              badge: waiting > 0 && (
+                <Badge className="ml-1 h-4 min-w-4 px-1 text-[0.65rem]" variant="default">
+                  {waiting}
+                </Badge>
+              ),
+            },
+            { value: 'repositories', label: 'Repositories' },
+            { value: 'developer', label: 'Developer' },
+          ]}
+        />
         <TabsContent value="installed" className="space-y-6">
           <InstalledCard view={view} />
           {view.kept.length > 0 && <KeptCard kept={view.kept} />}
@@ -104,11 +111,11 @@ function InstalledCard({ view }: { view: Schemas['AdminPlugins'] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Puzzle className="size-4" /> Installed
+        <CardTitle>
+          {view.plugins.length} {view.plugins.length === 1 ? 'plugin' : 'plugins'}
         </CardTitle>
         <CardDescription>
-          Installed in <Mono className="text-xs">{view.pluginsDir}</Mono>
+          In <span className="font-mono text-xs break-all">{view.pluginsDir}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
@@ -401,7 +408,7 @@ function TrustCard({ developerMode, keys, devDir }: { developerMode: boolean; ke
         <div className="space-y-2">
           <Label htmlFor="publisher-key">Trusted publisher keys</Label>
           {keys.length > 0 && (
-            <ul className="divide-y rounded-md border">
+            <ul className="divide-y">
               {keys.map((k) => (
                 <li key={k.key} className="flex items-center gap-2 px-3 py-2">
                   <BadgeCheck className="size-4 shrink-0 text-muted-foreground" />

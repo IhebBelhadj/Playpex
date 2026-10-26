@@ -166,7 +166,7 @@ export function PlaceBrowser({
 
   const data = listing.data
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-card">
       {header}
       {/* where: the place and its folders, a search, the order */}
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
@@ -200,7 +200,7 @@ export function PlaceBrowser({
             onGo(search.trim() ? '' : path, search.trim() || null)
           }}
         >
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => {
@@ -209,7 +209,7 @@ export function PlaceBrowser({
             }}
             placeholder={`Find in ${place.name}`}
             aria-label={`Find in ${place.name}`}
-            className="h-8 pl-8"
+            className="h-8 pl-9"
           />
         </form>
         <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
@@ -314,7 +314,7 @@ function Thumb({ entry: e }: { entry: Entry }) {
   const Icon = e.type === 'folder' ? Folder : VIDEO.test(e.name) ? FileVideo : SUBTITLE.test(e.name) ? Subtitles : FileIcon
   return (
     <span className="flex w-7 shrink-0 justify-center">
-      <Icon className={cn('size-4', e.type === 'folder' ? 'text-primary' : 'text-muted-foreground')} />
+      <Icon className={cn('size-4', e.type === 'folder' ? 'text-foreground' : 'text-muted-foreground')} />
     </span>
   )
 }

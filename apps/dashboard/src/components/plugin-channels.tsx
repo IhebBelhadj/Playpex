@@ -64,7 +64,7 @@ export function PluginChannels({ plugin, enabled }: { plugin: string; enabled: b
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Name, number or group" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9" placeholder="Name, number or group" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Button variant="outline" size="sm" disabled={refresh.isPending || data.refreshing} onClick={() => refresh.mutate()}>
           <RefreshCw className={refresh.isPending ? 'animate-spin' : ''} /> Refresh

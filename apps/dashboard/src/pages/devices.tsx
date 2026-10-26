@@ -50,7 +50,7 @@ export function PairingRequests({ requests, highlight }: { requests: PairingRequ
         return (
           <div
             key={r.userCode}
-            className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${mine ? 'border-primary bg-primary/5' : ''}`}
+            className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3 ${mine ? 'bg-accent ring-1 ring-foreground/40' : 'bg-muted'}`}
           >
             <div className="min-w-0">
               <div className="font-mono text-lg tracking-widest">{formatCode(r.userCode)}</div>

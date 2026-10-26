@@ -37,7 +37,7 @@ var server = require('..'),
 var TEST_HOST = '127.0.0.2',
   HOST = 'api.playpex-test.dev',
   VIDEO = crypto.randomBytes(1024 * 1024),
-  C = 'c'.repeat(40), D = 'd'.repeat(40), E = 'e'.repeat(40), F = 'f'.repeat(40),
+  C = 'c'.repeat(40), D = 'd'.repeat(40), E = 'e'.repeat(40), F = 'f'.repeat(40), B = 'b'.repeat(40),
   base = null,
   cookie = null,
   remote = null,
@@ -71,6 +71,7 @@ playpex.hooks.on('play.collect', function (input) {
     { kind: 'magnet', label: 'Film 2020 1080p WEB x264 AAC', infoHash: '${C}', seeds: 50, notes: ['From Sourcer'] },
     { kind: 'magnet', label: 'Film 2020 1080p WEB x265 HEVC', infoHash: '${D}', seeds: 80 },
     { kind: 'magnet', label: 'Film 2020 720p REFUSE x264 AAC', infoHash: '${F}', seeds: 5 },
+    { kind: 'magnet', label: 'Film 2020 480p WEB x264 AAC', infoHash: '${B}', seeds: 3 },
     { kind: 'http', url: WEB, headers: { Authorization: 'Bearer secret-token' }, label: 'Film (web) 1080p x264 AAC', container: 'mp4' }
   ];
 });
@@ -109,8 +110,14 @@ var DEBRID = String.raw`
 playpex.hooks.on('play.resolve', function (input) {
   if (input.mode === 'check') {
     var out = {};
-    input.hashes.forEach(function (h) { if (h === '${C}') { out[h] = { cached: true, label: 'TestDebrid' }; } });
+    input.hashes.forEach(function (h) {
+      if (h === '${C}') { out[h] = { cached: true, label: 'TestDebrid' }; }
+      if (h === '${B}') { out[h] = { cached: false, tries: true, label: 'TestDebrid' }; }
+    });
     return { hashes: out };
+  }
+  if (input.source.infoHash === '${B}') {
+    return { source: null };
   }
   return { source: { kind: 'http', url: 'https://${HOST}:PORT/video.mp4', headers: { Authorization: 'Bearer d-token' },
     label: input.source.label, size: ${VIDEO.length} } };
@@ -421,6 +428,27 @@ test('start: a cached torrent plays through its resolver', function (t) {
   }).then(function (r) {
     assert.equal(r.status, 206);
     assert.ok(r.raw.equals(VIDEO.subarray(0, 10)));
+  });
+});
+
+test('a resolver that only tries: asked first when picked, the torrent otherwise', function (t) {
+  if (skip(t)) {
+    return;
+  }
+  return call('POST', '/play/sources', MOVIE).then(function (r) {
+    var tried = r.json.sources.filter(function (s) { return s.id === 'torrent:' + B; })[0];
+    assert.equal(tried.resolver, undefined, 'not cached');
+    assert.deepEqual(tried.tryResolver, { plugin: 'debrid', label: 'TestDebrid' });
+    assert.equal(tried.group, 'torrent');
+    assert.ok(tried.badges.indexOf('cached') === -1);
+    assert.ok(tried.notes.indexOf('TestDebrid tries it first') !== -1);
+    return call('POST', '/play/start', { request: r.json.request, source: 'torrent:' + B });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.action, 'play');
+    assert.equal(r.json.source.type, 'torrent');
+    assert.ok(r.json.source.notes.indexOf('Not on TestDebrid: playing the torrent') !== -1);
+    assert.ok(r.json.source.notes.indexOf('TestDebrid tries it first') === -1);
   });
 });
 

@@ -180,7 +180,7 @@ export function ActivityPage() {
       <PageHeader title="Activity" description="What every device is playing right now." />
       {sessions.data.length === 0 ? (
         <Empty icon={<Radio />} title="Nothing is playing">
-          Sessions appear here when a client starts a torrent.
+          When a device plays something, from the library or a torrent, it shows here with how far it got.
         </Empty>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">

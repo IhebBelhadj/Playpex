@@ -127,7 +127,7 @@ export function DesktopCard({ streams }: { streams: number }) {
             onCheckedChange={(v) => change.mutate({ checkForUpdates: v })}
           />
         </div>
-        <div className="space-y-2 rounded-lg border p-3">
+        <div className="space-y-2 rounded-2xl bg-muted p-4">
           <p className="text-sm">{updateLine(u)}</p>
           {u.state === 'downloading' && u.percent !== null && <Progress value={u.percent} />}
           <div className="flex flex-wrap gap-2">

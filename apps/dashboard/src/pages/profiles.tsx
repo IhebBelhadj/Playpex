@@ -29,7 +29,9 @@ export function ProfilesPage() {
     <>
       <PageHeader title="Profiles" description={`Created in the clients' “Who's watching?” screen. ${list.length} of ${profiles.data.maxProfiles}.`} />
       {list.length === 0 ? (
-        <Empty icon={<Users />} title="No profiles yet" />
+        <Empty icon={<Users />} title="No profiles yet">
+          Open Playpex TV on any device paired with this server and add one on its “Who&apos;s watching?” screen.
+        </Empty>
       ) : (
         <Card>
           <CardContent>

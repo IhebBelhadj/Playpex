@@ -46,6 +46,9 @@ function defaults() {
       // advertise this server on the LAN (mDNS + UDP 28471, lib/discovery.js);
       // only with lanSharing
       discovery: true,
+      // the name people type: <hostname>.local, answered by this server's own mDNS
+      // (lib/discovery.js); '' = none (clients still find it, people use its address)
+      hostname: 'playpex',
       allowedHosts: [],   // extra Host names (a DNS name pointing at this machine)
       corsOrigins: []     // extra web origins allowed to call the API
     },
@@ -136,6 +139,7 @@ var ENV = {
   'general.logLevel': ['PLAYPEX_LOG_LEVEL'],
   'network.lanSharing': ['PLAYPEX_LAN_SHARING'],
   'network.discovery': ['PLAYPEX_DISCOVERY'],
+  'network.hostname': ['PLAYPEX_HOSTNAME'],
   'dlna.enabled': ['PLAYPEX_DLNA'],
   'storage.downloadDir': ['PLAYPEX_DOWNLOAD_DIR'],
   'downloads.engine': ['PLAYPEX_TORRENT_ENGINE'],
@@ -256,6 +260,14 @@ function coerce(key, value, fromEnv) {
   }
   if (key === 'metadata.region' && !/^([A-Z]{2})?$/.test(value.trim())) {
     return { error: 'metadata.region must be a country code such as US, or empty' };
+  }
+  if (key === 'network.hostname') {
+    // one DNS label; "Playpex.local" is taken as "playpex"
+    var label = value.trim().toLowerCase().replace(/\.local\.?$/, '');
+    if (label && !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) {
+      return { error: 'hostname: letters, digits and dashes only (no dash at either end), at most 63' };
+    }
+    return { value: label };
   }
   if (key === 'general.serverName' && !value.trim()) {
     return { error: 'serverName must not be empty' };

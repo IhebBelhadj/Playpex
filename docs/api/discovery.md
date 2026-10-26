@@ -5,7 +5,7 @@ A server that shares on the LAN (its default) can be found in two ways. Use **bo
 | Method | You send | You get |
 |---|---|---|
 | mDNS / DNS-SD | browse `_playpex._tcp.local` | SRV (host + **HTTP port in use**), A records, TXT `id`, `v`, `ver`, `name` |
-| UDP | the datagram `PLAYPEX_DISCOVER 1` to port **28471** | one JSON datagram per server: `{ id, name, port, apiVersion, minApiVersion, version }` |
+| UDP | the datagram `PLAYPEX_DISCOVER 1` to port **28471** | one JSON datagram per server: `{ id, name, host, port, apiVersion, minApiVersion, version }` |
 | Manual entry | the user types an address | probe `GET http://<address>/api/v1/server` |
 
 Whatever the method, **confirm every address** with `GET /api/v1/server` before you list it: it must answer, and its `id` must match what discovery said.
@@ -14,8 +14,8 @@ Whatever the method, **confirm every address** with `GET /api/v1/server` before 
 
 - Service type `_playpex._tcp` in the `local.` domain. Android: `NsdManager`; Apple: `NWBrowser` / Bonjour; Node: `bonjour-service` or `multicast-dns`; Linux: Avahi.
 - **Instance name** = the server's name (cut to 63 bytes; when two servers have the same name, the second becomes `<name> (<4 chars of its id>)`). Show TXT `name` rather than the instance name: it's never cut.
-- **SRV** port = the HTTP port the server listens on now; target `playpex-<8 chars of id>.local`.
-- **A records** list every address of the server machine, including Docker bridges and VPNs. Try them in turn and keep the first that answers `GET /server` with the right `id`.
+- **SRV** port = the HTTP port the server listens on now; target = the server's **name on the network** (see below), else `playpex-<8 chars of id>.local`.
+- **A records**: each network gets the server machine's addresses on that network only (a device on the Wi-Fi never gets a Docker bridge's or a VPN's address). A machine on several networks may still list more than one: try them in turn and keep the first that answers `GET /server` with the right `id`.
 - **TXT**: `id` (server id, UUID), `v` (its `apiVersion`), `ver` (server software version), `name` (full name).
 - A server that stops or moves to another port sends an mDNS goodbye (TTL 0): drop it, or update its port when it re-announces.
 - macOS 15+ and iOS ask the user for local network access the first time an app browses (declare `_playpex._tcp` in `NSBonjourServices`).
@@ -25,16 +25,24 @@ Whatever the method, **confirm every address** with `GET /api/v1/server` before 
 - Send the 18 ASCII bytes `PLAYPEX_DISCOVER 1` (no newline) **from any local port** to UDP **28471**: to `255.255.255.255` and to each interface's directed broadcast address (e.g. `192.168.1.255`), or unicast to one address.
 - Each server answers the sender with one datagram of JSON:
   ```json
-  { "id": "6f1c…", "name": "Living room PC", "port": 28470, "apiVersion": 1, "minApiVersion": 1, "version": "0.9.0" }
+  { "id": "6f1c…", "name": "Living room PC", "host": "playpex.local", "port": 28470, "apiVersion": 1, "minApiVersion": 1, "version": "0.9.0" }
   ```
   The server's address is the datagram's source address; `port` is its HTTP port.
 - Ask again every **5 s** while your server picker is open (`DISCOVERY.INTERVAL_MS`); a server that didn't answer for three rounds is gone.
 - The server answers only senders on loopback, private (RFC 1918), link-local and CGNAT addresses, at most 20 answers per address per 10 s, and ignores any other datagram.
 - 28471 is fixed: it isn't a setting, so clients can always ask there.
 
+## A name people type
+
+Nobody should have to remember an IP address. A server answers to a `.local` name of its own over mDNS: **`playpex.local`** by default (the admin changes it in Settings › Network, `network.hostname`). When another device on the network already answers to that name, the server takes `playpex-2.local`, then `-3` and so on; the name in use is `host` in the UDP answer and in `GET /admin/overview` (`server.discovery.mdns.host`), and it is the SRV target. Every device that resolves `.local` names (macOS, iOS, Windows 10+, Android 12+, Linux with Avahi / systemd-resolved's mDNS) reaches it at `http://playpex.local:28470`.
+
+- The server accepts that name as a `Host` (and `<name>-2` … `-9.local`), like its IP addresses.
+- The pairing answer's `verification_uri` (the address a client shows for typing on a phone) uses the name; `verification_uri_complete` (for the QR code) keeps the address the client used.
+- Clients still connect by the addresses discovery gives (and remember the server by its `id`): a name is for people.
+
 ## Manual entry
 
-Let the user type `host`, `host:port` or a full URL. No port means **28470**. Probe `GET /api/v1/server`; on success, treat it like a discovered server.
+Let the user type `host`, `host:port` or a full URL (`playpex.local` works). No port means **28470**. Probe `GET /api/v1/server`; on success, treat it like a discovered server.
 
 ## Recognising a server: its `id`
 

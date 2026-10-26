@@ -131,6 +131,7 @@ export function TorrentTable({
       getRowId={(t) => t.hash}
       storageKey="playpex.search.columns"
       defaultSorting={[{ id: 'seeds', desc: true }]}
+      defaultHidden={['peers', 'added']}
       selection={selection}
       onSelectionChange={setSelection}
       active={active}
@@ -138,7 +139,7 @@ export function TorrentTable({
       onOpen={(id) => byHash.get(id) && open(byHash.get(id)!)}
       actions={actions}
       rowClassName={(t) => (t.matches === false ? 'opacity-70' : undefined)}
-      className="flex-1 rounded-lg border"
+      className="flex-1 overflow-hidden rounded-xl bg-card"
     />
   )
 }

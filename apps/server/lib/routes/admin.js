@@ -216,7 +216,7 @@ router.put('/settings', function (req, res) {
     logger.configure({ level: settings.get('general.logLevel') });
   }
   // the name clients see, or discovery itself: advertise again now
-  if (result.changed.indexOf('general.serverName') !== -1 || result.changed.indexOf('network.discovery') !== -1) {
+  if (['general.serverName', 'network.discovery', 'network.hostname'].some(function (k) { return result.changed.indexOf(k) !== -1; })) {
     discovery.refresh();
   }
   // the DLNA server: on / off, its port, the name TVs show

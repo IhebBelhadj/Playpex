@@ -84,8 +84,8 @@ export function BrowseTab({ developerMode, onRepositories }: { developerMode: bo
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-48 flex-1">
-          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Search plugins" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Search className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search plugins" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="w-44">
@@ -124,7 +124,7 @@ export function BrowseTab({ developerMode, onRepositories }: { developerMode: bo
               key={p.repository.id + '/' + p.id}
               type="button"
               onClick={() => setOpen(p)}
-              className="flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50"
+              className="flex items-start gap-3 rounded-xl bg-card p-4 text-left transition-colors hover:bg-accent"
             >
               <PluginIcon src={p.icon} />
               <div className="min-w-0 flex-1 space-y-1">
@@ -234,7 +234,7 @@ function CatalogDialog({
               </div>
               <div>
                 <div className="mb-1.5 text-sm font-medium">Versions</div>
-                <div className="divide-y rounded-md border">
+                <div className="divide-y">
                   {p.versions.map((v) => (
                     <div key={v.version} className="flex items-start gap-3 px-3 py-2 text-sm">
                       <div className="min-w-0 flex-1">
@@ -357,7 +357,7 @@ export function UpdatesTab({ developerMode }: { developerMode: boolean }) {
         </div>
       </div>
       {list.length > 0 && (
-        <div className="divide-y rounded-lg border bg-card">
+        <div className="divide-y overflow-hidden rounded-xl bg-card">
           {list.map((u) => (
             <div key={u.id} className="flex items-start gap-3 px-4 py-3">
               <div className="min-w-0 flex-1 space-y-1">

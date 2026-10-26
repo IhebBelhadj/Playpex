@@ -95,9 +95,9 @@ export function TitlesIndex({ onOpen, onPlace }: { onOpen: (key: string) => void
             { id: 'new', label: 'Newest' },
           ]}
         />
-        <div className="relative w-full sm:ml-auto sm:w-64">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a title" aria-label="Find a title" className="pl-8" />
+        <div className="relative min-w-48 flex-1 lg:ml-auto lg:w-64 lg:flex-none">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a title" aria-label="Find a title" className="pl-9" />
         </div>
       </div>
 
@@ -142,7 +142,7 @@ function Segmented<T extends string>({
   label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg border bg-card p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-muted p-0.5">
       {options.map((o) => (
         <button
           key={o.id}
@@ -151,8 +151,8 @@ function Segmented<T extends string>({
           aria-checked={value === o.id}
           onClick={() => onChange(o.id)}
           className={cn(
-            'rounded-md px-2.5 py-1 text-sm transition-colors',
-            value === o.id ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
+            'rounded-full px-3 py-1 text-sm transition-colors',
+            value === o.id ? 'bg-card font-medium text-foreground dark:bg-input' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {o.label}
@@ -217,7 +217,7 @@ function LetterIndex({ entries, onOpen }: { entries: Entry[]; onOpen: (key: stri
     <div className={cn(rail && 'md:grid md:grid-cols-[minmax(0,1fr)_1.75rem] md:gap-4')}>
       <PosterGrid entries={entries} onOpen={onOpen} anchors={firsts} />
       {rail && (
-        <nav aria-label="Jump to a letter" className="sticky top-4 hidden max-h-[calc(100svh-2rem)] flex-col items-center self-start rounded-full bg-muted/50 py-1.5 md:flex">
+        <nav aria-label="Jump to a letter" className="sticky top-20 hidden max-h-[calc(100svh-6rem)] flex-col items-center self-start rounded-full bg-muted/50 py-1.5 md:flex">
           {letters.map((l) => (
             <button
               key={l}
@@ -227,7 +227,7 @@ function LetterIndex({ entries, onOpen }: { entries: Entry[]; onOpen: (key: stri
               aria-current={current === l ? 'location' : undefined}
               className={cn(
                 'flex min-h-0 w-6 max-h-5 flex-1 items-center justify-center rounded-full text-[11px] leading-none font-medium tabular-nums transition-colors',
-                current === l ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                current === l ? 'bg-gold text-gold-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
               {l}
@@ -348,7 +348,7 @@ export function TitleSheet({ titleId, onClose, onOpenFile }: { titleId: string |
           <div className="absolute inset-0 bg-linear-to-t from-popover via-popover/40 to-transparent" />
         </div>
         <SheetHeader className="-mt-20 flex-row items-end gap-4 px-5">
-          {poster && <img src={poster} alt="" className="relative aspect-2/3 w-24 shrink-0 rounded-md object-cover shadow-lg ring-1 ring-border" />}
+          {poster && <img src={poster} alt="" className="relative aspect-2/3 w-24 shrink-0 rounded-md object-cover ring-1 ring-border" />}
           <div className="relative min-w-0 pb-1">
             <SheetTitle className="text-2xl leading-tight font-semibold tracking-tight">{name}</SheetTitle>
             <SheetDescription>
@@ -385,7 +385,7 @@ export function TitleSheet({ titleId, onClose, onOpenFile }: { titleId: string |
           )}
           {tmdbId && (
             <a
-              className="inline-flex items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 text-xs underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground"
               href={`https://www.themoviedb.org/${mediaType}/${tmdbId}`}
               target="_blank"
               rel="noreferrer"

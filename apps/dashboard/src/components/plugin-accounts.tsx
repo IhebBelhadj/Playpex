@@ -40,7 +40,7 @@ export function PluginAccounts({ plugin }: { plugin: string }) {
           <p className="text-xs text-muted-foreground">
             {link.scope === 'profile' ? 'One account per profile.' : 'One account for the whole server.'}
           </p>
-          <div className="divide-y rounded-md border">
+          <div className="divide-y">
             {link.accounts.map((account) => (
               <AccountRow
                 key={account.profileId ?? 'server'}

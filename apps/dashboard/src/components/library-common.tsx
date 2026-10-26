@@ -133,7 +133,7 @@ export function ScanStatus({ view }: { view: LibraryView }) {
     <Card size="sm">
       <CardContent className="space-y-2">
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Spinner className="text-primary" />
+          <Spinner className="text-gold" />
           <span className="font-medium">Scanning</span>
           {folder && <Mono className="min-w-0 text-muted-foreground">{folder.path}</Mono>}
           {view.scan.queued.length > 0 && <span className="text-muted-foreground">· {view.scan.queued.length} more waiting</span>}
@@ -157,7 +157,7 @@ export function ScanStatus({ view }: { view: LibraryView }) {
 }
 
 export function folderStatus(folder: LibraryFolder): { text: string; tone: string } | null {
-  if (folder.scanning) return { text: 'scanning', tone: 'text-primary' }
+  if (folder.scanning) return { text: 'scanning', tone: 'text-gold' }
   if (folder.queued) return { text: 'waiting to scan', tone: 'text-muted-foreground' }
   if (folder.status === 'missing') return { text: 'unreachable: its files are kept 7 days', tone: 'text-warning' }
   if (folder.status.startsWith('error')) return { text: folder.status, tone: 'text-destructive' }
@@ -289,7 +289,7 @@ function FolderBrowser({ path, onChoose }: { path: string; onChoose: (path: stri
           </Button>
         ))}
       </div>
-      <div className="h-56 overflow-y-auto rounded-md border">
+      <div className="h-56 overflow-y-auto rounded-2xl bg-muted">
         {listing.error ? (
           <p className="p-3 text-sm text-destructive">{errorMessage(listing.error)}</p>
         ) : !data?.path ? (

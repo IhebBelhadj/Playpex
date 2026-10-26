@@ -1,0 +1,125 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "thecrew",
+  "name": "The Crew",
+  "description": "The sources of the Kodi add-on The Crew that still work, ported: torrents from Torrentio and Knaben for Play, Search and Find releases, played as direct streams through Real-Debrid, AllDebrid, Premiumize or TorBox when you have an account.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Torrents from Torrentio and Knaben, and direct play through your debrid account (Real-Debrid, AllDebrid, Premiumize, TorBox).",
+    "description": "A port of the Kodi add-on The Crew (GPL-3.0) to a Playpex plugin: its scrapers that still answer and give something Playpex plays. Torrentio (many torrent sites, by IMDb id: the exact file of an episode, also inside season packs) and Knaben (a search across torrent sites, with live seed counts). With a debrid account, a torrent the service already has plays at once as a direct stream: Premiumize and TorBox say which ones they have (\"Cached on\"), Real-Debrid and AllDebrid are tried first when you pick one (they no longer tell), the torrent plays otherwise. Its catalog, lists and Trakt are Playpex's own; its file-host sites, its Cloudflare-blocked sites and its adult sites are left out.",
+    "disclaimer": "Streaming copyrighted content may be illegal where you live. Educational project. The scrapers' logic comes from The Crew (GPL-3.0).",
+    "license": "GPL-3.0 (The Crew)",
+    "categories": [
+      "sources",
+      "resolvers"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "torrentio.strem.fun",
+      "api.knaben.org",
+      "api.real-debrid.com",
+      "*.real-debrid.com",
+      "api.alldebrid.com",
+      "*.alldebrid.com",
+      "*.debrid.it",
+      "www.premiumize.me",
+      "*.premiumize.me",
+      "*.energycdn.com",
+      "api.torbox.app",
+      "*.torbox.app",
+      "*.tb-cdn.st"
+    ],
+    "secrets": [
+      "realdebridToken",
+      "alldebridKey",
+      "premiumizeKey",
+      "torboxKey"
+    ],
+    "sources": [
+      "http",
+      "magnet"
+    ],
+    "hooks": [
+      "play.collect",
+      "play.resolve",
+      "releases.providers",
+      "sources.search"
+    ]
+  },
+  "contributes": {
+    "releases": {
+      "kinds": [
+        "movie",
+        "show"
+      ]
+    },
+    "settings": [
+      {
+        "key": "torrentio",
+        "scope": "server",
+        "type": "switch",
+        "label": "Torrentio",
+        "description": "Torrents of a title from many torrent sites, found by its IMDb id: an episode's own file, also inside season packs. In Play.",
+        "group": "Sources",
+        "default": true
+      },
+      {
+        "key": "knaben",
+        "scope": "server",
+        "type": "switch",
+        "label": "Knaben",
+        "description": "A search across torrent sites, with live seed counts. In Play, Search and Find releases.",
+        "group": "Sources",
+        "default": true
+      },
+      {
+        "key": "realdebridToken",
+        "scope": "server",
+        "type": "secret",
+        "label": "Real-Debrid API token",
+        "description": "From real-debrid.com/apitoken. Real-Debrid no longer says what it has: a torrent you pick is asked for there first.",
+        "group": "Debrid accounts"
+      },
+      {
+        "key": "alldebridKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "AllDebrid API key",
+        "description": "From alldebrid.com/apikeys. Like Real-Debrid, it's asked first when you pick a torrent.",
+        "group": "Debrid accounts"
+      },
+      {
+        "key": "premiumizeKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "Premiumize API key",
+        "description": "From premiumize.me/account. The torrents it has show \"Cached on Premiumize\" and play at once.",
+        "group": "Debrid accounts"
+      },
+      {
+        "key": "torboxKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "TorBox API key",
+        "description": "From torbox.app/settings. The torrents it has show \"Cached on TorBox\" and play at once.",
+        "group": "Debrid accounts"
+      },
+      {
+        "key": "checkAccounts",
+        "scope": "server",
+        "type": "action",
+        "label": "Check the accounts",
+        "group": "Debrid accounts",
+        "data": "checkAccounts"
+      }
+    ]
+  }
+}

@@ -3,7 +3,9 @@
 // Finding this server on the LAN (docs/server-separation-plan.md §5.7; the
 // wire format is described in @playpex/protocol `DISCOVERY`):
 //   1. mDNS / DNS-SD: `_playpex._tcp.local` on the HTTP port in use, TXT
-//      id / v / ver / name (bonjour-service, pure JS)
+//      id / v / ver / name (bonjour-service, pure JS), on a host name people can
+//      type: `network.hostname` + .local (playpex.local; playpex-2.local when
+//      another device answers to it), its A records answered by this server
 //   2. UDP responder on 28471: a client broadcasts `PLAYPEX_DISCOVER 1`, the
 //      server answers it alone with { id, name, port, apiVersion, minApiVersion, version }
 //
@@ -11,6 +13,7 @@
 //   discovery.stop() → Promise                sends the mDNS goodbye, closes the sockets
 //   discovery.refresh()                       after the server name or the setting changed
 //   discovery.status()                        for the dashboard's Overview
+//   discovery.hostName()                      'playpex.local' once claimed, else null (lib/middleware.js, lib/auth)
 //
 // Runs only with LAN sharing on, outside recovery mode, and with
 // `network.discovery` on. Errors are logged and shown in status(), never thrown:
@@ -44,7 +47,7 @@ function initialState() {
   return {
     enabled: false,
     reason: null,       // why it's off: 'lanSharing' | 'disabled' | 'recovery'
-    mdns: { state: 'off', name: null, error: null },
+    mdns: { state: 'off', name: null, host: null, error: null },
     udp: { state: 'off', port: null, error: null }
   };
 }
@@ -79,6 +82,7 @@ function reply(info) {
   return {
     id: info.id,
     name: settings.get('general.serverName'),
+    host: state.mdns.host,
     port: info.port,
     apiVersion: info.apiVersion,
     minApiVersion: info.minApiVersion,
@@ -165,7 +169,7 @@ function startMdns(info) {
   try {
     Bonjour = require('bonjour-service').Bonjour;
   } catch (e) {
-    state.mdns = { state: 'error', name: null, error: e.message };
+    state.mdns = { state: 'error', name: null, host: null, error: e.message };
     log.warn('mDNS unavailable: ' + e.message);
     return;
   }
@@ -177,7 +181,7 @@ function startMdns(info) {
     // answers leave through every interface, not only the default one
     mdnsSocket.sendOnEveryInterface(instance.server.mdns, sock);
   } catch (e) {
-    state.mdns = { state: 'error', name: null, error: e.message };
+    state.mdns = { state: 'error', name: null, host: null, error: e.message };
     log.warn('mDNS unavailable: ' + e.message);
     return;
   }
@@ -188,7 +192,7 @@ function startMdns(info) {
     if (bonjour !== instance) {
       return;
     }
-    state.mdns = { state: 'error', name: state.mdns.name, error: err.message };
+    state.mdns = { state: 'error', name: state.mdns.name, host: null, error: err.message };
     log.warn('mDNS unavailable: ' + err.message + '; clients still find this server through UDP or by its address',
       { code: err.code });
   });
@@ -226,13 +230,82 @@ function probeName(mdns, fqdn, id, callback) {
   next();
 }
 
+// Every address of this machine: an A record for our name that holds only these
+// is ours (this machine's own responder, Avahi or Bonjour, when the OS is called
+// that too), not another device's
+function ownAddresses() {
+  var nets = require('os').networkInterfaces(), all = {};
+  Object.keys(nets).forEach(function (n) {
+    nets[n].forEach(function (a) { all[a.address.toLowerCase()] = true; });
+  });
+  return all;
+}
+
+// Does another device answer to `fqdn`? Three A queries 250 ms apart (RFC 6762
+// §8.1); an answer whose addresses are all this machine's doesn't count.
+function probeHost(mdns, fqdn, callback) {
+  var taken = false, sent = 0, mine = ownAddresses();
+  function onResponse(packet) {
+    packet.answers.concat(packet.additionals || []).forEach(function (rr) {
+      if ((rr.type === 'A' || rr.type === 'AAAA') && String(rr.name).toLowerCase() === fqdn && !mine[String(rr.data).toLowerCase()]) {
+        taken = true;
+      }
+    });
+  }
+  function next() {
+    if (sent === 3 || taken) {
+      mdns.removeListener('response', onResponse);
+      callback(taken);
+      return;
+    }
+    sent++;
+    mdns.query(fqdn, 'A');
+    setTimeout(next, 250).unref();
+  }
+  mdns.on('response', onResponse);
+  next();
+}
+
+// The host name: `network.hostname`.local, else -2 … -9 after it; no setting:
+// one made from the id (clients still find the server, nobody types it)
+function claimHost(instance, info, callback) {
+  var label = settings.get('network.hostname');
+  if (!label) {
+    return callback('playpex-' + info.id.slice(0, 8) + '.local', false);
+  }
+  (function attempt(n) {
+    var fqdn = (n > 1 ? label.slice(0, 61) + '-' + n : label) + '.local';
+    probeHost(instance.server.mdns, fqdn, function (taken) {
+      if (bonjour !== instance) {
+        return;   // stopped meanwhile
+      }
+      if (!taken) {
+        return callback(fqdn, true);
+      }
+      if (n === 9) {
+        log.warn('mDNS: ' + label + '.local to ' + label + '-9.local are all taken on this network');
+        return callback('playpex-' + info.id.slice(0, 8) + '.local', false);
+      }
+      log.info('another device on the network answers to ' + fqdn + ': trying ' + label + '-' + (n + 1) + '.local');
+      attempt(n + 1);
+    });
+  })(1);
+}
+
 // attempt 0: the server name; 1: with a piece of the id, when another server
 // on the network already uses that name
-function publish(instance, info, attempt) {
+function publish(instance, info, attempt, host) {
+  if (!host) {
+    state.mdns = { state: 'starting', name: null, host: null, error: null };
+    return claimHost(instance, info, function (fqdn, friendly) {
+      state.mdns.host = friendly ? fqdn : null;
+      publish(instance, info, attempt, fqdn);
+    });
+  }
   var name = instanceName(settings.get('general.serverName'), attempt ? info.id.slice(0, 4) : ''),
     fqdn = name.split('.').join('-') + '.' + DISCOVERY.MDNS_SERVICE;
 
-  state.mdns = { state: 'starting', name: name, error: null };
+  state.mdns = { state: 'starting', name: name, host: state.mdns.host, error: null };
   probeName(instance.server.mdns, fqdn, info.id, function (taken) {
     if (bonjour !== instance) {
       return;   // stopped meanwhile
@@ -240,18 +313,18 @@ function publish(instance, info, attempt) {
     if (taken) {
       if (attempt === 0) {
         log.info('another server on the network is called "' + name + '": advertising with a piece of its id');
-        publish(instance, info, 1);
+        publish(instance, info, 1, host);
       } else {
-        state.mdns = { state: 'error', name: name, error: 'another server on the network uses the name "' + name + '"' };
+        state.mdns = { state: 'error', name: name, host: state.mdns.host, error: 'another server on the network uses the name "' + name + '"' };
         log.warn('mDNS: ' + state.mdns.error);
       }
       return;
     }
-    announce(instance, info, name);
+    announce(instance, info, name, host);
   });
 }
 
-function announce(instance, info, name) {
+function announce(instance, info, name, host) {
   var published;
   try {
     published = instance.publish({
@@ -260,9 +333,9 @@ function announce(instance, info, name) {
       protocol: 'tcp',
       port: info.port,
       probe: false,   // probeName() did
-      // our own host name, so our A records never clash with the ones the OS's
-      // responder (Avahi, Bonjour) announces for <hostname>.local
-      host: 'playpex-' + info.id.slice(0, 8) + '.local',
+      // our own host name (claimHost), so our A records never clash with the
+      // ones the OS's responder (Avahi, Bonjour) announces for <hostname>.local
+      host: host,
       txt: {
         id: info.id,
         v: String(info.apiVersion),
@@ -271,21 +344,22 @@ function announce(instance, info, name) {
       }
     });
   } catch (e) {
-    state.mdns = { state: 'error', name: name, error: e.message };
+    state.mdns = { state: 'error', name: name, host: null, error: e.message };
     log.warn('mDNS: not advertised: ' + e.message);
     return;
   }
   service = published;
   published.once('up', function () {
     if (service === published) {
-      state.mdns = { state: 'advertising', name: name, error: null };
-      log.info('advertised as "' + name + '" (' + DISCOVERY.MDNS_SERVICE + ', port ' + info.port + ')');
+      state.mdns = { state: 'advertising', name: name, host: state.mdns.host, error: null };
+      log.info('advertised as "' + name + '" (' + DISCOVERY.MDNS_SERVICE + ', port ' + info.port + ')' +
+        (state.mdns.host ? ': http://' + state.mdns.host + ':' + info.port : ''));
     }
   });
   // 'up' follows the first announcement sent
   setTimeout(function () {
     if (service === published && !published.published && state.mdns.state === 'starting') {
-      state.mdns = { state: 'error', name: name, error: 'not announced (no multicast network?)' };
+      state.mdns = { state: 'error', name: name, host: null, error: 'not announced (no multicast network?)' };
       log.warn('mDNS: ' + state.mdns.error);
     }
   }, 3000).unref();
@@ -362,10 +436,16 @@ function status() {
   return JSON.parse(JSON.stringify(state));
 }
 
+// The name people can type, once claimed and announced (else null)
+function hostName() {
+  return state.mdns.state === 'advertising' ? state.mdns.host : null;
+}
+
 module.exports = {
   start: start,
   stop: stop,
   refresh: refresh,
   status: status,
+  hostName: hostName,
   isLocalAddress: isLocalAddress
 };

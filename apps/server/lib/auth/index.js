@@ -128,6 +128,23 @@ function deviceSessionCreated(db, session, ctx) {
   });
 }
 
+// The address a client shows for typing on a phone: the server's .local name
+// (lib/discovery.js) rather than the IP the client reached it by. The complete
+// link (the QR code, never typed) keeps the address that worked for the client.
+function namedLink(code) {
+  var host = require('../discovery').hostName();
+  if (!host || typeof code.verification_uri !== 'string') {
+    return;
+  }
+  try {
+    var url = new URL(code.verification_uri);
+    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1' && url.hostname !== '[::1]') {
+      url.hostname = host;
+      code.verification_uri = url.toString();
+    }
+  } catch (e) { /* not an absolute URL: left as it is */ }
+}
+
 function create(db) {
   var betterAuth = require('better-auth/minimal').betterAuth,
     drizzleAdapter = require('better-auth/adapters/drizzle').drizzleAdapter,
@@ -177,6 +194,7 @@ function create(db) {
       after: require('better-auth/api').createAuthMiddleware(function (ctx) {
         var returned = ctx.context.returned;
         if (ctx.path === '/device/code' && returned && typeof returned.user_code === 'string') {
+          namedLink(returned);
           return noteRequest(db, returned.user_code, ctx.request ? ctx.request.headers : ctx.headers);
         }
         return Promise.resolve();

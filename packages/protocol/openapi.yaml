@@ -5472,6 +5472,13 @@ components:
           properties:
             plugin: { type: string }
             label: { type: string, description: 'Real-Debrid…: "Cached on <label>"' }
+        tryResolver:
+          type: object
+          description: 'torrent: a plugin''s service that can''t tell whether it has it (Real-Debrid) is asked first when it''s picked (POST /play/start); the torrent plays when it hasn''t'
+          required: [plugin, label]
+          properties:
+            plugin: { type: string }
+            label: { type: string }
         infoHash: { type: string, description: 'download, torrent' }
         path: { type: string, description: 'download: the file''s path in its torrent' }
         magnet: { type: string, description: 'torrent: with the server''s tracker list' }
@@ -6947,10 +6954,13 @@ components:
           description: 'Why discovery is off: LAN sharing off, `network.discovery` off, or recovery mode'
         mdns:
           type: object
-          required: [state, name, error]
+          required: [state, name, host, error]
           properties:
             state: { type: string, enum: ['off', starting, advertising, error] }
             name: { type: [string, 'null'], description: 'The mDNS instance name advertised' }
+            host:
+              type: [string, 'null']
+              description: 'The name people type to reach this server (`network.hostname` + .local, e.g. playpex.local; playpex-2.local when another device answers to it); null when none is claimed'
             error: { type: [string, 'null'] }
         udp:
           type: object
@@ -6986,10 +6996,11 @@ components:
             logLevel: { type: string, enum: [debug, info, warn, error] }
         network:
           type: object
-          required: [lanSharing, discovery, allowedHosts, corsOrigins]
+          required: [lanSharing, discovery, hostname, allowedHosts, corsOrigins]
           properties:
             lanSharing: { type: boolean }
             discovery: { type: boolean, description: 'Advertise on the LAN (mDNS + UDP 28471); only with lanSharing' }
+            hostname: { type: string, description: 'The name on the network: answered as <hostname>.local by the server''s mDNS (default playpex); empty = none' }
             allowedHosts: { type: array, items: { type: string } }
             corsOrigins: { type: array, items: { type: string } }
         security:

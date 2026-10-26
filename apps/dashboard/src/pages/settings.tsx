@@ -16,7 +16,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabRow } from '@/components/tab-row'
+import { Tabs } from '@/components/ui/tabs'
 import { api, errorMessage, unwrap, type SettingsView } from '@/lib/api'
 import { bytes } from '@/lib/format'
 import { restartServer } from '@/lib/restart'
@@ -24,7 +25,7 @@ import { restartServer } from '@/lib/restart'
 // Every server setting (apps/server/lib/settings.js, plan §5.3), grouped in
 // tabs. Values locked by an environment variable are shown read-only.
 
-type Kind = 'text' | 'number' | 'switch' | 'list' | 'secret' | 'level' | 'port' | 'dir' | 'engine'
+type Kind = 'text' | 'number' | 'switch' | 'list' | 'secret' | 'level' | 'port' | 'dir' | 'engine' | 'hostname'
 
 interface Field {
   key: string
@@ -54,6 +55,7 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     fields: [
       { key: 'network.lanSharing', label: 'Share on the local network', kind: 'switch', help: 'Listen on every interface (devices pair first). Off: this machine only. Applied after a restart.' },
       { key: 'network.discovery', label: 'Let devices find this server', kind: 'switch', help: 'Announce it on the network (mDNS and UDP port 28471), so apps list it without typing an address. Needs sharing on the local network.' },
+      { key: 'network.hostname', label: 'Name on the network', kind: 'hostname', help: 'What people type in a browser or in Playpex TV instead of an IP address. Applied when you save.' },
       { key: 'network.allowedHosts', label: 'Extra host names', kind: 'list', placeholder: 'media.home.lan', help: 'DNS names that point at this machine (IP addresses, localhost and this machine’s name always work).' },
       { key: 'network.corsOrigins', label: 'Extra web origins', kind: 'list', placeholder: 'http://192.168.1.20:8080', help: 'Web apps on other origins allowed to call the API.' },
     ],
@@ -278,7 +280,7 @@ function EngineField({
           Running now: <span className="font-mono">{view.engine}</span>
         </p>
       )}
-      <div className="divide-y rounded-md border">
+      <div className="divide-y">
         {view.engines.map((e) => (
           <div key={e.id} className="flex items-start justify-between gap-4 p-3">
             <div className="min-w-0 space-y-1">
@@ -356,6 +358,9 @@ function FieldRow({
     case 'port':
       control = <PortField value={value as number} onChange={onChange} disabled={locked} />
       break
+    case 'hostname':
+      control = <HostnameField id={id} value={value as string} onChange={onChange} disabled={locked} />
+      break
     case 'dir':
       control = <DirField value={value as string} onChange={onChange} disabled={locked} fallback={fallbackDir} />
       break
@@ -421,7 +426,7 @@ function FieldRow({
   const inline = field.kind === 'switch'
   return (
     <div className={inline ? 'flex items-start justify-between gap-6' : 'grid gap-2 md:grid-cols-[14rem_1fr] md:gap-6'}>
-      <div className="space-y-1">
+      <div className={inline ? 'space-y-1' : 'space-y-1 md:pt-2'}>
         <Label htmlFor={id} className="flex flex-wrap items-center gap-2">
           {field.label}
           {locked && (
@@ -430,12 +435,43 @@ function FieldRow({
             </Badge>
           )}
         </Label>
-        {field.help && inline && <p className="text-xs text-muted-foreground">{field.help}</p>}
+        {field.help && inline && <p className="text-[13px] text-muted-foreground">{field.help}</p>}
       </div>
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 max-w-xl space-y-1.5">
         {control}
-        {field.help && !inline && <p className="text-xs text-muted-foreground">{field.help}</p>}
+        {field.help && !inline && <p className="px-1 text-[13px] text-muted-foreground">{field.help}</p>}
       </div>
+    </div>
+  )
+}
+
+// <name>.local: the field, the address it gives, and the name actually claimed
+// (another device answering to it makes the server take <name>-2.local)
+function HostnameField({ id, value, onChange, disabled }: { id: string; value: string; onChange: (v: unknown) => void; disabled: boolean }) {
+  const overview = useOverview()
+  const server = overview.data?.server
+  const claimed = server?.discovery.mdns.host ?? null
+  const port = server?.port ?? 28470
+  const wanted = value ? `${value.toLowerCase()}.local` : null
+  return (
+    <div className="space-y-2">
+      <div className="relative max-w-xs">
+        <Input id={id} value={value} disabled={disabled} placeholder="playpex" spellCheck={false} autoCapitalize="off" className="pr-16" onChange={(e) => onChange(e.target.value)} />
+        <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm text-muted-foreground">.local</span>
+      </div>
+      <p className="px-1 text-[13px] text-muted-foreground">
+        {!wanted ? (
+          'None: people use the server’s IP address.'
+        ) : claimed && claimed !== wanted && claimed.startsWith(`${value.toLowerCase()}-`) ? (
+          <>
+            Another device answers to {wanted}, so this server is <span className="font-medium text-foreground">http://{claimed}:{port}</span>.
+          </>
+        ) : (
+          <>
+            Open <span className="font-medium text-foreground">http://{wanted}:{port}</span> on a phone or computer on this network.
+          </>
+        )}
+      </p>
     </div>
   )
 }
@@ -570,7 +606,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description={<span className="font-mono text-xs">{view.file}</span>} />
+      <PageHeader title="Settings" description={<>Saved in <span className="font-mono text-xs break-all">{view.file}</span></>} />
       {server?.recovery && (
         <Alert variant="destructive">
           <AlertTriangle />
@@ -580,17 +616,17 @@ export function SettingsPage() {
       )}
       {reasons.length > 0 && <RestartBanner reasons={reasons} />}
       <Tabs value={tab} onValueChange={(v) => navigate(`/settings/${v}`)}>
-        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-          <TabsList>
-            {GROUPS.map((g) => (
-              <TabsTrigger key={g.id} value={g.id}>
-                {g.title}
-              </TabsTrigger>
-            ))}
-            {host.data?.kind === 'desktop' && <TabsTrigger value="desktop">Desktop app</TabsTrigger>}
-            <TabsTrigger value="account">Account</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabRow
+          label="Settings"
+          from="xl"
+          value={tab}
+          onChange={(v) => navigate(`/settings/${v}`)}
+          items={[
+            ...GROUPS.map((g) => ({ value: g.id, label: g.title })),
+            ...(host.data?.kind === 'desktop' ? [{ value: 'desktop', label: 'Desktop app' }] : []),
+            { value: 'account', label: 'Account' },
+          ]}
+        />
       </Tabs>
       {tab === 'account' ? (
         <PasswordCard />
@@ -603,18 +639,16 @@ export function SettingsPage() {
             save.mutate()
           }}
         >
+          {/* the tab names the group; its sentence leads into the fields */}
+          <p className="mb-4 text-sm text-muted-foreground">{group.description}</p>
           <Card>
-            <CardHeader>
-              <CardTitle>{group.title}</CardTitle>
-              <CardDescription>{group.description}</CardDescription>
-            </CardHeader>
             <CardContent className="space-y-6">
               {group.fields.map((f) => (
                 <FieldRow key={f.key} field={f} view={view} value={draft[f.key]} fallbackDir={fallbackDir} onChange={(v) => setDraft((d) => ({ ...d, [f.key]: v }))} />
               ))}
             </CardContent>
           </Card>
-          <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-end gap-2 border-t bg-background/90 py-3 backdrop-blur">
+          <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-end gap-2 border-t bg-background py-3">
             <span className="mr-auto text-sm text-muted-foreground">
               {changed.length ? `${changed.length} unsaved change${changed.length > 1 ? 's' : ''} (all tabs)` : 'No changes'}
             </span>

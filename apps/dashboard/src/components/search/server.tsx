@@ -32,7 +32,7 @@ export function ServerResults({ titles, downloads, direct, limit }: { titles: En
                 <button
                   type="button"
                   onClick={() => navigate(`/library?title=${e.mediaType}:${e.tmdbId}`)}
-                  className="group flex w-64 items-center gap-3 rounded-lg border bg-card p-2 text-left transition-colors hover:bg-muted"
+                  className="group flex w-64 items-center gap-3 rounded-xl bg-card p-2.5 text-left transition-colors hover:bg-accent"
                 >
                   <span className="flex h-16 w-11 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
                     {poster ? <img src={poster} alt="" loading="lazy" className="size-full object-cover" /> : e.mediaType === 'tv' ? <Tv className="size-4" /> : <Film className="size-4" />}
@@ -50,7 +50,7 @@ export function ServerResults({ titles, downloads, direct, limit }: { titles: En
         </ul>
       )}
       {(downloads.length > 0 || direct.length > 0) && (
-        <ul className="divide-y rounded-lg border">
+        <ul className="divide-y overflow-hidden rounded-xl bg-card">
           {downloads.slice(0, shown(downloads.length)).map((d) => (
             <li key={d.infoHash} className="flex items-center gap-3 px-3 py-2">
               <DownloadIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -110,7 +110,7 @@ export function LiveResults({ channels, names, limit }: { channels: LiveChannel[
               type="button"
               disabled={play.isPending}
               onClick={() => play.mutate(c)}
-              className="flex w-full items-center gap-3 rounded-lg border bg-card p-2 text-left transition-colors hover:bg-muted"
+              className="flex w-full items-center gap-3 rounded-xl bg-card p-2.5 text-left transition-colors hover:bg-accent"
               title={`Play ${c.name}`}
             >
               <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">

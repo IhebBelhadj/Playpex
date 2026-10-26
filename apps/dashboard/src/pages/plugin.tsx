@@ -27,7 +27,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TabRow } from '@/components/tab-row'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { PluginChannels } from '@/components/plugin-channels'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -110,11 +111,11 @@ export function PluginPage() {
         <PluginIcon src={p.icon ? API_PREFIX + p.icon : null} className="size-14" />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{p.name}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{p.name}</h1>
             <span className="font-mono text-sm text-muted-foreground">{p.version}</span>
             <PluginStateBadge plugin={p} />
           </div>
-          {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
+          {p.description && <p className="max-w-3xl text-sm text-muted-foreground">{p.description}</p>}
           {p.error && p.state !== 'disabled' && (
             <p className="flex items-start gap-1.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> {p.error}
@@ -126,16 +127,8 @@ export function PluginPage() {
           <Actions plugin={p} />
         </div>
       </div>
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex-wrap">
-          {tabs
-            .filter((t) => t[2])
-            .map(([value, label]) => (
-              <TabsTrigger key={value} value={value}>
-                {label}
-              </TabsTrigger>
-            ))}
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="gap-6">
+        <TabRow label="Plugin" from="lg" value={tab} onChange={setTab} items={tabs.filter((t) => t[2]).map(([value, label]) => ({ value, label }))} />
         <TabsContent value="overview">
           <Overview plugin={p} />
         </TabsContent>
@@ -355,8 +348,8 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
         </Alert>
       )}
       <Panel title="About">
-        {listing.description && <p className="mb-4 text-sm whitespace-pre-line">{listing.description}</p>}
-        {listing.disclaimer && <p className="mb-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">{listing.disclaimer}</p>}
+        {listing.description && <p className="mb-4 max-w-3xl text-sm whitespace-pre-line">{listing.description}</p>}
+        {listing.disclaimer && <p className="mb-4 max-w-3xl rounded-md bg-muted p-3 text-xs">{listing.disclaimer}</p>}
         <dl className="divide-y">
           <Row label="Publisher">{p.publisher?.name ?? '—'}</Row>
           <Row label="Origin">
@@ -422,7 +415,7 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
                 key={s}
                 src={`${API_PREFIX}/plugins/${p.id}/assets/${s.replace(/^assets\//, '')}`}
                 alt=""
-                className="w-full rounded-md border bg-muted"
+                className="w-full rounded-2xl bg-muted"
               />
             ))}
           </div>
@@ -483,7 +476,7 @@ function Counts({ title, rows }: { title: string; rows: [string, ReactNode][] })
   return (
     <div>
       <div className="mb-1.5 text-sm font-medium">{title}</div>
-      <div className="divide-y rounded-md border">
+      <div className="divide-y">
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-4 px-3 py-1.5 text-sm">
             <span className="min-w-0 truncate">{label}</span>
@@ -551,7 +544,7 @@ function Activity({ plugin: p }: { plugin: AdminPlugin }) {
       </Panel>
       {(p.jobs ?? []).length > 0 && (
         <Panel title="Scheduled jobs">
-          <div className="divide-y rounded-md border">
+          <div className="divide-y">
             {(p.jobs ?? []).map((job) => (
               <div key={job.name} className="space-y-0.5 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
@@ -579,7 +572,7 @@ function Activity({ plugin: p }: { plugin: AdminPlugin }) {
         ) : logs.data.entries.length === 0 ? (
           <Empty title="Nothing logged">Nothing from this plugin since the server started.</Empty>
         ) : (
-          <div className="max-h-96 overflow-auto rounded-md border font-mono text-xs">
+          <div className="max-h-96 overflow-auto rounded-2xl bg-muted font-mono text-xs">
             {[...logs.data.entries].reverse().map((e, i) => (
               <div key={i} className="flex gap-3 border-b px-3 py-1 last:border-0">
                 <span className="shrink-0 text-muted-foreground">{time(e.time)}</span>
@@ -661,7 +654,7 @@ function Versions({ plugin: p, developerMode }: { plugin: AdminPlugin; developer
       )}
       {listed && (
         <Panel title={`In ${p.repository!.name}`}>
-          <div className="divide-y rounded-md border">
+          <div className="divide-y">
             {listed.versions.map((v) => (
               <div key={v.version} className="flex items-start gap-3 px-3 py-2 text-sm">
                 <div className="min-w-0 flex-1">
@@ -681,7 +674,7 @@ function Versions({ plugin: p, developerMode }: { plugin: AdminPlugin; developer
         </Panel>
       )}
       <Panel title="Kept on this server" description="The version an update replaces is kept here, to go back to it even offline.">
-        <div className="divide-y rounded-md border">
+        <div className="divide-y">
           <div className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
             <span>
               <span className="font-mono">{p.version}</span> <Badge variant="secondary">Installed</Badge>

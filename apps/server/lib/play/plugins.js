@@ -9,7 +9,8 @@
 //                 ones are for play effects and channels, not a title's); every
 //                 plugin's torrents ranked together, like the core's sites
 //   play.resolve  check: which collected torrents a resolver (debrid) can
-//                 serve at once (badge `cached`, ranked before the others);
+//                 serve at once (badge `cached`, ranked before the others), or
+//                 only try (`tries`: a service that can't tell, `tryResolver`);
 //                 resolve: the chosen one as an http source, at start()
 //   play.rank     after the core's ranking: order and hide, with a reason
 //   play.before   at start(): continue, ask (the client asks, then starts
@@ -248,12 +249,16 @@ function check(sources, context) {
         return;
       }
       torrents.forEach(function (s) {
-        var hit = answer[s.infoHash];
+        var hit = answer[s.infoHash],
+          label = hit && (hit.label || plugin.manifest.name);
         if (hit && hit.cached && !s.resolver) {
-          var label = hit.label || plugin.manifest.name;
           s.resolver = { plugin: plugin.id, label: label };
           s.badges = s.badges.concat('cached');
           s.notes = s.notes.concat('Cached on ' + label);
+        } else if (hit && hit.tries && !hit.cached && !s.tryResolver) {
+          // a service that can't tell (Real-Debrid): asked first when picked, the torrent otherwise
+          s.tryResolver = { plugin: plugin.id, label: label };
+          s.notes = s.notes.concat(label + ' tries it first');
         }
       });
     });
@@ -332,10 +337,17 @@ function before(title, source, context, confirmed) {
  * may not use) the torrent itself, with a note.
  */
 function resolve(title, source, context) {
-  var resolver = source.resolver,
+  var resolver = source.resolver || source.tryResolver,
     asked = { kind: 'magnet', magnet: source.magnet, infoHash: source.infoHash, label: String(source.label).slice(0, 200) };
   if (source.size) {
     asked.size = Math.round(source.size);
+  }
+  // the file a plugin named (a pack's episode): the resolver picks the same one
+  if (source.file && source.file.name) {
+    asked.fileName = String(source.file.name).slice(0, 500);
+  }
+  if (source.file && source.file.index != null) {
+    asked.fileIndex = source.file.index;
   }
   return plugins.runHook('play.resolve', { mode: 'resolve', title: titleRef(title), source: asked }, context.pluginContext, {
     only: resolver.plugin
@@ -354,12 +366,13 @@ function resolve(title, source, context) {
       played.notes = ['Through ' + resolver.label].concat(answer.notes || []);
       return played;
     }
-    log.warn('play.resolve by ' + resolver.plugin + ' gave nothing for ' + source.infoHash +
+    var tried = !source.resolver;
+    (tried && !r.errors[0] ? log.info : log.warn)('play.resolve by ' + resolver.plugin + ' gave nothing for ' + source.infoHash +
       (r.errors[0] ? ': ' + r.errors[0].message : ''));
     return Object.assign({}, source, {
       badges: source.badges.filter(function (b) { return b !== 'cached'; }),
-      notes: source.notes.filter(function (n) { return n !== 'Cached on ' + resolver.label; })
-        .concat(resolver.label + ' couldn\'t serve it: playing the torrent')
+      notes: source.notes.filter(function (n) { return n !== 'Cached on ' + resolver.label && n !== resolver.label + ' tries it first'; })
+        .concat(tried ? 'Not on ' + resolver.label + ': playing the torrent' : resolver.label + ' couldn\'t serve it: playing the torrent')
     });
   });
 }
