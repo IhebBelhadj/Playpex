@@ -34,6 +34,9 @@ export function useDownloadActions() {
   const refresh = () => {
     client.invalidateQueries({ queryKey: ['downloads'] })
     client.invalidateQueries({ queryKey: ['download'] })
+    // starting one while "Pause all downloads" is on turns that off (the server's downloads.paused)
+    client.invalidateQueries({ queryKey: ['settings'] })
+    client.invalidateQueries({ queryKey: ['overview'] })
   }
   const many = <T,>(hashes: string[], one: (hash: string) => Promise<T>) =>
     Promise.allSettled(hashes.map(one)).then((results) => {

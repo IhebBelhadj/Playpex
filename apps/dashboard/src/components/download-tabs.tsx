@@ -255,32 +255,37 @@ export function TrackersTab({ d }: { d: Download }) {
       )}
       <ul className="divide-y">
         {list.map((t) => (
-          <li key={t.url} className="group flex items-center gap-3 px-3 py-1.5 text-[13px] hover:bg-muted/50">
-            <span className="min-w-0 flex-1 truncate font-mono text-xs" title={t.url}>
-              {t.url}
-            </span>
-            {t.ours && <span className="shrink-0 text-xs text-muted-foreground">Added by Playpex</span>}
-            {t.added && <span className="shrink-0 text-xs text-muted-foreground">Added by you</span>}
-            {t.seeds !== null && <span className="shrink-0 text-xs tabular-nums">{t.seeds} seeds</span>}
-            {t.peers !== null && <span className="shrink-0 text-xs tabular-nums">{t.peers} peers</span>}
-            {t.seeds === null && t.swarm && (
-              <span
-                className={cn('shrink-0 text-xs tabular-nums', t.swarm.error ? 'text-muted-foreground' : '')}
-                title={t.swarm.error ? `${t.swarm.error} (${ago(t.swarm.at)})` : `Its scrape, ${ago(t.swarm.at)}${t.swarm.downloaded !== null ? `: ${t.swarm.downloaded} downloads done` : ''}`}
-              >
-                {t.swarm.error ? 'No answer' : `${t.swarm.seeds ?? '?'} seeds · ${t.swarm.peers ?? '?'} leechers`}
-              </span>
-            )}
-            {STATUS[t.status] && (
-              <span className={cn('shrink-0 text-xs', t.status === 'error' ? 'text-destructive' : 'text-muted-foreground')} title={t.message ?? undefined}>
-                {STATUS[t.status]}
-              </span>
-            )}
+          <li key={t.url} className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
+            {/* two lines: the address, then what is known about it (wraps on a phone, never widens the pane) */}
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-mono text-xs" title={t.url}>
+                {t.url}
+              </div>
+              <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                {t.ours && <span>Added by Playpex</span>}
+                {t.added && <span>Added by you</span>}
+                {t.seeds !== null && <span className="text-foreground tabular-nums">{t.seeds} seeds</span>}
+                {t.peers !== null && <span className="text-foreground tabular-nums">{t.peers} peers</span>}
+                {t.seeds === null && t.swarm && (
+                  <span
+                    className={cn('tabular-nums', !t.swarm.error && 'text-foreground')}
+                    title={t.swarm.error ? `${t.swarm.error} (${ago(t.swarm.at)})` : `Its scrape, ${ago(t.swarm.at)}${t.swarm.downloaded !== null ? `: ${t.swarm.downloaded} downloads done` : ''}`}
+                  >
+                    {t.swarm.error ? 'No answer' : `${t.swarm.seeds ?? '?'} seeds, ${t.swarm.peers ?? '?'} leechers`}
+                  </span>
+                )}
+                {STATUS[t.status] && (
+                  <span className={cn(t.status === 'error' && 'text-destructive')} title={t.message ?? undefined}>
+                    {STATUS[t.status]}
+                  </span>
+                )}
+              </div>
+            </div>
             <Button
               variant="ghost"
               size="icon-xs"
               aria-label="Copy the URL"
-              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
               onClick={() => navigator.clipboard.writeText(t.url).then(() => toast.success('URL copied'))}
             >
               <Copy />
@@ -292,7 +297,7 @@ export function TrackersTab({ d }: { d: Download }) {
                 aria-label={`Remove ${t.url}`}
                 title="Remove it from this torrent"
                 disabled={remove.isPending}
-                className="opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                className="opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                 onClick={() => remove.mutate(t.url)}
               >
                 <X />

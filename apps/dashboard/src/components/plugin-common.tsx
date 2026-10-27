@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ArrowRightLeft, BadgeCheck, Library, Puzzle, ShieldAlert, X } from 'lucide-react'
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Spinner } from '@/components/common'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -112,6 +113,8 @@ export function PackagePreview({
 }) {
   const refresh = useRefreshPlugins()
   const client = useQueryClient()
+  const navigate = useNavigate()
+  const location = useLocation()
   const grows = p.added.length > 0
   const dependencies = p.dependencies ?? []
   const offered = dependencies.filter((d) => d.optional && !d.installed && !d.missing)
@@ -127,10 +130,16 @@ export function PackagePreview({
       ),
     onSuccess: (r) => {
       if ('repository' in r && !('id' in r)) {
-        toast.success(`Repository ${r.repository.name} added`)
+        toast.success(`Repository ${r.repository.name} added`, {
+          action: { label: 'Browse', onClick: () => navigate('/plugins?tab=browse') },
+        })
       } else if ('id' in r) {
         const what = p.rollback ? `${r.name} ${r.version} is back` : `${r.name} ${r.version} installed`
-        toast.success(!r.enabled ? `${what} (off)` : r.state === 'enabled' ? what : `${what}, but it didn't start`)
+        const page = `/plugins/${encodeURIComponent(r.id)}`
+        toast.success(!r.enabled ? `${what} (off)` : r.state === 'enabled' ? what : `${what}, but it didn't start`, {
+          // its own page: settings, accounts, why it didn't start (not when that page is already open)
+          action: location.pathname === page ? undefined : { label: 'Open', onClick: () => navigate(page) },
+        })
       }
       refresh()
       onDone()

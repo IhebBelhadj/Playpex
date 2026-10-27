@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#000000</color>
+    <!-- the ground behind the WebView and the launch screen: the app's true black -->
+    <color name="ground">#000000</color>
+</resources>

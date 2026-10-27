@@ -3900,6 +3900,8 @@ export interface components {
             /** @description Stable server id (UUID); identify servers by it, not by address */
             id: string;
             name: string;
+            /** @description The name people type to reach it on the LAN (`network.hostname` + .local, e.g. playpex.local), once claimed; null when none */
+            host?: string | null;
             /** @description Server software version */
             version: string;
             apiVersion: number;

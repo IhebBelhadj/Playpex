@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Playpex mark (apps/dashboard/public/logo.svg: one shape, the logo's gold gradient),
+     centred in the adaptive icon's 66 dp safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.0682"
+        android:scaleY="0.0682"
+        android:translateX="28"
+        android:translateY="30.9">
+        <path android:pathData="M86.15,149.96 L561.45,385.84 L282.78,653.27 L762,376.87 L0,0 L0,165.18 L0,677.16 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0"
+                    android:startY="338.58"
+                    android:endX="762"
+                    android:endY="338.58">
+                    <item android:offset="0" android:color="#FFE3CC97" />
+                    <item android:offset="0.72" android:color="#FFF6E084" />
+                    <item android:offset="0.94" android:color="#FFD1B372" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

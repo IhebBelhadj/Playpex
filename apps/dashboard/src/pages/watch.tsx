@@ -448,6 +448,24 @@ function Player({ item }: { item: PlayItem }) {
   }, [])
   const chrome = !idle || !playing || menuOpen || !!error || answer?.method === 'none'
 
+  // A tap (a finger) works like a phone's video player: it shows the controls, or hides them
+  // when they show; playing and pausing is the big button in the middle. A mouse click still
+  // plays / pauses. Whether the controls showed is read at pointerdown, before wake() shows them.
+  const tap = useRef<{ shown: boolean } | null>(null)
+  const onStageDown = (e: { pointerType: string }) => {
+    tap.current = e.pointerType === 'mouse' ? null : { shown: chrome }
+    wake()
+  }
+  const onVideoClick = () => {
+    const t = tap.current
+    tap.current = null
+    if (!t) return togglePlay()
+    if (t.shown && playing) {
+      if (idleTimer.current) clearTimeout(idleTimer.current)
+      setIdle(true)
+    }
+  }
+
   // the page's keys
   const keysRef = useRef<(e: globalThis.KeyboardEvent) => void>(() => {})
   keysRef.current = (e) => {
@@ -513,14 +531,14 @@ function Player({ item }: { item: PlayItem }) {
       <div
         ref={stage}
         className={cn('relative min-w-0 flex-1 overflow-hidden', !chrome && 'cursor-none')}
-        onPointerMove={wake}
-        onPointerDown={wake}
+        onPointerMove={(e) => e.pointerType === 'mouse' && wake()}
+        onPointerDown={onStageDown}
       >
         <video
           ref={video}
           className="absolute inset-0 size-full bg-black object-contain"
           playsInline
-          onClick={togglePlay}
+          onClick={onVideoClick}
           onDoubleClick={fullscreen}
           onPlay={() => {
             setPlaying(true)
@@ -570,6 +588,24 @@ function Player({ item }: { item: PlayItem }) {
                 {text}
               </p>
             ))}
+          </div>
+        )}
+
+        {/* touch screens: play / pause in the middle while the controls show */}
+        {!loading && !error && answer?.method !== 'none' && (
+          <div className={cn('pointer-events-none absolute inset-0 hidden items-center justify-center transition-opacity duration-300 [@media(pointer:coarse)]:flex', chrome ? 'opacity-100' : 'opacity-0')}>
+            <button
+              type="button"
+              aria-label={playing ? 'Pause' : 'Play'}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                togglePlay()
+                wake()
+              }}
+              className={cn('flex size-16 items-center justify-center rounded-full bg-black/55 text-white', chrome && 'pointer-events-auto')}
+            >
+              {playing ? <Pause className="size-7" /> : <Play className="size-7 translate-x-0.5" />}
+            </button>
           </div>
         )}
 

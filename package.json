@@ -28,6 +28,9 @@
     "dashboard": "npm run dev -w apps/dashboard",
     "build:dashboard": "npm run build -w apps/dashboard",
     "server:desktop": "npm start -w apps/server-desktop",
-    "dist:server-desktop": "npm run dist -w apps/server-desktop"
+    "dist:server-desktop": "npm run dist -w apps/server-desktop",
+    "manager": "npm run dev -w apps/manager",
+    "build:manager": "npm run sync -w apps/manager",
+    "apk:manager": "npm run apk -w apps/manager"
   }
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -237,10 +238,14 @@ export function useSearchActions() {
   const player = usePlayer()
   const direct = useDirectActions()
   const client = useQueryClient()
+  const navigate = useNavigate()
   const startTorrent = useMutation({
     mutationFn: (v: { magnet: string; name: string }) => unwrap(api.POST('/downloads', { body: { link: v.magnet } })),
     onSuccess: (d, v) => {
-      toast.success(`Added ${d.name ?? v.name}`, { description: d.state === 'queued' ? `Queued #${d.queuePosition ?? 1}: it starts when a slot is free.` : undefined })
+      toast.success(`Added ${d.name ?? v.name}`, {
+        description: d.state === 'queued' ? `Queued #${d.queuePosition ?? 1}: it starts when a slot is free.` : undefined,
+        action: { label: 'Show', onClick: () => navigate(`/downloads?hash=${d.infoHash}`) },
+      })
       client.invalidateQueries({ queryKey: ['downloads'] })
     },
     onError: (err) => toast.error(errorMessage(err)),

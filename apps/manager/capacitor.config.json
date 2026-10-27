@@ -1,0 +1,14 @@
+{
+  "appId": "app.playpex.manager",
+  "appName": "Playpex Server Manager",
+  "webDir": "dist",
+  "appendUserAgent": "PlaypexManager/0.1",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "backgroundColor": "#000000"
+  }
+}

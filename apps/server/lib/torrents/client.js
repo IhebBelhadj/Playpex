@@ -972,11 +972,32 @@ function pause(hash) {
   });
 }
 
+// Starting one download while "Pause all downloads" is on ends that pause, for
+// this one: the flag goes off, and the downloads it held back stay paused each on
+// its own (state paused, not queued), so they don't all start again with it.
+function liftPauseAllFor(d) {
+  if (!globalPaused()) {
+    return;
+  }
+  var held = 0;
+  Object.keys(downloads).forEach(function (hash) {
+    var other = downloads[hash];
+    if (other !== d && other.row.state === 'queued' && other.row.intent === 'download') {
+      setState(other, 'paused');
+      publishUpdate(other);
+      held++;
+    }
+  });
+  settings.update({ downloads: { paused: false } });
+  log.info('"pause all" lifted to start ' + d.row.infoHash + ' (' + held + ' others stay paused)');
+}
+
 // The admin's Start: the torrent becomes a download and runs to the end
 // without a client (queued when downloads.maxActive are running)
 function start(hash) {
   return ready.then(function () {
     var d = find(hash);
+    liftPauseAllFor(d);
     if (d.row.intent !== 'download') {
       persist(d, { intent: 'download' });
     }
@@ -1140,6 +1161,7 @@ function setForce(hash, on) {
       throw failure('CONFLICT', 'It is downloaded: nothing to start');
     }
     persist(d, fields);
+    liftPauseAllFor(d);
     log.info('force start of ' + hash);
     if (!isActive(d)) {
       setState(d, 'queued');

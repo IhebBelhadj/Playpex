@@ -45,6 +45,8 @@ function info() {
   return {
     id: load(),
     name: settings.get('general.serverName'),
+    // the .local name people type (lib/discovery.js; required late: it needs this module)
+    host: require('./discovery').hostName(),
     version: require('../package.json').version,
     apiVersion: API_VERSION,
     minApiVersion: MIN_API_VERSION

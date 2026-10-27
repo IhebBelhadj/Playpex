@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { useEvent } from '@/lib/events'
@@ -26,6 +27,7 @@ export function useDirectDownloads() {
 
 export function useDirectActions() {
   const client = useQueryClient()
+  const navigate = useNavigate()
   const refresh = () => client.invalidateQueries({ queryKey: ['direct-downloads'] })
   const fail = (err: unknown) => toast.error(errorMessage(err))
   const id = (value: string) => ({ params: { path: { id: value } } })
@@ -36,6 +38,7 @@ export function useDirectActions() {
       onSuccess: (d) => {
         toast.success(`Downloading ${d.name}`, {
           description: d.kind === 'hls' ? 'A stream: the server saves it with ffmpeg, from the beginning.' : `To the download folder, from ${d.source.host}.`,
+          action: { label: 'Show', onClick: () => navigate('/downloads?filter=direct') },
         })
         refresh()
       },

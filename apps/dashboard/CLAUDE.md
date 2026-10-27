@@ -55,7 +55,9 @@ src/lib/downloads.ts    useDownloads (patched by download.updated), useDownloadA
 src/pages/downloads.tsx /downloads: the filter rail (?filter= all | a state | kind:movies | label:<name>), DataTable, the toolbar, the status
                         bar (totals, speed limits popover: PUT /admin/settings {downloads: {downLimitKBps, upLimitKBps}}, the disk,
                         Pause all), the detail pane under the list (?hash=, ?tab=; resizable, height in localStorage; a Sheet on
-                        phones), Remove / Label dialogs, a .torrent dropped on the page → the Add dialog
+                        phones), on phones `PhoneList`: a long press (450 ms, the finger still) selects like a phone app, taps then add / take
+                        out, `SelectionBar` (Start, Pause, Label, Remove, ⋯ = the row menu for the selection, Select all) replaces the filter;
+                        Escape (Android's Back in the app) clears it, Remove / Label dialogs, a .torrent dropped on the page → the Add dialog
 src/components/download-rules.tsx  RulesDialog: a download's (or several's) seeding goal (ratio / minutes, empty = the server's) and speed
                         limits (KB/s; engines with torrentLimits) → PATCH /downloads/{h}; from the row menu and General
 src/components/add-download.tsx  the Add dialog: POST /downloads/preview (a link, debounced, or a .torrent) → its files to choose, the download
@@ -104,7 +106,8 @@ src/lib/player.ts       usePlayer().play({ref, title, detail?, place?, dir?}) �
 src/lib/media.ts        DEVICE (`dashboard-<random>`, localStorage `playpex.dashboard.device`), CAPS (what this browser decodes), mediaUrl, release
                         (DELETE /media/{ref}), tmdbImage(path, size), episodeCode
 src/pages/watch.tsx     /watch/:ref, the player as a page (like Playpex TV's): the video fills the window, the controls over it hide after 2.5 s
-                        of stillness while it plays; always dark (adds `.dark` to <html> while open); GET /media/{ref}/playback with this browser's
+                        of stillness while it plays (a mouse click plays / pauses; a tap shows the controls or hides them, and touch screens get a
+                        play / pause button in the middle); always dark (adds `.dark` to <html> while open); GET /media/{ref}/playback with this browser's
                         flags (mkv, hevc, ac3, eac3) → direct src / hls.js (MediaSource; else the browser's own HLS) / why not; seeks inside the
                         stream, else asks again with ?t=; sound tracks (?audio=), speed, volume, PiP, full screen (the page, panel included); keys
                         (Space/K, ←/→ or J/L 10 s, ↑/↓, M, F, C subtitles on/off, S the subtitles panel, G/H timing −/+ 0.25 s, Esc: the panel, else
@@ -188,7 +191,7 @@ src/pages/docs-reference.tsx  Scalar on `/api/v1/openapi.yaml`, its own lazy chu
 - **Numbers**: tables are `tabular-nums` (index.css); numbers right-aligned; no monospace for numbers (hashes, paths, codes keep `font-mono`). State is a word (and the strip's colour), badges only for exceptions.
 - `/downloads` and `/library` use the whole width (`WIDE` in layout.tsx); the other pages, Search included, `max-w-6xl`. The column is centred in the space beside the sidebar, and the top bar's contents keep the same column.
 - **Look** (true-black flat, chosen 2026-10-26 with the design-taste skill's app sheet): surfaces are set apart by lightness alone (ground `bg-background`, card `bg-card` one step up, a nested panel `bg-muted`), with no border or shadow at rest; 1px rules only inside a surface (table rows, the KPI strip, the shell's frame). One radius family: cards `rounded-xl` (20px), nested panels `rounded-2xl`, controls, chips and nav items `rounded-full`; never a coloured left edge (`border-l`, an inset shadow bar) on a rounded thing: a chosen item is a grey step (`bg-muted`), the nav's active item is its label in full ink with its icon in gold. The shell (layout.tsx): sidebar (grouped nav) and a top bar (quick search → /search, live traffic, the server, sign out) on one ground split by 1px rules. Page tabs are underline tabs on a full-width rule (`TabRow`); small switches are a round segmented track. Section headings sit outside their cards (Overview's rail). No backdrop blur, no gradients but scrims over pictures.
-- Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`).
+- Destructive actions go through `Confirm` (AlertDialog). Mutations toast their result (`sonner`; `components/ui/sonner.tsx` draws them `unstyled`: a raised slab, the tone only in the icon's colour (success teal, info gold, warning, error), no rich colours, a ✕ on every one to close it). A toast about something that now lives on another page carries an `action` that goes there (`Show` → `/downloads?hash=` / `?filter=direct`, `Open` → a plugin's page, `Browse`, `Review` a pairing): an ink pill at its end.
 - `@/` = `src/` (tsconfig `paths`, Vite alias). **After `npx shadcn add`, check the new files' imports**: on init the CLI wrote `import { cn } from "cn"` (an unrelated npm package) instead of `@/lib/utils`; that was fixed by hand.
 - Fast-refresh warnings from oxlint (`only-export-components`) are accepted for files exporting hooks next to components.
 

@@ -5,6 +5,8 @@ import {
   ArrowDownToLine,
   ArrowUp,
   ArrowUpToLine,
+  Check,
+  CheckCheck,
   Copy,
   Download as DownloadIcon,
   FileDown,
@@ -21,7 +23,9 @@ import {
   Search,
   Tag,
   Trash2,
+  X,
   Zap,
+  EllipsisVertical,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
@@ -48,6 +52,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -612,7 +617,20 @@ export function DownloadsPage() {
         </nav>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-card">
-          <div className="border-b p-2 lg:hidden">
+          {!desktop && selection.length > 0 && (
+            <SelectionBar
+              chosen={chosen}
+              total={shown.length}
+              onClear={() => setSelection([])}
+              onAll={() => setSelection(shown.map((d) => d.infoHash))}
+              onStart={() => actions.start.mutate(chosen.filter(canStart).map((d) => d.infoHash))}
+              onPause={() => actions.pause.mutate(chosen.filter(canPause).map((d) => d.infoHash))}
+              onLabel={() => setLabelling(selection)}
+              onRemove={() => setRemoving(selection)}
+              more={chosen[0] ? rowActions(chosen[0]) : []}
+            />
+          )}
+          <div className={cn('border-b p-2 lg:hidden', !desktop && selection.length > 0 && 'hidden')}>
             <Select value={filter} onValueChange={(v) => setParam({ filter: v === 'all' ? null : v })}>
               <SelectTrigger className="w-full" aria-label="Show">
                 <SelectValue />
@@ -697,7 +715,7 @@ export function DownloadsPage() {
               className="flex-1"
             />
           ) : (
-            <PhoneList downloads={shown} onOpen={(h) => openPane(h)} />
+            <PhoneList downloads={shown} selection={selection} onSelectionChange={setSelection} onOpen={(h) => openPane(h)} />
           )}
 
           {desktop && open && byHash.has(open) && (
@@ -720,7 +738,7 @@ export function DownloadsPage() {
       {/* phones: the detail as a sheet */}
       {!desktop && (
         <Sheet open={!!open && byHash.has(open)} onOpenChange={(o) => !o && openPane(null)}>
-          <SheetContent side="bottom" className="flex h-[85svh] flex-col gap-0 p-0">
+          <SheetContent side="bottom" className="flex flex-col gap-0 p-0 data-[side=bottom]:h-[85svh]">
             <SheetHeader className="border-b">
               <SheetTitle className="pr-6 break-all">{open ? (byHash.get(open)?.name ?? open) : ''}</SheetTitle>
               <SheetDescription>{open && byHash.get(open) ? stateText(byHash.get(open)!) : ''}</SheetDescription>
@@ -728,7 +746,7 @@ export function DownloadsPage() {
             {open && (
               <>
                 <DownloadPane hash={open} tab={tab} onTabChange={(t) => setParam({ tab: t === 'general' ? null : t })} className="min-h-0 flex-1" />
-                <div className="flex gap-2 border-t p-3">
+                <div className="flex gap-2 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                   {byHash.get(open) && canPause(byHash.get(open)!) ? (
                     <Button variant="outline" className="flex-1" onClick={() => actions.pause.mutate([open])}>
                       <Pause /> Pause
@@ -802,30 +820,187 @@ export function DownloadsPage() {
   )
 }
 
-// Phones: one line of state, speed and time left under each name
-function PhoneList({ downloads, onOpen }: { downloads: Download[]; onOpen: (hash: string) => void }) {
+// Phones: one line of state, speed and time left under each name. A long press selects a download
+// (like any phone app); while some are selected a tap adds or takes one out, and SelectionBar acts on
+// them (the table's selection on a computer). Escape (Android's Back, through the app) clears it.
+const LONG_PRESS_MS = 450
+
+function PhoneList({
+  downloads,
+  selection,
+  onSelectionChange,
+  onOpen,
+}: {
+  downloads: Download[]
+  selection: string[]
+  onSelectionChange: (hashes: string[]) => void
+  onOpen: (hash: string) => void
+}) {
+  const selecting = selection.length > 0
+  const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const longPressed = useRef(false)
+  const cancel = () => {
+    if (press.current) clearTimeout(press.current.timer)
+    press.current = null
+  }
+  const down = (hash: string, e: ReactPointerEvent) => {
+    cancel()
+    longPressed.current = false
+    press.current = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: setTimeout(() => {
+        press.current = null
+        longPressed.current = true
+        navigator.vibrate?.(15)
+        if (!selection.includes(hash)) onSelectionChange([...selection, hash])
+      }, LONG_PRESS_MS),
+    }
+  }
+  // a finger that moves is scrolling, not pressing
+  const move = (e: ReactPointerEvent) => {
+    if (press.current && Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > 10) cancel()
+  }
+  const tap = (hash: string) => {
+    if (longPressed.current) {
+      longPressed.current = false
+      return
+    }
+    if (!selecting) return onOpen(hash)
+    onSelectionChange(selection.includes(hash) ? selection.filter((h) => h !== hash) : [...selection, hash])
+  }
+  useEffect(() => {
+    if (!selecting) return
+    const escape = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onSelectionChange([])
+    window.addEventListener('keydown', escape)
+    return () => window.removeEventListener('keydown', escape)
+  }, [selecting, onSelectionChange])
+  useEffect(() => cancel, [])
+
   return (
-    <ul className="divide-y">
-      {downloads.map((d) => (
-        <li key={d.infoHash}>
-          <button type="button" onClick={() => onOpen(d.infoHash)} className="w-full space-y-1.5 px-3 py-2.5 text-left active:bg-muted">
-            <div className="truncate text-sm font-medium">{d.name ?? d.infoHash}</div>
-            <div className="flex items-center gap-2.5">
-              <SwarmStrip map={d.pieceMap} progress={d.progress} tone={toneOf(d)} className="flex-1" />
-              <span className="w-11 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                {d.progress === null ? '' : `${Math.floor(d.progress * 100)} %`}
+    <ul className="divide-y" data-selecting={selecting ? '' : undefined}>
+      {downloads.map((d) => {
+        const chosen = selection.includes(d.infoHash)
+        return (
+          <li key={d.infoHash}>
+            <button
+              type="button"
+              aria-pressed={selecting ? chosen : undefined}
+              onPointerDown={(e) => down(d.infoHash, e)}
+              onPointerMove={move}
+              onPointerUp={cancel}
+              onPointerCancel={cancel}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={() => tap(d.infoHash)}
+              className={cn(
+                'flex w-full items-center gap-3 px-3 py-2.5 text-left select-none [-webkit-touch-callout:none] active:bg-muted',
+                chosen && 'bg-muted',
+              )}
+            >
+              {selecting && (
+                <span
+                  aria-hidden
+                  className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border', chosen ? 'border-gold bg-gold text-gold-foreground' : 'border-input')}
+                >
+                  {chosen && <Check className="size-3.5" strokeWidth={3} />}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 space-y-1.5">
+                <span className="block truncate text-sm font-medium">{d.name ?? d.infoHash}</span>
+                <span className="flex items-center gap-2.5">
+                  <SwarmStrip map={d.pieceMap} progress={d.progress} tone={toneOf(d)} className="flex-1" />
+                  <span className="w-11 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                    {d.progress === null ? '' : `${Math.floor(d.progress * 100)} %`}
+                  </span>
+                </span>
+                <span className="flex gap-3 text-xs text-muted-foreground tabular-nums">
+                  <span className={cn(d.state === 'error' && 'text-destructive')}>{stateText(d)}</span>
+                  {d.downloadSpeed > 0 && <span className="text-down">↓ {speed(d.downloadSpeed)}</span>}
+                  {d.uploadSpeed > 0 && <span className="text-up">↑ {speed(d.uploadSpeed)}</span>}
+                  {d.eta !== null && d.state === 'downloading' && <span>{clock(d.eta)} left</span>}
+                </span>
               </span>
-            </div>
-            <div className="flex gap-3 text-xs text-muted-foreground tabular-nums">
-              <span className={cn(d.state === 'error' && 'text-destructive')}>{stateText(d)}</span>
-              {d.downloadSpeed > 0 && <span className="text-down">↓ {speed(d.downloadSpeed)}</span>}
-              {d.uploadSpeed > 0 && <span className="text-up">↑ {speed(d.uploadSpeed)}</span>}
-              {d.eta !== null && d.state === 'downloading' && <span>{clock(d.eta)} left</span>}
-            </div>
-          </button>
-        </li>
-      ))}
+            </button>
+          </li>
+        )
+      })}
     </ul>
+  )
+}
+
+// Phones, while downloads are selected: how many, and what to do with them (the table's toolbar
+// and row menu on a computer)
+function SelectionBar({
+  chosen,
+  total,
+  onClear,
+  onAll,
+  onStart,
+  onPause,
+  onLabel,
+  onRemove,
+  more,
+}: {
+  chosen: Download[]
+  total: number
+  onClear: () => void
+  onAll: () => void
+  onStart: () => void
+  onPause: () => void
+  onLabel: () => void
+  onRemove: () => void
+  more: RowAction[]
+}) {
+  // the row menu without what the bar already has (and without keyboard shortcuts: a phone)
+  const already = /^(Start|Pause|Remove|Set label)\b/
+  const extra = more.filter((a) => a === 'separator' || !already.test(a.label))
+  const items = extra.filter((a, i) => a !== 'separator' || (i > 0 && extra[i - 1] !== 'separator' && i < extra.length - 1))
+  return (
+    <div className="flex items-center gap-1 border-b p-2" role="toolbar" aria-label={`${chosen.length} selected`}>
+      <Button variant="ghost" size="icon-sm" aria-label="Clear the selection" onClick={onClear}>
+        <X />
+      </Button>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium tabular-nums">{chosen.length} selected</span>
+      <Button variant="ghost" size="icon-sm" aria-label="Start" disabled={!chosen.some(canStart)} onClick={onStart}>
+        <Play />
+      </Button>
+      <Button variant="ghost" size="icon-sm" aria-label="Pause" disabled={!chosen.some(canPause)} onClick={onPause}>
+        <Pause />
+      </Button>
+      <Button variant="ghost" size="icon-sm" aria-label="Label" onClick={onLabel}>
+        <Tag />
+      </Button>
+      <Button variant="ghost" size="icon-sm" aria-label="Remove" className="hover:text-destructive" onClick={onRemove}>
+        <Trash2 />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label="More">
+            <EllipsisVertical />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          {chosen.length < total && (
+            <>
+              <DropdownMenuItem onSelect={onAll}>
+                <CheckCheck /> Select all ({total})
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          {items.map((a, i) =>
+            a === 'separator' ? (
+              <DropdownMenuSeparator key={`s${i}`} />
+            ) : (
+              <DropdownMenuItem key={a.label} disabled={a.disabled} variant={a.destructive ? 'destructive' : undefined} onSelect={a.onSelect}>
+                {a.icon}
+                {a.label}
+              </DropdownMenuItem>
+            ),
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileUp, FolderTree, Info } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Spinner } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,7 @@ export function AddDownloadDialog({
   labels: string[]
 }) {
   const client = useQueryClient()
+  const navigate = useNavigate()
   // mounted again for every opening (its key): a dropped file is where it starts
   const [link, setLink] = useState(given ?? '')
   const [file, setFile] = useState<File | null>(dropped ?? null)
@@ -121,6 +122,7 @@ export function AddDownloadDialog({
     onSuccess: ({ d, name }) => {
       toast.success(`Added ${d.name ?? name ?? 'the torrent'}`, {
         description: startNow ? (d.state === 'queued' ? `Queued #${d.queuePosition ?? 1}: it starts when a slot is free.` : undefined) : 'Paused until you start it.',
+        action: { label: 'Show', onClick: () => navigate(`/downloads?hash=${d.infoHash}`) },
       })
       client.invalidateQueries({ queryKey: ['downloads'] })
       onOpenChange(false)

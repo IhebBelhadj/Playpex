@@ -221,6 +221,29 @@ test('downloads.maxActive queues; "pause all" persists across a restart', functi
   });
 });
 
+test('starting one while "pause all" is on lifts it for that one; the others stay paused', function () {
+  server.settings.update({ downloads: { maxActive: 3, seedRatio: 100 } });
+  var client = require('../lib/torrents/client');
+  return Promise.all([client.remove(pack.infoHash, { deleteData: true }), client.remove(other.infoHash, { deleteData: true })]).then(function () {
+    return Promise.all([pack, other].map(function (t) { return call('POST', '/downloads', { link: t.magnet }); }));
+  }).then(function () {
+    return Promise.all([pack, other].map(function (t) { return stateIs(t.infoHash, ['downloading', 'seeding']); }));
+  }).then(function () {
+    client.pauseAll();
+    return Promise.all([pack, other].map(function (t) { return stateIs(t.infoHash, 'queued'); }));
+  }).then(function () {
+    return call('POST', '/downloads/' + pack.infoHash + '/start');
+  }).then(function (res) {
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(server.settings.get('downloads.paused'), false, '"pause all" is off');
+    return stateIs(pack.infoHash, ['downloading', 'seeding']);
+  }).then(function () {
+    return download(other.infoHash);
+  }).then(function (d) {
+    assert.equal(d.state, 'paused', 'the other one stays paused, on its own');
+  });
+});
+
 test('a stream past streaming.maxTorrents: a download nobody watches goes back to the queue', function () {
   server.settings.update({ streaming: { maxTorrents: 1 }, downloads: { maxActive: 3, seedRatio: 100 } });
   var client = require('../lib/torrents/client');

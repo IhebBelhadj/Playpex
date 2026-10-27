@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, ArrowDown, ArrowUp, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -161,6 +161,10 @@ function QuickSearch() {
   )
 }
 
+// Opened from the Playpex Server Manager app (apps/manager): it adds this to the
+// WebView's user agent. Its server list is the app's own page, https://localhost.
+const IN_MANAGER = /PlaypexManager\//.test(navigator.userAgent)
+
 // The server this dashboard runs, whether live updates flow, and the admin's sign-out
 function ServerCorner({ name, traffic }: { name?: string; traffic?: { down: number; up: number } }) {
   const session = useSession()
@@ -192,6 +196,16 @@ function ServerCorner({ name, traffic }: { name?: string; traffic?: { down: numb
         <TooltipContent>{connected ? 'Live updates on' : 'Reconnecting to the server…'}</TooltipContent>
       </Tooltip>
       <span className="hidden text-sm text-muted-foreground sm:inline">{adminName(session.data)}</span>
+      {IN_MANAGER && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Switch server" onClick={() => (location.href = 'https://localhost/#pick')}>
+              <ArrowLeftRight />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Switch server</TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={() => signOut.mutate(undefined, { onSettled: () => navigate('/login') })}>

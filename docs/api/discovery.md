@@ -34,7 +34,7 @@ Whatever the method, **confirm every address** with `GET /api/v1/server` before 
 
 ## A name people type
 
-Nobody should have to remember an IP address. A server answers to a `.local` name of its own over mDNS: **`playpex.local`** by default (the admin changes it in Settings › Network, `network.hostname`). When another device on the network already answers to that name, the server takes `playpex-2.local`, then `-3` and so on; the name in use is `host` in the UDP answer and in `GET /admin/overview` (`server.discovery.mdns.host`), and it is the SRV target. Every device that resolves `.local` names (macOS, iOS, Windows 10+, Android 12+, Linux with Avahi / systemd-resolved's mDNS) reaches it at `http://playpex.local:28470`.
+Nobody should have to remember an IP address. A server answers to a `.local` name of its own over mDNS: **`playpex.local`** by default (the admin changes it in Settings › Network, `network.hostname`). When another device on the network already answers to that name, the server takes `playpex-2.local`, then `-3` and so on; the name in use is `host` in the UDP answer, in `GET /server` and in `GET /admin/overview` (`server.discovery.mdns.host`), and it is the SRV target. Every device that resolves `.local` names (macOS, iOS, Windows 10+, Android 12+, Linux with Avahi / systemd-resolved's mDNS) reaches it at `http://playpex.local:28470`.
 
 - The server accepts that name as a `Host` (and `<name>-2` … `-9.local`), like its IP addresses.
 - The pairing answer's `verification_uri` (the address a client shows for typing on a phone) uses the name; `verification_uri_complete` (for the QR code) keeps the address the client used.

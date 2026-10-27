@@ -1,0 +1,319 @@
+/* Playpex Server Manager's picker: the dashboard's look (apps/dashboard/src/index.css, true-black flat):
+   lightness steps for surfaces, no borders or shadows at rest, white primary, gold for what's live */
+:root {
+  --ground: #000000;
+  --card: #111111;
+  --raised: #1f1f1f;
+  --text: #ffffff;
+  --muted: #b4b4b4;
+  --faint: #949494;
+  --input: #3d3d3d;
+  --gold: #e0a93b;
+  --negative: #e5566f;
+  --font: 'Jost Variable', 'Futura', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(32px, env(safe-area-inset-bottom));
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.brand img {
+  width: 22px;
+  height: 22px;
+}
+
+h1 {
+  margin: 28px 0 6px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  margin: 0;
+  color: var(--muted);
+}
+
+.block {
+  margin-top: 32px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.servers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.servers li + li {
+  border-top: 1px solid #232323;
+}
+
+.server {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 18px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.server:active {
+  background: var(--raised);
+}
+
+.server:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.server-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.server-name {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.server-detail {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.server-mark {
+  flex: none;
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.chevron {
+  flex: none;
+  color: var(--faint);
+  font-size: 22px;
+}
+
+.empty {
+  padding: 20px 18px;
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.searching {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gold);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.hint {
+  margin-top: 10px !important;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.address {
+  display: flex;
+  gap: 8px;
+}
+
+.address input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.address input::placeholder {
+  color: var(--faint);
+}
+
+.address input:focus {
+  border-color: var(--text);
+  outline: none;
+}
+
+.primary {
+  flex: none;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--ground);
+  font: inherit;
+  font-weight: 500;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+}
+
+.notice {
+  margin: 20px 0 0;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.error {
+  margin: 10px 4px 0;
+  color: var(--negative);
+  font-size: 14px;
+}
+
+.opening {
+  margin-top: 40vh;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Whole-page screens: no network, a dashboard that can't be reached */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 18vh;
+}
+
+.screen h1 {
+  margin-top: 20px;
+}
+
+.screen-mark {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--negative);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.empty .actions {
+  margin-top: 14px;
+}
+
+.secondary {
+  height: 48px;
+  padding: 0 22px;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.secondary:disabled {
+  opacity: 0.6;
+}
+
+.text {
+  height: 48px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.text:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.empty-title {
+  font-weight: 500;
+}
+
+.waiting {
+  margin-top: 28px;
+  font-size: 14px;
+}
