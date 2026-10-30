@@ -1,0 +1,41 @@
+// The search page's sort and filter panel: groups of <px-chip>s on the
+// <px-panel> frame, laid out like the list page's filter panel
+@use 'px' as *;
+
+// a pxStack: scrolls when the groups don't fit; room for the chips' zoom
+.panelBody {
+  min-height: 0;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
+}
+
+.groupTitle {
+  margin: dp(26) 0 dp(12);
+  font-family: var(--px-font-book);
+  font-weight: normal;
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.groupHint {
+  margin: dp(-6) 0 dp(12);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}
+
+.chipLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(10);
+}
+
+.panelActions {
+  display: flex;
+  gap: dp(14);
+  margin-top: dp(30);
+}

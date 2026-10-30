@@ -1,6 +1,6 @@
 # Search plan: one search for everything, links pasted in, direct downloads
 
-Status: proposed and built 2026-10-25. Steps: 1 ✓ 2 ✓ 3 ✓ 4 ✓ 5 ✓ 6 ✓ 7 ✓ (left: a TV-side Search; links on the LAN, refused by decision A)
+Status: proposed and built 2026-10-25. Steps: 1 ✓ 2 ✓ 3 ✓ 4 ✓ 5 ✓ 6 ✓ 7 ✓; 2026-10-30: the same Search on the phone (Playpex Mobile) and on the TV (its search page: videos, torrents with a sort and filter panel, links through `POST /links/inspect` for paired devices). Left: links on the LAN, refused by decision A
 
 The dashboard's Find torrents page (built 2026-10-25, `apps/dashboard/src/pages/search.tsx`) searched one kind of thing: torrents
 from the release providers. This plan makes it **Search**: one field for everything the server can reach, and a URL pasted into it is
@@ -21,7 +21,7 @@ Adults plugins never answer here (the dashboard has no profile: `NO_ADULTS`, as 
 
 ## 2. Decisions
 
-- **A. The URL is the server's to read, the admin's to give.** `POST /admin/links/inspect` is admin-only. The server fetches it as a
+- **A. The URL is the server's to read, the admin's to give.** `POST /admin/links/inspect` is admin-only. *Revised 2026-10-30:* clients' Search (Playpex Mobile) may paste links too: `POST /links/inspect` for paired devices, the same reading rules, refused for a kids profile. The server fetches it as a
   core principal (`anyHost`, plain http and any port allowed, like an address the admin granted a plugin) through
   `lib/plugins/http.js`: public addresses only, every hop checked (the server sits on the LAN: a pasted link mustn't reach the
   router's admin page). A LAN address is refused with that reason. Pages: 2 MB of HTML read at most.

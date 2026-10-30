@@ -1,0 +1,31 @@
+<px-panel id="searchRefine" [title]="'Sort and filter ' + noun" align="start" [width]="1040" focus=".sortLine .selected"
+  (closed)="closed.emit()">
+  <div class="panelBody" pxStack>
+    <h3 class="groupTitle">Order</h3>
+    <div class="chipLine sortLine" pxGrid enter="selected">
+      <px-chip *ngFor="let s of sorts" [key]="'sort:' + s.value" [label]="s.label" [selected]="value.sort == s.value"
+        (pxSelect)="setSort(s.value)"></px-chip>
+    </div>
+
+    <h3 class="groupTitle">Name</h3>
+    <p class="groupHint">Sites answer loosely: keep the ones whose name holds every word you typed</p>
+    <div class="chipLine" pxGrid enter="nearest">
+      <px-chip key="exact" [label]="'Every word in the name  ' + exactCount" [selected]="value.exact" (pxSelect)="flipExact()"></px-chip>
+    </div>
+
+    <ng-container *ngFor="let g of groups; trackBy: trackGroup">
+      <h3 class="groupTitle">{{ g.title }}</h3>
+      <div class="chipLine" pxGrid enter="nearest">
+        <px-chip *ngFor="let o of g.options; trackBy: trackOption" [key]="g.key + ':' + o.value"
+          [label]="o.label + '  ' + (g.counts.get(o.value) || 0)" [selected]="isOn(g.key, o.value)"
+          (pxSelect)="flip(g.key, o.value)"></px-chip>
+      </div>
+    </ng-container>
+
+    <div class="panelActions" pxGrid enter="nearest">
+      <px-button key="show" variant="primary" [label]="left ? 'Show ' + left + ' ' + noun : 'No ' + noun + ' like that'"
+        (pxSelect)="closed.emit()"></px-button>
+      <px-button key="clear" label="Clear filters" (pxSelect)="clear()"></px-button>
+    </div>
+  </div>
+</px-panel>
