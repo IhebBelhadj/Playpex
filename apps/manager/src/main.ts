@@ -1,6 +1,7 @@
 import '@fontsource-variable/jost'
 import './style.css'
 import { canDiscover, probe, startDiscovery, toUrl, type Server } from './discovery'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { canOpenWifiSettings, network, onNetwork, wifiSettings, type Network } from './connection'
 
 // Playpex Server Manager's own page: which server to manage. At launch it opens
@@ -8,8 +9,7 @@ import { canOpenWifiSettings, network, onNetwork, wifiSettings, type Network } f
 // "Switch server" sent us here: #pick), else lists the servers found on the network (the native
 // plugin: mDNS + UDP, each confirmed), with a field for an address. Choosing
 // one loads that server's dashboard in this WebView; Back returns here.
-// Without a network it shows "No connection" (and "Not on Wi-Fi" above the list on mobile data
-// only); a dashboard that can't be reached comes back here as #offline=<its URL> (PlaypexConnection.java)
+// Without any network (nor this phone's hotspot) it shows "No connection"; a dashboard that can't be reached comes back here as #offline=<its URL> (PlaypexConnection.java)
 // and returns to that page by itself once its server answers again.
 
 const LAST_KEY = 'playpex.manager.last'
@@ -45,6 +45,23 @@ const state = {
   /** the last server still to open at launch, once there is a network */
   autoOpen: false,
   retrying: false,
+}
+
+// The system's launch screen stays until this page has drawn (android/.../PlaypexSplash.java)
+const splashPlugin = registerPlugin<{ ready(): Promise<void> }>('PlaypexSplash')
+let splashDone = false
+function drawn() {
+  if (splashDone || !Capacitor.isNativePlatform()) return
+  splashDone = true
+  // after the frame that shows it (a hidden WebView draws no frames: then after a moment)
+  let sent = false
+  const send = () => {
+    if (sent) return
+    sent = true
+    void splashPlugin.ready().catch(() => {})
+  }
+  requestAnimationFrame(() => requestAnimationFrame(send))
+  setTimeout(send, 150)
 }
 
 const last = loadLast()
@@ -135,6 +152,7 @@ function build() {
     h('section', { class: 'block' }, h('h2', { textContent: 'Enter an address' }), form, ui.error),
   )
   ui.built = true
+  drawn()
 }
 
 const RETRY_MS = 5000
@@ -166,6 +184,7 @@ function serverName(url: string) {
 /** A whole-page screen: no network, or a dashboard that can't be reached */
 function screen(title: string, text: string, waiting: string | null, ...actions: (HTMLElement | null)[]) {
   ui.built = false
+  drawn()
   app.replaceChildren(
     h('header', { class: 'brand' }, h('img', { src: './logo.svg', alt: '' }), h('span', { textContent: 'Playpex' })),
     h(
@@ -186,19 +205,11 @@ function renderOffline(url: string) {
   const other = h('button', { type: 'button', class: 'text', textContent: 'Choose another server', onclick: () => showPicker() })
   if (!state.net.connected) {
     screen('No connection', `This phone isn’t connected to any network. Turn on Wi-Fi to reach ${name}.`, 'Waiting for a network…', wifiButton(), again, other)
-  } else if (!state.net.local) {
-    screen(
-      'Not on Wi-Fi',
-      `${name} is on your home network, and this phone is on mobile data. Connect it to the same Wi-Fi as the server.`,
-      'Trying again by itself…',
-      wifiButton(),
-      again,
-      other,
-    )
   } else {
+    // whatever the network (Wi-Fi, this phone's hotspot, a VPN on mobile data), only an answer counts
     screen(
       `Can’t reach ${name}`,
-      `It isn’t answering at ${hostOf(url)}. Check that the server is running, and that this phone is on the same Wi-Fi as it.`,
+      `It isn’t answering at ${hostOf(url)}. Check that the server is running, and that it’s on the same network as this phone: the same Wi-Fi, or this phone’s hotspot.`,
       'Trying again by itself…',
       again,
       other,
@@ -217,23 +228,9 @@ function render() {
 
   ui.notice.replaceChildren(state.notice ? h('p', { class: 'notice', textContent: state.notice }) : '')
   ui.found.replaceChildren(
-    !state.net.local && canDiscover
-      ? h(
-          'div',
-          { class: 'empty' },
-          h('p', { class: 'empty-title', textContent: 'Not on Wi-Fi' }),
-          h('p', {
-            class: 'hint',
-            textContent: 'This phone is on mobile data, so servers can’t be found by themselves. Connect it to the server’s Wi-Fi, or enter an address below if you reach the server another way (a VPN).',
-          }),
-          canOpenWifiSettings ? h('div', { class: 'actions' }, wifiButton()) : null,
-        )
-      : '',
     list.length
       ? h('ul', { class: 'servers' }, ...list.map(serverRow))
-      : !state.net.local && canDiscover
-        ? ''
-        : h(
+      : h(
           'div',
           { class: 'empty' },
           canDiscover
@@ -243,7 +240,7 @@ function render() {
             ? h('p', {
                 class: 'hint',
                 textContent:
-                  'None found yet. Check that the server is running and this phone is on the same Wi-Fi. Some networks block finding devices: enter the server’s address instead, as the dashboard shows it (Overview › Addresses).',
+                  'None found yet. Check that the server is running and on the same network as this phone (the same Wi-Fi, or this phone’s hotspot). Some networks block finding devices: enter the server’s address instead, as the dashboard shows it (Overview › Addresses).',
               })
             : null,
         ),
@@ -301,8 +298,18 @@ function showPicker() {
 async function openLast() {
   if (!last) return
   state.autoOpen = false
-  app.replaceChildren(h('p', { class: 'opening', textContent: `Opening ${last.name}…` }))
+  // the launch screen's mark, where it was, with the name under it, until the dashboard loads
+  app.replaceChildren(
+    h(
+      'div',
+      { class: 'splash', role: 'status' },
+      h('span', { class: 'splash-mark', ariaHidden: 'true' }),
+      h('span', { class: 'splash-text' }, h('span', { class: 'splash-name', textContent: 'Playpex' }), h('span', { class: 'splash-sub', textContent: `Opening ${last.name}…` })),
+      h('span', { class: 'splash-bar', ariaHidden: 'true' }),
+    ),
+  )
   ui.built = false
+  drawn()
   try {
     const s = await Promise.race([probe(last.url), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 3000))])
     if (!canDiscover || s.id === last.id) return open(s)
@@ -315,7 +322,7 @@ async function openLast() {
 async function main() {
   state.net = await network()
   onNetwork((n) => {
-    const backOnWifi = n.local && !state.net.local
+    const backOnLan = n.local && !state.net.local
     state.net = n
     if (state.offline) {
       render()
@@ -326,7 +333,7 @@ async function main() {
     if (n.connected && state.autoOpen) return void openLast()
     render()
     // the sockets were on the old network: browse again on the new one
-    if (backOnWifi) void discover()
+    if (backOnLan) void discover()
   })
 
   const offline = location.hash.match(/^#offline(?:=(.*))?$/)

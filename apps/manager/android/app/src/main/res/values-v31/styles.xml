@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: the system splash animates the mark in (splash_mark.xml), then MainActivity holds it
+         until the page has drawn its own splash -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+        <item name="windowSplashScreenAnimationDuration">650</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:background">@color/ground</item>
+    </style>
+</resources>

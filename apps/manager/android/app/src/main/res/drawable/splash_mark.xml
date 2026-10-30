@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch screen's mark drawing in (Android 12+): it grows from 80 % and fades in, on black.
+     The same mark and place as ic_launcher_foreground.xml; the page's own splash (src/main.ts) takes over from it -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="108dp"
+            android:height="108dp"
+            android:viewportWidth="108"
+            android:viewportHeight="108">
+            <group
+                android:name="grow"
+                android:pivotX="54"
+                android:pivotY="54"
+                android:scaleX="0.8"
+                android:scaleY="0.8">
+                <!-- translateX 31.1, not 28: 6 % of the mark's width right of centre, its weight being on the left -->
+                <group
+                    android:scaleX="0.0682"
+                    android:scaleY="0.0682"
+                    android:translateX="31.1"
+                    android:translateY="30.9">
+                    <path
+                        android:name="mark"
+                        android:fillAlpha="0"
+                        android:pathData="M86.15,149.96 L561.45,385.84 L282.78,653.27 L762,376.87 L0,0 L0,165.18 L0,677.16 Z">
+                        <aapt:attr name="android:fillColor">
+                            <gradient
+                                android:type="linear"
+                                android:startX="0"
+                                android:startY="338.58"
+                                android:endX="762"
+                                android:endY="338.58">
+                                <item android:offset="0" android:color="#FFE3CC97" />
+                                <item android:offset="0.72" android:color="#FFF6E084" />
+                                <item android:offset="0.94" android:color="#FFD1B372" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="grow">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueFrom="0.8"
+                    android:valueTo="1"
+                    android:duration="650"
+                    android:interpolator="@android:interpolator/fast_out_slow_in" />
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueFrom="0.8"
+                    android:valueTo="1"
+                    android:duration="650"
+                    android:interpolator="@android:interpolator/fast_out_slow_in" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="mark">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:propertyName="fillAlpha"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:duration="450"
+                android:interpolator="@android:interpolator/linear_out_slow_in" />
+        </aapt:attr>
+    </target>
+</animated-vector>
