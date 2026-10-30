@@ -1,0 +1,85 @@
+# Changelog
+
+## 0.1.21
+
+- Keep the previous iOS Metal drawable proportional while rotating, including
+  after MoltenVK recreates its swapchain.
+- Reconfigure Android EGL buffers and the viewport when the Surface size changes,
+  and redraw the retained video frame while paused without reloading the source.
+- Add native playing/paused rotation regressions with rendered circle checks.
+
+## 0.1.20
+
+### Android
+
+- Restore video output only after the replacement Surface is attached when
+  returning from the background. Suspend the old output before detaching it,
+  preserving the playback position and pause state instead of leaving audio-only playback.
+- Add a native background regression runner that checks repeated paused and
+  playing Activity transitions, actual rendered frames, progress, and source continuity.
+
+### iOS
+
+- Apply subtitle selection and property updates asynchronously, and wait for
+  their completion without blocking the main thread during font initialization.
+- Package bundled subtitle fonts in `ExpoMpvFonts.bundle` so libass does not
+  scan unrelated application resources as font files.
+
+### Playback
+
+- Add `startPosition`, applied together with the source before its first frame
+  on both platforms. Continuing playback no longer requires a seek after loading.
+- Publish the initial position after a paused playback restart as well.
+
+## 0.1.16
+
+### Android
+
+- Lay out the native video surface with its host and update mpv's surface size
+  when the view resizes, keeping the viewport and video aspect ratio correct.
+- Implement the existing `addAudio` ref method on Android so external audio
+  tracks can be loaded with their title and language.
+
+## 0.1.11
+
+### iOS
+
+- **Unified playback state machine.** `onPlaybackStateChange` now reports a
+  `state` of `idle | loading | playing | paused | buffering | ended`, derived
+  natively from mpv's `eof-reached` / `paused-for-cache` / `pause` / `core-idle`.
+  Fixes "loading" mismatches (e.g. spinner hiding before the first frame) and
+  premature state transitions.
+- **Buffering progress & rate.** `onProgress` gained:
+  - `bufferedPosition` — absolute buffered timeline position (`demuxer-cache-time`),
+    for drawing the buffered range on a seek bar.
+  - `bufferRate` — network read rate in bytes/sec (`demuxer-cache-state.raw-input-rate`).
+  - `bufferingPercent` — cache fill 0–100 while stalled (`cache-buffering-state`).
+- **HDR / Dolby Vision detection.** libplacebo (vo=gpu-next) decodes and tone-maps
+  HDR & DV content. New `onHdrStateChange` event
+  (`{ isHdr, hdrActive, sigPeak, hdrFormat }`) and `getMediaInfo()` now includes
+  `isHdr` / `hdrFormat`.
+  (Note: `target-colorspace-hint`/HDR passthrough is not forced on iOS — it can break
+  hardware decode with vo=gpu-next.)
+- **External subtitles now show by default.** `addSubtitle` defaults its flag to
+  `select` (mpv's own default) instead of `auto`, so an added subtitle is displayed
+  immediately. Pass `auto` to add without selecting.
+- **External audio.** New `addAudio(path, flag?, title?, lang?)` and
+  `removeAudio(trackId)` (mpv `audio-add` / `audio-remove`).
+
+### JavaScript
+
+- Every imperative ref method now resolves to a `Promise` even before the native
+  view is mounted (`?? Promise.resolve()`), fixing "cannot read 'then' of undefined"
+  crashes. `seekTo` / `seekBy` guard against non-finite arguments.
+
+### Types
+
+- New `PlaybackState` and `HdrStateChangeEvent` exports; `ProgressEvent`,
+  `PlaybackStateChangeEvent`, `MediaInfo`, and `ExpoMpvViewRef` extended accordingly.
+
+### Notes
+
+- Requires iOS deployment target **16.4** when used with Expo SDK 57 / React Native 0.86.
+- Xcode 26.1.x + Expo SDK 57 may fail to compile `expo-modules-jsi` (`weak let` /
+  Sendable under Swift 6). This is an Expo/toolchain issue, not expo-mpv; work around
+  it with `patch-package` (`nonisolated(unsafe) weak var`) or a compatible Xcode.

@@ -1,0 +1,93 @@
+{
+  "expo": {
+    "name": "Playpex",
+    "slug": "playpex-mobile",
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "scheme": "playpex",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#100D0B",
+    "ios": {
+      "bundleIdentifier": "app.playpex.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Playpex looks for your Playpex Media Server on this network.",
+        "NSBonjourServices": [
+          "_playpex._tcp"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoadsForMedia": true
+        }
+      }
+    },
+    "android": {
+      "package": "app.playpex.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#100D0B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Futura-Bold.ttf",
+            "./assets/fonts/Futura-Book.ttf",
+            "./assets/fonts/HankenGrotesk-Regular.ttf",
+            "./assets/fonts/HankenGrotesk-Medium.ttf",
+            "./assets/fonts/HankenGrotesk-SemiBold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "resizeMode": "contain",
+          "backgroundColor": "#100D0B"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
+      "./modules/expo-mpv/app.plugin.js",
+      "./plugins/with-architectures.js"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The countdown leader's sweeping hand (ui/loading.tsx): its edge at 12 o'clock, a trail of light behind it -->
+  <defs>
+    <linearGradient id="trail" x1="0.5" y1="0" x2="0" y2="0.5">
+      <stop offset="0" stop-color="#E6CF8F" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#E6CF8F" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <polygon points="50,50 50.00,2.00 45.82,2.18 41.66,2.73 37.58,3.64 33.58,4.89 29.71,6.50 26.00,8.43 22.47,10.68 19.15,13.23 16.06,16.06 13.23,19.15 10.68,22.47 8.43,26.00 6.50,29.71 4.89,33.58 3.64,37.58 2.73,41.66 2.18,45.82 2.00,50.00 2.18,54.18 2.73,58.34" fill="url(#trail)"/>
+  <line x1="50" y1="50" x2="50" y2="2" stroke="#E6CF8F" stroke-width="1.4" stroke-opacity="0.9"/>
+</svg>

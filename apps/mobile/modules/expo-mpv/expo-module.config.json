@@ -1,0 +1,10 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["ExpoMpvModule"],
+    "podspecPath": "ExpoMpv.podspec"
+  },
+  "android": {
+    "modules": ["expo.modules.mpv.ExpoMpvModule"]
+  }
+}
