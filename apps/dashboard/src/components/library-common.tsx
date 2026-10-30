@@ -54,6 +54,16 @@ const AUDIENCES: { id: Audience; label: string; hint: string }[] = [
   { id: 'adults', label: 'Adults only', hint: 'Never for kids profiles' },
 ]
 
+/**
+ * Who may see a folder: "Adults only" is offered only once an adults plugin is installed (the core has
+ * no adult section of its own), or when the folder already is one; with "Everyone" alone, no choice.
+ */
+function useAudiences(current: Audience): typeof AUDIENCES {
+  const plugins = useQuery({ queryKey: ['admin-plugins'], queryFn: () => unwrap(api.GET('/admin/plugins')) })
+  const adults = current === 'adults' || (plugins.data?.plugins ?? []).some((p) => p.audience === 'adults')
+  return adults ? AUDIENCES : AUDIENCES.filter((a) => a.id !== 'adults')
+}
+
 
 export const kindLabel = (kind: FolderKind) => KINDS.find((k) => k.id === kind)?.label ?? kind
 export const pad = (n: number | null | undefined) => String(n ?? 0).padStart(2, '0')
@@ -221,6 +231,7 @@ export function AddFolderDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [kind, setKind] = useState<FolderKind>('mixed')
   const [audience, setAudience] = useState<Audience>('everyone')
   const [dlna, setDlna] = useState(false)
+  const audiences = useAudiences(audience)
   const add = useMutation({
     mutationFn: () => unwrap(api.POST('/admin/library/folders', { body: { path: path.trim(), kind, audience, dlna: dlna && audience === 'everyone' } })),
     onSuccess: (folder) => {
@@ -251,9 +262,9 @@ export function AddFolderDialog({ open, onOpenChange }: { open: boolean; onOpenC
             <Label htmlFor="folder-path">Folder</Label>
             <Input id="folder-path" value={path} placeholder="/srv/media/Movies" className="font-mono" onChange={(e) => setPath(e.target.value)} />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={audiences.length > 1 ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
             <Choice id="folder-kind" label="Holds" value={kind} options={KINDS} onChange={setKind} />
-            <Choice id="folder-audience" label="Who sees it" value={audience} options={AUDIENCES} onChange={setAudience} />
+            {audiences.length > 1 && <Choice id="folder-audience" label="Who sees it" value={audience} options={audiences} onChange={setAudience} />}
           </div>
           <DlnaSwitch id="folder-dlna" checked={dlna} audience={audience} onChange={setDlna} />
           <DialogFooter>
@@ -338,6 +349,7 @@ function EditFolderForm({ folder, matchers, onClose }: { folder: LibraryFolder; 
   const [audience, setAudience] = useState<Audience>(folder.audience)
   const [dlna, setDlna] = useState(folder.dlna)
   const [matcher, setMatcher] = useState(folder.matcher ?? TMDB)
+  const audiences = useAudiences(folder.audience)
   const providers = [
     { id: TMDB, label: 'Playpex (TMDB)', hint: 'File and folder names, .nfo files, matched on TMDB' },
     ...matchers.map((m) => ({ id: m.id, label: m.name, hint: `The ${m.name} plugin recognises the files; Playpex's own matching when it can't` })),
@@ -380,9 +392,9 @@ function EditFolderForm({ folder, matchers, onClose }: { folder: LibraryFolder; 
         <DialogTitle>Edit folder</DialogTitle>
         <DialogDescription className="font-mono break-all">{folder.path}</DialogDescription>
       </DialogHeader>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={audiences.length > 1 ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
         <Choice id="edit-kind" label="Holds" value={kind} options={KINDS} onChange={setKind} />
-        <Choice id="edit-audience" label="Who sees it" value={audience} options={AUDIENCES} onChange={setAudience} />
+        {audiences.length > 1 && <Choice id="edit-audience" label="Who sees it" value={audience} options={audiences} onChange={setAudience} />}
       </div>
       {kind !== 'other' && (providers.length > 1 || folder.matcher) && (
         <Choice id="edit-matcher" label="Information provider" value={matcher} options={providers} onChange={setMatcher} />

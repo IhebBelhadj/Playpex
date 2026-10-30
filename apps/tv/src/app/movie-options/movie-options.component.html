@@ -2,7 +2,7 @@
      cast row, the similar titles row -->
 <div class="optionsMasterContainer" pxSection="options" [leaveFor]="{ left: '@menu' }">
   <px-action-bar>
-    <px-action key="play" icon="play" [label]="resumeLabel || 'Play'" busyLabel="Finding torrents…"
+    <px-action key="play" icon="play" [label]="resumeLabel || 'Play'" busyLabel="Finding sources…"
       [busy]="findingTorrents" (pxSelect)="onPlay()"></px-action>
     <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="onTrailer()"></px-action>
     <!-- every source plugin's releases of this movie (none: no button) -->

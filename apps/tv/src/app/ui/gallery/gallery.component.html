@@ -68,7 +68,7 @@
     <px-action-bar>
       <px-action key="g-play" icon="play" label="Play"></px-action>
       <px-action key="g-resume" icon="play" label="Resume (58 min left)" [progress]="0.42"></px-action>
-      <px-action key="g-busy" icon="play" label="Play" busyLabel="Finding torrents…" [busy]="true"></px-action>
+      <px-action key="g-busy" icon="play" label="Play" busyLabel="Finding sources…" [busy]="true"></px-action>
       <px-action key="g-on" icon="bookmark" onIcon="tick" label="In your watch list" [on]="true"></px-action>
       <px-action key="g-off" icon="bookmark" onIcon="tick" label="Add to watch list"></px-action>
       <px-action key="g-disabled" icon="trailer" label="Trailer" [disabled]="true"></px-action>
@@ -162,7 +162,7 @@
       <ng-container *ngFor="let c of cards; trackBy: byKey">
         <px-card [variant]="c.variant" [key]="c.key" [image]="c.image" [title]="c.title" [subtitle]="c.subtitle || ''"
           [number]="c.number ?? null" [badges]="c.badges || null" [progress]="c.progress ?? null" [rating]="c.rating || null"
-          [meta]="c.meta || null" [busy]="!!c.busy" busyLabel="Finding torrents…" [dim]="!!c.dim"></px-card>
+          [meta]="c.meta || null" [busy]="!!c.busy" busyLabel="Finding sources…" [dim]="!!c.dim"></px-card>
       </ng-container>
     </px-card-row>
     <px-card-row rowKey="g-loading" title="A row still loading (skeletons)" [items]="[]" [loading]="true"></px-card-row>

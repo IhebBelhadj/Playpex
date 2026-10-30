@@ -153,7 +153,7 @@ function ServerStep() {
         ) : check.error ? (
           <p className="text-xs text-destructive">{errorMessage(check.error)}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">Empty = the default ({defaultDir || 'the cache folder'}). Torrents are streamed from here.</p>
+          <p className="text-xs text-muted-foreground">Empty = the default ({defaultDir || 'the cache folder'}). Downloads are kept here.</p>
         )}
       </div>
       <div className="flex items-start justify-between gap-4">
