@@ -1,104 +1,159 @@
-<!-- The page is a scrolling pxStack (filters line, result rows); the keyboard
-     is a plain section on top of it, moved by geometry (src/app/movement) -->
+<!-- The page is a scrolling pxStack: the search field, the filters line, the
+     results (rows of cards, the torrent list, a link's contents) -->
 <div class="searchContainer" pxStack="search" align="nearest">
-  <!-- one block: focusing a key brings the search field into view too -->
-  <div class="searchHead" pxStackItem>
-  <input
-  name="searchBar"
-  type="text"
-  class="inputValue"
-  #searchBar
-  (input)="onInputChange(searchBar)"
-  placeholder="Search movies, TV shows, anime and people"
-  [value]="state.query">
-
-
-  <div class="keyboardContainer" pxSection="keyboard" pxSelector=".keyboardBtn" [leaveFor]="{ down: '@searchFilters' }">
-    <div class="keyboardGrid charKeyboard">
-      <button class="keyboardBtn">A</button>
-      <button class="keyboardBtn">B</button>
-      <button class="keyboardBtn">C</button>
-      <button class="keyboardBtn">D</button>
-      <button class="keyboardBtn">E</button>
-      <button class="keyboardBtn">F</button>
-      <button class="keyboardBtn">G</button>
-      <button class="keyboardBtn">H</button>
-      <button class="keyboardBtn">I</button>
-      <button class="keyboardBtn">J</button>
-      <button class="keyboardBtn">K</button>
-      <button class="keyboardBtn">L</button>
-      <button class="keyboardBtn">M</button>
-      <button class="keyboardBtn">N</button>
-      <button class="keyboardBtn">O</button>
-      <button class="keyboardBtn">P</button>
-      <button class="keyboardBtn">Q</button>
-      <button class="keyboardBtn">R</button>
-      <button class="keyboardBtn">S</button>
-      <button class="keyboardBtn">T</button>
-      <button class="keyboardBtn">U</button>
-      <button class="keyboardBtn">V</button>
-      <button class="keyboardBtn">W</button>
-      <button class="keyboardBtn">X</button>
-      <button class="keyboardBtn">Y</button>
-      <button class="keyboardBtn">Z</button>
+  <!-- The query: Enter opens the on-screen keyboard (<text-keyboard>) -->
+  <div class="searchHead" pxStackItem pxSection="searchHead" [leaveFor]="{ down: '@searchFilters' }">
+    <div class="headLine" pxGrid="searchHead" enter="nearest">
+      <px-search-field key="search" size="l" [width]="fieldWidth" [query]="state.query"
+        placeholder="Titles, people, videos, or a link" (pxSelect)="typing = true"></px-search-field>
+      <px-button *ngIf="state.query" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clear()"></px-button>
     </div>
-    <div class="keyboardGrid numKeyboard">
-      <button class="keyboardBtn">0</button>
-      <button class="keyboardBtn">1</button>
-      <button class="keyboardBtn">2</button>
-      <button class="keyboardBtn">3</button>
-      <button class="keyboardBtn">4</button>
-      <button class="keyboardBtn">5</button>
-      <button class="keyboardBtn">6</button>
-      <button class="keyboardBtn">7</button>
-      <button class="keyboardBtn">8</button>
-      <button class="keyboardBtn">9</button>
-      <button class="keyboardBtn">&</button>
-      <button class="keyboardBtn">-</button>
-      <button class="keyboardBtn">_</button>
-      <button class="keyboardBtn">*</button>
-      <button class="keyboardBtn">'</button>
-    </div>
-    <div class="utilKeys">
-      <button data-fct="del" class="delKey keyboardBtn">
-        <img src="assets/icons/keyboardDelete.svg" alt="">
-      </button>
-      <button data-fct="space" class="spaceKey keyboardBtn">
-        <img src="assets/icons/spacebar.svg" alt="">
-      </button>
-      <button data-fct="num" class="switchNumKey keyboardBtn">&123</button>
-      <button data-fct="char" class="switchCharKey keyboardBtn">ABC</button>
-
-    </div>
-  </div>
+    <p class="headHint" *ngIf="!state.query">Movies, shows and people from the catalog, videos and torrents from your server's plugins; or type a link to a page, a video or a magnet.</p>
   </div>
 
   <!-- What to search: the selected filter stays highlighted -->
-  <div class="filters" pxSection="searchFilters" [leaveFor]="{ up: '@keyboard' }" pxGrid="filters">
+  <div class="filters" pxSection="searchFilters" [leaveFor]="{ up: '@searchHead' }" pxGrid="filters" *ngIf="!link">
     <px-chip *ngFor="let f of visibleFilters; trackBy: trackFilter" [key]="f.id" [label]="f.label" [selected]="f.id == state.filter"
       (pxSelect)="setFilter(f.id)"></px-chip>
   </div>
 
-  <div class="results" pxSection="searches" [leaveFor]="{ up: '@searchFilters' }">
+  <div class="results" pxSection="searches" [leaveFor]="{ up: link ? '@searchHead' : '@searchFilters' }">
     <px-empty class="searchNote" *ngIf="note" [text]="note"></px-empty>
 
-    <px-card-row class="section resultRow" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem
-      [attr.data-row]="row.key" [rowKey]="row.key" [title]="row.title" align="nearest">
-      <!-- people are faces, not posters; "TV" on series in a person's row -->
-      <ng-container *ngFor="let item of row.items; trackBy: trackItem">
-        <px-card [variant]="item.kind == 'person' ? 'portrait' : 'compact'" [key]="item.key"
-          [image]="item.image ? imgBase + item.image : null" [title]="item.title" [subtitle]="item.sub || ''"
-          [badges]="item.badge ? [{ text: item.badge }] : null" [data]="{ key: item.key }"></px-card>
+    <!-- A link: what it is, and what it holds, each playable -->
+    <ng-container *ngIf="link?.answer as answer">
+      <header class="listHeader" pxStackItem>
+        <h1 class="heading">{{ answer.title || hostOf(answer.url) }}</h1>
+        <p class="count">{{ linkSummary(answer) }}</p>
+      </header>
+      <div class="foundList" pxStackItem pxGrid="search:link" align="third">
+        <button *ngFor="let item of answer.items; let i = index" class="found focusable" pxItem [pxItemKey]="'link:' + i" [attr.data-link]="i">
+          <span class="foundLead"><span class="foundKind">{{ linkKind(item) }}</span></span>
+          <span class="foundInfo">
+            <span class="foundTitle">{{ item.label }}</span>
+            <span class="foundName">{{ item.url }}</span>
+          </span>
+          <span class="foundTags"><span class="tag" *ngIf="item.size">{{ size(item.size) }}</span></span>
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="!link">
+      <!-- the catalog: one row per kind of result -->
+      <px-card-row class="section resultRow" *ngFor="let row of state.rows; trackBy: trackRow" pxStackItem
+        [attr.data-row]="row.key" [rowKey]="row.key" [title]="row.title" align="nearest">
+        <!-- people are faces, not posters; "TV" on series in a person's row -->
+        <ng-container *ngFor="let item of row.items; trackBy: trackItem">
+          <px-card [variant]="item.kind == 'person' ? 'portrait' : 'compact'" [key]="item.key"
+            [image]="item.image ? imgBase + item.image : null" [title]="item.title" [subtitle]="item.sub || ''"
+            [badges]="item.badge ? [{ text: item.badge }] : null" [data]="{ key: item.key }"></px-card>
+        </ng-container>
+      </px-card-row>
+
+      <!-- All: the plugins' videos and the torrents, the best first; their chips show them all -->
+      <ng-container *ngIf="state.filter == 'all'">
+        <px-card-row class="section resultRow" *ngIf="videoCards.length" pxStackItem rowKey="videos" [title]="'Videos (' + videoItems.length + ')'"
+          align="nearest" variant="still" [items]="videoCards" (picked)="run($event)"></px-card-row>
+        <ng-container *ngIf="torrentItems.length">
+          <h2 class="listTitle" pxStackItem>Torrents ({{ torrentItems.length }})</h2>
+          <div class="foundList" pxStackItem pxGrid="search:bestTorrents" align="third">
+            <ng-container *ngFor="let t of bestTorrents; trackBy: trackFound">
+              <ng-container *ngTemplateOutlet="torrentRow; context: { $implicit: t }"></ng-container>
+            </ng-container>
+            <button *ngIf="torrentItems.length > bestTorrents.length" class="found more focusable" pxItem pxItemKey="t:all" data-more="all-torrents">
+              <span class="foundInfo"><span class="foundTitle">Show all {{ torrentItems.length }} torrents, to sort and filter them</span></span>
+            </button>
+          </div>
+        </ng-container>
       </ng-container>
-    </px-card-row>
 
-    <!-- a plugin's chip: its rows (view models, plugins/remote.ts) -->
-    <px-card-row class="section resultRow" *ngFor="let row of pluginRows; trackBy: trackPluginRow" pxStackItem
-      [attr.data-row]="row.key" [rowKey]="row.key" [title]="row.title" align="nearest" [variant]="row.variant || 'compact'"
-      [items]="row.items" (picked)="pickPlugin($event)"></px-card-row>
+      <!-- Videos: a row per plugin -->
+      <ng-container *ngIf="state.filter == 'videos'">
+        <div class="tools" pxStackItem pxGrid="search:videoTools" enter="nearest" *ngIf="videoItems.length">
+          <ng-container *ngTemplateOutlet="tools; context: { $implicit: 'videos', all: videoItems.length, shown: shownVideos.length }"></ng-container>
+        </div>
+        <px-card-row class="section resultRow" *ngFor="let row of videoRows; trackBy: trackPluginRow" pxStackItem [rowKey]="row.key"
+          [title]="row.title" align="nearest" variant="still" [items]="row.items" (picked)="run($event)"></px-card-row>
+      </ng-container>
+
+      <!-- Torrents: one list, ranked and narrowed by the panel -->
+      <ng-container *ngIf="state.filter == 'torrents'">
+        <div class="tools" pxStackItem pxGrid="search:torrentTools" enter="nearest" *ngIf="torrentItems.length">
+          <ng-container *ngTemplateOutlet="tools; context: { $implicit: 'torrents', all: torrentItems.length, shown: shownTorrents.length }"></ng-container>
+        </div>
+        <div class="foundList" pxStackItem pxGrid="search:torrents" align="third" *ngIf="shownTorrents.length">
+          <ng-container *ngFor="let t of shownTorrents | slice:0:torrentLimit; trackBy: trackFound">
+            <ng-container *ngTemplateOutlet="torrentRow; context: { $implicit: t }"></ng-container>
+          </ng-container>
+          <button *ngIf="shownTorrents.length > torrentLimit" class="found more focusable" pxItem pxItemKey="t:more" data-more="torrents">
+            <span class="foundInfo"><span class="foundTitle">Show {{ min(60, shownTorrents.length - torrentLimit) }} more</span></span>
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- a plugin's chip: its rows (view models, plugins/remote.ts) -->
+      <px-card-row class="section resultRow" *ngFor="let row of pluginRows; trackBy: trackPluginRow" pxStackItem
+        [attr.data-row]="row.key" [rowKey]="row.key" [title]="row.title" align="nearest" [variant]="row.variant || 'compact'"
+        [items]="row.items" (picked)="pickPlugin($event)"></px-card-row>
+    </ng-container>
   </div>
-
 </div>
+
+<!-- A torrent: its seeds as the headline (the list is ranked by them), what it is, its own name, its tags -->
+<ng-template #torrentRow let-t>
+  <button class="found focusable" pxItem
+    [pxItemKey]="'t:' + t.finder + t.key" [attr.data-found]="t.finder + '|' + t.key" [class.quiet]="!t.matches">
+    <span class="foundLead seeds">
+      <span class="seedCount">{{ compact(t.seeds || 0) }}</span>
+      <span class="seedLabel">{{ t.seeds == 1 ? 'seeder' : 'seeders' }}</span>
+      <span class="seedMeter"><span [style.width.%]="seedShare(t.seeds) * 100"></span></span>
+    </span>
+    <span class="foundInfo">
+      <span class="foundTitle">{{ t.title }}</span>
+      <span class="foundMeta">
+        <span class="episode" *ngIf="episodeLabel(t)">{{ episodeLabel(t) }}</span>
+        <span *ngIf="t.year">{{ t.year }}</span>
+        <span>{{ sourceName(t.finder) }}</span>
+      </span>
+      <span class="foundName">{{ t.name }}</span>
+    </span>
+    <span class="foundTags">
+      <span class="tag quality" *ngIf="t.quality">{{ t.quality }}</span>
+      <span class="tag" *ngIf="t.size">{{ size(t.size) }}</span>
+      <span class="tag" *ngIf="t.codec">{{ t.codec }}</span>
+    </span>
+  </button>
+</ng-template>
+
+<!-- The order and the filters in use, then a button that opens the panel; each chip on takes itself off -->
+<ng-template #tools let-noun let-all="all" let-shown="shown">
+  <p class="toolsCount">{{ refineOn(noun) ? shown + ' of ' + all + ' ' + noun : all + ' ' + noun }}</p>
+  <px-button [key]="'refine:' + noun" variant="toolbar" icon="opts" [active]="refineOn(noun) > 0"
+    [label]="sortLabel(noun) + (refineOn(noun) ? ', ' + refineOn(noun) + (refineOn(noun) == 1 ? ' filter' : ' filters') : '')"
+    (pxSelect)="refining = noun"></px-button>
+  <px-chip *ngFor="let c of activeChips(noun)" [key]="'off:' + c.key" [label]="c.label + '  ✕'" [selected]="true" (pxSelect)="setRefine(noun, c.off)"></px-chip>
+</ng-template>
+
+<text-keyboard *ngIf="typing"
+  title="Search"
+  placeholder="Titles, people, videos, or a link"
+  [value]="state.query"
+  [maxLength]="300"
+  [capitalizeWords]="false"
+  [symbols]="linkSymbols"
+  doneLabel="Search"
+  (done)="onSearchDone($event)"
+  (cancelled)="typing = false">
+</text-keyboard>
+
+<search-refine-panel *ngIf="refining"
+  [noun]="refining"
+  [items]="refining == 'videos' ? videoItems : torrentItems"
+  [value]="refines[refining]"
+  [sources]="sources"
+  (change)="setRefine(refining, $event)"
+  (closed)="refining = null">
+</search-refine-panel>
 
 <div class="overlay"></div>
 <div class="background"></div>

@@ -30,100 +30,26 @@
   position: relative;
   z-index: var(--px-z-page-layer);
   scroll-padding-block: dp(40);
-
-  .keyboardContainer {
-    display: flex;
-    margin-top: dp(40);
-
-    .numKeyboard {
-      display: none;
-    }
-
-    .charKeyboard {
-      display: grid;
-    }
-    .utilKeys {
-      display: flex;
-      flex-direction: column;
-      margin-left: dp(10);
-
-      .keyboardBtn {
-        width: dp(70);
-        height: dp(42);
-        font-family: var(--px-font-book);
-        border: none;
-        background: var(--px-surface-control);
-        color: var(--px-color-text);
-        border-radius: dp(8);
-        transition: all var(--px-dur);
-        margin-bottom: dp(10);
-
-        img {
-          filter: var(--px-icon-light);
-          width: dp(25);
-        }
-      }
-
-      .focused {
-        background: var(--px-color-focus);
-        color: var(--px-color-on-focus);
-        scale: 1.1;
-
-        img {
-          filter: none;
-        }
-      }
-
-      .switchCharKey {
-        display: none;
-      }
-    }
-
-
-  }
 }
 
-.keyboardGrid {
+// ── the query ──────────────────────────────────────────────────────────────
 
-  max-width: dp(300);
-  gap: dp(10);
-  display: grid;
-  grid-template-columns: repeat(6,1fr);
-
-
-  .keyboardBtn {
-    width: dp(42);
-    height: dp(42);
-    font-family: var(--px-font-book);
-    border: none;
-    background: var(--px-surface-control);
-    color: var(--px-color-text);
-    border-radius: dp(8);
-    transition: all var(--px-dur);
-    font-size: var(--px-text-label);
-  }
-
-  .focused {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
-    scale: 1.1;
-
-  }
+.searchHead {
+  padding-top: dp(24);
 }
-.inputValue {
-  width: 100%;
-  font-size: var(--px-text-headline);
-  background: none;
-  border: none;
-  width: dp(700);
-  color: var(--px-color-text);
-  font-family: var(--px-font-bold);
+
+.headLine {
+  display: flex;
+  align-items: center;
+  gap: dp(14);
 }
-.inputValue::placeholder{
-  font-family: var(--px-font-book);
-  opacity: .6;
-  letter-spacing: dp(1);
-  font-size: var(--px-text-heading);
+
+.headHint {
+  max-width: dp(760);
+  margin: dp(16) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
 }
 
 // ── filters ────────────────────────────────────────────────────────────────
@@ -153,3 +79,197 @@
   }
 }
 
+
+// ── videos and torrents: the panel's button, the filters on ────────────────
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: dp(12);
+  margin-bottom: dp(22);
+  --px-chip-bg: var(--px-surface-control);
+  --px-chip-color: var(--px-color-text);
+}
+
+.toolsCount {
+  margin: 0 dp(10) 0 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-secondary);
+}
+
+// All: the torrents' title, as the rows' titles
+.listTitle {
+  margin: dp(6) 0 dp(12);
+  font-family: var(--px-font-book);
+  font-weight: normal;
+  font-size: var(--px-text-label);
+}
+
+// ── a link's header ────────────────────────────────────────────────────────
+
+.listHeader {
+  margin-bottom: dp(24);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-title);
+}
+
+.count {
+  margin: dp(8) 0 0;
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+// ── the torrent list and a link's contents: rows like the release lists ────
+
+.foundList {
+  display: flex;
+  flex-direction: column;
+  gap: dp(12);
+  max-width: dp(1240);
+  // the focused row grows a little: keep it whole
+  padding: dp(6) dp(12) dp(40) dp(6);
+  margin-left: dp(-6);
+}
+
+.found {
+  display: grid;
+  grid-template-columns: dp(132) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: dp(26);
+  min-height: dp(92);
+  padding: dp(12) dp(22) dp(12) dp(20);
+  border: none;
+  border-radius: dp(8);
+  background: var(--px-surface-row);
+  color: var(--px-color-text);
+  text-align: left;
+  transition: transform var(--px-dur), background var(--px-dur);
+
+  &.quiet {
+    opacity: .6;
+  }
+
+  &.more {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: dp(60);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+    opacity: 1;
+    transform: scale(1.015);
+
+    .seedLabel, .foundMeta, .foundName, .foundKind { color: var(--px-color-on-focus-muted); }
+    .foundMeta .episode { color: var(--px-color-on-focus); }
+    .seedMeter { background: var(--px-color-on-focus-track); }
+    .seedMeter span { background: var(--px-color-on-focus); }
+    .tag { background: var(--px-color-on-focus-surface); color: var(--px-color-on-focus); }
+  }
+}
+
+.foundLead {
+  display: flex;
+  flex-direction: column;
+}
+
+.foundKind {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-secondary);
+}
+
+// The headline of a torrent: how many people share it (= how well it streams)
+.seedCount {
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-large);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.seedLabel {
+  margin-top: dp(4);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-faint);
+}
+
+.seedMeter {
+  height: dp(3);
+  margin-top: dp(9);
+  border-radius: dp(2);
+  background: var(--px-surface-2);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: dp(2);
+    background: var(--px-color-text-soft);
+  }
+}
+
+.foundInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.foundTitle {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foundMeta {
+  display: flex;
+  gap: dp(16);
+  margin-top: dp(6);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+  white-space: nowrap;
+
+  .episode {
+    font-family: var(--px-font-book);
+    color: var(--px-color-text);
+  }
+}
+
+// the raw release name (a link's address), for people who read those
+.foundName {
+  margin-top: dp(5);
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-tiny);
+  color: var(--px-color-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foundTags {
+  display: flex;
+  gap: dp(8);
+}
+
+.tag {
+  padding: dp(6) dp(9);
+  border-radius: dp(5);
+  background: var(--px-surface-1);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  white-space: nowrap;
+
+  &.quality {
+    font-family: var(--px-font-bold);
+  }
+}
