@@ -242,10 +242,121 @@ h2 {
   font-size: 14px;
 }
 
-.opening {
-  margin-top: 40vh;
-  color: var(--muted);
+/* The splash while the last server opens: it takes over from Android's launch screen (splash_mark.xml), whose mark
+   ends centred on the screen at 139 dp grown by 8 % (MainActivity's exit animation), so the mark sits there too */
+.splash {
+  position: fixed;
+  inset: 0;
+  background: var(--ground);
+}
+
+.splash-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150px;
+  aspect-ratio: 762 / 677;
+  /* 6 % of its width right of centre: the mark's weight is on the left (a play shape), centred by its box
+     it looks off to the left; the launch screen's drawables are shifted the same */
+  transform: translate(-44%, -50%);
+  /* the logo's gold, and a light passing over it */
+  background:
+    linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%) no-repeat,
+    linear-gradient(90deg, #e3cc97, #f6e084 72%, #d1b372 94%);
+  background-size: 300% 100%, 100% 100%;
+  background-position: 120% 0, 0 0;
+  -webkit-mask: url('/logo.svg') center / contain no-repeat;
+  mask: url('/logo.svg') center / contain no-repeat;
+  animation: sheen 2.4s 0.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes sheen {
+  0% {
+    background-position: 120% 0, 0 0;
+  }
+  60%,
+  100% {
+    background-position: -20% 0, 0 0;
+  }
+}
+
+.splash-text {
+  position: absolute;
+  top: calc(50% + 96px);
+  right: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   text-align: center;
+  animation: rise 0.5s 0.15s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.splash-name {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.splash-sub {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* a gold segment running along a faint line */
+.splash-bar {
+  position: absolute;
+  bottom: max(56px, calc(env(safe-area-inset-bottom) + 40px));
+  left: 50%;
+  width: 96px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--raised);
+  transform: translateX(-50%);
+  animation: rise 0.5s 0.3s both;
+}
+
+.splash-bar::after {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--gold);
+  content: '';
+  animation: run 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes run {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-mark,
+  .splash-text,
+  .splash-bar {
+    animation: none;
+  }
+  .splash-bar::after {
+    animation-duration: 3s;
+  }
 }
 
 /* Whole-page screens: no network, a dashboard that can't be reached */
@@ -272,10 +383,6 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 24px;
-}
-
-.empty .actions {
-  margin-top: 14px;
 }
 
 .secondary {
@@ -307,10 +414,6 @@ h2 {
 .text:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 2px;
-}
-
-.empty-title {
-  font-weight: 500;
 }
 
 .waiting {

@@ -5,10 +5,12 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- translateX 31.1, not 28: the mark sits 6 % of its width right of centre, since its weight is on the
+         left (a play shape); centred by its box, it looks off to the left -->
     <group
         android:scaleX="0.0682"
         android:scaleY="0.0682"
-        android:translateX="28"
+        android:translateX="31.1"
         android:translateY="30.9">
         <path
             android:fillColor="#FFFFFFFF"

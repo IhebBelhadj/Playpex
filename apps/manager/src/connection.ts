@@ -7,7 +7,8 @@ import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor
 export type Network = {
   /** any network at all (Wi-Fi, mobile data, Ethernet, a VPN) */
   connected: boolean
-  /** a Wi-Fi or Ethernet one: where Playpex servers are found (with or without internet) */
+  /** a local one: Wi-Fi, Ethernet, this phone's hotspot or USB tethering (with or without internet). A hint only:
+   *  whether a server answers is what counts (a VPN on mobile data reaches servers too) */
   local: boolean
 }
 

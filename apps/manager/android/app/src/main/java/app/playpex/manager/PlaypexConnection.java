@@ -22,15 +22,21 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.util.Collections;
 
 /**
  * The phone's connection, for the picker and for the dashboards it opens:
  *
  *  - network() and the event "network": is there a network at all (connected), and is one of them a
- *    local one (Wi-Fi or Ethernet), where Playpex servers live. A Wi-Fi without internet counts: the
- *    server is still on it.
+ *    local one (local), where Playpex servers live: Wi-Fi, Ethernet, and also this phone's own hotspot
+ *    or USB tethering (a computer on the hotspot reaches the phone, and Android doesn't list those as
+ *    networks: they are read from the network interfaces, checked every few seconds). A Wi-Fi without
+ *    internet counts: the server is still on it. Only a hint: whether a server answers is what counts.
  *  - A server's dashboard that can't load (no network, the server stopped, another Wi-Fi) shows the
  *    picker's "can't reach" screen instead of Chromium's error page: https://localhost/#offline=<url>.
  *  - While a dashboard is shown and the network changes (Wi-Fi lost, switched to mobile data), its server
@@ -42,11 +48,22 @@ import java.net.URLEncoder;
 public class PlaypexConnection extends Plugin {
     /** after a network change, the time networks take to settle (a switch is a loss then a gain) */
     private static final int SETTLE_MS = 2500;
+    /** the hotspot and USB tethering send no network callbacks: their interfaces are looked at this often */
+    private static final int INTERFACES_EVERY_MS = 3000;
+    /** interfaces of a local network: Wi-Fi (also the hotspot: wlan1, swlan0, ap0, softap0), Ethernet, USB tethering */
+    private static final String LAN_INTERFACES = "^(wlan|swlan|ap|softap|wigig|eth|rndis|usb|ncm|bt-pan).*";
 
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback callback;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Runnable checkPage = this::checkPage;
+    private final Runnable watchInterfaces = new Runnable() {
+        @Override
+        public void run() {
+            new Thread(PlaypexConnection.this::changed, "playpex-interfaces").start();
+            main.postDelayed(this, INTERFACES_EVERY_MS);
+        }
+    };
     private boolean connected;
     private boolean local;
 
@@ -80,6 +97,20 @@ public class PlaypexConnection extends Plugin {
         // every network, not only the default one: a VPN over mobile data hides the Wi-Fi beneath it
         NetworkRequest any = new NetworkRequest.Builder().removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build();
         connectivity.registerNetworkCallback(any, callback);
+        main.postDelayed(watchInterfaces, INTERFACES_EVERY_MS);
+    }
+
+    @Override
+    protected void handleOnPause() {
+        main.removeCallbacks(watchInterfaces);
+    }
+
+    @Override
+    protected void handleOnResume() {
+        main.removeCallbacks(watchInterfaces);
+        if (connectivity != null) {
+            main.post(watchInterfaces);
+        }
     }
 
     @PluginMethod
@@ -103,6 +134,7 @@ public class PlaypexConnection extends Plugin {
     @Override
     protected void handleOnDestroy() {
         main.removeCallbacks(checkPage);
+        main.removeCallbacks(watchInterfaces);
         if (connectivity != null && callback != null) {
             try {
                 connectivity.unregisterNetworkCallback(callback);
@@ -114,21 +146,32 @@ public class PlaypexConnection extends Plugin {
 
     // ── the network ───────────────────────────────────────────────────────────
 
-    /** Called on ConnectivityManager's thread */
+    /** On ConnectivityManager's thread, or the interfaces' check */
     private void changed() {
-        boolean wasConnected = connected;
-        boolean wasLocal = local;
-        measure();
-        if (connected != wasConnected || local != wasLocal) {
-            notifyListeners("network", state(), true);
+        boolean wasConnected;
+        boolean wasLocal;
+        synchronized (this) {
+            wasConnected = connected;
+            wasLocal = local;
         }
-        // whatever changed, a dashboard on screen gets its server asked again once things settle
+        measure();
+        boolean nowConnected;
+        boolean nowLocal;
+        synchronized (this) {
+            nowConnected = connected;
+            nowLocal = local;
+        }
+        if (nowConnected == wasConnected && nowLocal == wasLocal) {
+            return;
+        }
+        notifyListeners("network", state(), true);
+        // a dashboard on screen gets its server asked again once things settle
         main.removeCallbacks(checkPage);
         main.postDelayed(checkPage, SETTLE_MS);
     }
 
     @SuppressWarnings("deprecation")
-    private synchronized void measure() {
+    private void measure() {
         boolean anyNetwork = false;
         boolean anyLocal = false;
         for (Network n : connectivity.getAllNetworks()) {
@@ -141,8 +184,30 @@ public class PlaypexConnection extends Plugin {
                 anyLocal = true;
             }
         }
-        connected = anyNetwork;
-        local = anyLocal;
+        boolean lan = anyLocal || lanInterface();
+        synchronized (this) {
+            connected = anyNetwork || lan;
+            local = lan;
+        }
+    }
+
+    /** An interface of a local network that is up with a private IPv4 address (the hotspot, USB tethering…) */
+    private static boolean lanInterface() {
+        try {
+            for (NetworkInterface net : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!net.isUp() || net.isLoopback() || !net.getName().matches(LAN_INTERFACES)) {
+                    continue;
+                }
+                for (InetAddress a : Collections.list(net.getInetAddresses())) {
+                    if (a instanceof Inet4Address && a.isSiteLocalAddress()) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // no interfaces to read
+        }
+        return false;
     }
 
     private synchronized JSObject state() {
