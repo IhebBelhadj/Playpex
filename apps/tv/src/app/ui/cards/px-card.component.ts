@@ -15,7 +15,7 @@ import { Badge, CardVariant, ScoreSource } from '../models';
 // The artwork: a shimmer while it loads, faded in once decoded, the title in
 // its place when there is none or it fails. `progress` = the amber line
 // (how far in), `badges` = small marks on the artwork ('tv', 'watched',
-// 'upcoming' or a text), `busy` = a spinner over it ("Finding torrents…"),
+// 'upcoming' or a text), `busy` = a spinner over it ("Finding sources…"),
 // `dim` = not available yet (an upcoming episode). `data` = data-* attributes
 // on the focusable element (what the page's listeners read).
 //

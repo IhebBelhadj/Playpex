@@ -8,7 +8,7 @@
 
   <!-- the episode page's bar is tighter and its labels wider ("Resume (12 min left)") -->
   <px-action-bar class="actions">
-    <px-action key="play" icon="play" [label]="resumeLabel || 'Play ' + code" busyLabel="Finding torrents…"
+    <px-action key="play" icon="play" [label]="resumeLabel || 'Play ' + code" busyLabel="Finding sources…"
       [busy]="resolving" [progress]="resumeRatio || null" (pxSelect)="play()"></px-action>
     <!-- every source's releases of this episode -->
     <!-- kept on the server (Downloads): progress, then "On this server" -->

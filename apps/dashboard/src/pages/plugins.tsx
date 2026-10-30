@@ -238,8 +238,7 @@ function KeptCard({ kept }: { kept: Schemas['AdminPlugins']['kept'] }) {
       <CardHeader>
         <CardTitle>Kept for plugins that aren&apos;t installed</CardTitle>
         <CardDescription>
-          Left by a plugin removed with its data kept, or moved out of Playpex for a plugin to come (the 18+ section&apos;s settings, for
-          the 18+ plugin). Installing the plugin picks them up.
+          Left by a plugin removed with its data kept, or moved out of Playpex for a plugin to come. Installing the plugin picks them up.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">

@@ -45,7 +45,7 @@
         [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
         [meta]="episodeMeta(ep)" [badges]="episodeBadges(ep)"
         [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
-        [busy]="isResolving(ep)" busyLabel="Finding torrents…" [data]="{ index: i, episode: ep.episodeNumber }"
+        [busy]="isResolving(ep)" busyLabel="Finding sources…" [data]="{ index: i, episode: ep.episodeNumber }"
         (pxSelect)="openEpisode(ep)"></px-card>
     </ng-container>
   </px-card-row>

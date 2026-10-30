@@ -28,7 +28,7 @@ import { PxSwitchComponent } from './px-switch.component';
 @Component({
   template: `
     <px-action-bar [actions]="models" (picked)="picked = $event">
-      <px-action key="play" icon="play" label="Play" busyLabel="Finding torrents…" [busy]="busy" [progress]="progress"></px-action>
+      <px-action key="play" icon="play" label="Play" busyLabel="Finding sources…" [busy]="busy" [progress]="progress"></px-action>
       <px-action key="list" icon="bookmark" onIcon="tick" label="Watch list" [on]="on"></px-action>
     </px-action-bar>
     <px-button key="b" [variant]="variant" label="Save" [caps]="true" [active]="on"></px-button>
@@ -106,7 +106,7 @@ describe('ui atoms', () => {
       expect(($('[data-px-key="play"] .progress span')).style.width).toBe('40%');
       host.busy = true;
       fixture.detectChanges();
-      expect($('[data-px-key="play"]').textContent).toContain('Finding torrents…');
+      expect($('[data-px-key="play"]').textContent).toContain('Finding sources…');
       expect($('[data-px-key="play"] .progress')).toBeNull();
       expect($('[data-px-key="play"]').getAttribute('aria-busy')).toBe('true');
     });

@@ -25,12 +25,12 @@ export function SourcesNotice() {
   return (
     <Alert>
       <Puzzle />
-      <AlertTitle>Torrents now come from plugins</AlertTitle>
+      <AlertTitle>Add sources to play from</AlertTitle>
       <AlertDescription>
         <p>
-          Playpex Media Server doesn&apos;t read any torrent site by itself. Until you add a source, Play only finds files on this server and its
-          downloads. Add the repository of the source plugins you want (its publisher gives the address of its index), then install them from
-          Browse. Your downloads, library and watch history stay as they are.
+          Playpex Media Server comes with no content sources. Until you add one, Play only finds the files in your library and your downloads.
+          Sources are plugins: add the repository of the ones you want (its publisher gives the address of its index), then install them from
+          Browse.
         </p>
         <p className="mt-1 text-xs">Educational project: streaming copyrighted content via torrents may be illegal where you live.</p>
         <div className="mt-2 flex flex-wrap gap-2">

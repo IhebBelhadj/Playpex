@@ -4,6 +4,7 @@ import type { SettingValues } from '@playpex/protocol/settings';
 import { FocusEngine } from '../movement/movement';
 import { NavigationService } from '../navigation.service';
 import { useScreen } from '../nav/public-api';
+import { RemotePlugins } from '../plugins/remote';
 import { ProfilesService } from '../profiles.service';
 import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
@@ -29,6 +30,12 @@ const LANGUAGES = [
   { key: 'pt', label: 'Portuguese' }, { key: 'ja', label: 'Japanese' },
 ];
 
+const AUTOPLAY_KINDS = [
+  { key: 'ask', label: 'Show the choices' },
+  { key: 'server', label: 'Play from this server' },
+  { key: 'stream', label: 'Play a stream' },
+];
+
 @Component({
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
@@ -45,11 +52,8 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   subtitleProviders:SubtitleProvider[] = [];
   readonly subtitleSizes = SUBTITLE_SIZES;
   // player.autoplayKind: the Play chooser, or the best way of one kind at once
-  readonly autoplayKinds = [
-    { key: 'ask', label: 'Show the choices' },
-    { key: 'server', label: 'Play from this server' },
-    { key: 'stream', label: 'Play a stream' },
-  ];
+  // "Play a stream" only once some plugin finds sources (GET /plugins capabilities.sources)
+  autoplayKinds = AUTOPLAY_KINDS;
   // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
   readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
   readonly subtitleLanguages = [{ key: 'off', label: 'Off' }, ...LANGUAGES];
@@ -64,7 +68,10 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     public settings:SettingsService,
     profiles:ProfilesService,
     subtitles:SubtitlesService,
+    plugins:RemotePlugins,
   ) {
+    this.subs.push(plugins.capabilities$.subscribe(c => this.autoplayKinds = c.sources
+      ? AUTOPLAY_KINDS : AUTOPLAY_KINDS.filter(k => k.key != 'stream' || this.settings.value('player.autoplayKind') == 'stream')));
     let profile = profiles.current.value;
     this.profileName = profile?.name || 'this profile';
     this.groups = [

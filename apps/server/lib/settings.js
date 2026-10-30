@@ -103,7 +103,7 @@ function defaults() {
       // those asking for no new permissions (the rest wait for the admin),
       // notify only lists them, never doesn't look; a plugin can override it
       updates: 'auto',
-      // the Overview's notice "Torrents now come from plugins" while no
+      // the Overview's notice "Add sources to play from" while no
       // source plugin is installed (docs/providers-plan.md §4.4); false once
       // the admin dismisses it
       sourcesNotice: true

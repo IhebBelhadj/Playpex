@@ -133,7 +133,7 @@ src/components/library-browser.tsx  PlaceBrowser: one level of a place (GET /adm
                         what it is (`media`: a poster thumb and its title, a folder's when it holds one title, `titles` otherwise; quality, length),
                         click = a folder opens, a library file's sheet, else play; Play, Details and match, Show the download, Copy path, Delete
                         (DELETE /admin/storage/entries); the disk line, Largest folders (GET /admin/storage/largest); CleanUp (POST /admin/storage/clear)
-src/components/library-common.tsx  what the Library shares: folder kinds / audiences, useLibrary (GET /admin/library, patched by library.scan),
+src/components/library-common.tsx  what the Library shares: folder kinds / audiences ("Adults only" offered only once an adults plugin is installed, or kept for a folder that is one), useLibrary (GET /admin/library, patched by library.scan),
                         useScan, useFolderActions, ScanStatus, Add / Edit folder dialogs (the server's folder browser GET /admin/fs, the
                         information provider), MatchCell, Poster
 src/components/library-file.tsx  FileSheet (?file=): Play, Show in its folder, the match (fix: TMDB search, forget, ignore), the file, streams,

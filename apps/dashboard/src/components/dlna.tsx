@@ -89,8 +89,8 @@ function FolderCard({ folders }: { folders: DlnaFolder[] }) {
       <CardHeader>
         <CardTitle>Folders</CardTitle>
         <CardDescription>
-          The library folders TVs may browse (Movies, TV shows, Recently added and the folders as they are on disk). Adults-only folders never are: DLNA
-          has no profiles and no pairing.
+          The library folders TVs may browse (Movies, TV shows, Recently added and the folders as they are on disk).
+          {folders.some((f) => f.audience === 'adults') && ' Adults-only folders never are: DLNA has no profiles and no pairing.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0">

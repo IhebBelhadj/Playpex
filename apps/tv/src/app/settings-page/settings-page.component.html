@@ -58,7 +58,7 @@
 
         <section class="setting" pxStackItem>
           <header class="head"><h2 class="label">Sources</h2><span class="scope">For {{ profileName }}</span></header>
-          <px-switch key="preferLocal" label="Prefer files on this server" hint="A title on the server plays from it at once, before any torrent"
+          <px-switch key="preferLocal" label="Prefer files on this server" hint="A title on the server plays from it at once, before any other source"
             [on]="settings.value('player.preferLocalFiles')"
             (pxSelect)="settings.set('player.preferLocalFiles', !settings.value('player.preferLocalFiles'))"></px-switch>
         </section>
