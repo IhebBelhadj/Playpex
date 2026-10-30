@@ -98,6 +98,10 @@ function requestLog(req, res, next) {
     if (aborted) {
       fields.aborted = true;
     }
+    // A player's byte ranges (seeking, an MP4's index at the end)
+    if (req.get('range')) {
+      fields.range = req.get('range');
+    }
     log[level](req.method + ' ' + urlPath + ' ' + status, fields);
   });
   next();

@@ -3811,6 +3811,34 @@ paths:
               schema: { $ref: '#/components/schemas/LinkInspection' }
         '400': { $ref: '#/components/responses/Invalid' }
         '502': { $ref: '#/components/responses/Upstream' }
+  /links/inspect:
+    post:
+      tags: [search]
+      operationId: inspectLinkForClient
+      summary: What a pasted link is, and what it links to (a client's Search)
+      description: |
+        As `POST /admin/links/inspect`, for paired devices: the server reads public addresses only (every redirect checked
+        again). Refused for a kids profile (`FORBIDDEN`): what a page links to isn't checked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, maxLength: 4096 }
+                profileId: { type: string, description: 'The profile searching' }
+      responses:
+        '200':
+          description: What it is
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LinkInspection' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
   /downloads/direct:
     get:
       tags: [downloads]
@@ -4618,6 +4646,7 @@ components:
               data: { type: string }
               title: { type: string }
               params: { type: array, items: { type: string } }
+              mobile: { $ref: '#/components/schemas/PluginScreenMobile' }
         slots:
           type: array
           items:
@@ -6200,6 +6229,15 @@ components:
         id: { type: string, description: '`plugin:<id>`' }
         name: { type: string }
         kinds: { type: array, items: { type: string, enum: [http, hls, magnet] }, description: 'What its results can be' }
+    PluginScreenMobile:
+      type: object
+      description: |
+        How a phone draws the screen's top (the plugin's choice; a template data answer's `mobile` wins over the manifest's).
+        plain (default): Back on a dark strip, the title large in the content; fold: the title large in a header that folds
+        into the bar beside Back as the page scrolls; app: the app's own top bar (the mark, the server, Search, the profile)
+        with Back; overlay: no strip, Back floats over the screen's first row (a picture that goes to the top edge).
+      properties:
+        bar: { type: string, enum: [plain, fold, app, overlay] }
     SearchSource:
       type: object
       required: [provider, kind, label, matches]
@@ -6944,7 +6982,7 @@ components:
                 properties:
                   id: { type: string }
                   name: { type: string }
-            notice: { type: boolean, description: 'Show "Torrents now come from plugins": no source plugin, and `plugins.sourcesNotice` not turned off' }
+            notice: { type: boolean, description: 'Show "Add sources to play from": no source plugin, and `plugins.sourcesNotice` not turned off' }
     DiscoveryStatus:
       type: object
       description: 'How clients on the LAN find this server (mDNS and the UDP responder)'
@@ -7052,7 +7090,7 @@ components:
             developerMode: { type: boolean, description: 'Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart)' }
             publisherKeys: { type: array, items: { type: string }, description: 'ed25519:<base64> public keys whose signed packages install without developer mode' }
             updates: { type: string, enum: [auto, notify, never], description: 'Updates from repositories: auto installs those asking for no new permissions (the others wait), notify lists them, never doesn''t look; a plugin may override it' }
-            sourcesNotice: { type: boolean, description: 'The Overview''s "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed' }
+            sourcesNotice: { type: boolean, description: 'The Overview''s "Add sources to play from" notice while no source plugin is installed; false once dismissed' }
         metadata:
           type: object
           required: [language, region, order, disabled]

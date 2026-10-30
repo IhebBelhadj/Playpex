@@ -149,7 +149,9 @@ router.get('/:id/assets/*', function (req, res) {
     'Cache-Control': 'private, max-age=3600',
     'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"
   });
-  res.sendFile(path.join(plugin.dir, rel), { dotfiles: 'deny' }, function (err) {
+  // root: the dotfile rule then applies to the package's own path only, not to where it is
+  // installed (<config> is ~/.config/Playpex on Linux: a full path would always be refused)
+  res.sendFile(rel, { root: plugin.dir, dotfiles: 'deny' }, function (err) {
     if (err && !res.headersSent) {
       fail(res, 'NOT_FOUND', 'no such asset');
     }

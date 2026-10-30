@@ -3389,6 +3389,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/links/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * What a pasted link is, and what it links to (a client's Search)
+         * @description As `POST /admin/links/inspect`, for paired devices: the server reads public addresses only (every redirect checked
+         *     again). Refused for a kids profile (`FORBIDDEN`): what a page links to isn't checked.
+         */
+        post: operations["inspectLinkForClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/downloads/direct": {
         parameters: {
             query?: never;
@@ -3874,6 +3895,7 @@ export interface components {
                 data?: string;
                 title?: string;
                 params?: string[];
+                mobile?: components["schemas"]["PluginScreenMobile"];
             }[];
             slots: {
                 slot: string;
@@ -5492,6 +5514,16 @@ export interface components {
             /** @description What its results can be */
             kinds: ("http" | "hls" | "magnet")[];
         };
+        /**
+         * @description How a phone draws the screen's top (the plugin's choice; a template data answer's `mobile` wins over the manifest's).
+         *     plain (default): Back on a dark strip, the title large in the content; fold: the title large in a header that folds
+         *     into the bar beside Back as the page scrolls; app: the app's own top bar (the mark, the server, Search, the profile)
+         *     with Back; overlay: no strip, Back floats over the screen's first row (a picture that goes to the top edge).
+         */
+        PluginScreenMobile: {
+            /** @enum {string} */
+            bar?: "plain" | "fold" | "app" | "overlay";
+        };
         SearchSource: {
             /** @description The plugin's id */
             provider: string;
@@ -6181,7 +6213,7 @@ export interface components {
                     id: string;
                     name: string;
                 }[];
-                /** @description Show "Torrents now come from plugins": no source plugin, and `plugins.sourcesNotice` not turned off */
+                /** @description Show "Add sources to play from": no source plugin, and `plugins.sourcesNotice` not turned off */
                 notice: boolean;
             };
         };
@@ -6299,7 +6331,7 @@ export interface components {
                  * @enum {string}
                  */
                 updates: "auto" | "notify" | "never";
-                /** @description The Overview's "Torrents now come from plugins" notice while no source plugin is installed; false once dismissed */
+                /** @description The Overview's "Add sources to play from" notice while no source plugin is installed; false once dismissed */
                 sourcesNotice: boolean;
             };
             metadata: {
@@ -11741,6 +11773,38 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    inspectLinkForClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    url: string;
+                    /** @description The profile searching */
+                    profileId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What it is */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkInspection"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             502: components["responses"]["Upstream"];
         };
     };

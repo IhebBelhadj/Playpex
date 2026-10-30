@@ -1451,6 +1451,9 @@
             "empty": {
               "type": "string",
               "maxLength": 200
+            },
+            "mobile": {
+              "$ref": "#/$defs/screenMobile"
             }
           }
         },
@@ -1477,6 +1480,9 @@
               "items": {
                 "$ref": "#/$defs/row"
               }
+            },
+            "mobile": {
+              "$ref": "#/$defs/screenMobile"
             }
           }
         },
@@ -1507,6 +1513,9 @@
             "empty": {
               "type": "string",
               "maxLength": 200
+            },
+            "mobile": {
+              "$ref": "#/$defs/screenMobile"
             }
           }
         },
@@ -1557,6 +1566,9 @@
             "empty": {
               "type": "string",
               "maxLength": 200
+            },
+            "mobile": {
+              "$ref": "#/$defs/screenMobile"
             }
           }
         },
@@ -2882,6 +2894,21 @@
         "message": {
           "type": "string",
           "maxLength": 200
+        }
+      }
+    },
+    "screenMobile": {
+      "description": "How a phone draws this screen's top from now on (wins over the manifest's screens[].mobile): plain, fold, app or overlay",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bar": {
+          "enum": [
+            "plain",
+            "fold",
+            "app",
+            "overlay"
+          ]
         }
       }
     }

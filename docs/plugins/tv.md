@@ -24,6 +24,19 @@ The server checks `data` against the template (out of shape: the screen shows it
 
 There is no settings screen: options are the dashboard's ([manifest.md](manifest.md#settings)). A choice that changes what a screen shows (a layout, a sort) is one of its `filters`; the core remembers it per profile.
 
+### On phones
+
+Playpex Mobile draws the same templates (`guide` excepted, for now). A screen chooses how its top looks on a phone with `mobile: { bar }`, in the manifest (`contributes.screens[].mobile`) or in its handler's answer (`data.mobile`, which wins: a screen can change it at run time):
+
+| `bar` | The top of the screen |
+|---|---|
+| `plain` (default; `title` screens default to `overlay`) | Back on a dark strip; your title large at the top of the content |
+| `fold` | your title large in the content; as it scrolls away the strip darkens in and the title comes into it beside Back |
+| `app` | the app's own top bar (the Playpex mark, the server, Search, the profile) with Back: a section that feels like one of the app's |
+| `overlay` | no strip and no title: Back floats over your first row (a wide picture that goes to the top edge) |
+
+The TV ignores it.
+
 ## Models
 
 - **Card** `{ key, title, variant?, image?, subtitle?, badges?, progress?, rating?, intent?, call?, info? }`: `image` is a full HTTPS URL (on a declared host) or `assets/…`; `info` is the title info shown while it has the focus (catalog); Enter opens `intent` or calls `call`.

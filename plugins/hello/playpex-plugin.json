@@ -59,7 +59,10 @@
         "name": "home",
         "template": "catalog",
         "data": "home",
-        "title": "Hello"
+        "title": "Hello",
+        "mobile": {
+          "bar": "fold"
+        }
       },
       {
         "name": "title",

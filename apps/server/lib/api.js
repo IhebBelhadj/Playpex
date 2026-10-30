@@ -596,6 +596,28 @@ v1.get('/search/sources', function (req, res) {
   });
 });
 
+// A link pasted on a client (docs/search-plan.md §4; decision A revised 2026-10-30: paired devices may
+// ask too, the server still reads only public addresses), never for a kids profile: what a page links to
+// isn't checked. body: { url, profileId? } → LinkInspection
+v1.post('/links/inspect', function (req, res) {
+  var body = req.body || {}, url = typeof body.url === 'string' ? body.url.slice(0, 4096) : '';
+  if (!url.trim()) {
+    return fail(res, 'INVALID', 'url: a link');
+  }
+  require('./userData').services().then(function (services) {
+    return body.profileId ? services.profiles.get(String(body.profileId)) : null;
+  }).then(function (profile) {
+    if (profile && profile.isKid) {
+      throw Object.assign(new Error('Links can’t be opened on a kids profile.'), { code: 'FORBIDDEN' });
+    }
+    return require('./links/inspect').inspect(url);
+  }).then(function (result) {
+    res.json(result);
+  }).catch(function (err) {
+    failed(res, err);
+  });
+});
+
 //Subtitles (see lib/subtitles: several providers, chosen by the player)
 
 v1.get('/subtitles/providers', function (req, res) {

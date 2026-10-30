@@ -90,9 +90,18 @@ export type PluginSetting =
   /** a button in the dashboard calling a data handler */
   | SettingBase & { type: 'action'; data: string; confirm?: string };
 
+/**
+ * How a phone draws a screen's top: plain (default: Back on a dark strip, the title in the content), fold (the title large in
+ * a header that folds into the bar as the page scrolls), app (the app's own top bar: the mark, Search, the profile; with
+ * Back), overlay (no strip: Back floats over the screen's first row). A template data answer's `mobile` wins over the manifest's.
+ */
+export interface ScreenMobile {
+  bar?: 'plain' | 'fold' | 'app' | 'overlay';
+}
+
 export interface PluginContributes {
   sections?: { screen: string; menu: { label: string; icon: AssetPath; order?: number } }[];
-  screens?: { name: string; template: TemplateName; data?: string; title?: string; params?: string[] }[];
+  screens?: { name: string; template: TemplateName; data?: string; title?: string; params?: string[]; mobile?: ScreenMobile }[];
   slots?: { slot: PluginSlot; data: string; order?: number }[];
   settings?: PluginSetting[];
   chrome?: { accent?: 'adult' };   // plugins-check: allow (the accent token's name)
@@ -369,10 +378,10 @@ export interface DataAnswer<T = unknown> {
 
 /** The data each screen template expects */
 export interface TemplateData {
-  catalog: { title?: string; rows: PluginRow[]; search?: boolean; filters?: FilterGroup[]; empty?: string };
-  title: { info: PluginTitleInfo; actions?: PluginAction[]; rows?: PluginRow[] };
-  releases: { title?: string; releases: Release[]; last: boolean; filters?: FilterGroup[]; empty?: string };
-  list: { title?: string; items: { key: string; label: string; meta?: string; icon?: string; intent?: PluginIntent; call?: PluginCall }[]; empty?: string };
+  catalog: { title?: string; rows: PluginRow[]; search?: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile };
+  title: { info: PluginTitleInfo; actions?: PluginAction[]; rows?: PluginRow[]; mobile?: ScreenMobile };
+  releases: { title?: string; releases: Release[]; last: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile };
+  list: { title?: string; items: { key: string; label: string; meta?: string; icon?: string; intent?: PluginIntent; call?: PluginCall }[]; empty?: string; mobile?: ScreenMobile };
   /** the core draws the channels and programmes; the handler (optional) only names the screen */
   guide: { title?: string; empty?: string };
 }

@@ -26,10 +26,10 @@ GET /api/v1/search/sources?provider=plugin:archive&q=night+of+the+living+dead&ki
 
 Keywords reach every source as plain words: `Breaking.Bad` and `breaking_bad` are sent as `Breaking Bad`. Sites answer loosely, so every item (and every release of `GET /releases/browse`) carries **`matches`**: whether its name holds every keyword, however it's spelt. Punctuation doesn't count, and joined or split words meet (`spiderman` finds `Spider-Man`, `s01` finds `S01E05`, `breaking bad` doesn't find `Breaking Brad`). Show the matching ones first and the others on demand. Release lists of shows also get the show's IMDb id when a show has exactly that title in the catalog, so sources that list a show by its id (EZTV) answer keyword searches too.
 
-## Reading a link (the admin's)
+## Reading a link
 
 ```
-POST /api/v1/admin/links/inspect   { "url": "https://example.org/films/" }
+POST /api/v1/links/inspect   { "url": "https://example.org/films/", "profileId": "…" }
 → { "url": "https://example.org/films/", "kind": "page", "title": "Old films", "truncated": false,
     "items": [{ "kind": "video", "label": "Film One (1931)", "url": "https://…/Film.One.mp4", "ref": "r_…", "size": null },
               { "kind": "hls", "label": "index.m3u8", "url": "https://…/index.m3u8", "ref": "h_…" },
@@ -40,7 +40,7 @@ POST /api/v1/admin/links/inspect   { "url": "https://example.org/films/" }
 - `kind` says what the URL itself is: `magnet` (not fetched), `torrent`, `video`, `hls`, or `page`. A page's items are what it links to: magnets anywhere in it, links to `.torrent` files and video files (also in directory listings), `<video>` / `<source>`, `og:video`, and `.m3u8` playlists anywhere (scripts too). Each one is listed once. 2 MB of a page are read (`truncated`).
 - Video files and playlists get refs: play them, or download them (below). Magnets and `.torrent` URLs go to `POST /downloads {link}`.
 - The server only reads **public addresses**: a link on its own network (a router, a NAS) answers `400 INVALID` ("only reads links on the internet"). Every redirect is checked again.
-- Admin only (`401 ADMIN_REQUIRED` otherwise).
+- Paired devices may ask (`POST /links/inspect`, since 2026-10-30; the dashboard uses `POST /admin/links/inspect`, the same answer). Send the profile searching: a kids profile is refused (`403 FORBIDDEN`), since what a page links to isn't checked. Playpex Mobile's Search uses it: a pasted link's videos and streams play by their refs, its magnets and `.torrent` URLs through `POST /torrents {link}`.
 
 ## Direct downloads (the admin's)
 
