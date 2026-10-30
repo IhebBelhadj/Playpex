@@ -328,6 +328,7 @@
               "template": { "description": "guide: its live.channels and live.guide, drawn by the core (data optional: a title, an empty text)", "enum": ["catalog", "title", "releases", "list", "guide"] },
               "data": { "$ref": "#/$defs/name" },
               "title": { "type": "string", "maxLength": 40 },
+              "mobile": { "$ref": "#/$defs/screenMobile" },
               "params": {
                 "description": "Path parameters, in order: p/<id>/<name>/:a/:b",
                 "type": "array",
@@ -377,6 +378,14 @@
             "accent": { "description": "A theme of the UI system for its screens", "enum": ["adult"] }
           }
         }
+      }
+    },
+    "screenMobile": {
+      "description": "How a phone draws the screen's top: plain (default: Back on a dark strip, the title in the content), fold (the title large in a header folding into the bar as it scrolls), app (the app's own top bar: the mark, Search, the profile; with Back), overlay (no strip: Back floats over the first row). A template data answer's `mobile` wins",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bar": { "enum": ["plain", "fold", "app", "overlay"] }
       }
     },
     "setting": {
