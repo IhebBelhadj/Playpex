@@ -33,8 +33,26 @@ var DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'velvet'),
 var TMDB_ITEM = { id: 1, adult: true, title: 'Heatwave', release_date: '2025-03-01', poster_path: '/p.jpg', backdrop_path: '/b.jpg',
   vote_average: 7.2, vote_count: 10, overview: 'A film.' };
 
+var SCENE = { id: 'uuid-1', _id: 501, title: 'Marie in the Garden', date: '2024-03-15', description: 'A scene.',
+  image: 'https://img.example/s1.jpg', background: { large: 'https://img.example/b1.jpg' },
+  site: { id: 9001, name: 'Ersties', short_name: 'ersties' }, performers: [{ name: 'Marie H' }], duration: 1800 };
+
 function answer(url) {
   var u = new URL(url), q = u.searchParams;
+  if (u.hostname === 'api.theporndb.net') {
+    if (u.pathname === '/sites') {
+      return { data: /ersties/i.test(q.get('q')) ? [{ id: 9002, name: 'Ersties Archive', short_name: 'erstiesarchive' }, { id: 9001, name: 'Ersties', short_name: 'ersties' }] : [] };
+    }
+    if (u.pathname === '/scenes') {
+      return { data: [SCENE, Object.assign({}, SCENE, { id: 'uuid-2', image: null, background: null, posters: null })], meta: { current_page: 1, last_page: 2 } };
+    }
+    if (u.pathname === '/movies') {
+      return { data: [{ id: 7, title: 'Marie the Film', date: '2020-01-01', image: 'https://img.example/m.jpg', site: { id: 92, name: 'Brazzers' } }], meta: { current_page: 1, last_page: 1 } };
+    }
+    if (u.pathname === '/scenes/uuid-1') {
+      return { data: SCENE };
+    }
+  }
   if (u.hostname === 'api.themoviedb.org') {
     if (u.pathname === '/3/discover/movie') {
       return { page: Number(q.get('page')), total_pages: 3, results: [TMDB_ITEM, { id: 2, adult: false, title: 'Not adult', poster_path: '/x.jpg' },
@@ -51,6 +69,13 @@ function answer(url) {
     }
   }
   if (u.hostname === 'apibay.org') {
+    if (u.pathname === '/q.php' && /ersties/i.test(q.get('q'))) {
+      return [
+        { name: 'Ersties.24.03.15.Marie.H.XXX.1080p.MP4', info_hash: HASH_A, seeders: '40', leechers: '2', size: '900', category: '505' },
+        { name: 'Ersties.23.01.01.Other.Girl.XXX.720p.MP4', info_hash: HASH_B, seeders: '80', leechers: '2', size: '700', category: '505' },
+        { name: 'OtherSite.24.03.15.Marie.H.XXX.1080p', info_hash: HASH_D, seeders: '90', leechers: '2', size: '800', category: '505' }
+      ];
+    }
     if (u.pathname === '/q.php') {
       return [
         { name: 'Heatwave [Vixen 2025] XXX 1080p MP4-P2P', info_hash: HASH_A.toUpperCase(), seeders: '50', leechers: '5', size: '2000', category: '505', added: '1760000000' },
@@ -59,6 +84,9 @@ function answer(url) {
       ];
     }
     return [{ name: 'Top film [Studio 2024] XXX 2160p x265', info_hash: HASH_D, seeders: '300', leechers: '10', size: '5000', category: '507' }];
+  }
+  if (/therarbg/.test(u.hostname) && /ersties/i.test(u.pathname)) {
+    return { results: [{ n: 'Ersties - Marie H - Marie in the Garden 1080p', h: HASH_C, se: '10', le: '1', s: '600', c: 'XXX' }], links: { next: null } };
   }
   if (/therarbg/.test(u.hostname)) {
     return { results: [{ n: 'Heatwave.2025.720p.AAC', h: HASH_C, se: '20', le: '2', s: '1000', c: 'XXX', a: 1760000000 },
@@ -213,7 +241,70 @@ test('the search page\'s 18+ chip', function () {
     valid('slots/searchFilter', r[0].data);
     assert.equal(r[0].data.chip.label, '18+');
     assert.deepEqual(r[0].data.rows[0].items.map(function (c) { return c.title; }), ['Heatwave']);
+    // then its torrents for the words: the find screen
+    assert.deepEqual(r[0].data.rows[1].items[0].intent, { screen: 'plugin.velvet.find', params: { q: 'heat' } });
     assert.deepEqual(r[1].data.rows, [], 'not under 3 characters');
+  });
+});
+
+test('scenes: rows of the followed studios, a scene page, its torrents by studio and date', function () {
+  var p = load();
+  p.secrets.tmdbApiKey = 'k';
+  p.secrets.theporndbApiKey = 't';
+  p.settings.sceneStudios = 'Ersties, Nobody Here';
+  return p.handlers.browse({}, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    var titles = r.data.rows.map(function (row) { return row.title; });
+    assert.deepEqual(titles.slice(-2), ['New scenes', 'Ersties'], 'after the films: new scenes, then the followed studio (found by its exact name)');
+    assert.equal(r.data.rows[r.data.rows.length - 1].page.args.row, 'studio:9001');
+    var latest = r.data.rows[r.data.rows.length - 2].page.args;
+    assert.deepEqual([latest.row, latest.studios], ['latest', '9001'], 'new scenes: from the followed studios');
+    return p.handlers.rowPage(Object.assign({ page: 1 }, latest), CTX).then(function (page) {
+      valid('rowPage', page.data);
+      assert.equal(page.data.items.length, 1, 'merged by date, once each');
+      assert.ok(p.requests.some(function (q) { return /\/scenes\?.*site_id=9001/.test(q.url); }), 'asked per studio, never across all of them');
+      return p.handlers.browse({}, CTX);
+    });
+  }).then(function (r) {
+    assert.deepEqual(r.data.filters.map(function (f) { return f.key; }), ['view', 'kind', 'studio', 'period']);
+    return p.handlers.browse({ filters: { kind: ['scenes'] } }, CTX);
+  }).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.equal(r.data.rows[0].title, 'New scenes', 'only scenes');
+    assert.ok(r.data.rows.every(function (row) { return row.page.args.provider === 'scenes' && row.variant === 'still'; }));
+    assert.equal(r.data.filters[2].options[0].label, 'Ersties', 'the followed studio first');
+    return p.handlers.rowPage({ provider: 'scenes', row: 'studio:9001', page: 1 }, CTX);
+  }).then(function (r) {
+    valid('rowPage', r.data);
+    assert.equal(r.data.items.length, 1, 'scenes without a picture are left out');
+    assert.equal(r.data.items[0].variant, 'still');
+    assert.equal(r.data.items[0].image, 'https://img.example/b1.jpg');
+    assert.equal(r.data.items[0].subtitle, 'Ersties, 2024-03-15');
+    return p.handlers.title({ params: { provider: 'scenes', id: 'uuid-1' } }, CTX);
+  }).then(function (r) {
+    valid('templates/properties/title', r.data);
+    assert.equal(r.data.info.eyebrow, 'Ersties');
+    assert.equal(r.data.info.meta[0].text, '2024-03-15');
+    assert.deepEqual(r.data.actions[1].intent.params, { q: 'Ersties 24 03 15' }, 'releases are named by studio and date');
+    assert.equal(r.data.rows[1].page.args.row, 'studio:9001', 'more from its studio');
+    return p.handlers.play({ provider: 'scenes', id: 'uuid-1' }, CTX);
+  }).then(function (r) {
+    var sources = r.effects[0].request.sources.map(function (x) { return x.label; });
+    assert.deepEqual(sources, ['Ersties.24.03.15.Marie.H.XXX.1080p.MP4', 'Ersties - Marie H - Marie in the Garden 1080p'],
+      'its date first, then its performer; another scene of the studio and another studio are not it');
+    assert.equal(r.effects[0].request.tracking, 'none');
+  });
+});
+
+test('with only the ThePornDB key: films and scenes both from it, and the search chip finds both', function () {
+  var p = load();
+  p.secrets.theporndbApiKey = 't';
+  p.settings.metadataProvider = 'theporndb';
+  return Promise.all([p.handlers.browse({}, CTX), p.handlers.searchFilter({ slot: 'core.search.filters', context: { query: 'marie' } }, CTX)]).then(function (r) {
+    valid('templates/properties/catalog', r[0].data);
+    valid('slots/searchFilter', r[1].data);
+    assert.ok(r[0].data.rows.some(function (row) { return row.page.args.provider === 'scenes'; }));
+    assert.deepEqual(r[1].data.rows.map(function (row) { return row.title; }), ['Films', 'Scenes', 'Releases']);
   });
 });
 
