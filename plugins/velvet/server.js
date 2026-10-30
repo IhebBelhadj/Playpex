@@ -4,17 +4,20 @@
 // illegal where you live.
 //
 // Data handlers and what the core sends them:
-//   browse    catalog   { params, query, filters: { view, studio, period } }   the poster layout
+//   browse    catalog   { params, query, filters: { view, kind, studio, period } } the poster layout (films, scenes)
 //   rowPage   row page  { page, provider, row?, sort?, studio?, period?, q? }  a paged row
 //   title     title     { params: { provider, id } }                          one title
 //   play      call      { provider, id }                                     its torrents → the core's player
 //   releases  releases  { params: { q? }, query, filters, page }             the list layout (screens releases, find)
-//   searchFilter        { slot, context: { query } }                         the search page's chip
+//   searchFilter        { slot, context: { query } }                         the search page's chip: films, scenes, and Releases (the find screen)
 //
 // The layout (posters or list) is the "View" filter of both screens, kept per
-// profile in the store: the section opens the profile's last one. Catalog
-// from TMDB (through studios) or a second metadata provider, the profile's
-// choice; releases from two torrent indexes' categories, most seeded first.
+// profile in the store: the section opens the profile's last one. Films from
+// TMDB (through studios) or a second metadata provider, the profile's choice;
+// scenes (studios' web releases, small studios included) from the second one,
+// its `/scenes` and `/sites`, with the studios the profile follows (setting
+// `sceneStudios`) as rows; releases from two torrent indexes' categories, most
+// seeded first, a scene's matched by its studio and date, performer or title.
 // Plays never touch the profile's library (tracking 'none').
 
 var TMDB = 'https://api.themoviedb.org/3';
@@ -252,9 +255,9 @@ var SOURCES = [
   { id: 'therarbg', name: 'TheRARBG', paged: true, list: function (c) { return theRarbg(c.q, c.page); } }
 ];
 
-/** One film's torrents from both sources, matched by title (+ year) and ranked for streaming */
-function findTorrents(title, year) {
-  var q = words(title);
+/** Both sources' answers for keywords: [{ provider, name, hash, seeds, size }], and the errors */
+function searchSources(keywords) {
+  var q = words(keywords);
   var reads = [
     getJson(APIBAY + '/q.php?' + qs({ q: q, cat: '500' })).then(function (list) {
       return (Array.isArray(list) ? list : []).filter(function (r) {
@@ -269,18 +272,29 @@ function findTorrents(title, year) {
   ];
   return Promise.all(reads.map(function (p) {
     return p.then(function (v) { return { ok: v }; }, function (err) { return { error: err.message }; });
-  })).then(function (results) {
-    var byHash = {}, errors = [];
-    results.forEach(function (r) {
-      if (r.error) {
-        errors.push(r.error);
-        return;
-      }
-      r.ok.forEach(function (t) {
-        var found = match(t.name, title, year);
-        if (found && (!byHash[t.hash] || t.seeds > byHash[t.hash].seeds)) {
-          byHash[t.hash] = Object.assign(t, describe(t.name), found);
+  }));
+}
+
+/**
+ * Torrents for several searches, kept by `matcher(name)` (null: not it, else what
+ * it matched, merged into the torrent), one per hash, ranked for streaming
+ */
+function collectTorrents(searches, matcher) {
+  return Promise.all(searches.map(searchSources)).then(function (all) {
+    var byHash = {}, errors = [], reads = 0;
+    all.forEach(function (results) {
+      results.forEach(function (r) {
+        reads++;
+        if (r.error) {
+          errors.push(r.error);
+          return;
         }
+        r.ok.forEach(function (t) {
+          var found = matcher(t.name);
+          if (found && (!byHash[t.hash] || t.seeds > byHash[t.hash].seeds)) {
+            byHash[t.hash] = Object.assign(t, describe(t.name), found);
+          }
+        });
       });
     });
     if (errors.length) {
@@ -288,8 +302,69 @@ function findTorrents(title, year) {
     }
     var list = Object.keys(byHash).map(function (h) { return byHash[h]; });
     list.sort(compare);
-    return { torrents: list, failed: errors.length === results.length };
+    return { torrents: list, failed: errors.length === reads };
   });
+}
+
+/** One film's torrents from both sources, matched by title (+ year) and ranked for streaming */
+function findTorrents(title, year) {
+  return collectTorrents([title], function (name) { return match(name, title, year); });
+}
+
+// ── scenes' releases ────────────────────────────────────────────────────────
+
+function compact(text) {
+  return String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** "2024-03-15" → { yy: '24', mm: '03', dd: '15', yyyy: '2024' } */
+function dateParts(date) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(date || ''));
+  return m ? { yyyy: m[1], yy: m[1].slice(2), mm: m[2], dd: m[3] } : null;
+}
+
+/**
+ * Whether a release is this scene: scene releases are named by studio and date
+ * ("Studio.24.03.15.Performer.Title.XXX.1080p"), sometimes by studio and
+ * performer or title. The studio must be in the name; then its date, one of its
+ * performers or most of its title's words. null when it isn't, else
+ * { yearMatch: the date matched } (ranked first)
+ */
+function sceneMatch(name, scene) {
+  var n = compact(name), studio = scene.studio || {};
+  var names = [studio.name, studio.short].map(compact).filter(function (x) { return x.length >= 3; });
+  if (!names.some(function (x) { return n.indexOf(x) !== -1; })) {
+    return null;
+  }
+  var d = dateParts(scene.releaseDate),
+    date = !!d && (n.indexOf(d.yy + d.mm + d.dd) !== -1 || n.indexOf(d.yyyy + d.mm + d.dd) !== -1),
+    performer = (scene.performers || []).some(function (p) { var c = compact(p.name); return c.length >= 5 && n.indexOf(c) !== -1; }),
+    titleWords = normalizeTitle(scene.title).split(' ').filter(function (w) { return w.length >= 4; }),
+    nameWords = normalizeTitle(name).split(' '),
+    title = titleWords.length > 0 && titleWords.filter(function (w) { return nameWords.indexOf(w) !== -1; }).length / titleWords.length >= 0.6;
+  return date || performer || title ? { yearMatch: date } : null;
+}
+
+/** The searches that find a scene's releases: studio + date, studio + performer, studio + title */
+function sceneSearches(scene) {
+  var studio = scene.studio ? scene.studio.name : '', d = dateParts(scene.releaseDate), list = [];
+  if (!studio) {
+    return [scene.title];
+  }
+  if (d) list.push(studio + ' ' + d.yy + ' ' + d.mm + ' ' + d.dd);
+  if (scene.performers && scene.performers[0]) list.push(studio + ' ' + scene.performers[0].name);
+  list.push(studio + ' ' + scene.title);
+  return list;
+}
+
+function findSceneTorrents(scene) {
+  return collectTorrents(sceneSearches(scene), function (name) { return sceneMatch(name, scene); });
+}
+
+/** What Find releases searches for a title: a scene's studio and date (as its releases are named), else its title */
+function releaseQuery(providerId, t) {
+  var d = dateParts(t.releaseDate);
+  return providerId === 'scenes' && t.studio && d ? t.studio.name + ' ' + d.yy + ' ' + d.mm + ' ' + d.dd : t.title;
 }
 
 function notesOf(t) {
@@ -559,6 +634,102 @@ var PROVIDERS = {
   }
 };
 
+// Scenes: studios' web releases (the second provider's `/scenes`), small studios
+// included; studios are its sites, the profile's followed ones (sceneStudios) first
+PROVIDERS.scenes = {
+  name: 'Scenes',
+  secret: 'theporndbApiKey',
+  scenes: true,
+  sorts: ['newest'],
+  periods: PROVIDERS.theporndb.periods,
+  studios: TPDB_SITES,
+  get: PROVIDERS.theporndb.get,
+  pick: PROVIDERS.theporndb.pick,
+  year: PROVIDERS.theporndb.year,
+  item: function (m) {
+    var it = PROVIDERS.theporndb.item(m), site = m.site || {};
+    it.scene = true;
+    if (it.studio) it.studio.short = site.short_name || null;
+    it.performers = (m.performers || []).map(function (p) {
+      return { name: p.name || (p.parent && p.parent.name) || '', photo: this.pick(p, ['face', 'parent.face', 'image', 'parent.image']) };
+    }, this).filter(function (p) { return p.name; });
+    return it;
+  },
+  list: function (key, params) {
+    var self = this;
+    return this.get(key, '/scenes', Object.assign({ per_page: 30, orderBy: 'recently_released' }, params)).then(function (data) {
+      var meta = data.meta || {};
+      return {
+        items: (data.data || []).map(function (m) { return self.item(m); })
+          .filter(function (it) { return it.poster && (!it.releaseDate || it.releaseDate <= today()); }),
+        page: meta.current_page || params.page || 1,
+        totalPages: meta.last_page || 1
+      };
+    });
+  },
+  // "New scenes": page n of each studio (the followed ones, else the usual ones), merged newest
+  // first; across every studio the newest entries are scheduled ones (future dates, left out)
+  merged: function (key, studios, page, year) {
+    var self = this;
+    return Promise.all(studios.slice(0, 12).map(function (id) {
+      var params = { site_id: id, page: page, per_page: 6 };
+      if (year) params.year = year;
+      return self.list(key, params).then(function (p) { return p; }, function () { return null; });
+    })).then(function (pages) {
+      pages = pages.filter(Boolean);
+      if (!pages.length) {
+        throw new Error('ThePornDB didn\'t answer');
+      }
+      var seen = {}, items = [].concat.apply([], pages.map(function (p) { return p.items; })).filter(function (it) {
+        return !seen[it.id] && (seen[it.id] = true);
+      });
+      items.sort(function (a, b) { return (b.releaseDate || '').localeCompare(a.releaseDate || ''); });
+      return { items: items, page: page, totalPages: Math.max.apply(null, pages.map(function (p) { return p.totalPages; })) };
+    });
+  },
+  studiosOf: function (followed) {
+    return (followed && followed.length ? followed : TPDB_SITES.slice(0, HOME_STUDIOS)).map(function (s) { return s.id; });
+  },
+  home: function (followed) {
+    return [{ row: 'latest', title: 'New scenes', studios: this.studiosOf(followed).join(',') }].concat((followed || []).map(function (s) {
+      return { row: 'studio:' + s.id, title: s.name };
+    }));
+  },
+  discover: function (key, o) {
+    var year = this.year(o.period);
+    if (!o.studio) {
+      return this.merged(key, String(o.studios || '').split(',').filter(Boolean).length ? String(o.studios).split(',') : this.studiosOf(), o.page || 1, year);
+    }
+    var params = { site_id: o.studio, page: o.page || 1 };
+    if (year) params.year = year;
+    return this.list(key, params);
+  },
+  row: function (key, row, page, args) {
+    var studio = /^studio:(\d+)$/.exec(row);
+    if (studio) {
+      return this.list(key, { site_id: studio[1], page: page });
+    }
+    var studios = String((args && args.studios) || '').split(',').filter(Boolean);
+    return this.merged(key, studios.length ? studios : this.studiosOf(), page);
+  },
+  search: function (key, o) {
+    var params = { q: o.q, page: o.page || 1 }, year = this.year(o.period);
+    if (year) params.year = year;
+    return this.list(key, params);
+  },
+  title: function (key, id) {
+    var self = this;
+    return this.get(key, '/scenes/' + encodeURIComponent(id)).then(function (data) {
+      var m = data.data || data, result = self.item(m), duration = Number(m.duration) || 0, director = (m.directors || [])[0];
+      return Object.assign(result, {
+        runtime: duration ? Math.round(duration / 60) : null,
+        director: director ? director.name : null,
+        browsableStudio: result.studio && /^\d+$/.test(result.studio.id) ? result.studio.id : null
+      });
+    });
+  }
+};
+
 /**
  * The catalog this profile uses: its choice when its key is set, else the
  * other one that has a key; null when neither has: { id, provider, key }
@@ -569,7 +740,7 @@ function catalogFor(ctx, wanted) {
     playpex.secrets.get('tmdbApiKey'),
     playpex.secrets.get('theporndbApiKey')
   ]).then(function (r) {
-    var keys = { tmdb: r[1], theporndb: r[2] },
+    var keys = { tmdb: r[1], theporndb: r[2], scenes: r[2] },
       order = r[0] === 'theporndb' ? ['theporndb', 'tmdb'] : ['tmdb', 'theporndb'],
       id = wanted ? (keys[wanted] ? wanted : null) : order.filter(function (k) { return keys[k]; })[0];
     return id ? { id: id, provider: PROVIDERS[id], key: keys[id] } : null;
@@ -578,11 +749,35 @@ function catalogFor(ctx, wanted) {
 
 var NO_KEY = 'The 18+ catalog needs a TMDB API key or a ThePornDB one: enter it in the 18+ plugin\'s settings on the server\'s dashboard.';
 
+/**
+ * The studios this profile follows for scenes (setting sceneStudios: names, comma
+ * separated), each found among the provider's sites: [{ id, name, short }]
+ */
+function followedStudios(ctx, s) {
+  if (!s) {
+    return Promise.resolve([]);
+  }
+  return playpex.settings.get('sceneStudios', ctx).then(function (text) {
+    var names = String(text || '').split(/[,\n]/).map(function (n) { return n.trim(); }).filter(Boolean).slice(0, 12);
+    return Promise.all(names.map(function (name) {
+      return s.provider.get(s.key, '/sites', { q: name, per_page: 10 }).then(function (data) {
+        var list = data.data || [], wanted = compact(name),
+          site = list.filter(function (x) { return compact(x.name) === wanted || compact(x.short_name) === wanted; })[0] || list[0];
+        return site ? { id: String(site.id), name: site.name, short: site.short_name || null } : null;
+      }, function () { return null; });
+    }));
+  }).then(function (sites) {
+    var seen = {};
+    return sites.filter(function (x) { return x && !seen[x.id] && (seen[x.id] = true); });
+  });
+}
+
 // ── cards and rows ──────────────────────────────────────────────────────────
 
 function infoOf(it, details) {
   var meta = [];
-  if (it.year) meta.push({ kind: 'text', text: String(it.year) });
+  if (it.scene && it.releaseDate) meta.push({ kind: 'text', text: String(it.releaseDate).slice(0, 10) });
+  else if (it.year) meta.push({ kind: 'text', text: String(it.year) });
   meta.push({ kind: 'seal', text: '18+' });
   if (details && details.runtime) meta.push({ kind: 'text', text: details.runtime + ' min' });
   if (it.rating) meta.push({ kind: 'score', source: 'provider', value: Math.min(10, it.rating) });
@@ -604,12 +799,15 @@ function infoOf(it, details) {
 }
 
 function cardOf(providerId, it) {
+  var scene = providerId === 'scenes';
   return {
     key: 'velvet:' + providerId + ':' + it.id,
     title: clip(it.title, 200),
-    variant: 'poster',
-    image: it.poster,
-    subtitle: it.year ? String(it.year) : undefined,
+    // a scene's picture is a frame of it: landscape
+    variant: scene ? 'still' : 'poster',
+    image: scene ? it.backdrop || it.poster : it.poster,
+    subtitle: scene ? clip([it.studio && it.studio.name, it.releaseDate && String(it.releaseDate).slice(0, 10)].filter(Boolean).join(', '), 200) || undefined :
+      it.year ? String(it.year) : undefined,
     rating: it.rating ? { source: 'provider', value: Math.min(10, it.rating) } : null,
     intent: { screen: 'plugin.velvet.title', params: { provider: providerId, id: it.id } },
     info: infoOf(it)
@@ -617,7 +815,7 @@ function cardOf(providerId, it) {
 }
 
 function pagedRow(key, title, args) {
-  return { key: 'velvet:' + key, title: clip(title, 200), variant: 'poster', page: { data: 'rowPage', args: args } };
+  return { key: 'velvet:' + key, title: clip(title, 200), variant: args.provider === 'scenes' ? 'still' : 'poster', page: { data: 'rowPage', args: args } };
 }
 
 // ── the layout, per profile ─────────────────────────────────────────────────
@@ -650,45 +848,76 @@ function switchTo(screen) {
 
 // ── data handlers ───────────────────────────────────────────────────────────
 
-// The poster layout: the provider's home rows; a studio / period → its sorts
-// within them; a search → one row of results
+// The poster layout: the films' home rows, then new scenes and the studios the
+// profile follows; a studio / period → its sorts within them; "Kind" keeps films
+// or scenes; a search → a row of each
 playpex.data('browse', function (args, ctx) {
   args = args || {};
   return layoutOf(args, ctx, 'posters').then(function (l) {
     if (l.layout === 'list') {
       return { data: { rows: [] }, effects: switchTo('releases') };
     }
-    return catalogFor(ctx).then(function (c) {
-      if (!c) {
+    return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes')]).then(function (cs) {
+      var c = cs[0], s = cs[1];
+      if (!c && !s) {
         return { data: { title: '18+', rows: [], search: false, filters: [viewGroup('posters')], empty: NO_KEY } };
       }
-      var f = args.filters || {}, studio = (f.studio || [])[0] || null, period = (f.period || [])[0] || '',
-        q = String(args.query || '').trim(), rows;
-      if (q) {
-        rows = [pagedRow('search', 'Results for “' + clip(q, 60) + '”', { provider: c.id, q: q, period: period })];
-      } else if (studio || period) {
-        var names = { popular: 'Popular', newest: 'Newest', rated: 'Top rated' };
-        rows = c.provider.sorts.map(function (s) {
-          return pagedRow('discover:' + s, names[s], { provider: c.id, sort: s, studio: studio, period: period });
-        });
-      } else {
-        rows = c.provider.home().map(function (r) { return pagedRow('row:' + r.row, r.title, { provider: c.id, row: r.row }); });
-      }
-      return {
-        data: {
-          title: '18+',
-          rows: rows,
-          search: true,
-          filters: [
-            viewGroup('posters'),
-            { key: 'studio', label: 'Studio', options: c.provider.studios.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
-              .map(function (s) { return { value: s.id, label: clip(s.name, 40), on: s.id === studio }; }) },
-            { key: 'period', label: 'Released', options: c.provider.periods.filter(function (p) { return p[0]; })
-              .map(function (p) { return { value: p[0], label: p[1], on: p[0] === period }; }) }
-          ],
-          empty: q ? 'Nothing found for “' + clip(q, 60) + '”.' : 'Nothing to show.'
+      return followedStudios(ctx, s).then(function (followed) {
+        var f = args.filters || {}, kind = (f.kind || [])[0] || '', studio = (f.studio || [])[0] || null, period = (f.period || [])[0] || '',
+          q = String(args.query || '').trim(), rows = [];
+        // films unless only scenes are asked for (or there is no film catalog)
+        var films = c && kind !== 'scenes' ? c : null, scenes = s && (kind === 'scenes' || !c || (kind !== 'films' && !studio && !period)) ? s : null,
+          focus = kind === 'scenes' || !c ? s : c,
+          names = { popular: 'Popular', newest: 'Newest', rated: 'Top rated' };
+        if (q) {
+          if (films) rows.push(pagedRow('search', 'Films for “' + clip(q, 60) + '”', { provider: films.id, q: q, period: period }));
+          if (scenes) rows.push(pagedRow('search-scenes', 'Scenes for “' + clip(q, 60) + '”', { provider: 'scenes', q: q, period: period }));
+        } else if (studio || period) {
+          rows = focus.provider.sorts.map(function (x) {
+            return pagedRow('discover:' + x, names[x], { provider: focus.id, sort: x, studio: studio, period: period,
+              studios: focus.id === 'scenes' ? PROVIDERS.scenes.studiosOf(followed).join(',') : undefined });
+          });
+        } else {
+          if (films) rows = films.provider.home().map(function (r) { return pagedRow('row:' + r.row, r.title, { provider: films.id, row: r.row }); });
+          if (scenes) {
+            var sceneRows = scenes.provider.home(followed);
+            // only scenes: the usual studios too
+            if (!films) {
+              sceneRows = sceneRows.concat(TPDB_SITES.slice(0, HOME_STUDIOS).filter(function (x) {
+                return !followed.some(function (y) { return y.id === x.id; });
+              }).map(function (x) { return { row: 'studio:' + x.id, title: x.name }; }));
+            }
+            rows = rows.concat(sceneRows.map(function (r) {
+              return pagedRow('scenes:' + r.row, r.title, r.studios ? { provider: 'scenes', row: r.row, studios: r.studios } : { provider: 'scenes', row: r.row });
+            }));
+          }
         }
-      };
+        // the studios offered: the followed ones first, for scenes
+        var studios = focus.id === 'scenes' ? followed.concat(TPDB_SITES.filter(function (x) {
+          return !followed.some(function (y) { return y.id === x.id; });
+        })) : focus.provider.studios.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+        var filters = [viewGroup('posters')];
+        if (c && s) {
+          filters.push({ key: 'kind', label: 'Kind', options: [
+            { value: 'films', label: 'Films', on: kind === 'films' },
+            { value: 'scenes', label: 'Scenes', on: kind === 'scenes' }
+          ] });
+        }
+        filters.push(
+          { key: 'studio', label: 'Studio', options: studios.slice(0, 60).map(function (x) { return { value: x.id, label: clip(x.name, 40), on: x.id === studio }; }) },
+          { key: 'period', label: 'Released', options: focus.provider.periods.filter(function (p) { return p[0]; })
+            .map(function (p) { return { value: p[0], label: p[1], on: p[0] === period }; }) }
+        );
+        return {
+          data: {
+            title: '18+',
+            rows: rows,
+            search: true,
+            filters: filters,
+            empty: q ? 'Nothing found for “' + clip(q, 60) + '”.' : 'Nothing to show.'
+          }
+        };
+      });
     });
   });
 });
@@ -701,8 +930,8 @@ playpex.data('rowPage', function (args, ctx) {
       return { data: { items: [], last: true } };
     }
     var read = args.q ? c.provider.search(c.key, { q: args.q, period: args.period, page: page }) :
-      args.row ? c.provider.row(c.key, args.row, page) :
-        c.provider.discover(c.key, { studio: args.studio, period: args.period, sort: args.sort, page: page });
+      args.row ? c.provider.row(c.key, args.row, page, args) :
+        c.provider.discover(c.key, { studio: args.studio, studios: args.studios, period: args.period, sort: args.sort, page: page });
     return read.then(function (p) {
       return { data: { items: p.items.slice(0, 100).map(function (it) { return cardOf(c.id, it); }), last: p.page >= p.totalPages || !p.items.length } };
     });
@@ -733,7 +962,7 @@ playpex.data('title', function (args, ctx) {
           info: infoOf(t, t),
           actions: [
             { key: 'velvet:play', label: 'Play', icon: 'play', call: { data: 'play', args: { provider: c.id, id: t.id } } },
-            { key: 'velvet:releases', label: 'Find releases', icon: 'search', intent: { screen: 'plugin.velvet.find', params: { q: clip(t.title, 60) } } }
+            { key: 'velvet:releases', label: 'Find releases', icon: 'search', intent: { screen: 'plugin.velvet.find', params: { q: clip(releaseQuery(c.id, t), 60) } } }
           ],
           rows: rows
         }
@@ -750,7 +979,7 @@ playpex.data('play', function (args, ctx) {
       return { data: null, effects: [{ type: 'toast', text: 'Enter a catalog key in the 18+ plugin\'s settings', tone: 'error' }] };
     }
     return c.provider.title(c.key, args.id).then(function (t) {
-      return findTorrents(t.title, t.year).then(function (found) {
+      return (c.id === 'scenes' ? findSceneTorrents(t) : findTorrents(t.title, t.year)).then(function (found) {
         if (!found.torrents.length) {
           return { data: null, effects: [{ type: 'toast', tone: found.failed ? 'error' : 'info',
             text: found.failed ? 'The torrent sites didn\'t answer' : 'No torrents found for this title' }] };
@@ -842,20 +1071,32 @@ playpex.data('releases', function (args, ctx) {
 playpex.data('searchFilter', function (args, ctx) {
   var q = String((args && args.context && args.context.query) || '').trim();
   var chip = { key: 'velvet:18', label: '18+' };
-  return catalogFor(ctx).then(function (c) {
-    if (!c || q.length < 3) {
-      return { data: { chip: chip, rows: [] } };
+  if (q.length < 3) {
+    return Promise.resolve({ data: { chip: chip, rows: [] } });
+  }
+  // the torrents for the words: the find screen (releases by seeders, its filters); no key needed
+  var releases = { key: 'velvet:search-releases', title: 'Releases', variant: 'compact', items: [{
+    key: 'velvet:find', title: clip('Torrents for “' + q + '”', 200), subtitle: 'Most seeded first',
+    intent: { screen: 'plugin.velvet.find', params: { q: clip(q, 60) } }
+  }] };
+  function results(c, title, key) {
+    if (!c) {
+      return Promise.resolve([]);
     }
     return c.provider.search(c.key, { q: q, page: 1 }).then(function (p) {
-      return { data: { chip: chip, rows: p.items.length ? [{
-        key: 'velvet:search-results', title: 'Adult movies', variant: 'poster',
-        items: p.items.slice(0, 100).map(function (it) { return cardOf(c.id, it); })
-      }] : [] } };
-    });
+      return p.items.length ? [{ key: 'velvet:' + key, title: title, variant: c.id === 'scenes' ? 'still' : 'poster',
+        items: p.items.slice(0, 100).map(function (it) { return cardOf(c.id, it); }) }] : [];
+    }, function () { return []; });
+  }
+  return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes')]).then(function (cs) {
+    return Promise.all([results(cs[0], 'Films', 'search-results'), results(cs[1], 'Scenes', 'search-scenes')]);
+  }).then(function (r) {
+    return { data: { chip: chip, rows: r[0].concat(r[1], [releases]) } };
   });
 });
 
 // tests (Node, not the sandbox): the pure parts
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { present: present, describe: describe, match: match, compare: compare, notesOf: notesOf };
+  module.exports = { present: present, describe: describe, match: match, compare: compare, notesOf: notesOf,
+    sceneMatch: sceneMatch, sceneSearches: sceneSearches, releaseQuery: releaseQuery };
 }

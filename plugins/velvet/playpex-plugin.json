@@ -2,8 +2,8 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "velvet",
   "name": "Velvet",
-  "description": "Adult films (18+): a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders. Never in the official repository.",
-  "version": "1.0.0",
+  "description": "Adult films (18+): films from TMDB studios or ThePornDB, studios' scenes from ThePornDB, and torrent releases ranked by seeders. Never in the official repository.",
+  "version": "1.1.1",
   "publisher": {
     "name": "Playpex"
   },
@@ -94,9 +94,9 @@
         "key": "metadataProvider",
         "scope": "profile",
         "type": "choice",
-        "label": "Catalog from",
+        "label": "Films from",
         "group": "Catalog",
-        "description": "Where the posters, studios and performers come from (the other one is used when this one has no key).",
+        "description": "Where the films' posters, studios and performers come from (the other one is used when this one has no key). Scenes always come from ThePornDB.",
         "options": [
           [
             "tmdb",
@@ -108,6 +108,17 @@
           ]
         ],
         "default": "tmdb"
+      },
+      {
+        "key": "sceneStudios",
+        "scope": "profile",
+        "type": "text",
+        "label": "Scene studios",
+        "group": "Catalog",
+        "description": "Studios whose scenes get a row of their own, as ThePornDB names them, separated by commas (needs the ThePornDB key).",
+        "maxLength": 400,
+        "placeholder": "Ersties, Sinful XXX",
+        "default": ""
       },
       {
         "key": "tmdbApiKey",
@@ -123,7 +134,7 @@
         "type": "secret",
         "label": "ThePornDB API key",
         "group": "Catalog",
-        "description": "For the ThePornDB catalog (theporndb.net, free account)."
+        "description": "For scenes (studios' web releases, small studios included) and the ThePornDB film catalog (theporndb.net, free account)."
       }
     ],
     "chrome": {
