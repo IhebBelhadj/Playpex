@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
+import Constants from 'expo-constants'
 import { SUBTITLE_SCALE } from '../../core/player/preferences'
 import type { Settings, SettingValues } from '../../core/services/settings'
 import { LANGUAGES } from '../../core/util/languages'
@@ -91,7 +92,7 @@ function Groups({ server, onChangeServer }: { server: { name: string; url: strin
       <ServerGroup name={server?.name ?? ''} url={server?.url ?? ''} onChange={onChangeServer} />
       <PhoneGroup />
       <SettingsGroup title="About">
-        <SettingRow first label="Playpex Mobile" value="0.1.0" />
+        <SettingRow first label="Playpex Mobile" value={Constants.expoConfig?.version ?? ''} />
         <SettingRow label="Video player" value="mpv, GPL-3.0" />
         <Text style={[text.tiny, styles.note]}>
           Playpex is an educational project. Playpex comes with no content: play only what you have the right to. Streaming copyrighted content through torrents may be illegal where you live.

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, KeyRound, MonitorSmartphone, Pencil, Trash2, X } from 'lucide-react'
+import { Check, Gamepad2, KeyRound, MonitorSmartphone, Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -208,6 +208,13 @@ export function DevicesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
+                        {d.control?.online && (d.control.keyboard || d.control.pointer) && (
+                          <Button asChild variant="ghost" size="icon-sm" aria-label="Remote control" title="Remote control">
+                            <Link to={`/remote/${encodeURIComponent(d.id)}`}>
+                              <Gamepad2 />
+                            </Link>
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon-sm" aria-label="Rename" onClick={() => setRenaming(d)}>
                           <Pencil />
                         </Button>

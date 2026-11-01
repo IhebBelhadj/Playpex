@@ -14,6 +14,7 @@ import { ServerLibraryService } from './server-library.service';
 import { PluginMetaService } from './plugin-meta.service';
 import { RemotePlugins } from './plugins/remote';
 import { LiveService } from './live/live.service';
+import { RemoteControl } from './remote/remote-control.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -54,6 +55,8 @@ export class AppComponent implements AfterViewInit , OnInit{
     remotePlugins:RemotePlugins,
     // live TV: its plugins' chips on the search page (live/live.service.ts)
     liveTv:LiveService,
+    // remote control from the server's dashboard (remote/remote-control.service.ts)
+    remoteControl:RemoteControl,
     ){
     // remote / keyboard media keys → the screen shown (§13.2)
     mediaKeys.init();
@@ -61,6 +64,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     devHook.install();
     remotePlugins.start();
     liveTv.start();
+    remoteControl.start();
     navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);
   }
 

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Pause, Play, Radio, Square, Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, Gamepad2, Pause, Play, Radio, RotateCcw, RotateCw, Square, Users } from 'lucide-react'
+import type { MouseEvent, ReactNode } from 'react'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, PageHeader, QueryError } from '@/components/common'
 import { SwarmStrip, toneOf } from '@/components/swarm-strip'
@@ -7,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api, errorMessage, unwrap, type Session } from '@/lib/api'
 import { useDownloads } from '@/lib/downloads'
@@ -68,8 +71,40 @@ function fileName(path: string | null) {
   return path ? path.split(/[\\/]/).pop() ?? path : null
 }
 
+type Command = { action: 'pause' | 'resume' | 'toggle' | 'seek' | 'seekBy' | 'stop'; positionS?: number; deltaS?: number }
+
+// Why a session's player can't take commands now, or null
+function commandBlock(session: Session) {
+  if (!session.control?.online) return 'Device offline'
+  if (!session.control.playback) return 'This device’s player doesn’t take commands'
+  return null
+}
+
+// A control that says why it is off (a disabled button gets no pointer events: the tooltip sits on a wrapper)
+function Blocked({ reason, children }: { reason: string | null; children: ReactNode }) {
+  if (!reason) return children
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className="inline-flex">
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{reason}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function SessionCard({ session }: { session: Session }) {
   const client = useQueryClient()
+  const blocked = commandBlock(session)
+  const command = useMutation({
+    mutationFn: (body: Command) =>
+      unwrap(api.POST('/sessions/{id}/commands', { params: { path: { id: session.id } }, body })),
+    // the player reports at once (a keepalive): the card shows it on the next fetch
+    onSuccess: () => client.invalidateQueries({ queryKey: ['sessions'] }),
+    onError: (err) => toast.error(errorMessage(err)),
+  })
   const stop = useMutation({
     mutationFn: () => unwrap(api.DELETE('/sessions/{id}', { params: { path: { id: session.id } } })),
     onSuccess: () => {
@@ -83,6 +118,14 @@ function SessionCard({ session }: { session: Session }) {
   const title = p?.title || fileName(session.file) || session.torrentName || session.infoHash || session.ref || "Unknown"
   const position = p?.durationS ? ((p.positionS ?? 0) / p.durationS) * 100 : null
   const downloaded = t?.length ? Math.min(100, (t.downloaded / t.length) * 100) : null
+  const remote = !!(session.control?.online && (session.control.keyboard || session.control.pointer))
+  const off = !!blocked || command.isPending
+  const seekTo = (e: MouseEvent<HTMLDivElement>) => {
+    if (off || !p?.durationS) return
+    const box = e.currentTarget.getBoundingClientRect()
+    const f = Math.max(0, Math.min(1, (e.clientX - box.left) / box.width))
+    command.mutate({ action: 'seek', positionS: Math.round(f * p.durationS) })
+  }
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
@@ -104,7 +147,7 @@ function SessionCard({ session }: { session: Session }) {
         </div>
         <Confirm
           title="Stop this session?"
-          description="Its stream is closed and the device's hold on the torrent is released. The player on the device stops."
+          description="The player on the device is asked to stop; if it doesn't within 5 s, its stream is cut and the device's hold on the torrent is released."
           action="Stop"
           onConfirm={() => stop.mutate()}
           trigger={
@@ -139,8 +182,52 @@ function SessionCard({ session }: { session: Session }) {
                 {clock(p?.positionS)} / {clock(p?.durationS)}
               </span>
             </div>
-            <Progress value={position} />
+            {/* a click on the line seeks there (a tall hit area around the thin bar) */}
+            <div
+              className={off ? 'py-1.5' : 'cursor-pointer py-1.5'}
+              title={blocked ?? 'Click to go there'}
+              onClick={seekTo}
+            >
+              <Progress value={position} />
+            </div>
           </div>
+        )}
+        {p && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Blocked reason={blocked}>
+              <Button variant="outline" size="icon" aria-label="Back 10 seconds" disabled={off} onClick={() => command.mutate({ action: 'seekBy', deltaS: -10 })}>
+                <RotateCcw />
+              </Button>
+            </Blocked>
+            <Blocked reason={blocked}>
+              <Button
+                variant="outline"
+                disabled={off}
+                onClick={() => command.mutate({ action: p.paused ? 'resume' : 'pause' })}
+              >
+                {p.paused ? <Play /> : <Pause />} {p.paused ? 'Resume' : 'Pause'}
+              </Button>
+            </Blocked>
+            <Blocked reason={blocked}>
+              <Button variant="outline" size="icon" aria-label="Forward 10 seconds" disabled={off} onClick={() => command.mutate({ action: 'seekBy', deltaS: 10 })}>
+                <RotateCw />
+              </Button>
+            </Blocked>
+            {remote && (
+              <Button asChild variant="ghost" className="ml-auto">
+                <Link to={`/remote/${encodeURIComponent(session.deviceId)}`}>
+                  <Gamepad2 /> Remote control
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+        {!p && remote && (
+          <Button asChild variant="ghost" size="sm">
+            <Link to={`/remote/${encodeURIComponent(session.deviceId)}`}>
+              <Gamepad2 /> Remote control
+            </Link>
+          </Button>
         )}
         {session.infoHash && <SessionSwarm session={session} />}
         {t && (

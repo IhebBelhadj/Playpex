@@ -101,6 +101,9 @@ export class PlaybackSession {
   private lease: { ref: string | null; infoHash: string | null } = { ref: null, infoHash: null }
   private last: Report = { position: 0, duration: 0, paused: false }
   private playing = false
+  /** This playback's session on the server (Session.id), from the keepalive's answer */
+  private serverSession: string | null = null
+  private beatSoon: (() => void) | null = null
   private tracks: { audio: string | null; subtitle: string | null }
   private readonly initialTracks: { audio: string | null; subtitle: string | null }
 
@@ -145,9 +148,29 @@ export class PlaybackSession {
   /** What the player does, as it plays (position, length, paused) */
   report(report: Report): void {
     const pausedNow = report.paused && !this.last.paused
+    const changed = report.paused !== this.last.paused
     this.last = report
+    // the dashboard's Activity follows play / pause within a second
+    if (changed && this.run && !this.run.disposed) {
+      this.beatSoon?.()
+      this.beatSoon = this.run.timeout(500, () => void this.beat())
+    }
     if (!this.playing && report.position > 0) this.playing = true
     if (pausedNow) void this.save()
+  }
+
+  /** Whether a session.command / session.ended from the server is about this playback */
+  owns(event: { sessionId?: string; id?: string; infoHash: string | null; ref: string | null }): boolean {
+    const id = event.sessionId ?? event.id
+    if (this.serverSession && id) return id === this.serverSession
+    const status = this.state.get().status
+    if (status.phase !== 'ready') return false
+    return (!!event.ref && event.ref === status.target.ref) || (!!event.infoHash && event.infoHash === status.target.infoHash)
+  }
+
+  /** This playback's session on the server, once a keepalive answered */
+  isSession(id: string): boolean {
+    return !!this.serverSession && id === this.serverSession
   }
 
   /** The tracks chosen in the player, saved with the progress */
@@ -183,6 +206,8 @@ export class PlaybackSession {
     this.startAt = 0
     this.tracks = { audio: null, subtitle: null }
     this.state.patch({ status: { phase: 'ready', target, stream: this.streamOf(target) } })
+    // the first keepalive at once: the server answers this playback's session id
+    void this.beat()
   }
 
   /** What is watched is saved for the profile (not a plugin's `tracking: 'none'`) */
@@ -200,6 +225,8 @@ export class PlaybackSession {
       if (run.disposed || !target) return
       this.lease = { ref: target.ref, infoHash: target.infoHash }
       this.state.patch({ status: { phase: 'ready', target, stream: this.streamOf(target) } })
+    // the first keepalive at once: the server answers this playback's session id
+    void this.beat()
       if (target.infoHash) run.interval(TORRENT_POLL_MS, () => void this.pollTorrent(run, target.infoHash!))
     } catch (e) {
       if (run.disposed) return
@@ -252,7 +279,7 @@ export class PlaybackSession {
     const status = this.state.get().status
     if (status.phase !== 'ready') return
     const t = this.title
-    const { response } = await keepalive(this.client, status.target.ref, {
+    const { response, data } = await keepalive(this.client, status.target.ref, {
       positionS: Math.floor(this.last.position),
       durationS: this.last.duration ? Math.floor(this.last.duration) : undefined,
       paused: this.last.paused,
@@ -260,7 +287,9 @@ export class PlaybackSession {
       profileId: this.tracking === 'none' ? undefined : this.profileId,
       file: status.target.filePath ?? undefined,
       ...(this.tracking === 'none' ? {} : { media: { mediaType: t.mediaType, tmdbId: t.tmdbId, ...(t.mediaType === 'tv' ? { season: t.season, episode: t.episode } : {}) } }),
-    }).catch(() => ({ response: null }))
+    }).catch(() => ({ response: null, data: null }))
+    const answer = data as { sessionId?: string } | null | undefined
+    if (answer?.sessionId) this.serverSession = answer.sessionId
     if (response?.status === 404) this.state.patch({ status: { phase: 'failed', message: 'The server no longer has this file.' } })
   }
 

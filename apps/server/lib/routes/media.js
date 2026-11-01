@@ -195,7 +195,7 @@ function transcoded(req, res) {
 // plays: { positionS?, durationS?, paused?, title?, profileId?, file?, media? }
 function keepalive(req, res) {
   sessions.report(req.lease, req.body);
-  res.json({ ok: true });
+  res.json({ ok: true, sessionId: req.lease.id });
 }
 
 // Sidecar subtitle files of a disk file (Movie.en.srt, Subs/…): { subtitles: [{ index, language, languageName, forced, sdh }] }

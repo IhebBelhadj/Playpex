@@ -1,0 +1,55 @@
+@use 'px' as *;
+
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--px-z-remote);
+  pointer-events: none;
+}
+
+.badge {
+  position: absolute;
+  top: calc(var(--px-safe-y) + #{dp(18)});
+  right: calc(var(--px-safe-x) + #{dp(140)});
+  display: flex;
+  align-items: center;
+  gap: dp(10);
+  padding: dp(8) dp(16) dp(8) dp(12);
+  border-radius: var(--px-radius-l);
+  background: var(--px-surface-raised);
+  box-shadow: var(--px-shadow-button);
+  color: var(--px-color-text);
+  animation: arrive var(--px-dur-slow) ease-out;
+}
+
+.dot {
+  width: dp(8);
+  height: dp(8);
+  border-radius: 50%;
+  background: var(--px-color-on);
+}
+
+.text {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+}
+
+.who {
+  font-family: var(--px-font-light);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+}
+
+// the system cursor's image, its hot spot (5, 3) at the point
+.pointer {
+  position: absolute;
+  top: dp(-3);
+  left: dp(-5);
+  width: dp(24);
+  will-change: transform;
+}
+
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(dp(-12)); }
+  to { opacity: 1; transform: none; }
+}

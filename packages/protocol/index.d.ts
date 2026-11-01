@@ -25,6 +25,59 @@ export declare const AUTH: {
   readonly DEVICE_GRANT_TYPE: 'urn:ietf:params:oauth:grant-type:device_code';
   readonly TOKEN_PARAM: 'access_token';
 };
+export type SessionCommandAction = 'pause' | 'resume' | 'toggle' | 'seek' | 'seekBy' | 'stop';
+export declare const REMOTE: {
+  readonly PATH: '/api/v1/remote';
+  readonly SESSION_COMMANDS: ReadonlyArray<SessionCommandAction>;
+  readonly MESSAGES: ReadonlyArray<RemoteMessage['type']>;
+  readonly POINTER_PHASES: ReadonlyArray<'move' | 'down' | 'up' | 'wheel'>;
+  readonly POINTER_BUTTONS: ReadonlyArray<RemotePointerButton>;
+  readonly KEY_MODIFIERS: ReadonlyArray<RemoteKeyModifier>;
+  readonly TEXT_MAX: number;
+  readonly RTC: { readonly MOVES: 'moves'; readonly INPUT: 'input'; readonly SIGNAL_MAX: number };
+};
+/** session.command (events socket, to one device) */
+export interface SessionCommandEvent {
+  sessionId: string;
+  infoHash: string | null;
+  ref: string | null;
+  action: SessionCommandAction;
+  positionS?: number;
+  deltaS?: number;
+  by: string | null;
+}
+export type RemotePointerButton = 'left' | 'right' | 'middle' | 'back';
+export type RemoteKeyModifier = 'shift' | 'control' | 'alt' | 'meta';
+export interface RemoteCapabilities { keyboard: boolean; pointer: boolean; text: boolean;
+  /** the pointer may come over WebRTC data channels (REMOTE.RTC) */
+  rtc?: boolean }
+/** WebRTC set-up, relayed by the server between the controller (offers) and the target (answers) */
+export type RemoteSignal =
+  | { description: { type: 'offer' | 'answer'; sdp: string } }
+  | { candidate: { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string | null } | null };
+/** The data channels' messages (JSON). x, y of the controller: running totals of its moves in CSS px since the
+ *  channel opened, s the number of moves so far; the target applies the difference from the last it applied */
+export type RemoteRtcMessage =
+  | { t: 'move'; s: number; x: number; y: number }                                                 // MOVES, controller → target
+  | { t: 'cursor'; x: number; y: number }                                                          // MOVES, target → controller
+  | { t: 'pointer'; s: number; x: number; y: number; phase: 'down' | 'up'; button: RemotePointerButton } // INPUT
+  | { t: 'pointer'; s: number; x: number; y: number; phase: 'wheel'; dx: number; dy: number };     // INPUT
+/** Messages of the remote socket (REMOTE.PATH) */
+export type RemoteMessage =
+  | { type: 'hello'; role: 'target'; capabilities: RemoteCapabilities; screen?: { width: number; height: number } }
+  | { type: 'hello'; role: 'controller' }
+  | { type: 'state'; connected: boolean; reason?: 'offline' | 'taken' | 'refused' | 'unsupported' | 'ended';
+      controller?: { name: string } | null; device?: { id: string; name: string | null } | null;
+      capabilities?: RemoteCapabilities | null; screen?: { width: number; height: number } | null }
+  | { type: 'key'; phase: 'down' | 'up'; key: string; code?: string; modifiers?: RemoteKeyModifier[]; repeat?: boolean }
+  | { type: 'text'; text: string }
+  | { type: 'pointer'; phase: 'move'; dx: number; dy: number }
+  | { type: 'pointer'; phase: 'move'; x: number; y: number }
+  | { type: 'pointer'; phase: 'down' | 'up'; button: RemotePointerButton }
+  | { type: 'pointer'; phase: 'wheel'; dx: number; dy: number }
+  | { type: 'cursor'; x: number; y: number }
+  | { type: 'signal'; data: RemoteSignal }
+  | { type: 'bye' };
 export declare const DEFAULT_PORT: number;
 export declare const DISCOVERY_PORT: number;
 export declare const DISCOVERY: {

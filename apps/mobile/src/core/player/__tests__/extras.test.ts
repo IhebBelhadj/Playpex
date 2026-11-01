@@ -78,7 +78,7 @@ describe('PlayerController extras', () => {
   })
 
   it('adds a torrent’s separate subtitle file from the server’s route, with what was chosen saved', async () => {
-    const server = new FakeServer().on('DELETE /media/f_7', { body: { ok: true } })
+    const server = new FakeServer().on('DELETE /media/f_7', { body: { ok: true } }).on('POST /media/f_7/keepalive', { body: { ok: true, sessionId: 's1' } })
     const session = new PlaybackSession({ client: server.client, profileId: 'p1', title: SHOW, source: FILE, startAt: 0 })
     const player = new FakePlayer()
     const controller = new PlayerController(session, player)

@@ -5,7 +5,7 @@ import type { components, paths } from '@playpex/protocol/types/api'
 // lib/api.ts), one client per server: its URL, the device token in the
 // Authorization header and this app's name and API version on every request.
 
-export const APP_VERSION = '0.1.0'
+export const APP_VERSION = '0.1.0-alpha.1'
 export const API_VERSION = 2
 export const CLIENT_ID = 'playpex-mobile'
 export const CLIENT_HEADER_VALUE = `${CLIENT_ID}/${APP_VERSION}; api=${API_VERSION}`

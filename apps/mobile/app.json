@@ -7,7 +7,7 @@
       "ios"
     ],
     "scheme": "playpex",
-    "version": "0.1.0",
+    "version": "0.1.0-alpha.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -40,7 +40,8 @@
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE"
-      ]
+      ],
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
@@ -84,7 +85,8 @@
         }
       ],
       "./modules/expo-mpv/app.plugin.js",
-      "./plugins/with-architectures.js"
+      "./plugins/with-architectures.js",
+      "./plugins/with-release-signing.js"
     ],
     "experiments": {
       "typedRoutes": true

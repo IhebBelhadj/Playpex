@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useKeepAwake } from 'expo-keep-awake'
@@ -53,6 +53,8 @@ function Player({ session }: { session: PlaybackSession }) {
   const [open, setOpen] = useState<Open>(null)
   // Settings opens on the tab used last, as on the TV
   const [lastTab, setLastTab] = useState<SettingsTab>('style')
+  // Stop on the server's dashboard: the player closes
+  useEffect(() => controller.events.on('stoppedByServer', () => router.back()), [controller])
 
   const openSettings = (tab: SettingsTab) => {
     if (tab === 'subtitles') extras.subtitles.open()

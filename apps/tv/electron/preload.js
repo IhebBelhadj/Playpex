@@ -50,5 +50,9 @@ contextBridge.exposeInMainWorld('playpex', {
     get: () => ipcRenderer.invoke('display:get'),
     set: scale => ipcRenderer.invoke('display:set', scale)
   },
+  // remote control from the server (remote.js): what the admin types and points, into this window
+  remote: {
+    input: input => ipcRenderer.send('remote:input', input)
+  },
   power: action => ipcRenderer.invoke('power', action)
 });

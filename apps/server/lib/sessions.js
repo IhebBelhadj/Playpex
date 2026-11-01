@@ -36,6 +36,7 @@ var crypto = require('crypto'),
   log = require('./logger').child('torrent');
 
 var GRACE_MS = 30 * 1000,
+  STOP_ASK_MS = 5000,
   REAP_EVERY_MS = 60 * 1000,
   DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/,
   INFO_HASH = /^[0-9a-f]{40}$/;
@@ -415,6 +416,8 @@ function present(lease) {
     lastActivity: new Date(lease.lastActivity).toISOString(),
     playback: lease.playback ? _.extend({}, _.omit(lease.playback, 'updatedAt'),
       { updatedAt: new Date(lease.playback.updatedAt).toISOString() }) : null,
+    // what the dashboard can make it do now (docs/remote-control-plan.md §2.2)
+    control: require('./remote').control(lease.deviceId),
     torrent: s ? {
       peers: s.peers,
       downloadSpeed: s.downloadSpeed,
@@ -444,15 +447,48 @@ function find(id) {
 }
 
 // Ends a session: closes its streams and releases its lease
-function stopSession(id) {
+function endSession(lease) {
+  lease.streams.forEach(function (res) { res.destroy(); });
+  release(lease.key, lease.deviceId);
+}
+
+// The admin's Stop (decision C of docs/remote-control-plan.md): a player that
+// takes commands is asked to stop (it closes and lets go itself); if it still
+// holds the lease after STOP_ASK_MS, or can't be told, the session is cut
+function stopSession(id, by) {
   var lease = find(id);
   if (!lease) {
     return false;
   }
   log.info('session ' + id + ' of ' + lease.deviceId + ' stopped');
-  lease.streams.forEach(function (res) { res.destroy(); });
-  release(lease.key, lease.deviceId);
+  if (command(lease, { action: 'stop' }, by) > 0) {
+    var timer = setTimeout(function () {
+      if (find(id) === lease) {
+        log.info('session ' + id + ' still held ' + (options.stopAskMs || STOP_ASK_MS) / 1000 + ' s after stop: cut');
+        endSession(lease);
+      }
+    }, options.stopAskMs || STOP_ASK_MS);
+    timer.unref();
+    return true;
+  }
+  endSession(lease);
   return true;
+}
+
+// session.command to the session's device (POST /sessions/{id}/commands):
+// how many of its sockets got it (0: offline or it doesn't take commands)
+function command(lease, cmd, by) {
+  if (!require('./remote').control(lease.deviceId).playback) {
+    return 0;
+  }
+  var data = { sessionId: lease.id, infoHash: lease.infoHash || null, ref: lease.ref || null, action: cmd.action, by: by || null };
+  if (cmd.action === 'seek') {
+    data.positionS = cmd.positionS;
+  }
+  if (cmd.action === 'seekBy') {
+    data.deltaS = cmd.deltaS;
+  }
+  return events.publishTo(lease.deviceId, 'session.command', data);
 }
 
 // A revoked device: its streams are closed and its leases released
@@ -464,6 +500,7 @@ function dropDevice(deviceId) {
       release(lease.key, deviceId);
     }
   });
+  require('./remote').drop(deviceId);
   transcodes.filter(function (t) { return t.deviceId === deviceId; }).forEach(function (t) { t.res.destroy(); });
 }
 
@@ -542,6 +579,8 @@ module.exports = {
   reap: reap,
   list: list,
   stopSession: stopSession,
+  find: find,
+  command: command,
   dropDevice: dropDevice,
   dropTorrent: dropTorrent,
   holders: holders,
@@ -549,6 +588,6 @@ module.exports = {
   count: function () { return list().length; },
   start: start,
   stop: stop,
-  // tests: shorter grace period / idle timeout ({ graceMs, idleMs })
+  // tests: shorter grace period / idle timeout / stop wait ({ graceMs, idleMs, stopAskMs })
   configure: function (opts) { _.extend(options, opts); }
 };

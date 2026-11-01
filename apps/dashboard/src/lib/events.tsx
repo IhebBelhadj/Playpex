@@ -28,6 +28,8 @@ const EventsContext = createContext<EventsContextValue>({
 const INVALIDATES: [string, string[]][] = [
   ['session.', ['sessions', 'torrents', 'overview']],
   ['device.', ['devices']],
+  // a device's remote socket opened or closed, a controller came or left (admin only)
+  ['remote.', ['remote-targets', 'devices', 'sessions']],
   ['pairing.', ['pairing', 'devices']],
   ['host.', ['host']],
   // download.updated (every 2 s per torrent) is patched in place by the Downloads page

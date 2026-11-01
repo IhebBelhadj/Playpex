@@ -20,6 +20,14 @@
             Now: {{ edgesText(settings.value('display.safeArea')) }}.</p>
           <px-button key="edges" label="Adjust screen edges" (pxSelect)="edgesOpen = true"></px-button>
         </section>
+
+        <section class="setting" pxStackItem *ngIf="remoteCapable">
+          <header class="head"><h2 class="label">Remote control</h2><span class="scope">On this device</span></header>
+          <px-switch key="remoteAllowed" label="Allow remote control from the server"
+            hint="The server's admin can use this screen from the dashboard: keys, a pointer, typing. A badge shows while they do"
+            [on]="settings.value('remote.allowed')"
+            (pxSelect)="settings.set('remote.allowed', !settings.value('remote.allowed'))"></px-switch>
+        </section>
       </ng-container>
 
       <ng-container *ngIf="group == 'playback'">

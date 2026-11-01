@@ -47,3 +47,6 @@ yarn-error.*
 # Gradle output of the local modules
 /modules/*/android/build/
 /modules/*/android/.cxx/
+
+# release APKs (npm run release:android)
+/release/

@@ -11,6 +11,7 @@ import { MoviesSliderComponent } from './movies-slider/movies-slider.component';
 import { MoviesPageComponent } from './movies-page/movies-page.component';
 import { MovieOptionsComponent } from './movie-options/movie-options.component';
 import { ClockComponent } from './clock/clock.component';
+import { RemoteOverlayComponent } from './remote/remote-overlay.component';
 import { PlayerPageComponent } from './player-page/player-page.component';
 import { SearchPageComponent } from './search-page/search-page.component';
 import { YoutubeComponent } from './youtube/youtube.component';
@@ -64,6 +65,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     MoviesPageComponent,
     MovieOptionsComponent,
     ClockComponent,
+    RemoteOverlayComponent,
     PlayerPageComponent,
     SearchPageComponent,
     YoutubeComponent,

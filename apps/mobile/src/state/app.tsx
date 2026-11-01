@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ServerEvents } from '../core/events/serverEvents'
+import { ServerEvents, type ServerEventMap } from '../core/events/serverEvents'
+import { Emitter } from '../core/util/emitter'
 import { SessionRegistry } from '../core/playback/registry'
 import type { ApiClient } from '../core/http/client'
 import { SessionController, type Profile, type SessionState } from '../core/session/session'
@@ -12,7 +13,10 @@ import { invalidateOnEvents } from './invalidation'
 // The app's single instances, made once: the session (which server, who is
 // watching) and the query cache. Everything else is made per screen.
 
-type App = { session: SessionController; queryClient: QueryClient; playbacks: SessionRegistry }
+/** The server's word to this device's player: the admin's commands, a session that ended */
+export type PlayerRemote = Emitter<Pick<ServerEventMap, 'session.command' | 'session.ended'>>
+
+type App = { session: SessionController; queryClient: QueryClient; playbacks: SessionRegistry; remote: PlayerRemote }
 
 const AppContext = createContext<App | null>(null)
 
@@ -21,6 +25,7 @@ function createApp(): App {
     session: new SessionController(serverStore, discovery),
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } }),
     playbacks: new SessionRegistry(),
+    remote: new Emitter(),
   }
 }
 
@@ -45,12 +50,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!client) return
     const events = new ServerEvents(client)
     const off = invalidateOnEvents(events, app.queryClient)
+    const offCommand = events.events.on('session.command', (c) => app.remote.emit('session.command', c))
+    const offEnded = events.events.on('session.ended', (e) => app.remote.emit('session.ended', e))
     events.start()
     return () => {
       off()
+      offCommand()
+      offEnded()
       events.stop()
     }
-  }, [client, app.queryClient])
+  }, [client, app.queryClient, app.remote])
 
   return (
     <AppContext.Provider value={app}>

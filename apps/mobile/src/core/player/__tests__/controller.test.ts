@@ -149,3 +149,58 @@ describe('PlayerController', () => {
     expect(server.sent('DELETE', '/media/f_7')).toHaveLength(1)
   })
 })
+
+describe('PlayerController and the server', () => {
+  type Remote = ConstructorParameters<typeof PlayerController>[5]
+  function remoteSetup() {
+    const server = new FakeServer()
+      .on('DELETE /media/f_7', { body: { ok: true } })
+      .on('POST /media/f_7/keepalive', { body: { ok: true, sessionId: 'sess-1' } })
+    const session = new PlaybackSession({ client: server.client, profileId: 'p1', title: TITLE, source: FILE, startAt: 0 })
+    const player = new FakePlayer()
+    const remote = new Emitter() as NonNullable<Remote>
+    const controller = new PlayerController(session, player, () => {}, null, null, remote)
+    return { server, session, player, remote, controller }
+  }
+  const command = (action: string, extra: Record<string, unknown> = {}) =>
+    Object.assign({ sessionId: 'sess-1', infoHash: null, ref: 'f_7', action, by: 'admin' }, extra) as never
+
+  it('obeys the admin’s commands for its own session only, and tells the server at once', async () => {
+    const { server, player, remote, controller } = remoteSetup()
+    controller.start()
+    await settle()
+    expect(server.sent('POST', '/media/f_7/keepalive')).toHaveLength(1) // the first one, at once: its session id
+    player.events.emit('loaded', { duration: 600 })
+    player.events.emit('status', 'playing')
+    player.events.emit('progress', { position: 100, duration: 600, bufferedTo: 120, cacheAhead: 0, networkRate: 0 })
+
+    remote.emit('session.command', command('pause', { sessionId: 'someone-else', ref: 'f_9' }))
+    expect(player.paused).toBe(false)
+    remote.emit('session.command', command('pause'))
+    expect(player.paused).toBe(true)
+    player.events.emit('status', 'paused')
+    await settle(600)
+    expect(server.sent('POST', '/media/f_7/keepalive').length).toBeGreaterThanOrEqual(2) // the pause, reported
+    remote.emit('session.command', command('resume'))
+    expect(player.paused).toBe(false)
+    remote.emit('session.command', command('seek', { positionS: 30 }))
+    remote.emit('session.command', command('seekBy', { deltaS: -10 }))
+    expect(player.seeks).toEqual([30, 20]) // −10 s from where the seek put it
+    controller.stop()
+  })
+
+  it('closes on stop, and when its session ends on the server', async () => {
+    const { remote, controller } = remoteSetup()
+    const stopped = jest.fn()
+    controller.events.on('stoppedByServer', stopped)
+    controller.start()
+    await settle()
+    remote.emit('session.ended', { id: 'another', deviceId: 'd', infoHash: null, ref: 'f_7' })
+    expect(stopped).not.toHaveBeenCalled()
+    remote.emit('session.ended', { id: 'sess-1', deviceId: 'd', infoHash: null, ref: 'f_7' })
+    expect(stopped).toHaveBeenCalledTimes(1)
+    remote.emit('session.command', command('stop'))
+    expect(stopped).toHaveBeenCalledTimes(2)
+    controller.stop()
+  })
+})

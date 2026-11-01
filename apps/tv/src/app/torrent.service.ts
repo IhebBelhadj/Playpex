@@ -23,14 +23,14 @@ export class TorrentService {
   // requests), with what it plays: shown in the server's Activity, and
   // `media` (which TMDB title) kept with the server's download
   keepTorrent(hash:string , state:Schema<'KeepaliveRequest'>){
-    return this.http.post(`${this.server.api}/torrents/${hash}/keepalive` , state , { params : this.server.deviceParams() })
+    return this.http.post<{ ok:true, sessionId?:string }>(`${this.server.api}/torrents/${hash}/keepalive` , state , { params : this.server.deviceParams() })
   }
 
   // The same for a file played by its media ref (a file on the server, a
   // download's file: PlaybackRequest.source); the lease was taken by its
   // first GET /media/{ref}
   keepMedia(ref:string , state:Schema<'KeepaliveRequest'>){
-    return this.http.post(`${this.server.api}/media/${ref}/keepalive` , state , { params : this.server.deviceParams() })
+    return this.http.post<{ ok:true, sessionId?:string }>(`${this.server.api}/media/${ref}/keepalive` , state , { params : this.server.deviceParams() })
   }
 
   releaseMedia(ref:string){

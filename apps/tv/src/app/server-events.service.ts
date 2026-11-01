@@ -54,6 +54,8 @@ export class ServerEvents implements OnDestroy {
     url.protocol = url.protocol == 'https:' ? 'wss:' : 'ws:';
     // a browser (ng serve) has no shell to add the device header
     url.searchParams.set('device', this.server.deviceId);
+    // the player obeys the admin's session.command (docs/remote-control-plan.md §2.4)
+    url.searchParams.set('control', 'playback');
     this.zone.runOutsideAngular(() => {
       let socket = this.socket = new WebSocket(url.toString());
       socket.onopen = () => this.retryMs = 2000;

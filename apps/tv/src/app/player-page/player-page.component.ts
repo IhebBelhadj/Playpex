@@ -7,7 +7,9 @@ import { TorrentService } from './../torrent.service';
 import { Component, OnInit, OnDestroy, ElementRef, NgZone, inject } from '@angular/core';
 import { repeat, switchMap, filter, catchError } from "rxjs/operators";
 import { gsap } from 'gsap'
-import { EMPTY, Subscription, timer } from 'rxjs';
+import { EMPTY, Subscription, timer, merge, map } from 'rxjs';
+import type { SessionCommandEvent } from '@playpex/protocol';
+import { ServerEvents } from '../server-events.service';
 import { ServerService } from '../server.service';
 import { API_PREFIX } from '../server-config';
 import { actionForKey, MediaAction } from '../keymap';
@@ -17,7 +19,7 @@ import { PointerService } from '../pointer.service';
 import { ProfilesService } from '../profiles.service';
 import { LayerStack, Navigator, useScreen } from '../nav/public-api';
 import { FocusEngine } from '../movement/movement';
-import { tmdbImageBase } from '../ui/public-api';
+import { tmdbImageBase, Toasts } from '../ui/public-api';
 import { EpisodePlaybackService, NextEpisode } from '../episode-playback.service';
 import { Marker, PlaySourcesService } from '../play-sources.service';
 import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.service';
@@ -246,8 +248,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   pointerIdle;
   controlsIdle;
   keepaliveTimer;
+  private keepaliveSoonTimer:any;
+  // this player's session on the server (Session.id), from the keepalive's answer
+  private sessionId:string | null = null;
+  private serverSub:Subscription;
   private screen = useScreen<{ session:string }, PlaybackRequest>();
   // media keys while the player is shown and no layer is open (§13.2)
+  private serverEvents = inject(ServerEvents);
+  private toasts = inject(Toasts);
   private mediaSub = inject(MediaKeys).for(this.screen).subscribe(action => this.onMedia(action));
   private lastMedia:{ action:MediaAction | null, at:number } = { action: null, at: 0 };
   // Set first in ngOnDestroy: work that finishes later (a probe, the torrent's
@@ -294,6 +302,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.screen.beforeLeave(() => this.releaseTorrent());
     this.screen.onSelect(() => this.select());
     this.screen.onBack(() => this.back());
+    this.listenToServer();
 
     let asked = this.playback.startAt !== undefined;
     if (asked) {
@@ -444,6 +453,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     // every exit runs it); does nothing the second time
     this.releaseTorrent();
     this.mediaSub?.unsubscribe();
+    this.serverSub?.unsubscribe();
+    clearTimeout(this.keepaliveSoonTimer);
     this.stopMediaSession();
     clearTimeout(this.seekTimer);
     clearTimeout(this.scrubTimer);
@@ -691,7 +702,22 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   startKeepalive() {
     if (this.destroyed) return;
     clearInterval(this.keepaliveTimer);
-    this.keepaliveTimer = setInterval(() => {
+    this.keepaliveTimer = setInterval(() => this.sendKeepalive() , KEEPALIVE_EVERY_MS);
+    // the first one at once: the server answers this player's session id
+    this.sendKeepalive();
+  }
+
+  // At once when the state changes (play, pause, a seek: the dashboard's
+  // Activity follows within a second), coalesced
+  private keepaliveSoon() {
+    if (this.destroyed || !this.keepaliveTimer) return;
+    clearTimeout(this.keepaliveSoonTimer);
+    this.keepaliveSoonTimer = setTimeout(() => this.sendKeepalive() , 500);
+  }
+
+  private sendKeepalive() {
+    if (this.destroyed || this.released) return;
+    {
       let player = this.moviePlayer;
       let duration = this.playerReady ? this.mediaDuration() : NaN;
       let code = this.playback.season ? this.playback.subtitle?.split(' ')[0] : '';
@@ -707,10 +733,68 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         ...(this.playerReady && player ? { positionS: this.position(), paused: player.paused } : {}),
         ...(isFinite(duration) && duration > 0 ? { durationS: duration } : {}),
       };
+      if (!this.playback.source && !this.torrentHash) return;
       let sent = this.playback.source ? this.torrentService.keepMedia(this.playback.source.ref , state)
         : this.torrentService.keepTorrent(this.torrentHash , state);
-      sent.subscribe({ error: () => {} });
-    } , KEEPALIVE_EVERY_MS);
+      sent.subscribe({ next: answer => { if (answer?.sessionId) this.sessionId = answer.sessionId; }, error: () => {} });
+    }
+  }
+
+  // ── control from the server (docs/remote-control-plan.md §2.4) ──────────
+
+  // The admin's commands (session.command, to this device only) and the end
+  // of this player's session (Stop on the dashboard, a revoked lease)
+  private listenToServer() {
+    this.serverSub = merge(
+      this.serverEvents.on<SessionCommandEvent>('session.command').pipe(map(e => ({ command: e.data, ended: null }))),
+      this.serverEvents.on<{ id:string, deviceId:string, infoHash:string | null, ref:string | null }>('session.ended')
+        .pipe(map(e => ({ command: null, ended: e.data }))),
+    ).subscribe(({ command, ended }) => {
+      if (this.destroyed || !this.screen.active) return;
+      if (command && this.ownsSession(command.sessionId, command.infoHash, command.ref)) this.obey(command);
+      // a session.ended for this player's own session: it was cut
+      else if (ended && this.sessionId && ended.id == this.sessionId) {
+        this.released = true;
+        this.leavePlayer();
+        this.toasts.show({ text: 'Playback was stopped from the server', key: 'remote-stop' });
+      }
+    });
+  }
+
+  private ownsSession(sessionId:string, infoHash:string | null, ref:string | null):boolean {
+    if (this.sessionId && sessionId == this.sessionId) return true;
+    let mine = this.playback.source?.ref;
+    if (ref && (ref == mine || this.link == `${API_PREFIX}/media/${ref}`)) return true;
+    if (infoHash && (infoHash == this.torrentHash || (mine && mine.indexOf('t_' + infoHash) == 0))) return true;
+    return false;
+  }
+
+  private obey(command:SessionCommandEvent) {
+    if (command.action == 'stop') {
+      this.leavePlayer();
+      this.toasts.show({ text: 'Playback was stopped from the server', key: 'remote-stop' });
+      return;
+    }
+    if (!this.moviePlayer || !this.playerReady) return;
+    switch (command.action) {
+      case 'pause':
+        if (!this.moviePlayer.paused) this.togglePlay();
+        break;
+      case 'resume':
+        if (this.moviePlayer.paused) this.togglePlay();
+        break;
+      case 'toggle':
+        this.togglePlay();
+        break;
+      case 'seek':
+        if (!this.live && typeof command.positionS == 'number') this.seekTo(Math.min(this.duration || Infinity, command.positionS));
+        break;
+      case 'seekBy':
+        if (!this.live && typeof command.deltaS == 'number') this.jump(command.deltaS);
+        break;
+    }
+    this.showControls(PLAY_BUTTON);
+    this.keepaliveSoon();
   }
 
   // Back to where the user came from (the lease goes in beforeLeave)
@@ -850,6 +934,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
       this.moviePlayer.play()?.catch(() => {});
     }
+    // the dashboard's Activity follows play / pause / seeks within a second
+    ['play', 'pause', 'seeked'].forEach(name => on(name, () => { if (this.playerReady) this.keepaliveSoon(); }));
     // e.g. HEVC/x265 or AVI that Chromium can't decode (hls.js says so itself)
     on('error', () => {
       if (this.hls || !this.screen.active || !this.moviePlayer.getAttribute('src')) return;

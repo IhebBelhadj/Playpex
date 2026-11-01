@@ -1,3 +1,4 @@
+import type { SessionCommand } from '../events/serverEvents'
 import type { PlaybackSession, Stream } from '../playback/session'
 import type { MediaTrack, MediaTracks } from '../services/playback'
 import { SUBTITLE_SCALE, playerProperties, type PlayerPreferences } from './preferences'
@@ -64,7 +65,14 @@ export const PICTURES: { key: Picture; label: string; help: string }[] = [
 
 export const DEFAULT_TUNING: Tuning = { speed: 1, subtitleDelay: 0, audioDelay: 0, subtitleScale: 1, subtitlePosition: 100, subtitleBackground: false, picture: 'fit', brightness: 0 }
 
-type Events = { finished: void }
+type Events = {
+  finished: void
+  /** The admin stopped this playback from the dashboard (Stop, or the session was cut) */
+  stoppedByServer: void
+}
+
+/** The server's word to this player (state/app.tsx PlayerRemote) */
+export type RemoteSource = Emitter<{ 'session.command': SessionCommand; 'session.ended': { id: string; deviceId: string; infoHash: string | null; ref: string | null } }>
 
 export class PlayerController {
   readonly state = new Store<PlayerUiState>({
@@ -98,6 +106,8 @@ export class PlayerController {
     private readonly preferences: (() => Promise<PlayerPreferences | null>) | null = null,
     /** The server's tracks of a file (GET /media/{ref}/tracks) */
     private readonly serverTracks: ((ref: string) => Promise<MediaTracks>) | null = null,
+    /** The admin's commands and the end of this playback's session (docs/remote-control-plan.md §2.4) */
+    private readonly remote: RemoteSource | null = null,
   ) {}
   private preferred: Promise<void> | null = null
   /** The resume point's tracks wait for the first file to open, then apply once */
@@ -120,6 +130,41 @@ export class PlayerController {
         if (reason === 'ended') this.events.emit('finished', undefined)
       }),
     )
+    if (this.remote) {
+      run.add(this.remote.on('session.command', (c) => this.obey(c)))
+      run.add(
+        this.remote.on('session.ended', (e) => {
+          if (this.session.isSession(e.id)) this.events.emit('stoppedByServer', undefined)
+        }),
+      )
+    }
+    this.showControls()
+  }
+
+  /** A command from the server's dashboard, for this playback only */
+  private obey(command: SessionCommand): void {
+    if (!this.session.owns(command)) return
+    const { status, position, duration } = this.state.get()
+    switch (command.action) {
+      case 'stop':
+        this.events.emit('stoppedByServer', undefined)
+        return
+      case 'pause':
+        if (status !== 'paused') this.player.pause()
+        break
+      case 'resume':
+        if (status === 'paused') this.player.play()
+        break
+      case 'toggle':
+        this.togglePlay()
+        break
+      case 'seek':
+        if (typeof command.positionS === 'number') this.seekTo(duration > 0 ? Math.min(duration, command.positionS) : command.positionS)
+        break
+      case 'seekBy':
+        if (typeof command.deltaS === 'number') this.seekTo(Math.max(0, position + command.deltaS))
+        break
+    }
     this.showControls()
   }
 

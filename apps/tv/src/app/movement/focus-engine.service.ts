@@ -194,13 +194,26 @@ export class FocusEngine {
     let seen = new Set<string>([from]);
     let queue = [from];
     while (queue.length) {
-      let config = spatialNavigation.sectionConfig(queue.shift());
+      let id = queue.shift();
+      let config = spatialNavigation.sectionConfig(id);
       if (!config || config.restrict != 'self-only') return true;
+      // the arrows also move through movement containers (a page's pxStack
+      // steps from its search field to its results without any `leaveFor`)
+      if (this.containerLeads(id, el)) return true;
       let dests = Object.values(config.leaveFor || {});
       if (dests.some(dest => this.leads(dest, el, to))) return true;
       dests.forEach(dest => this.sectionsOf(dest).forEach(id => {
         if (!seen.has(id)) { seen.add(id); queue.push(id); }
       }));
+    }
+    return false;
+  }
+
+  // Is `el` inside a movement container that also holds section `sectionId`?
+  private containerLeads(sectionId:string, el:HTMLElement):boolean {
+    let first = spatialNavigation.navigableElements(sectionId)[0] as HTMLElement | undefined;
+    for (let c = first && this.parentContainer(first); c; c = this.parentContainer(c.host)) {
+      if (c.host.contains(el)) return true;
     }
     return false;
   }

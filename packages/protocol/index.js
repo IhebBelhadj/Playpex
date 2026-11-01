@@ -31,6 +31,27 @@ var AUTH = {
   TOKEN_PARAM: 'access_token'
 };
 
+// Control from the server (docs/remote-control-plan.md): the admin's commands
+// to a device's player (POST /sessions/{id}/commands → `session.command` on
+// that device's events socket, opened with `?control=playback`), and remote
+// input over the WebSocket at REMOTE.PATH (a device: role target; the admin:
+// role controller, `?device=<id>`). Messages: JSON text frames { type, … }.
+var REMOTE = {
+  PATH: API_PREFIX + '/remote',
+  SESSION_COMMANDS: ['pause', 'resume', 'toggle', 'seek', 'seekBy', 'stop'],
+  MESSAGES: ['hello', 'state', 'key', 'text', 'pointer', 'cursor', 'signal', 'bye'],
+  POINTER_PHASES: ['move', 'down', 'up', 'wheel'],
+  POINTER_BUTTONS: ['left', 'right', 'middle', 'back'],
+  KEY_MODIFIERS: ['shift', 'control', 'alt', 'meta'],
+  TEXT_MAX: 500,
+  // A target that says capabilities.rtc gets the pointer straight from the
+  // controller over WebRTC data channels, set up with `signal` messages the
+  // server relays (docs/api/remote.md): MOVES is unordered and never resent
+  // (running totals, so a lost one costs nothing), INPUT ordered and reliable
+  // (buttons, wheel). Keys and text stay on the socket.
+  RTC: { MOVES: 'moves', INPUT: 'input', SIGNAL_MAX: 6000 }
+};
+
 // Fixed ports (plan §5.9); the HTTP one can be changed in the server settings
 var DEFAULT_PORT = 28470;
 var DISCOVERY_PORT = 28471;
@@ -71,9 +92,11 @@ var ERROR_CODES = {
   ORIGIN_NOT_ALLOWED: 403,       // state-changing request from a web origin that isn't allowed
   NOT_FOUND: 404,
   CONFLICT: 409,
+  DEVICE_OFFLINE: 409,           // the device has no socket open: it can't be told (session commands, remote control)
   GONE: 410,                     // a route removed in a newer API version (API 2: /movies*, /shows/{imdbId}/torrents)
   CLIENT_TOO_OLD: 426,
   SERVER_TOO_OLD: 426,
+  UNSUPPORTED: 422,              // the device didn't declare it can do that (docs/remote-control-plan.md §2.3)
   TOO_MANY_ATTEMPTS: 429,
   INTERNAL: 500,
   NOT_SUPPORTED: 501,            // this server's host can't do it (desktop-only routes on a headless server)
@@ -122,6 +145,7 @@ module.exports = {
   DEVICE_HEADER: DEVICE_HEADER,
   DEVICE_PARAM: DEVICE_PARAM,
   AUTH: AUTH,
+  REMOTE: REMOTE,
   DEFAULT_PORT: DEFAULT_PORT,
   DISCOVERY_PORT: DISCOVERY_PORT,
   DISCOVERY: DISCOVERY,

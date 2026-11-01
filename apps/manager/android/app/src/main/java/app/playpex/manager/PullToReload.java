@@ -15,7 +15,8 @@ import com.getcapacitor.WebViewListener;
  *
  * A pull only reloads when it starts at the very top of the page, outside any list that is itself
  * scrolled, and with no dialog or sheet open: a script added to each page reports that on every
- * touch (window.PlaypexPull.set), so scrolling a list back up or dragging a sheet never reloads.
+ * touch (window.PlaypexPull.set), so scrolling a list back up, dragging a sheet or driving the remote
+ * control's touchpad ([role=application], .touch-none) never reloads.
  */
 final class PullToReload {
     private static final int GOLD = 0xFFE0A93B;     // the logo's gold: what moves
@@ -34,7 +35,8 @@ final class PullToReload {
         "  document.addEventListener('touchstart', function (e) {" +
         "    var open = document.querySelector('[role=dialog], [role=alertdialog]');" +
         "    var top = (window.scrollY || document.documentElement.scrollTop || 0) <= 0;" +
-        "    try { PlaypexPull.set(top && !open && !scrolled(e.target)); } catch (_) {}" +
+        "    var pad = e.target && e.target.closest && e.target.closest('[role=application], .touch-none');" +
+        "    try { PlaypexPull.set(top && !open && !pad && !scrolled(e.target)); } catch (_) {}" +
         "  }, { capture: true, passive: true });" +
         "})();";
 

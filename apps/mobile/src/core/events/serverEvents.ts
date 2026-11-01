@@ -15,9 +15,21 @@ export type ServerEventMap = {
   'settings.changed': { scope: 'device' | 'profile'; ownerId: string; keys: string[] }
   'download.updated': { infoHash: string; state: string }
   'session.ended': { id: string; deviceId: string; infoHash: string | null; ref: string | null }
+  /** The admin's command to this device's player (docs/remote-control-plan.md §2.4) */
+  'session.command': SessionCommand
 }
 
-const TOPICS = ['library', 'plugin', 'settings', 'download', 'session.ended']
+export type SessionCommand = {
+  sessionId: string
+  infoHash: string | null
+  ref: string | null
+  action: 'pause' | 'resume' | 'toggle' | 'seek' | 'seekBy' | 'stop'
+  positionS?: number
+  deltaS?: number
+  by: string | null
+}
+
+const TOPICS = ['library', 'plugin', 'settings', 'download', 'session.ended', 'session.command']
 const BACKOFF_MS = [1000, 2000, 5000, 10_000, 30_000]
 
 /** What the socket needs: React Native's WebSocket takes headers in a third argument */
@@ -49,7 +61,8 @@ export class ServerEvents {
 
   private connect(run: Disposer): void {
     if (run.disposed) return
-    const url = this.client.url('/events').replace(/^http/, 'ws') + '?topics=' + TOPICS.join(',')
+    // control=playback: the player obeys the admin's session.command
+    const url = this.client.url('/events').replace(/^http/, 'ws') + '?topics=' + TOPICS.join(',') + '&control=playback'
     const socket = this.openSocket(url, this.client.headers())
     const close = run.add(() => {
       socket.onclose = null
@@ -82,4 +95,5 @@ const EVENT_TOPICS: Record<keyof ServerEventMap, true> = {
   'settings.changed': true,
   'download.updated': true,
   'session.ended': true,
+  'session.command': true,
 }

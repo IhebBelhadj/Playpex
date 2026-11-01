@@ -1,7 +1,7 @@
 {
   "name": "@playpex/mobile",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "Playpex for phones: a client of Playpex Media Server (React Native, Expo)",
   "main": "expo-router/entry",
   "scripts": {
@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "jest",
-    "android:release": "cd android && ./gradlew assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk"
+    "android:release": "cd android && ./gradlew assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk",
+    "release:android": "node scripts/release-android.js"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",

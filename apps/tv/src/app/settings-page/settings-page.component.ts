@@ -36,6 +36,7 @@ const AUTOPLAY_KINDS = [
   { key: 'stream', label: 'Play a stream' },
 ];
 
+import { desktop } from '../desktop';
 @Component({
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
@@ -55,6 +56,8 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   // "Play a stream" only once some plugin finds sources (GET /plugins capabilities.sources)
   autoplayKinds = AUTOPLAY_KINDS;
   // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
+  // the Electron shell can inject the admin's input (remote/remote-control.service.ts); a browser can't
+  readonly remoteCapable = !!desktop()?.remote;
   readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
   readonly subtitleLanguages = [{ key: 'off', label: 'Off' }, ...LANGUAGES];
   readonly volumeText = (v:number) => v + ' %';

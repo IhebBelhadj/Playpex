@@ -43,6 +43,7 @@ export function usePlayer(session: PlaybackSession): Player {
   const client = useClient()
   const profile = useProfile()
   const [mpv] = useState(() => new MpvPlayer())
+  const { playbacks, remote } = useApp()
   const controller = useOwned(
     () =>
       new PlayerController(
@@ -56,9 +57,9 @@ export function usePlayer(session: PlaybackSession): Player {
         // The settings (cached since the Settings page or the last play; at most a request)
         () => queryClient.ensureQueryData(queries.settings(client, profile.id)).then(preferencesOf),
         (ref) => mediaTracks(client, ref),
+        remote,
       ),
   )
-  const { playbacks } = useApp()
   const extras = useOwned(
     () =>
       new PlayerExtras(controller, mpv, {

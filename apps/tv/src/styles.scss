@@ -71,6 +71,13 @@ body.pointer-hidden * {
   cursor : none !important;
 }
 
+// A remote pointer (app/remote): the injected mouse doesn't move the system
+// cursor, so it's drawn by <remote-overlay> instead and the real one hidden
+body.remote-pointer,
+body.remote-pointer * {
+  cursor : none !important;
+}
+
 img {
   -webkit-user-drag : none;
 }

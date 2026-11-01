@@ -30,7 +30,9 @@ var SETTINGS = {
   'player.audioLanguage': { scope: 'profile', type: 'string', pattern: '^(original|[a-z]{2})$', default: 'original' },
   'player.subtitleLanguage': { scope: 'profile', type: 'string', pattern: '^(off|[a-z]{2})$', default: 'off' },
   // with a subtitle language: only forced subtitles (the lines in another language)
-  'player.subtitleForcedOnly': { scope: 'profile', type: 'boolean', default: false }
+  'player.subtitleForcedOnly': { scope: 'profile', type: 'boolean', default: false },
+  // The admin may drive this device's UI from the dashboard (docs/remote-control-plan.md §2.6)
+  'remote.allowed': { scope: 'device', type: 'boolean', default: true }
 };
 
 var SCOPES = ['device', 'profile'];

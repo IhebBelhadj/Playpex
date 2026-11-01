@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboard, Download, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboard, Download, Gamepad2, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -74,6 +74,7 @@ const NAV: {
     items: [
       { to: '/activity', label: 'Activity', icon: Activity },
       { to: '/devices', label: 'Devices', icon: MonitorSmartphone },
+      { to: '/remote', label: 'Remote control', icon: Gamepad2 },
       { to: '/profiles', label: 'Profiles', icon: Users },
     ],
   },

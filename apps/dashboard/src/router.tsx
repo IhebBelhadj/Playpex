@@ -9,6 +9,7 @@ import { LoginPage } from '@/pages/login'
 import { LogsPage } from '@/pages/logs'
 import { OverviewPage } from '@/pages/overview'
 import { ProfilesPage } from '@/pages/profiles'
+import { RemoteControlPage, RemoteTargetsPage } from '@/pages/remote'
 import { SettingsPage } from '@/pages/settings'
 import { SetupPage } from '@/pages/setup'
 import { DownloadsPage } from '@/pages/downloads'
@@ -67,6 +68,8 @@ export const router = createBrowserRouter([
       { index: true, element: <OverviewPage /> },
       { path: 'activity', element: <ActivityPage /> },
       { path: 'devices', element: <DevicesPage /> },
+      { path: 'remote', element: <RemoteTargetsPage /> },
+      { path: 'remote/:deviceId', element: <RemoteControlPage /> },
       { path: 'link', element: <LinkPage /> },
       { path: 'logs', element: <LogsPage /> },
       { path: 'downloads', element: <DownloadsPage /> },

@@ -33,7 +33,8 @@
     "build:manager": "npm run sync -w apps/manager",
     "apk:manager": "npm run apk -w apps/manager",
     "mobile": "npm start -w apps/mobile",
-    "android:mobile": "npm run android -w apps/mobile"
+    "android:mobile": "npm run android -w apps/mobile",
+    "release:mobile": "npm run release:android -w apps/mobile"
   },
   "overrides": {
     "react": "19.3.0",

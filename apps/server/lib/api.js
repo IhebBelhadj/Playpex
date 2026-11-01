@@ -15,6 +15,7 @@ var _ = require('lodash'),
   torrents = require('./torrents/client'),
   media = require('./routes/media'),
   sessions = require('./sessions'),
+  remote = require('./remote'),
   settings = require('./settings'),
   middleware = require('./middleware'),
   authHttp = require('./auth/http'),
@@ -216,7 +217,7 @@ v1.delete('/torrents/:infoHash', findTorrent, function (req, res) {
 // plays: { positionS?, durationS?, paused?, title?, profileId?, file?, media? }
 v1.post('/torrents/:infoHash/keepalive', findTorrent, lease, function (req, res) {
   sessions.report(req.lease, req.body);
-  res.json({ ok: true });
+  res.json({ ok: true, sessionId: req.lease.id });
 });
 
 // What every device plays (the dashboard's Activity)
@@ -224,12 +225,64 @@ v1.get('/sessions', authHttp.requireAdmin, function (req, res) {
   res.json(sessions.list());
 });
 
-// Stops a session: its streams are closed and its lease released
+// The admin's name, for what a device is told ("Paused by …")
+function adminName(req) {
+  var u = req.auth && req.auth.user;
+  return u ? String(u.name || u.username || u.email || 'Admin') : null;
+}
+
+// Stops a session: its player is asked to stop, else (or 5 s later) its
+// streams are closed and its lease released (docs/remote-control-plan.md §2.4)
 v1.delete('/sessions/:id', authHttp.requireAdmin, function (req, res) {
-  if (!sessions.stopSession(req.params.id)) {
+  if (!sessions.stopSession(req.params.id, adminName(req))) {
     return fail(res, 'NOT_FOUND', 'No such session');
   }
   res.json({ ok: true });
+});
+
+// Pause, resume, seek or stop a session's player
+v1.post('/sessions/:id/commands', authHttp.requireAdmin, function (req, res) {
+  var lease = sessions.find(req.params.id), body = req.body || {},
+    action = body.action, cmd = { action: action };
+  if (!lease) {
+    return fail(res, 'NOT_FOUND', 'No such session');
+  }
+  if (protocol.REMOTE.SESSION_COMMANDS.indexOf(action) < 0) {
+    return fail(res, 'INVALID', 'action must be one of ' + protocol.REMOTE.SESSION_COMMANDS.join(', '));
+  }
+  if (action === 'seek') {
+    if (typeof body.positionS !== 'number' || !isFinite(body.positionS) || body.positionS < 0) {
+      return fail(res, 'INVALID', 'seek needs positionS (seconds, ≥ 0)');
+    }
+    cmd.positionS = body.positionS;
+  }
+  if (action === 'seekBy') {
+    if (typeof body.deltaS !== 'number' || !isFinite(body.deltaS) || Math.abs(body.deltaS) > 24 * 3600) {
+      return fail(res, 'INVALID', 'seekBy needs deltaS (seconds)');
+    }
+    cmd.deltaS = body.deltaS;
+  }
+  var control = remote.control(lease.deviceId);
+  if (!control.online) {
+    return fail(res, 'DEVICE_OFFLINE', 'The device is not connected');
+  }
+  if (!control.playback) {
+    return fail(res, 'UNSUPPORTED', 'This device\'s player does not take commands');
+  }
+  if (action === 'stop') {
+    sessions.stopSession(lease.id, adminName(req));
+    return res.status(202).json({ delivered: 1 });
+  }
+  var delivered = sessions.command(lease, cmd, adminName(req));
+  if (!delivered) {
+    return fail(res, 'DEVICE_OFFLINE', 'The device is not connected');
+  }
+  res.status(202).json({ delivered: delivered });
+});
+
+// Devices with a remote control socket open (the dashboard's Remote control)
+v1.get('/remote/targets', authHttp.requireAdmin, function (req, res) {
+  res.json(remote.targets());
 });
 
 v1.get('/torrents/:infoHash/stats', findTorrent, function (req, res) {

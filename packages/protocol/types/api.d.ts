@@ -1462,7 +1462,9 @@ export interface paths {
          *     `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
          *     `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
          *     at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
-         *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`). `?topics=session,torrent.stats` keeps
+         *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`),
+         *     `remote.updated` (`RemoteTarget`, a device's remote control changed). To one device only:
+         *     `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`). `?topics=session,torrent.stats` keeps
          *     topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
          *     from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
          */
@@ -2572,8 +2574,81 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Stop a session (its streams are closed and its lease released). Admin only. */
+        /**
+         * Stop a session. Admin only.
+         * @description A device that obeys commands (`control.playback`) is told to stop (`session.command` `stop`: its
+         *     player closes and lets go); if it still holds the lease 5 s later, or can't be told, its streams are
+         *     closed and its lease released at once.
+         */
         delete: operations["stopSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tell a session's player to pause, resume, seek or stop. Admin only.
+         * @description Sent as `session.command` to the device's events sockets opened with `?control=playback`. The player
+         *     acts and sends a keepalive at once, so the result shows as `session.updated`.
+         */
+        post: operations["commandSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/remote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * WebSocket of remote input (an `Upgrade` to websocket)
+         * @description JSON text messages `{ type, … }` (`RemoteMessage` in `@playpex/protocol`). A device connects as the
+         *     **target** (its token, or loopback with `?device=`) and says `hello` with its capabilities
+         *     (`keyboard`, `pointer`, `text`) and screen size; the admin connects as the **controller** with
+         *     `?role=controller&device=<id>`. The server relays `key`, `text`, `pointer` from the controller to the
+         *     target and `cursor` back, sends `state` to both, keeps one controller per device (a new one takes
+         *     over) and stores nothing. Pointer moves are dropped while the target is behind. A target that declares
+         *     `rtc` also gets `signal` messages relayed both ways (WebRTC set-up): the pointer then goes straight to it
+         *     over data channels (`REMOTE.RTC`), the socket staying the fallback. Same Host / Origin / auth checks as
+         *     `/events`.
+         */
+        get: operations["remote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/remote/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The devices that can be controlled now (a remote socket open). Admin only. */
+        get: operations["listRemoteTargets"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3916,7 +3991,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -4022,7 +4097,50 @@ export interface components {
                 episode?: number;
             };
         };
+        /** @description What the server can make a device do now (docs/remote-control-plan.md §2.3) */
+        DeviceControl: {
+            /** @description An events or remote socket of the device is open */
+            online: boolean;
+            /** @description Its player obeys session commands */
+            playback: boolean;
+            keyboard: boolean;
+            pointer: boolean;
+            text: boolean;
+        };
+        RemoteTarget: {
+            deviceId: string;
+            name: string | null;
+            client: string | null;
+            paired: boolean;
+            capabilities: {
+                keyboard: boolean;
+                pointer: boolean;
+                text: boolean;
+                /** @description The pointer may come over WebRTC data channels */
+                rtc?: boolean;
+            };
+            screen: {
+                width?: number;
+                height?: number;
+            } | null;
+            /** @description Who controls it now */
+            controller: {
+                name?: string;
+            } | null;
+        };
+        SessionCommandEvent: {
+            sessionId: string;
+            infoHash: string | null;
+            ref: string | null;
+            /** @enum {string} */
+            action: "pause" | "resume" | "toggle" | "seek" | "seekBy" | "stop";
+            positionS?: number;
+            deltaS?: number;
+            /** @description The admin who sent it */
+            by: string | null;
+        };
         Session: {
+            control: components["schemas"]["DeviceControl"];
             id: string;
             /** @description A paired device's id, else what a local client named itself (or addr:<ip>) */
             deviceId: string;
@@ -6100,6 +6218,7 @@ export interface components {
             expiresAt: string | null;
             /** @description Admin list only: an open events socket or a request in the last 90 s */
             online?: boolean;
+            control?: components["schemas"]["DeviceControl"];
         };
         PairingRequest: {
             userCode: string;
@@ -6709,6 +6828,20 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The lease is kept */
+        KeepaliveOk: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @constant */
+                    ok: true;
+                    /** @description This session (`Session.id`): a `session.ended` / `session.command` with it is about this player */
+                    sessionId: string;
+                };
             };
         };
         /** @description Done */
@@ -9156,6 +9289,10 @@ export interface operations {
             query?: {
                 /** @description Comma-separated topic prefixes */
                 topics?: string;
+                /** @description A client without a device token: the device it is (as with leases), so events for that device reach it */
+                device?: string;
+                /** @description playback: this client obeys `session.command` (docs/remote-control-plan.md) */
+                control?: "playback";
                 access_token?: string;
             };
             header?: never;
@@ -9336,7 +9473,7 @@ export interface operations {
             };
         };
         responses: {
-            200: components["responses"]["Ok"];
+            200: components["responses"]["KeepaliveOk"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -10239,7 +10376,7 @@ export interface operations {
             };
         };
         responses: {
-            200: components["responses"]["Ok"];
+            200: components["responses"]["KeepaliveOk"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
@@ -10735,6 +10872,107 @@ export interface operations {
             200: components["responses"]["Ok"];
             401: components["responses"]["AdminRequired"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    commandSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "pause" | "resume" | "toggle" | "seek" | "seekBy" | "stop";
+                    /** @description seek: where to */
+                    positionS?: number;
+                    /** @description seekBy: how far (negative: back) */
+                    deltaS?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Delivered to the device */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How many of its sockets got it */
+                        delivered: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+            /** @description DEVICE_OFFLINE: no socket of the device is open */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description UNSUPPORTED: the device does not take commands */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    remote: {
+        parameters: {
+            query?: {
+                role?: "target" | "controller";
+                device?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Switching protocols; then `RemoteMessage`s */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    listRemoteTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Targets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteTarget"][];
+                };
+            };
+            401: components["responses"]["AdminRequired"];
         };
     };
     listYtsMovies: {

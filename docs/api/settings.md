@@ -8,7 +8,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 
 | Scope | Owner | Keys | Why |
 |---|---|---|---|
-| `device` | the calling device | `display.uiScale`, `display.safeArea`, `player.volume`, `subtitles.size` | depend on the screen, its distance, its speakers |
+| `device` | the calling device | `display.uiScale`, `display.safeArea`, `player.volume`, `subtitles.size`, `remote.allowed` | depend on the screen, its distance, its speakers |
 | `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `player.autoplayKind`, `player.audioLanguage`, `player.subtitleLanguage`, `player.subtitleForcedOnly` | depend on the person |
 
 **Which device**: a paired client is the device its token names, keyed by the `deviceId` it sent with `PUT /devices/me` (send it right after pairing; an `X-Playpex-Device` header is ignored for paired clients, so one device can't write another's settings). A client on the server machine (no token) is its `X-Playpex-Device` header or `?device=` (letters, digits and `._:-`, up to 64). Without one, the settings routes answer `400 DEVICE_REQUIRED`. Revoking a device deletes its settings.
@@ -28,6 +28,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | `player.audioLanguage` | profile | `original` or an ISO 639-1 code (`en`) | the audio track a video starts with when it has that language ([tracks](playback.md#tracks-audio-subtitles-other-videos)); `original`: the file's default | `original` |
 | `player.subtitleLanguage` | profile | `off` or an ISO 639-1 code | subtitles of that language turn on by themselves when the file (or its torrent) has them | `off` |
 | `player.subtitleForcedOnly` | profile | boolean | with a subtitle language: only forced subtitles (the lines in another language) | false |
+| `remote.allowed` | device | boolean | the admin may drive this device's screen from the dashboard ([control from the server](remote.md)) | true |
 
 Adding a key is a protocol change, not a new API version: **ignore keys you don't know.**
 

@@ -116,8 +116,17 @@ export interface PlaypexBridge {
     /** stores it in client.json; resolves with the stored value */
     set(scale:number):Promise<number>;
   };
+  /** remote control from the server (apps/tv/electron/remote.js): injected into this window as real input */
+  remote?:{
+    input(input:RemoteInput):void;
+  };
   power(action:string):Promise<void>;
 }
+
+export type RemoteInput =
+  | { kind:'key', phase:'down' | 'up', key:string, modifiers?:string[], repeat?:boolean }
+  | { kind:'text', text:string }
+  | { kind:'mouse', phase:'move' | 'down' | 'up' | 'wheel', x:number, y:number, button?:'left' | 'right' | 'middle', dx?:number, dy?:number };
 
 export function desktop():PlaypexBridge | null {
   return (window as any).playpex || null;

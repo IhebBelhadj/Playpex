@@ -164,6 +164,8 @@ describe('PlaybackSession', () => {
       .on('POST /torrents', { body: { infoHash: 'abc' } })
       .on('GET /torrents/abc', { body: { infoHash: 'abc', files, chosen: 'BB/S01E01.mkv', progress: [0, 90, 10] } })
       .on('DELETE /media/t_abc_2', { body: { ok: true } })
+      .on('POST /media/t_abc_1/keepalive', { body: { ok: true, sessionId: 's1' } })
+      .on('POST /media/t_abc_2/keepalive', { body: { ok: true, sessionId: 's1' } })
     const session = new PlaybackSession({ client: s.client, profileId: 'p1', title: { ...MOVIE, mediaType: 'tv', season: 1, episode: 1 }, source: TORRENT, startAt: 0 })
     session.start()
     await settle()

@@ -26,6 +26,11 @@ const CLIENT_HEADER = protocol.clientHeader('playpex-tv', app.getVersion());
 // Electron 44: MKV and MP4 list and switch AAC / Opus tracks (AC-3 ones are
 // left out of the list)
 app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
+// Remote control over WebRTC (app/remote/remote-rtc.ts): offer this machine's
+// real LAN addresses, not mDNS names a phone's hotspot or the dashboard's
+// WebView may not resolve (the dashboard's own .local ones then reach us as
+// peer-reflexive candidates)
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 
 let win = null;
 let resolving = null;     // Promise of the connection being resolved
@@ -190,6 +195,14 @@ function connectIpc() {
   })));
 
   handle('power', action => power.run(action));
+
+  // remote control (remote.js): the admin's input, injected into this window only
+  const remote = require('./remote');
+  ipcMain.on('remote:input', (event, input) => {
+    if (win && event.sender === win.webContents) {
+      remote.inject(win.webContents, input);
+    }
+  });
 
   updater.init(state => send('updater:state', state));
   handle('updater:state', () => updater.state());

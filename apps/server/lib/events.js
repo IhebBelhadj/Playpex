@@ -18,7 +18,15 @@
 // `?access_token=` or Authorization header, the dashboard's cookie, loopback);
 // Host and Origin are checked like every request (lib/middleware.js).
 //
+// Addressed to one device (docs/remote-control-plan.md §2.2): publishTo()
+// sends only to the sockets of a device: a paired one's token names it, a
+// local client (or the dashboard's player) says `?device=<id>` like with
+// leases. `?control=playback` on the upgrade: this socket's client obeys
+// session.command (its player pauses, seeks, stops when the admin asks).
+//
 //   events.publish(topic, data, { admin: true })   from anywhere in the server
+//   events.publishTo(deviceId, topic, data)        one device only (→ how many sockets got it)
+//   events.route(path, onConnection, options)      another WebSocket under the same checks (lib/remote)
 //   events.attach(httpServer) / events.detach()    from index.js
 
 var url = require('url'),
@@ -39,7 +47,20 @@ var wss = null,
   statsProvider = null,
   localListeners = [];   // onPublish(): in-process listeners (lib/host.js → the tray)
 
-var ONLINE_MS = 90 * 1000;
+var ONLINE_MS = 90 * 1000,
+  DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/,
+  CONTROLS = ['playback'];
+
+var routes = {};       // path → { onConnection, wss, maxPayload } (WebSockets besides /events)
+
+// The device a socket's client is: the token's, else the one it names
+function socketDevice(req, auth) {
+  if (auth.kind === 'device') {
+    return auth.device ? auth.device.id : null;
+  }
+  var id = req.headers[protocol.DEVICE_HEADER.toLowerCase()] || req.query[protocol.DEVICE_PARAM];
+  return typeof id === 'string' && DEVICE_ID.test(id) ? id : null;
+}
 
 function wanted(client, topic) {
   return !client.topics || client.topics.some(function (prefix) { return topic.indexOf(prefix) === 0; });
@@ -86,8 +107,10 @@ function refuse(socket, status, code, message) {
 
 function onConnection(socket, req, auth) {
   var topics = req.query.topics ? String(req.query.topics).split(',').map(function (t) { return t.trim(); }).filter(Boolean) : null,
+    control = req.query.control ? String(req.query.control).split(',').map(function (c) { return c.trim(); })
+      .filter(function (c) { return CONTROLS.indexOf(c) >= 0; }) : [],
     client = { socket: socket, admin: auth.kind === 'admin', topics: topics, alive: true,
-      deviceId: auth.kind === 'device' && auth.device ? auth.device.id : null };
+      paired: auth.kind === 'device', deviceId: socketDevice(req, auth), control: control };
   clients.add(client);
   socket.on('pong', function () { client.alive = true; });
   socket.on('close', function () { clients.delete(client); });
@@ -100,8 +123,10 @@ function onConnection(socket, req, auth) {
 }
 
 function onUpgrade(req, socket, head) {
-  var parsed = url.parse(req.url, true);
-  if (parsed.pathname !== PATH && parsed.pathname !== PATH + '/') {
+  var parsed = url.parse(req.url, true),
+    pathname = (parsed.pathname || '').replace(/\/$/, ''),
+    other = routes[pathname];
+  if (pathname !== PATH && !other) {
     return refuse(socket, 404, 'NOT_FOUND', 'No WebSocket at ' + parsed.pathname);
   }
   var middleware = require('./middleware'),
@@ -118,6 +143,12 @@ function onUpgrade(req, socket, head) {
   auth.identify(req).then(function (who) {
     if (!who || who.kind === 'internal') {
       return refuse(socket, 401, 'PAIRING_REQUIRED', 'Pair this device with the server first');
+    }
+    if (other) {
+      other.wss = other.wss || new WebSocket.Server({ noServer: true, maxPayload: other.maxPayload });
+      return other.wss.handleUpgrade(req, socket, head, function (ws) {
+        other.onConnection(ws, req, who);
+      });
     }
     wss.handleUpgrade(req, socket, head, function (ws) {
       onConnection(ws, req, who);
@@ -183,11 +214,63 @@ function detach() {
     wss.close();
     wss = null;
   }
+  Object.keys(routes).forEach(function (p) {
+    var r = routes[p];
+    if (r.wss) {
+      r.wss.clients.forEach(function (ws) { ws.terminate(); });
+      r.wss.close();
+      r.wss = null;
+    }
+    if (r.onDetach) {
+      r.onDetach();
+    }
+  });
+}
+
+/**
+ * Sends an event to the sockets of one device only.
+ * @returns {number} how many sockets it went to
+ */
+function publishTo(deviceId, topic, data) {
+  var sent = 0;
+  if (!deviceId) {
+    return 0;
+  }
+  var message = JSON.stringify({ topic: topic, time: new Date().toISOString(), data: data });
+  clients.forEach(function (client) {
+    if (client.deviceId === deviceId && wanted(client, topic) && client.socket.readyState === WebSocket.OPEN) {
+      client.socket.send(message);
+      sent++;
+    }
+  });
+  return sent;
+}
+
+// What a device's open sockets declared: { online, playback }
+function deviceControl(deviceId) {
+  var out = { online: false, playback: false };
+  clients.forEach(function (client) {
+    if (deviceId && client.deviceId === deviceId) {
+      out.online = true;
+      if (client.control.indexOf('playback') >= 0 && wanted(client, 'session.command')) {
+        out.playback = true;
+      }
+    }
+  });
+  return out;
 }
 
 module.exports = {
   PATH: PATH,
   publish: publish,
+  publishTo: publishTo,
+  deviceControl: deviceControl,
+  // another WebSocket path, behind the same Host / Origin / auth checks as /events:
+  // onConnection(socket, req, auth); options { maxPayload, onDetach }
+  route: function (path, onConnection, opts) {
+    routes[path] = { onConnection: onConnection, wss: null, maxPayload: (opts && opts.maxPayload) || 4096,
+      onDetach: opts && opts.onDetach };
+  },
   attach: attach,
   detach: detach,
   clientCount: function () { return clients.size; },
@@ -199,14 +282,15 @@ module.exports = {
     var connected = module.exports.connectedDevices(), now = Date.now();
     return devices.map(function (d) {
       return Object.assign({}, d, {
-        online: !!connected[d.id] || !!(d.lastSeenAt && now - new Date(d.lastSeenAt).getTime() < ONLINE_MS)
+        online: !!connected[d.id] || !!(d.lastSeenAt && now - new Date(d.lastSeenAt).getTime() < ONLINE_MS),
+        control: require('./remote').control(d.id)
       });
     });
   },
   // ids of the paired devices with an open events socket (the dashboard's "online now")
   connectedDevices: function () {
     var ids = {};
-    clients.forEach(function (c) { if (c.deviceId) { ids[c.deviceId] = true; } });
+    clients.forEach(function (c) { if (c.deviceId && c.paired) { ids[c.deviceId] = true; } });
     return ids;
   }
 };
