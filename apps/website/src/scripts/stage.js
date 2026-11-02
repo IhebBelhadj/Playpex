@@ -79,8 +79,8 @@ window.Lenis = Lenis;
         defaults: { ease: 'none' },
         scrollTrigger: {
           trigger: root, start: 'top top', end: 'bottom bottom', scrub, invalidateOnRefresh: true,
-          // phones scroll freely: the pictures hold over long stretches and the dissolves are short, so no snap
-          snap: isPhone && opts.phoneSnap ? { snapTo: opts.phoneSnap, inertia: false, delay: 0.05, duration: { min: 0.2, max: 0.5 }, ease: 'power2.out' } : opts.snap && !isPhone ? { snapTo: opts.snap, inertia: false, duration: { min: 0.25, max: 0.7 }, delay: 0.12, ease: 'power2.inOut' } : undefined,
+          // phones scroll freely (no snap)
+          snap: opts.snap && !isPhone ? { snapTo: opts.snap, inertia: false, duration: { min: 0.25, max: 0.7 }, delay: 0.12, ease: 'power2.inOut' } : undefined,
           onUpdate: (self) => {
             root.style.setProperty('--p', self.progress.toFixed(4));
             if (opts.onUpdate) opts.onUpdate(self.progress);
@@ -114,9 +114,10 @@ window.Lenis = Lenis;
     return [...el.children];
   };
 
-  // Fonts and the scenes' pictures decide every height a trigger measures; refresh once they are in.
+  // Fonts and the scenes' pictures decide every height a trigger measures; refresh once they are in. Lazy pictures
+  // are left out: they load only near the screen, and their width and height attributes already hold their place.
   Stage.ready = () => {
-    const imgs = [...document.querySelectorAll('.scene img')].map((i) => (i.complete ? null : i.decode().catch(() => {}))).filter(Boolean);
+    const imgs = [...document.querySelectorAll('.scene img')].map((i) => (i.complete || i.loading === 'lazy' ? null : i.decode().catch(() => {}))).filter(Boolean);
     return Promise.all([document.fonts ? document.fonts.ready : null, ...imgs]).then(() => { if (live) ScrollTrigger.refresh(); });
   };
 

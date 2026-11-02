@@ -1,0 +1,87 @@
+---
+// The site bar, rendered here so it is in the HTML (crawlable, no shift when the script runs); scripts/nav.js
+// only opens and closes things. Desktop: Products (names and a preview), Docs, Releases, GitHub, Download.
+// Phones: the logo, Download and a menu: the four apps with their screens, then the pages in big type.
+import { Image, getImage } from 'astro:assets';
+import { IMG } from '../lib/images';
+import { ICON } from '../lib/icons';
+import { SITE, RELEASE, PRODUCTS, PAGES, DOCS } from '../data/site';
+
+interface Props { current?: string }
+const { current } = Astro.props;
+const home = import.meta.env.BASE_URL;
+const here = (href: string) => (current && href === current ? 'page' : undefined);
+const DOC_GROUPS = ['Use Playpex', 'Build on Playpex'] as const;
+const startHref = '#docs';
+// the blurred backdrop of each preview: a small WebP is all a 30px blur needs
+const amb = await Promise.all(PRODUCTS.map((p) => (p.preview ? getImage({ src: IMG[p.preview], width: 320, format: 'webp', quality: 60 }) : null)));
+---
+<nav class="site-nav" id="site-nav" aria-label="Main">
+  <div class="bar">
+    <a class="logo" href={home}><Fragment set:html={ICON.logo} />Playpex</a>
+    <ul class="links">
+      <li>
+        <button class="link" type="button" data-menu="products" aria-expanded="false" aria-controls="nav-products">Products<Fragment set:html={ICON.chev} /></button>
+        <div class="menu products" id="nav-products" hidden>
+          <div class="plist">
+            {PRODUCTS.map((p, i) => <a class:list={['pitem', { sel: i === 0 }]} data-i={i} href="#products">{p.name}</a>)}
+            <a class="all" href="#download">All downloads</a>
+          </div>
+          <div class="pview">
+            {PRODUCTS.map((p, i) => (
+              <div class="pv" data-i={i} hidden={i !== 0}>
+                {amb[i] ? <div class="amb" style={`background-image:url(${amb[i].src})`}></div> : <div class="amb none"></div>}
+                <div class="inner">
+                  <div class="stage">
+                    <div class={`dev ${p.device}`}>
+                      {p.device === 'web' && <div class="chrome"><i></i><i></i><i></i><span>playpex.local:28470</span></div>}
+                      {p.preview ? <Image src={IMG[p.preview]} alt={`${p.name}, the Movies page`} width={820} loading="lazy" /> : <div class="empty">Screenshot to come</div>}
+                    </div>
+                    {p.device === 'tv' && <div class="stand"></div>}
+                  </div>
+                  <div class="ptext"><p class="pname">{p.name}</p><p>{p.about}</p><div class="sys"><span>{p.systems}</span><a href="#products">About {p.name}</a></div></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </li>
+      <li><a class="link" href="#plugins" aria-current={here('#plugins')}>Plugins</a></li>
+      <li>
+        <button class="link" type="button" data-menu="docs" aria-expanded="false" aria-controls="nav-docs">Docs<Fragment set:html={ICON.chev} /></button>
+        <div class="menu docs" id="nav-docs" hidden>
+          <a class="start" href={startHref}><span><b>New to Playpex?</b><span>Install the server and watch on your TV in about 10 minutes.</span></span><em>Get started</em></a>
+          <div class="dcols">
+            {DOC_GROUPS.map((g) => (
+              <div><p class="dgroup">{g}</p>{DOCS.filter((d) => d.group === g && d.title !== 'Get started').map((d) => <a class="ditem" href="#docs">{d.title}</a>)}</div>
+            ))}
+          </div>
+        </div>
+      </li>
+      <li><a class="link" href="#releases" aria-current={here('#releases')}>Releases <span class="ver">{RELEASE.version}</span></a></li>
+    </ul>
+    <div class="end">
+      <a class="gh" href={SITE.repo}><Fragment set:html={ICON.github} />GitHub</a>
+      <a class="dl" href="#download"><Fragment set:html={ICON.download} /><span class="long" data-os-label>Download</span><span class="short">Download</span></a>
+      <button class="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-sheet"><Fragment set:html={ICON.menu} /><Fragment set:html={ICON.close} /></button>
+    </div>
+  </div>
+
+  <div class="sheet" id="nav-sheet" hidden>
+    <div class="alist">
+      <span class="fpill" aria-hidden="true"></span>
+      {PRODUCTS.map((p) => (
+        <a class="fi fprod" href="#products">
+          <span class={`th ${p.device}`}><Image src={IMG[p.shot]} alt="" width={160} loading="lazy" /></span>
+          <span class="tx"><b>{p.name}</b><small>{p.line}</small></span>
+        </a>
+      ))}
+      <span class="asep" aria-hidden="true"></span>
+      {PAGES.map((q) => <a class="fi fpage" href={q.href} aria-current={here(q.href)}>{q.name}</a>)}
+    </div>
+    <div class="sfoot">
+      <a class="wide" href="#download"><Fragment set:html={ICON.download} /><span data-os-label>Download</span></a>
+      <p class="fine">Free. Version {RELEASE.version}, released {RELEASE.dateText}</p>
+    </div>
+  </div>
+</nav>

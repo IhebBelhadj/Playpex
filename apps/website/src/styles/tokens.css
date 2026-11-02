@@ -1,0 +1,76 @@
+/* The site's design tokens. Every colour on the site is one of these: change them here (or override them under
+   a [data-theme] selector) and the pages, the canvases and the WebGL shaders follow (scripts/home/util.js reads
+   --ground, --dot and --unlit for them). Shades with transparency are mixed from the base colours.
+
+   One motif: the dot. The ordered-dither dot of the brand runs the page: the poster wall behind the hero, the
+   remote's posters, the pictures that dissolve into gold dots between screens, the footer's name. Everything
+   else is the ground, white ink and one gold. */
+:root {
+  color-scheme: dark;
+
+  /* ground and surfaces, darkest to lightest */
+  --device: #0a0a0a;               /* the frame of a drawn device */
+  --preview: #121212;              /* the Products menu's preview */
+  --ground: #141414;
+  --raised: #1c1c1c;
+  --menu: #202020;
+  --raised-2: #242424;
+  --tile: #262626;
+  --pressed: #2e2e2e;
+
+  /* ink */
+  --text: #ffffff;
+  --text-2: color-mix(in srgb, var(--text) 72%, transparent);
+  --muted: color-mix(in srgb, var(--text) 68%, transparent);
+  --text-3: color-mix(in srgb, var(--text) 50%, transparent);
+  --line: color-mix(in srgb, var(--text) 9%, transparent);
+  --hover: color-mix(in srgb, var(--text) 7%, transparent);
+  --press: color-mix(in srgb, var(--text) 14%, transparent);
+  --shadow: #000000;
+  --scrim: color-mix(in srgb, var(--ground) 90%, transparent);   /* under words set on a picture */
+
+  /* the dot and the gold */
+  --dot: #edcc75;                  /* the dither's lit dot, the actions */
+  --gold: #f6e084;                 /* hover on gold */
+  --amber: #ffc107;                /* "you are here", as in the TV app */
+  --unlit: #2b2a27;                /* the dither's unlit dot */
+  --dot-off: #3a3833;              /* an unlit dot on a control (dot track, switch) */
+  --led-off: #1f1e1c;              /* the footer name's unlit dots */
+  --button-dark: #2a2926;
+  --on-gold: #141414;              /* text on gold */
+  --logo-1: #e3cc97;
+  --logo-2: #f6e084;
+  --logo-3: #d1b372;
+
+  /* app fragments drawn in HTML (the download dialog): the product's own colours */
+  --ui-bg: #101012;
+  --ui-raised: #18181b;
+  --ui-field: #1f1f23;
+  --ui-text: #fafafa;
+  --ui-text-2: #d4d4d8;
+  --ui-muted: #a1a1aa;
+  --ui-on-light: #111111;
+
+  /* Who's watching: each profile's colour (the row) and face */
+  --who-sam: #2f6fe4;   --face-sam: #3b82f6;
+  --who-alex: #16803f;  --face-alex: #2bb673;
+  --who-noor: #0f7068;  --face-noor: #14b8a6;
+  --who-kids: #f2c31b;  --face-kids: #f5c518;
+  --who-all: #2b2618;
+
+  /* type */
+  --font: "Jost Variable", "Jost", "Futura", "Century Gothic", "Avenir Next", system-ui, sans-serif;
+  --t-display: clamp(46px, 5.6vw, 96px);
+  --t-h2: clamp(36px, 4.2vw, 68px);
+  --t-mid: clamp(26px, 2.5vw, 38px);
+  --t-lead: 20px;
+  --t-body: 18px;
+  --t-small: 15px;
+
+  /* space and shape */
+  --bar-h: 64px;
+  --m: 16px;                       /* the page's one pair of outer margins */
+  --gap-section: 160px;
+  --r: 16px;
+}
+@media (min-width: 900px) { :root { --m: 32px; } }

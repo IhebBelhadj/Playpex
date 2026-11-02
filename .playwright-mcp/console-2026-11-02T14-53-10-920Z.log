@@ -2,3 +2,73 @@
     at http://localhost:4321/src/scripts/home.js?t=1793631448113:291:19
     at start (http://localhost:4321/src/scripts/home.js?t=1793631448113:345:9)
 [ 1656111ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8766/favicon.ico:0
+[ 6877316ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6877526ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6877646ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/rolldown-runtime-CgOhrHTk.js?v=05c3fafc:0
+[ 6877707ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6877851ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6877858ms] TypeError: Failed to execute 'texImage2D' on 'WebGLRenderingContext': Overload resolution failed.
+    at tex (http://localhost:4321/src/scripts/home.js?t=1793638067942:125:10)
+    at http://localhost:4321/src/scripts/home.js?t=1793638067942:131:45
+    at Array.forEach (<anonymous>)
+    at Painter (http://localhost:4321/src/scripts/home.js?t=1793638067942:130:9)
+    at http://localhost:4321/src/scripts/home.js?t=1793638067942:279:17
+    at start (http://localhost:4321/src/scripts/home.js?t=1793638067942:398:9)
+[ 6949840ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/src/scripts/nav.js?t=1793638140593:0
+[ 6949866ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6997385ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6997407ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/src/scripts/nav.js?t=1793638188225:0
+[ 6997552ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 6997578ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/src/scripts/nav.js?t=1793638188225:0
+[ 7010374ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7010394ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/src/scripts/nav.js?t=1793638201215:0
+[ 7010525ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7010591ms] TypeError: Cannot read properties of null (reading 'textContent')
+    at http://localhost:4321/src/scripts/home/util.js:49:65
+[ 7018088ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7018153ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638208927:9:20
+[ 7042911ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7042998ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7219462ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7219471ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7234670ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7234696ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7242191ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/[object%20Object]:0
+[ 7242217ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7281401ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7293052ms] TypeError: Cannot read properties of null (reading 'querySelector')
+    at http://localhost:4321/src/scripts/nav.js?t=1793638233757:9:20
+[ 7315306ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7315345ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4321/favicon.ico:0
+[ 7333746ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7366601ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7386214ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7386457ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7386649ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7386820ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7406288ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7423408ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7460104ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7468109ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7477314ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7485032ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4321/:0
+[ 7504346ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:4321/@vite/client:1835
+[ 7646121ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:4321/@vite/client:1835
+[ 7647493ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap.js?v=cb950d0d:0
+[ 7647497ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap_ScrollTrigger.js?v=cb950d0d:0
+[ 7647497ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/lenis.js?v=cb950d0d:0
+[ 7797431ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap.js?v=cb950d0d:0
+[ 7797432ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/lenis.js?v=cb950d0d:0
+[ 7797433ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap_ScrollTrigger.js?v=cb950d0d:0
+[ 7862627ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap.js?v=cb950d0d:0
+[ 7862628ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap_ScrollTrigger.js?v=cb950d0d:0
+[ 7862629ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/lenis.js?v=cb950d0d:0
+[ 7897294ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap.js?v=cb950d0d:0
+[ 7897296ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap_ScrollTrigger.js?v=cb950d0d:0
+[ 7897297ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/lenis.js?v=cb950d0d:0

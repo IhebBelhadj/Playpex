@@ -1,12 +1,37 @@
 ---
+// Every page: the <head> (title, description, canonical URL, social cards, structured data, icons, the font
+// preloaded), the bar and the footer. Colours come from styles/tokens.css.
 import '@fontsource-variable/jost';
+import jostLatin from '@fontsource-variable/jost/files/jost-latin-wght-normal.woff2?url';
+import '../styles/tokens.css';
 import '../styles/nav.css';
 import '../styles/base.css';
 import '../styles/stage.css';
+import SiteNav from '../components/SiteNav.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import { SITE, RELEASE } from '../data/site';
 
-interface Props { title: string; description: string }
-const { title, description } = Astro.props;
+interface Props { title?: string; description?: string; current?: string }
+const { title = SITE.title, description = SITE.description, current } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const asset = (path: string) => new URL(base.replace(/\/?$/, '/') + path, Astro.site).href;
+const ogImage = asset('og.jpg');
+
+// what search engines read about Playpex: the site, and the product as free software for these systems
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', '@id': canonical + '#site', url: canonical, name: SITE.name, description },
+    {
+      '@type': 'SoftwareApplication', name: SITE.name, url: canonical, description,
+      applicationCategory: 'MultimediaApplication', operatingSystem: 'Windows, macOS, Linux, Android',
+      softwareVersion: RELEASE.version, datePublished: RELEASE.date, downloadUrl: SITE.releases, image: ogImage,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      codeRepository: SITE.repo,
+    },
+  ],
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -15,13 +40,51 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{title}</title>
     <meta name="description" content={description}>
+    <link rel="canonical" href={canonical}>
+    <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#141414">
-    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} type="image/svg+xml">
-    <script is:inline>document.documentElement.classList.add('js')</script>
+    <meta name="color-scheme" content="dark">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content={SITE.name}>
+    <meta property="og:title" content={title}>
+    <meta property="og:description" content={description}>
+    <meta property="og:url" content={canonical}>
+    <meta property="og:image" content={ogImage}>
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Playpex TV showing the films on a home server">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content={title}>
+    <meta name="twitter:description" content={description}>
+    <meta name="twitter:image" content={ogImage}>
+
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml">
+    <link rel="icon" href={`${base}favicon-32.png`} sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`}>
+    <link rel="manifest" href={`${base}manifest.webmanifest`}>
+    <link rel="sitemap" href={`${base}sitemap.xml`}>
+    <link rel="preload" href={jostLatin} as="font" type="font/woff2" crossorigin>
+
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script is:inline>
+      // js: scripts run; is-phone: the phone site (styles/phone.css); switching: arriving from the other site, kept
+      // covered until the dots clear (scripts/home/switch.js)
+      (function (d) {
+        d.classList.add('js');
+        if (matchMedia('(max-width: 767px)').matches) d.classList.add('is-phone');
+        try { if (sessionStorage.getItem('playpex.switch') !== null) d.classList.add('switching'); } catch (e) {}
+      })(document.documentElement);
+    </script>
   </head>
   <body>
-    <div class="live" id="live"></div>
+    <a class="skip" href="#main">Skip to the content</a>
+    <div class="live"><SiteNav current={current} /></div>
     <slot />
     <SiteFooter />
   </body>
 </html>
+
+<script>
+  import '../scripts/nav.js';
+</script>

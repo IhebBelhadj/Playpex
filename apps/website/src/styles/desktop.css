@@ -1,0 +1,234 @@
+/* The desktop site (screens 768px and wider): the held intro (the wall shrinks into a screen, the folder, the
+   library, each app's shape), the screens scene, the rooms, Who's watching, the download. Its own stylesheet: the
+   phone site (phone.css) shares none of these rules, so a change here never reaches phones. */
+@media (min-width: 768px) {
+  .big { margin: 0; font-weight: 800; letter-spacing: -.035em; line-height: .93; text-wrap: balance; }
+  .big span { display: block; color: var(--text-3); }
+  .lede { color: var(--text-2); font-size: 18.5px; line-height: 1.55; max-width: 32em; margin: 0; }
+  .ghostbtn { display: inline-flex; align-items: center; height: 54px; padding: 0 24px; border-radius: 99px; color: var(--text); font-weight: 500; font-size: var(--t-body); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 32%, transparent); background: color-mix(in srgb, var(--ground) 40%, transparent); transition: box-shadow .15s; } /* taste-skill-ignore: the hero's outline button and its scrim, agreed */
+  .ghostbtn:hover { box-shadow: inset 0 0 0 1.5px var(--text); } /* taste-skill-ignore: the hero's outline button and its scrim, agreed */
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  .note { margin: 0; font-size: var(--t-small); color: var(--text-3); }
+  .hero { position: relative; margin-top: calc(-1 * var(--bar-h)); min-height: min(880px, 100svh); display: flex; align-items: center; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ground) 97%, transparent) 28%, color-mix(in srgb, var(--ground) 72%, transparent) 46%, color-mix(in srgb, var(--ground) 8%, transparent) 72%), /* taste-skill-ignore: the hero's outline button and its scrim, agreed */
+                linear-gradient(180deg, color-mix(in srgb, var(--ground) 90%, transparent) 0, transparent 18%, transparent 80%, var(--ground) 100%); } /* taste-skill-ignore: the scrim over the picture */
+  .hero .wrap { position: relative; z-index: 2; width: 100%; padding-top: calc(var(--bar-h) + 48px); padding-bottom: 80px; }
+  .hero .big { font-size: clamp(56px, 9vw, 128px); }
+  .hero .lede { margin: 28px 0 32px; }
+  .hero .note { margin-top: 18px; }
+  @media (max-width: 899px) {
+    .hero::after { background: linear-gradient(180deg, color-mix(in srgb, var(--ground) 90%, transparent) 0, color-mix(in srgb, var(--ground) 86%, transparent) 55%, color-mix(in srgb, var(--ground) 35%, transparent) 80%, var(--ground) 100%); } /* taste-skill-ignore: scrim */
+  }
+  .site-nav .bar { background: transparent; }
+  .site-nav.scrolled .bar { background: var(--ground); }
+
+  /* ── scroll scenes (shared) ── */
+  .scene { --scene-pad: var(--m); }
+  .sc-wrap { position: relative; height: 100%; max-width: 1440px; margin: 0 auto; padding: 0 var(--m); display: grid; align-items: center; }
+  .sc-words { position: relative; z-index: 3; }
+  .beat h2, .beat h3 { font-size: var(--t-h2); font-weight: 700; letter-spacing: -.03em; line-height: 1; text-wrap: balance; }
+  .beat p { margin-top: 18px; font-size: var(--t-lead); line-height: 1.5; max-width: 26em; }
+  .sc-screen { position: relative; aspect-ratio: 16 / 9; border-radius: var(--r); overflow: hidden; background: var(--raised); }
+  .sc-screen canvas, .sc-screen img, .sc-screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .sc-screen video { object-position: center; }
+  .sc-screen .gl { opacity: 0; }
+  .sc-screen.has-gl .gl { opacity: 1; }
+  .sc-screen.has-gl img.still { opacity: 0; }
+
+  /* finished composition (no script, reduced motion, failed CDN): beats stacked, the last picture shown */
+  .scene:not(.is-live), .scene:not(.is-live) > .scene-stage { height: auto !important; }
+  .scene:not(.is-live) .sc-wrap { height: auto; padding-top: 96px; padding-bottom: 32px; gap: 36px; align-items: start; }
+  .scene:not(.is-live) .beats { display: grid; gap: 36px; }
+  .scene:not(.is-live) .sc-screen video { display: none; }
+  /* live: beats stacked in one place, the stage holds still */
+  .scene.is-live .sc-wrap { padding-top: var(--bar-h); }
+  .scene.is-live .beats { display: grid; }
+  .scene.is-live .beat { grid-area: 1 / 1; }
+  .scene.is-live .beat:not(:first-child) { opacity: 0; visibility: hidden; }
+
+  /* scene 1, files → library: words left, the screen right */
+  @media (min-width: 900px) {
+    .sc-screens .sc-wrap { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 48px; }
+  }
+
+  /* scene 2, every screen: the window grows to the whole stage at the last beat */
+  .sc-screens .scene-stage { background: var(--ground); }
+  .sc-screens .sc-screen { transform-origin: 0 0; }
+  .sc-screens .sc-screen video { opacity: 0; }
+  .scene.is-live.sc-screens .beat.last { align-self: end; padding-bottom: 8vh; }
+  .scene.is-live .beat.last { color: var(--text); }
+  .sc-screens .scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 58%; background: color-mix(in srgb, var(--shadow) 64%, transparent); opacity: 0; pointer-events: none; z-index: 2; }
+
+  /* scene 3, the rooms of the server: a horizontal track that snaps from room to room */
+  .sc-rooms .rooms-head { padding: 0 var(--m); max-width: 1440px; margin: 0 auto; }
+  .sc-rooms .rooms-head h2 { font-size: var(--t-h2); }
+  .rooms { display: flex; gap: 32px; padding: 32px var(--m) 0; }
+  .room { flex: none; width: min(78vw, 1060px); display: grid; gap: 18px; }
+  .room figure { margin: 0; aspect-ratio: 16 / 10; border-radius: var(--r); overflow: hidden; background: var(--raised); }
+  .room figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .room h3 { font-size: var(--t-mid); font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .room p { max-width: 40em; }
+  .room .rtext { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .room .rtext { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: baseline; gap: 24px; } }
+  .scene.is-live.sc-rooms .scene-stage { display: grid; align-content: center; padding-top: var(--bar-h); }
+  .scene.is-live.sc-rooms .room figure { aspect-ratio: auto; height: min(56vh, calc(78vw * .625)); }
+  .scene:not(.is-live).sc-rooms { padding-top: var(--gap-section); }
+  .scene:not(.is-live).sc-rooms .rooms { flex-direction: column; }
+  .scene:not(.is-live).sc-rooms .room { width: 100%; }
+  .rooms-count { display: flex; gap: 10px; padding: 22px var(--m) 0; max-width: 1440px; margin: 0 auto; }
+  .rooms-count i { width: 10px; height: 10px; border-radius: 50%; background: var(--unlit); transition: background .2s, transform .2s; }
+  .rooms-count i.on { background: var(--dot); transform: scale(1.2); }
+  .scene:not(.is-live) .rooms-count { display: none; }
+
+  @media (max-width: 899px) {
+    .beat p { font-size: var(--t-body); }
+    .scene.is-live .sc-wrap { align-content: center; gap: 28px; }
+    .scene.is-live.sc-screens .beat.last { padding-bottom: 6vh; }
+    .room { width: 86vw; }
+  }
+
+  .scene.is-live.sc-rooms .room .rtext { transition: opacity .3s; opacity: 0; }
+  .scene.is-live.sc-rooms .room.cur .rtext { opacity: 1; }
+  .scene:not(.is-live) .sc-screen .gl { display: none; }
+  .scene:not(.is-live) .sc-screen img.still { opacity: 1 !important; }
+  @media (min-width: 900px) { .scene:not(.is-live) .sc-screen { position: sticky; top: 96px; } }
+  .scene.is-live.sc-rooms .scene-stage { grid-template-columns: minmax(0, 1fr); }
+  .scene.is-live.sc-rooms .rooms { width: max-content; }
+  .sc-rooms .rooms-head { width: 100%; }
+
+  /* ── the intro (variant C): the hero is the first frame of one held stage; the poster wall shrinks into the
+     screen, then its dots resolve into the folder and the library ── */
+  .intro { position: relative; margin-top: calc(-1 * var(--bar-h)); }
+  .istage { position: relative; height: 100svh; overflow: clip; }
+  .istage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .iscrim { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ground) 97%, transparent) 28%, color-mix(in srgb, var(--ground) 72%, transparent) 46%, color-mix(in srgb, var(--ground) 8%, transparent) 72%), /* taste-skill-ignore: the hero's outline button and its scrim, agreed */
+                linear-gradient(180deg, color-mix(in srgb, var(--ground) 90%, transparent) 0, transparent 18%); } /* taste-skill-ignore: the scrim over the picture */
+  .iwrap { position: relative; z-index: 2; height: 100%; max-width: 1440px; margin: 0 auto; padding: var(--bar-h) var(--m) 0; display: grid; align-items: center; }
+  .words { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .words > * { grid-area: 1 / 1; }
+  .heroblock { width: min(820px, calc(100vw - 2 * var(--m))); position: relative; z-index: 1; align-self: center; }
+  .heroblock .big { font-size: clamp(56px, 9vw, 128px); }
+  .heroblock .lede { margin: 28px 0 32px; }
+  .heroblock .note { margin-top: 18px; }
+  .words .beat { max-width: 100%; opacity: 0; visibility: hidden; }
+  .slot { aspect-ratio: 16 / 9; width: 100%; border-radius: var(--r); overflow: hidden; }
+  .slot-still { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; opacity: 0; }
+  @media (min-width: 900px) { .iwrap { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 48px; } }
+  @media (max-width: 899px) {
+    .iwrap { align-content: center; gap: 28px; }
+    .iscrim { background: linear-gradient(180deg, color-mix(in srgb, var(--ground) 94%, transparent) 0, color-mix(in srgb, var(--ground) 86%, transparent) 62%, color-mix(in srgb, var(--ground) 35%, transparent) 100%); } /* taste-skill-ignore: scrim */
+  }
+  /* held: the section is 4 screens tall and the stage sticks */
+  .intro.is-held { height: 880svh; }   /* 100 + 300 × END of home/intro.js (2.6) */
+  .intro.is-held .istage { position: sticky; top: 0; }
+  /* not held (reduced motion, no script, a failed CDN): the hero as a screen, then the two statements beside the library */
+  .intro:not(.is-held) .istage { height: auto; min-height: 100svh; }
+  .intro:not(.is-held) .iwrap { padding-top: calc(var(--bar-h) + 48px); padding-bottom: 80px; row-gap: 48px; }
+  .intro:not(.is-held) .words { display: grid; gap: 48px; }
+  .intro:not(.is-held) .words > * { grid-area: auto; }
+  .intro:not(.is-held) .words .beat { opacity: 1; visibility: visible; }
+  .intro:not(.is-held) .slot-still { opacity: 1; }
+  .intro:not(.is-held) .slot { align-self: end; }
+  /* not held: the hero keeps its own screen over the wall; the statements and the library follow below it */
+  .intro:not(.is-held) canvas, .intro:not(.is-held) .iscrim { bottom: auto; height: 100svh; }
+  .intro:not(.is-held) .iwrap { display: block; padding-top: 0; }
+  .intro:not(.is-held) .heroblock { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-top: var(--bar-h); }
+  .intro:not(.is-held) .words { gap: 0; }
+  .intro:not(.is-held) .words .beat { margin-top: 64px; }
+  .intro:not(.is-held) .slot { margin-top: 48px; }
+  @media (min-width: 900px) { .intro:not(.is-held) .words .beat, .intro:not(.is-held) .slot { max-width: 820px; } }
+  .intro:not(.is-held) .iwrap { height: auto; padding-bottom: 40px; }
+
+  /* ── four apps, one library: the four screens stand side by side at their own sizes, on one line ── */
+  .apps2 { padding-top: var(--gap-section); }
+  .apps2-head { display: grid; gap: 20px; align-items: end; }
+  .apps2-head p { font-size: var(--t-lead); line-height: 1.5; max-width: 30em; }
+  .shelf { list-style: none; margin: 56px 0 0; padding: 0; display: grid; gap: 40px 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app { display: grid; grid-template-rows: auto 1fr; gap: 20px; min-width: 0; }
+  .scr { margin: 0; align-self: end; overflow: hidden; background: var(--raised); }
+  .scr img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .a-srv .scr { aspect-ratio: 16 / 10; border-radius: 12px; }
+  .a-tv .scr { aspect-ratio: 16 / 9; border-radius: 6px; }
+  .a-and .scr, .a-man .scr { aspect-ratio: 540 / 1077; border-radius: 26px; }
+  @media (max-width: 999px) { .a-and h3, .a-man h3 { font-size: 22px; } }
+  .app .txt { display: grid; gap: 6px; align-content: start; }
+  .app h3 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.025em; line-height: 1.05; }
+  .app p { font-size: var(--t-small); line-height: 1.5; }
+  .app span { font-size: var(--t-small); color: var(--muted); }
+  .a-srv, .a-tv { grid-column: 1 / -1; }
+  @media (min-width: 1000px) {
+    .apps2-head { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; }
+    .shelf { grid-template-columns: minmax(0, 4.4fr) minmax(0, 5.6fr) minmax(0, 1.55fr) minmax(0, 1.55fr); align-items: end; }
+    .a-srv, .a-tv { grid-column: auto; }
+    .app { grid-template-rows: auto 9.5em; }
+    .a-and h3, .a-man h3 { font-size: 22px; }
+    .a-and p, .a-man p { font-size: 14.5px; }
+  }
+
+  /* A: the held stage carries on; the window takes the shape of each app */
+  .words .b3 { opacity: 0; visibility: hidden; }
+  .beat .b3-h { margin: 0; font-size: var(--t-h2); font-weight: 700; letter-spacing: -.03em; line-height: 1; text-wrap: balance; }
+  .b3-list { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 2px; }
+  .b3-list button { font-size: var(--t-mid); font-weight: 500; letter-spacing: -.02em; line-height: 1.2; color: color-mix(in srgb, var(--text) 42%, transparent); padding: 2px 0; text-align: left; transition: color .2s; }
+  .b3-list button:hover { color: var(--text); }
+  .b3-list button.on { color: var(--dot); font-weight: 700; }
+  .b3-fact { margin-top: 24px; min-height: 5.5em; max-width: 26em; display: grid; gap: 6px; }
+  .beat .b3-fact p { margin: 0; font-size: var(--t-lead); line-height: 1.45; }
+  .b3-fact span { color: var(--muted); font-size: var(--t-small); }
+  .held .apps2 { display: none; }
+  .intro:not(.is-held) .words .b3 { display: none; }
+  .beat .b3-h { font-size: var(--t-h2); }
+
+  /* B: the library steps back into the shelf, inside the held stage */
+  .istage .apps2 { position: absolute; inset: 0; z-index: 3; padding: 0; display: grid; align-content: center; pointer-events: none; }
+  .istage .apps2 .wrap { width: 100%; padding-top: var(--bar-h); }
+  .istage .apps2-head, .istage .app .txt { opacity: 0; }
+  .istage .app .scr { position: relative; background: transparent; }
+  .istage .app .scr img { opacity: 0; }
+  .istage .app .scr canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .istage .shelf { margin-top: 36px; }
+  .istage .app { grid-template-rows: auto 8.2em; gap: 16px; }
+
+  /* C: gold dots rise in the ink and the next section is gold */
+
+  /* ── switch on what you need ── */
+  .feats { padding-top: var(--gap-section); }
+  .sw2 { display: inline-flex; align-items: center; gap: 14px; min-height: 44px; font-size: var(--t-body); font-weight: 600; color: var(--text); text-align: left; }
+  .sw2 i { flex: none; width: 64px; height: 36px; border-radius: 99px; background: var(--dot-off); position: relative; transition: background .2s; }
+  .sw2 i::after { content: ""; position: absolute; top: 5px; left: 5px; width: 26px; height: 26px; border-radius: 50%; background: var(--muted); transition: transform .24s cubic-bezier(.3, 1.4, .5, 1), background .2s; }
+  .sw2[aria-checked="true"] i { background: var(--dot); }
+  .sw2[aria-checked="true"] i::after { transform: translateX(28px); background: var(--ground); }
+  .pic { margin: 0; position: relative; aspect-ratio: 16 / 10; border-radius: var(--r); overflow: hidden; background: var(--ground); }
+  .pic.tall { aspect-ratio: 540 / 1047; height: min(72vh, 640px); width: auto; justify-self: center; border-radius: 30px; }
+  .pic canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pic img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+
+  /* 2 · who's watching */
+  .who { list-style: none; margin: 56px 0 0; padding: 0; }
+  .person { transition: background .45s; }
+  .person.on { background: var(--fill); }
+  .person .wrap { display: grid; gap: 32px; padding-top: 72px; padding-bottom: 72px; align-items: center; }
+  .pwords { display: grid; gap: 18px; justify-items: start; }
+  .face svg { width: 96px; height: 96px; display: block; }
+  .face .ink { fill: var(--ground); }
+  .face .smile { fill: none; stroke: var(--ground); stroke-width: 7; stroke-linecap: round; }
+  .face .all { display: flex; }
+  .face .all svg { width: 64px; height: 64px; margin-right: -12px; }
+  .person h3 { font-size: var(--t-h2); font-weight: 700; letter-spacing: -.03em; line-height: 1; max-width: 12em; text-wrap: balance; }
+  .person p { font-size: var(--t-lead); max-width: 26em; }
+  .person.on.dark { color: var(--on-gold); }
+  .person.on .sw2 { color: inherit; }
+  .person.on .sw2[aria-checked="true"] i { background: var(--ground); }
+  .person.on .sw2[aria-checked="true"] i::after { background: var(--dot); }
+  .person .pic { width: 100%; }
+  .person .pic.tall { height: min(64vh, 560px); width: auto; }
+  @media (max-width: 899px) { .person .pic.tall { height: 56svh; } }
+  @media (min-width: 900px) { .person .wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; min-height: 80vh; } }
+
+  .who-head { display: grid; gap: 20px; align-items: end; }
+  .who-head p { font-size: var(--t-lead); max-width: 30em; }
+  @media (min-width: 900px) { .who-head { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; } }
+  .b3-list .short { display: none; }
+}

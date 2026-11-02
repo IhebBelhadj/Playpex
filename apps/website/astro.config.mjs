@@ -8,4 +8,6 @@ export default defineConfig({
   output: 'static',
   server: { port: 4321 },
   devToolbar: { enabled: false },
+  // the stylesheets are small: inline them, so the first paint waits on no request
+  build: { inlineStylesheets: 'always' },
 });
