@@ -1,0 +1,232 @@
+- generic [active] [ref=f17e1]:
+  - navigation "Main" [ref=f17e3]:
+    - generic [ref=f17e4]:
+      - link "Playpex" [ref=f17e5] [cursor=pointer]:
+        - /url: "#home"
+      - list [ref=f17e8]:
+        - listitem [ref=f17e9]:
+          - button "Products" [ref=f17e10] [cursor=pointer]
+        - listitem [ref=f17e13]:
+          - link "Plugins" [ref=f17e14] [cursor=pointer]:
+            - /url: "#plugins"
+        - listitem [ref=f17e15]:
+          - button "Docs" [ref=f17e16] [cursor=pointer]
+        - listitem [ref=f17e19]:
+          - link "Releases 0.10.1-alpha.1" [ref=f17e20] [cursor=pointer]:
+            - /url: "#releases"
+            - text: Releases
+            - generic [ref=f17e21]: 0.10.1-alpha.1
+      - generic [ref=f17e22]:
+        - link "GitHub" [ref=f17e23] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f17e26] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=f17e30]:
+    - region [ref=f17e31]:
+      - generic [ref=f17e33]:
+        - heading "Your library. Every screen." [level=1] [ref=f17e34]:
+          - text: Your library.
+          - generic [ref=f17e35]: Every screen.
+        - paragraph [ref=f17e36]: Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.
+        - generic [ref=f17e37]:
+          - link "Download for Linux" [ref=f17e38] [cursor=pointer]:
+            - /url: "#download"
+          - link "See how it works" [ref=f17e41] [cursor=pointer]:
+            - /url: "#files"
+        - paragraph [ref=f17e42]: Free. Version 0.10.1-alpha.1 for Windows, macOS, Linux and Android
+    - region [ref=f17e43]:
+      - generic [ref=f17e45]:
+        - generic [ref=f17e46]:
+          - generic [ref=f17e47]:
+            - heading "Your films sit in folders." [level=2] [ref=f17e48]
+            - paragraph [ref=f17e49]: On the computer that keeps them, or on a network share. Point Playpex at them once.
+          - generic [ref=f17e50]:
+            - heading "Now they're a library." [level=2] [ref=f17e51]
+            - paragraph [ref=f17e52]: Every file is matched to its title, with the poster, the cast, the seasons and the ratings.
+        - 'img "The Playpex dashboard''s Library: posters of the films on the server, A to Z" [ref=f17e54]'
+    - region [ref=f17e56]:
+      - generic [ref=f17e57]:
+        - tablist [ref=f17e58]:
+          - heading "Four apps, one library" [level=2] [ref=f17e59]
+          - tab "Media Server" [ref=f17e60] [cursor=pointer]
+          - tab "Playpex TV" [selected] [ref=f17e61] [cursor=pointer]
+          - tab "Playpex for Android" [ref=f17e62] [cursor=pointer]
+          - tab "Server Manager" [ref=f17e63] [cursor=pointer]
+        - generic [ref=f17e64]:
+          - tabpanel
+        - generic [ref=f17e66]:
+          - generic [ref=f17e67]: Playpex TV
+          - paragraph [ref=f17e68]: The big-screen app for a computer plugged into your TV. Arrows, OK and Back move everything, and it scales to your screen.
+          - generic [ref=f17e69]: Windows, macOS, Linux
+    - region [ref=f17e70]:
+      - generic [ref=f17e72]:
+        - generic [ref=f17e73]:
+          - generic [ref=f17e74]:
+            - heading "It starts on the server." [level=2] [ref=f17e75]
+            - paragraph [ref=f17e76]: The dashboard of the computer that keeps your films, in any browser.
+          - generic [ref=f17e77]:
+            - heading "Then it's on the TV." [level=2] [ref=f17e78]
+            - paragraph [ref=f17e79]: Playpex TV shows what's on the server, made for a remote and a sofa.
+          - generic [ref=f17e80]:
+            - heading "Every title has its page." [level=2] [ref=f17e81]
+            - paragraph [ref=f17e82]: "Sintel, on this server: its story, its cast, its ratings and a Play button."
+          - generic [ref=f17e83]:
+            - heading "It remembers where you stopped." [level=2] [ref=f17e84]
+            - paragraph [ref=f17e85]: Resume at the same minute on any screen, or start again.
+          - generic [ref=f17e86]:
+            - heading "And it plays." [level=2] [ref=f17e87]
+            - paragraph [ref=f17e88]: Every audio track and subtitle in the file, on the biggest screen in the house.
+        - img "Playpex TV playing Sintel at 5:18, with the player's controls" [ref=f17e90]
+    - region [ref=f17e92]:
+      - generic [ref=f17e93]:
+        - generic [ref=f17e94]:
+          - heading "Made for the remote on your couch" [level=2] [ref=f17e95]
+          - paragraph [ref=f17e96]: Playpex TV moves with arrows, OK and Back, and whatever you point at comes forward. Try it here with the pad or your arrow keys.
+        - listbox "Films on this server, in Playpex TV" [ref=f17e97]:
+          - generic [ref=f17e98]:
+            - generic [ref=f17e99]: Sintel
+            - generic [ref=f17e100]: 2010, on this server, resume at 5:18
+          - generic [ref=f17e101]:
+            - option "Sintel" [selected] [ref=f17e102]
+            - option "The Kid" [ref=f17e104]
+            - option "Tears of Steel" [ref=f17e106]
+            - option "The Cabinet of Dr. Caligari" [ref=f17e108]
+            - option "The General" [ref=f17e110]
+            - option "Spring" [ref=f17e112]
+            - option "Sherlock Jr." [ref=f17e114]
+            - option "Night of the Living Dead" [ref=f17e116]
+            - option "Nosferatu" [ref=f17e118]
+        - generic [ref=f17e120]:
+          - generic [ref=f17e121]:
+            - button "Up" [ref=f17e122] [cursor=pointer]
+            - button "Left" [ref=f17e125] [cursor=pointer]
+            - button "OK" [ref=f17e128] [cursor=pointer]
+            - button "Right" [ref=f17e129] [cursor=pointer]
+            - button "Down" [ref=f17e132] [cursor=pointer]
+          - button "Back" [ref=f17e135] [cursor=pointer]
+          - paragraph [ref=f17e139]: OK on Sintel opens it, Back closes it.
+    - region [ref=f17e140]:
+      - generic [ref=f17e141]:
+        - heading "The server does the rest" [level=2] [ref=f17e143]
+        - generic [ref=f17e144]:
+          - article [ref=f17e145]:
+            - figure [ref=f17e146]:
+              - 'img "The dashboard''s Downloads: Sintel downloaded and seeding, with its details" [ref=f17e147]'
+            - generic [ref=f17e148]:
+              - heading "A torrent client that keeps what you get" [level=3] [ref=f17e149]
+              - paragraph [ref=f17e150]: Queue, pause, seed and set limits. Leaving the player pauses a download; nothing is deleted unless you remove it.
+          - article [ref=f17e151]:
+            - figure [ref=f17e152]:
+              - img "Sintel playing in the dashboard's player in a browser" [ref=f17e153]
+            - generic [ref=f17e154]:
+              - heading "A player in your browser" [level=3] [ref=f17e155]
+              - paragraph [ref=f17e156]: Watch anything on the server from the dashboard, even while it's still downloading.
+          - article [ref=f17e157]:
+            - figure [ref=f17e158]:
+              - img "Playpex TV's subtitle settings listing Sintel's subtitles from online providers" [ref=f17e159]
+            - generic [ref=f17e160]:
+              - heading "Subtitles, found for you" [level=3] [ref=f17e161]
+              - paragraph [ref=f17e162]: The tracks in the file, plus OpenSubtitles and YIFY, with size and timing in the player.
+          - article [ref=f17e163]:
+            - figure [ref=f17e164]:
+              - img "Playpex TV's Who's watching screen with four profiles, one for kids" [ref=f17e165]
+            - generic [ref=f17e166]:
+              - heading "A profile for everyone" [level=3] [ref=f17e167]
+              - paragraph [ref=f17e168]: Watch lists and resume points per person. Kids' profiles only see what's for them.
+    - region [ref=f17e169]:
+      - heading "Switch on what you need" [level=2] [ref=f17e171]
+      - list [ref=f17e172]:
+        - listitem [ref=f17e173]:
+          - generic [ref=f17e174]:
+            - heading "Resume on any screen." [level=3] [ref=f17e175]
+            - switch "Resume on any screen." [checked] [ref=f17e176] [cursor=pointer]
+            - paragraph [ref=f17e177]: Resume points are kept per profile, so the phone carries on from the minute the TV stopped.
+        - listitem [ref=f17e178]:
+          - generic [ref=f17e179]:
+            - heading "Kids get a profile of their own." [level=3] [ref=f17e180]
+            - switch "Kids get a profile of their own." [ref=f17e181] [cursor=pointer]
+        - listitem [ref=f17e182]:
+          - generic [ref=f17e183]:
+            - heading "Sound on every film." [level=3] [ref=f17e184]
+            - switch "Sound on every film." [ref=f17e185] [cursor=pointer]
+        - listitem [ref=f17e186]:
+          - generic [ref=f17e187]:
+            - heading "Live channels with a guide." [level=3] [ref=f17e188]
+            - switch "Live channels with a guide." [checked] [ref=f17e189] [cursor=pointer]
+            - paragraph [ref=f17e190]: Add your channel list and its programme guide on the dashboard, then flip channels in the player.
+        - listitem [ref=f17e191]:
+          - generic [ref=f17e192]:
+            - heading "Your phone as the remote." [level=3] [ref=f17e193]
+            - switch "Your phone as the remote." [ref=f17e194] [cursor=pointer]
+    - region [ref=f17e195]:
+      - generic [ref=f17e196]:
+        - generic [ref=f17e197]:
+          - heading "Start with the server." [level=2] [ref=f17e198]
+          - paragraph [ref=f17e199]: It's free. Install it on the computer that keeps your films; Playpex TV and the Android app find it on your Wi-Fi after that.
+          - generic [ref=f17e200]:
+            - link "Playpex TV" [ref=f17e201] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+            - link "Android apps" [ref=f17e202] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+            - link "All releases" [ref=f17e203] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+        - group "Download Playpex Media Server" [ref=f17e204]:
+          - paragraph [ref=f17e206]: Version 0.10.1-alpha.1, released 1 November 2026
+          - radiogroup "Your computer" [ref=f17e207]:
+            - radio "Windows" [ref=f17e208] [cursor=pointer]
+            - radio "macOS" [ref=f17e209] [cursor=pointer]
+            - radio "Linux" [checked] [ref=f17e210] [cursor=pointer]
+          - generic [ref=f17e211]:
+            - generic [ref=f17e212]: Playpex-Media-Server-0.10.1-alpha.1.AppImage
+            - generic [ref=f17e213]: Or the .deb package on the releases page.
+          - link "Download for Linux" [ref=f17e214] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=f17e217]:
+    - generic [ref=f17e218]:
+      - img "Playpex" [ref=f17e219]
+      - generic [ref=f17e466]:
+        - generic [ref=f17e467]:
+          - heading "Apps" [level=3] [ref=f17e468]
+          - link "Media Server" [ref=f17e469] [cursor=pointer]:
+            - /url: "#products"
+          - link "Playpex TV" [ref=f17e470] [cursor=pointer]:
+            - /url: "#products"
+          - link "Playpex for Android" [ref=f17e471] [cursor=pointer]:
+            - /url: "#products"
+          - link "Server Manager" [ref=f17e472] [cursor=pointer]:
+            - /url: "#products"
+        - generic [ref=f17e473]:
+          - heading "Docs" [level=3] [ref=f17e474]
+          - link "Get started" [ref=f17e475] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Pair a screen" [ref=f17e476] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Client API" [ref=f17e477] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Plugin guide" [ref=f17e478] [cursor=pointer]:
+            - /url: "#docs"
+        - generic [ref=f17e479]:
+          - heading "Project" [level=3] [ref=f17e480]
+          - link "Source code" [ref=f17e481] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f17e482] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=f17e483] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f17e484]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel Â© Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f17e485]:
+        - generic [ref=f17e486]: Playpex 2026
+        - link "Download" [ref=f17e487] [cursor=pointer]:
+          - /url: "#download"
+  - text: "// // (only if a scene splits text) // (optional smoothing) // // // and keep the one-line in . // // Stage.smooth() weighted wheel scrolling (Lenis), off for touch and reduced motion // Stage.scene(root, { hold, scrub, build, phone, rest }) // Stage.split(el, 'lines' | 'words' | 'chars') masked split text, SplitText when loaded // Stage.ready() resolves when fonts and the scenes' pictures are ready // Stage.init() starts every"
+  - generic [ref=f17e488]:
+    - text: "on the page // // A page: Stage.smooth(); Stage.init(); (() => { const html = document.documentElement; const mq = (q) => window.matchMedia(q).matches; const live = !!(window.gsap && window.ScrollTrigger); if (live) gsap.registerPlugin(ScrollTrigger); if (live && window.SplitText) gsap.registerPlugin(SplitText); const Stage = { live, get reduced() { return mq('(prefers-reduced-motion: reduce)'); }, get phone() { return mq('(max-width: 767px)'); }, get touch() { return mq('(pointer: coarse)'); }, lenis: null, scenes: [], }; // Weighted wheel scrolling. lerp 0.1-0.14 feels heavy without lagging behind the hand; touch keeps the // phone's own scrolling, and reduced motion keeps the browser's. Stage.smooth = ({ lerp = 0.12 } = {}) => { if (!live || !window.Lenis || Stage.reduced || Stage.touch || Stage.lenis) return Stage.lenis; const lenis = new Lenis({ lerp, smoothWheel: true, anchors: true, autoRaf: false }); lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0); html.classList.add('is-smooth'); Stage.lenis = lenis; return lenis; }; // One scroll scene. // root"
+    - generic [ref=f17e489]:
+      - text: holding one
+      - generic [ref=f17e490]:
+        - text: "// hold screens of scroll the stage is held for (1-4); the section is (hold + 1) screens tall // scrub true = locked to the scrollbar; a number = seconds of catch-up (0.3-0.8 reads as weight) // build(tl, ctx) add the tweens to tl; the timeline runs 0 â†’ 1 over the hold. ctx: { root, stage, phone, q } // phone 'same' (default) | 'rest' (the phone gets the finished composition) | { hold, build } // rest(ctx) optional: anything extra the finished composition needs (most scenes need nothing) // Sets --p (0-1) and data-beat on root, so CSS and captions can follow the scene too. Stage.scene = (root, opts = {}) => { if (!root) return null; const { hold = 2, scrub = true, build, phone = 'same', rest, beats = 0 } = opts; const stage = root.querySelector(':scope > .scene-stage') || root.firstElementChild; const q = (sel) => [...root.querySelectorAll(sel)]; const toRest = (ctx) => { root.classList.remove('is-live'); root.classList.add('is-rest'); root.style.removeProperty('--hold'); if (rest) rest(ctx); }; if (!live) { toRest({ root, stage, phone: Stage.phone, q }); return null; } const mm = gsap.matchMedia(); mm.add({ motion: '(prefers-reduced-motion: no-preference)', phone: '(max-width: 767px)' }, (c) => { const isPhone = c.conditions.phone; const ctx = { root, stage, phone: isPhone, q }; const plan = isPhone ? (phone === 'rest' ? null : phone === 'same' ? { hold, build } : { hold: phone.hold ?? hold, build: phone.build ?? build }) : { hold, build }; if (!c.conditions.motion || !plan || !plan.build) { toRest(ctx); return () => root.classList.remove('is-rest'); } root.classList.remove('is-rest'); root.classList.add('is-live'); root.style.setProperty('--hold', plan.hold); const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root, start: 'top top', end: 'bottom bottom', scrub, invalidateOnRefresh: true, snap: opts.snap ? { snapTo: opts.snap, duration: { min: 0.25, max: 0.7 }, delay: 0.08, ease: 'power2.inOut' } : undefined, onUpdate: (self) => { root.style.setProperty('--p', self.progress.toFixed(4)); if (opts.onUpdate) opts.onUpdate(self.progress); if (beats) root.dataset.beat = String(Math.min(beats - 1, Math.floor(self.progress * beats))); }, }, }); plan.build(tl, ctx); // pad the timeline to exactly 1 so positions in build() read as fractions of the hold if (tl.duration() < 1) tl.to({}, { duration: 1 - tl.duration() }, tl.duration()); return () => { root.classList.remove('is-live'); root.style.removeProperty('--hold'); root.style.removeProperty('--p'); }; }); Stage.scenes.push(mm); return mm; }; // Masked split text. Lines rise out of their own mask; words and characters are for short headings. Stage.split = (el, type = 'lines') => { if (!el) return []; if (window.SplitText && live) { const s = SplitText.create(el, { type: type === 'lines' ? 'lines' : type === 'words' ? 'lines,words' : 'lines,words,chars', mask: 'lines', aria: 'auto', autoSplit: false }); return type === 'lines' ? s.lines : type === 'words' ? s.words : s.chars; } // fallback: words in inline-block spans, the full text kept for screen readers if (!el.dataset.split) { el.setAttribute('aria-label', el.textContent.trim()); const words = el.textContent.trim().split(/\\s+/).map((w) => { const span = document.createElement('span'); span.setAttribute('aria-hidden', 'true'); span.style.display = 'inline-block'; span.textContent = w; return span; }); el.replaceChildren(...words.flatMap((span, i) => (i ? [' ', span] : [span]))); el.dataset.split = 'words'; } return [...el.children]; }; // Fonts and the scenes' pictures decide every height a trigger measures; refresh once they are in. Stage.ready = () => { const imgs = [...document.querySelectorAll('.scene img')].map((i) => (i.complete ? null : i.decode().catch(() => {}))).filter(Boolean); return Promise.all([document.fonts ? document.fonts.ready : null, ...imgs]).then(() => { if (live) ScrollTrigger.refresh(); }); }; // Every"
+        - generic [ref=f17e491]:
+          - text: on the page, started by // the scene file of that id (assets/scenes/
+          - generic [ref=f17e492]:
+            - text: .js registers Scenes['
+            - generic [ref=f17e493]: "']). Stage.init = () => { for (const el of document.querySelectorAll('.scene[data-scene]')) { if (el.__scene) continue; const make = window.Scenes[el.dataset.scene]; if (!make) { console.warn('No scene file loaded for data-scene=\"' + el.dataset.scene + '\"'); continue; } let o = {}; try { o = JSON.parse(el.dataset.options || '{}'); } catch {} el.__scene = make(el, o) || true; } }; window.Scenes = window.Scenes || {}; window.Stage = Stage; if (live) { window.addEventListener('load', () => Stage.ready()); } })();"

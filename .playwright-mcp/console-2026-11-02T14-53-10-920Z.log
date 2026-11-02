@@ -1,0 +1,4 @@
+[  257552ms] ReferenceError: M is not defined
+    at http://localhost:4321/src/scripts/home.js?t=1793631448113:291:19
+    at start (http://localhost:4321/src/scripts/home.js?t=1793631448113:345:9)
+[ 1656111ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8766/favicon.ico:0

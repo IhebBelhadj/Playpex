@@ -34,7 +34,9 @@
     "apk:manager": "npm run apk -w apps/manager",
     "mobile": "npm start -w apps/mobile",
     "android:mobile": "npm run android -w apps/mobile",
-    "release:mobile": "npm run release:android -w apps/mobile"
+    "release:mobile": "npm run release:android -w apps/mobile",
+    "website": "npm run dev -w apps/website",
+    "build:website": "npm run build -w apps/website"
   },
   "overrides": {
     "react": "19.3.0",

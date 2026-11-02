@@ -1,0 +1,111 @@
+/* ── phones: a composition of their own. Three are being compared (html.m-a, .m-b, .m-c; #m-a … in the URL):
+   a, close-up: the screen fills the lower part edge to edge and the camera drifts across it
+   b, column: no holds, every statement with its own picture forming from dots
+   c, full screen: every picture fills the phone, the words sit at its foot ── */
+.b3-list .short, .pcol { display: none; }
+
+@media (max-width: 767px) {
+  /* every version */
+  .heroblock .note { color: var(--text-2); }
+  .b3-list { grid-template-columns: repeat(4, auto); justify-content: start; gap: 4px 20px; margin-top: 18px; }
+  .b3-list .long { display: none; }
+  .b3-list .short { display: inline; }
+  .b3-list button { font-size: 19px; padding: 6px 0; }
+  .b3-fact { margin-top: 12px; min-height: 0; }
+  .beat .b3-fact p { font-size: var(--t-body); }
+  .scene.is-live.sc-rooms .rooms { gap: calc(2 * var(--m)); }
+  .room { width: calc(100vw - 2 * var(--m)); }
+  .scene.is-live.sc-rooms .room .rtext { transition: none; }
+  .room:nth-child(1) figure img { object-position: left top; }
+  .room:nth-child(3) figure img { object-position: right top; }
+
+  /* a, close-up */
+  .m-a .intro.is-held .iwrap { align-content: start; padding-top: calc(var(--bar-h) + 20px); }
+  .m-a .intro.is-held .heroblock { align-self: start; }
+  .m-a .intro.is-held .slot { display: none; }
+  .m-a .sc-screens.is-live .sc-wrap { grid-template-rows: minmax(0, 1fr); align-content: stretch; padding-top: calc(var(--bar-h) + 20px); }
+  .m-a .sc-screens.is-live .beats { grid-template-rows: minmax(0, 1fr); height: 100%; }
+  .m-a .sc-screens.is-live .beat { align-self: start; }
+  .m-a .sc-screens.is-live .beat.last { align-self: end; padding-bottom: 5svh; }
+  .m-a .sc-screens.is-live .sc-screen { position: absolute; left: 0; right: 0; bottom: 0; top: 34svh; aspect-ratio: auto; border-radius: 0; }
+  .m-a .scene.is-live.sc-rooms .scene-stage { align-content: start; padding-top: calc(var(--bar-h) + 20px); }
+  .m-a .scene.is-live.sc-rooms .room figure { height: 50svh; margin: 0 calc(-1 * var(--m)); border-radius: 0; }
+  .m-a .scene.is-live.sc-rooms .rtext { padding-top: 6px; }
+
+  /* b, column */
+  .m-b .intro .slot, .m-b .intro .words .beat { display: none; }
+  .m-b .pcol { display: block; }
+  .pbeat, .m-b .sc-screens .beat { display: grid; gap: 16px; }
+  .pbeat { padding: var(--gap-section) var(--m) 0; }
+  .pbeat h2 { font-size: var(--t-h2); font-weight: 700; letter-spacing: -.03em; line-height: 1; text-wrap: balance; }
+  .pbeat p { font-size: var(--t-body); line-height: 1.5; }
+  .pbeat p, .m-b .sc-screens .beat p { margin: 0 0 8px; }
+  .pfig { position: relative; margin: 0 calc(-1 * var(--m)); aspect-ratio: 1; background: var(--ground); }
+  .pfig canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .m-b .sc-screens .sc-screen { display: none; }
+  .m-b .sc-screens .beats { gap: 72px; }
+  .m-b .scene.sc-rooms .rooms { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 var(--m); gap: 14px; scrollbar-width: none; }
+  .m-b .scene.sc-rooms .room { width: 84vw; scroll-snap-align: start; }
+  .m-b .scene.sc-rooms .room figure { aspect-ratio: 4 / 5; }
+
+  /* c, full screen */
+  .m-c .intro.is-held .iwrap { grid-template-rows: minmax(0, 1fr); align-content: stretch; padding-bottom: 28px; }
+  .m-c .intro.is-held .words { grid-template-rows: minmax(0, 1fr); height: 100%; }
+  .m-c .intro.is-held .heroblock { align-self: start; padding-top: 20px; }
+  .m-c .intro.is-held .words .beat { align-self: end; }
+  .m-c .intro.is-held .slot { display: none; }
+  .m-c .istage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64%; z-index: 1; pointer-events: none; opacity: var(--foot, 0);
+    background: linear-gradient(180deg, rgba(20, 20, 20, 0), rgba(20, 20, 20, .9) 46%); } /* taste-skill-ignore: scrim under the words on a picture */
+  .m-c .sc-screens.is-live .sc-wrap { grid-template-rows: minmax(0, 1fr); align-content: stretch; padding-bottom: 28px; }
+  .m-c .sc-screens.is-live .beats { grid-template-rows: minmax(0, 1fr); height: 100%; }
+  .m-c .sc-screens.is-live .beat, .m-c .sc-screens.is-live .beat.last { align-self: end; padding-bottom: 0; }
+  .m-c .sc-screens.is-live .sc-screen { position: absolute; inset: 0; aspect-ratio: auto; border-radius: 0; }
+  .m-c .sc-screens.is-live .scrim { opacity: 1 !important; visibility: visible !important; height: 64%; background: linear-gradient(180deg, rgba(20, 20, 20, 0), rgba(20, 20, 20, .9) 46%); } /* taste-skill-ignore: scrim */
+  .m-c .scene.is-live.sc-rooms .scene-stage { display: block; padding: 0; }
+  .m-c .scene.is-live.sc-rooms .rooms-head { position: absolute; z-index: 3; top: calc(var(--bar-h) + 16px); }
+  .m-c .scene.is-live.sc-rooms .rooms { padding: 0; gap: 0; height: 100svh; }
+  .m-c .scene.is-live.sc-rooms .room { position: relative; width: 100vw; height: 100svh; display: block; }
+  .m-c .scene.is-live.sc-rooms .room figure { position: absolute; inset: 0; height: auto; border-radius: 0; }
+  .m-c .scene.is-live.sc-rooms .room::before, .m-c .scene.is-live.sc-rooms .room::after { content: ""; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none; }
+  .m-c .scene.is-live.sc-rooms .room::before { top: 0; height: 34%; background: linear-gradient(0deg, rgba(20, 20, 20, 0), rgba(20, 20, 20, .92) 60%); } /* taste-skill-ignore: scrim */
+  .m-c .scene.is-live.sc-rooms .room::after { bottom: 0; height: 52%; background: linear-gradient(180deg, rgba(20, 20, 20, 0), rgba(20, 20, 20, .92) 50%); } /* taste-skill-ignore: scrim */
+  .m-c .scene.is-live.sc-rooms .rtext { position: absolute; z-index: 2; left: var(--m); right: var(--m); bottom: 64px; }
+  .m-c .scene.is-live.sc-rooms .rooms-count { position: absolute; z-index: 3; left: 0; bottom: 28px; }
+
+  /* the held stages fill the large viewport: when Chrome hides its address bar while scrolling, no strip of the
+     page shows under them. Anything set at the foot is lifted by the bar's height, so it stays visible either way. */
+  :root { --bar-gap: calc(100lvh - 100svh); }
+  .intro.is-held .istage, html.js .scene.is-live > .scene-stage { height: 100lvh; }
+  .m-a .sc-screens.is-live .beat.last { padding-bottom: calc(5svh + var(--bar-gap)); }
+  .m-c .intro.is-held .iwrap, .m-c .sc-screens.is-live .sc-wrap { padding-bottom: calc(28px + var(--bar-gap)); }
+  .m-c .scene.is-live.sc-rooms .rooms, .m-c .scene.is-live.sc-rooms .room { height: 100lvh; }
+  .m-c .scene.is-live.sc-rooms .rtext { bottom: calc(64px + var(--bar-gap)); }
+  .m-c .scene.is-live.sc-rooms .rooms-count { bottom: calc(28px + var(--bar-gap)); }
+
+  /* c, hybrid: the screens and the rooms as carousels */
+  /* c, hybrid: the screens scene stays one screen tall; the buttons move it from beat to beat */
+  html.js .m-c .scene.is-manual, .m-c .scene.is-manual { height: auto !important; }
+  html.js .m-c .scene.is-manual > .scene-stage { position: relative; height: 100lvh; }
+  .m-c .sc-screens.is-manual .sc-wrap { padding-bottom: calc(112px + var(--bar-gap)); }
+  .mctl { position: absolute; z-index: 4; left: 0; right: 0; bottom: calc(24px + var(--bar-gap)); padding-top: 0; }
+  .m-c .scene:not(.is-live) .pcar { display: flex; flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 var(--m); gap: 14px; padding: 28px var(--m) 4px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .m-c .scene:not(.is-live) .pcar::-webkit-scrollbar { display: none; }
+  .m-c .scene:not(.is-live) .pcar .room { width: 84vw; flex: none; scroll-snap-align: start; scroll-snap-stop: always; display: grid; gap: 18px; }
+  .m-c .scene:not(.is-live) .pcar .room figure { position: relative; margin: 0; aspect-ratio: 4 / 5; height: auto; border-radius: 22px; overflow: hidden; background: var(--raised); }
+  .m-c .scene:not(.is-live) .pcar .room figure img, .m-c .scene:not(.is-live) .pcar .room figure video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .m-c .scene:not(.is-live) .pcar .room figure video { opacity: 0; transition: opacity .4s; }
+  .m-c .scene:not(.is-live) .pcar .room figure video.on { opacity: 1; }
+  .m-c .scene:not(.is-live) .pcar .rtext { opacity: 1; padding-top: 4px; display: grid; gap: 8px; }
+  .rctl { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 26px var(--m) 0; }
+  .rdots { display: grid; grid-template-columns: repeat(30, 1fr); gap: 4px; flex: 1; max-width: 190px; }
+  .rdots i { aspect-ratio: 1; border-radius: 50%; background: #3a3833; transition: background .25s; }
+  .rdots i.on { background: var(--dot); }
+  .rbtns { display: flex; gap: 10px; }
+  .rbtns button { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: #2a2926; color: var(--text); transition: transform .15s, background .2s, opacity .2s; }
+  .rbtns .rnext { background: var(--dot); color: var(--ink); }
+  .rbtns button svg { width: 22px; height: 22px; }
+  .rbtns button:active { transform: scale(.92); }
+  .rbtns button:disabled { opacity: .3; }
+  .rbtns button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+}

@@ -1,0 +1,134 @@
+---
+import Base from '../layouts/Base.astro';
+import { IMG } from '../lib/images';
+import '../styles/home.css';
+import '../styles/phone.css';
+---
+<Base title="Playpex: your library on every screen" description="Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.">
+<main>
+  <section class="intro" id="intro" aria-labelledby="hero-title">
+    <div class="istage">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <div class="iscrim" id="iscrim" aria-hidden="true"></div>
+      <div class="iwrap" id="iwrap">
+        <div class="words">
+          <div class="heroblock" id="heroblock">
+            <h1 class="big" id="hero-title">Your library.<span>Every screen.</span></h1>
+            <p class="lede">Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.</p>
+            <div class="ctas"><a class="btn" href="#download" data-dl></a><a class="ghostbtn" href="#intro" id="how-link">See how it works</a></div>
+            <p class="note">Free. Version 0.10.1-alpha.1 for Windows, macOS, Linux and Android</p>
+          </div>
+          <div class="beat b1" id="b1"><h2>Your films sit in folders.</h2><p>On the computer that keeps them, or on a network share. Point Playpex at them once.</p></div>
+          <div class="beat b2" id="b2"><h2>Now they're a library.</h2><p>Every file is matched to its title, with the poster, the cast and the ratings.</p></div>
+          <div class="beat b3" id="b3"><h2 class="b3-h">Four apps, one library</h2><ul class="b3-list" id="b3-list"></ul><div class="b3-fact" id="b3-fact"></div></div>
+        </div>
+        <div class="slot" id="slot"><img class="slot-still" src={IMG.s_dashlib} data-img="s_dashlib" alt="The Playpex dashboard's Library: posters of the films on the server, A to Z"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="apps2" id="products" aria-labelledby="apps-title">
+    <div class="wrap" id="apps-wrap">
+      <div class="apps2-head">
+        <h2 id="apps-title">Four apps, one library</h2>
+        <p>Install the server once. Every screen in the house then shows the same films, the same watch list and the minute you stopped at.</p>
+      </div>
+      <ul class="shelf" id="shelf">
+        <li class="app a-srv"><figure class="scr"><img src={IMG.s_dashlib} data-img="s_dashlib" alt="The Media Server's dashboard: the Library as a poster index, A to Z"></figure>
+          <div class="txt"><h3>Media Server</h3><p>Keeps the films, finds their posters and streams them. You run it from a browser.</p><span>Windows, macOS, Linux</span></div></li>
+        <li class="app a-tv"><figure class="scr"><img src={IMG.s_tvlib} data-img="s_tvlib" alt="Playpex TV: Sintel at the top of Recently added, the films of the server in a row"></figure>
+          <div class="txt"><h3>Playpex TV</h3><p>For the computer by your TV. Arrows, OK and Back do everything.</p><span>Windows, macOS, Linux</span></div></li>
+        <li class="app a-and"><figure class="scr"><img src={IMG.s_mtitle} data-img="s_mtitle" alt="Playpex for Android: Sintel's page, with Resume from 6:31"></figure>
+          <div class="txt"><h3>Playpex for Android</h3><p>Plays files as they are, with every track, and resumes where the TV stopped.</p><span>Phones and tablets</span></div></li>
+        <li class="app a-man"><figure class="scr"><img src={IMG.s_man} data-img="s_man" alt="Server Manager on a phone: the Library of the server Living room"></figure>
+          <div class="txt"><h3>Server Manager</h3><p>Finds the server on your Wi-Fi and opens its dashboard on your phone.</p><span>Android</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="scene sc-screens" id="screens" data-scene="screens" aria-labelledby="screens-title">
+    <div class="scene-stage">
+      <div class="sc-wrap">
+        <div class="sc-words beats">
+          <div class="beat"><h2 id="screens-title">It starts on the server.</h2><p>The dashboard of the computer that keeps your films, in any browser.</p></div>
+          <div class="beat"><h2>Then it's on the TV.</h2><p>Playpex TV shows what's on the server, made for a remote and a sofa.</p></div>
+          <div class="beat"><h2>Every title has its page.</h2><p>Sintel, on this server: its story, its cast, its ratings and a Play button.</p></div>
+          <div class="beat"><h2>It knows where you stopped.</h2><p>Resume at the same minute on any screen, or start again.</p></div>
+          <div class="beat last"><h2>And it plays.</h2><p>Every audio track and subtitle in the file, on the biggest screen in the house.</p></div>
+        </div>
+        <div class="sc-screen" id="screens-screen">
+          <img class="still" alt="Playpex TV playing Sintel at 5:18, with the player's controls" src={IMG.s_player} data-img="s_player">
+          <canvas class="gl" aria-hidden="true"></canvas>
+          <video muted loop playsinline preload="none" aria-hidden="true" data-video="loop"></video>
+          <div class="scrim" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="remote" id="remote" aria-labelledby="remote-title">
+    <div class="wrap">
+      <div class="remote-head rv">
+        <h2 id="remote-title">Made for the remote on your couch</h2>
+        <p>Playpex TV moves with arrows, OK and Back, and whatever you point at comes forward. Try it here with the pad or your arrow keys.</p>
+      </div>
+      <div class="tvrow rv" style="--d:1" id="tvrow" tabindex="0" role="listbox" aria-label="Films on this server, in Playpex TV" data-ui>
+        <div class="meta"><b id="tv-title"></b><span id="tv-sub"></span></div>
+        <div class="track" id="track"></div>
+        <div class="chooser" id="chooser" hidden><img id="chooser-img" alt="Playpex TV asking whether to resume Sintel at 5:18 or play it from the beginning"></div>
+      </div>
+      <div class="pad-wrap rv" style="--d:2">
+        <div class="pad" id="pad">
+          <button class="ar up" type="button" data-k="up" aria-label="Up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
+          <button class="ar left" type="button" data-k="left" aria-label="Left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
+          <button class="ok" type="button" data-k="ok">OK</button>
+          <button class="ar right" type="button" data-k="right" aria-label="Right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+          <button class="ar down" type="button" data-k="down" aria-label="Down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <button class="back" type="button" data-k="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Back</button>
+        <p id="pad-hint">OK on Sintel opens it, Back closes it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene sc-rooms" id="server" data-scene="rooms" aria-labelledby="rooms-title">
+    <div class="scene-stage">
+      <div class="rooms-head"><h2 id="rooms-title">The server does the rest</h2></div>
+      <div class="rooms" id="rooms">
+        <article class="room cur"><figure><img src={IMG.s_downloads} data-img="s_downloads" alt="The dashboard's Downloads: Sintel downloaded and seeding, with its details"></figure>
+          <div class="rtext"><h3>A torrent client that keeps what you get</h3><p>Queue, pause, seed and set limits. Leaving the player pauses a download; nothing is deleted unless you remove it.</p></div></article>
+        <article class="room"><figure><img src={IMG.s_watch} data-img="s_watch" alt="Sintel playing in the dashboard's player in a browser"></figure>
+          <div class="rtext"><h3>A player in your browser</h3><p>Watch anything on the server from the dashboard, even while it's still downloading.</p></div></article>
+        <article class="room"><figure><img src={IMG.s_subs} data-img="s_subs" alt="Playpex TV's subtitle settings listing Sintel's subtitles from online providers"></figure>
+          <div class="rtext"><h3>Subtitles, found for you</h3><p>The tracks in the file, plus OpenSubtitles and YIFY, with size and timing in the player.</p></div></article>
+        <article class="room"><figure><img src={IMG.s_profiles} data-img="s_profiles" alt="Playpex TV's Who's watching screen with four profiles, one for kids"></figure>
+          <div class="rtext"><h3>A profile for everyone</h3><p>Watch lists and resume points per person. Kids' profiles only see what's for them.</p></div></article>
+      </div>
+      <div class="rooms-count" id="rooms-count" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>
+    </div>
+  </section>
+
+  <section class="feats" id="features" aria-labelledby="feat-title"><div id="feats-root"></div></section>
+
+  <section class="get" id="download" aria-labelledby="get-title">
+    <div class="wrap">
+      <div class="get-words">
+        <h2 id="get-title" class="rv">Start with the server.</h2>
+        <p class="rv" style="--d:1">It's free. Install it on the computer that keeps your films; Playpex TV and the Android app find it on your Wi-Fi after that.</p>
+        <div class="also rv" style="--d:2"><a href="https://github.com/IhebBelhadj/Playpex/releases">Playpex TV</a><a href="https://github.com/IhebBelhadj/Playpex/releases">Android apps</a><a href="https://github.com/IhebBelhadj/Playpex/releases">All releases</a></div>
+      </div>
+      <div class="dl-dialog rv" style="--d:1" data-ui role="group" aria-labelledby="dl-title">
+        <b id="dl-title">Download Playpex Media Server</b>
+        <p>Version 0.10.1-alpha.1, released 1 November 2026</p>
+        <div class="seg" role="radiogroup" aria-label="Your computer" id="seg"></div>
+        <div class="dl-file"><span id="dl-name"></span><small id="dl-how"></small></div>
+        <a class="btn" id="dl-go" href="https://github.com/IhebBelhadj/Playpex/releases"></a>
+      </div>
+    </div>
+  </section>
+</main>
+</Base>
+
+<script>
+  import '../scripts/home.js';
+</script>

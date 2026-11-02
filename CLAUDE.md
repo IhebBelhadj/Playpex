@@ -47,6 +47,7 @@ More detailed guides live next to the code:
 |---|---|
 | Angular UI (routes, components, services, catalogs, spatial navigation) | [`apps/tv/src/app/CLAUDE.md`](apps/tv/src/app/CLAUDE.md) |
 | Local streaming server (HTTP API, torrent engine, providers, subtitles) | [`apps/server/CLAUDE.md`](apps/server/CLAUDE.md) |
+| Website (Astro, static: home page, downloads) | [`apps/website/CLAUDE.md`](apps/website/CLAUDE.md) |
 
 ---
 
@@ -160,6 +161,7 @@ With a server, the app opens on `/profiles` (Netflix-style picker, under the spl
 │   ├── server-desktop/           @playpex/server-desktop — "Playpex Media Server": tray supervisor + installers (plan §8) → its CLAUDE.md
 │   ├── mobile/                   @playpex/mobile — "Playpex": the phone client (React Native, Expo SDK 58; android/ and ios/ generated,
 │   │                             git-ignored; native code in modules/playpex-device) → its CLAUDE.md
+│   ├── website/                  @playpex/website — the Playpex website (Astro 7, static; `npm run website`, `npm run build:website`) → its CLAUDE.md
 │   └── manager/                  @playpex/manager — "Playpex Server Manager": an Android app (Capacitor 8) that finds servers on the Wi-Fi
 │                                 (mDNS + UDP, a native plugin) and opens the chosen one's dashboard → its CLAUDE.md
 ├── plugins/                      first-party packaged plugins (docs/plugins-plan.md; adults ones never go to the official repository): hello/ (the example: every template, slot, effect and
@@ -207,6 +209,7 @@ With a server, the app opens on `/profiles` (Netflix-style picker, under the spl
 | UI stylesheet check | `npm run check:ui` | no colour / font / z-index / px literal outside the tokens, every font size from the type scale (`apps/tv/scripts/check-ui.js`; exceptions: `// ui-check: allow (reason)`) |
 | Unit tests | from `apps/tv`: `CHROME_BIN=/opt/google/chrome/chrome npx ng test --watch=false --browsers=ChromeHeadless` (`--include src/app/movement` for the movement specs) | Karma/Jasmine; besides the movement specs, mostly CLI "should create" stubs that fail on missing providers — compare against a `git stash` baseline before calling something a regression |
 | Mobile app (phones) | `npm run mobile` (Metro), `npm run android:mobile` (`expo run:android`: prebuild, Gradle, install on the phone / emulator; JDK 21 + Android SDK) | a development build, not Expo Go; see [`apps/mobile/CLAUDE.md`](apps/mobile/CLAUDE.md) |
+| Website | `npm run website` (Astro dev server, :4321), `npm run build:website` (static files in `apps/website/dist`; `SITE_URL` / `BASE_PATH` for where it's published) | see [`apps/website/CLAUDE.md`](apps/website/CLAUDE.md) |
 | Server Manager (Android) | `npm run manager` (the picker in a browser, no discovery), `npm run build:manager` (build + `cap sync android`), `npm run apk:manager` (debug APK: Android SDK + JDK 21) | see [`apps/manager/CLAUDE.md`](apps/manager/CLAUDE.md) |
 | Desktop server (tray app) | `npm run server:desktop` (development run); installers: `npm run dist:server-desktop` (this OS; `npm run dist:win -w apps/server-desktop` cross-builds NSIS from Linux) | electron-builder 26, config in `apps/server-desktop/package.json`; fetches the pinned LGPL ffmpeg first. Uses port 28470 like `npm run server`: whichever starts first holds it. Each start records its install location in `<config dir>/desktop-app.json` (the TV app starts it from there) |
 | TV UI screenshots | `npm run screens -w apps/tv` (development build into `apps/tv/dist/screens`, then 14 screens + the dev gallery into `apps/tv/.screens/latest`; `npx electron scripts/screens.js --out <dir> --size 1920x1080 --only movie,show` from `apps/tv` to reshoot) | needs a server on this machine; uses Playpex TV's `client.json` (copied). References: `.screens/baseline` (1440 × 810), `baseline-1080` (scale 0.8 + the type scale, 2026-10-22; `--scale` sets the shots' UI scale, default 0.8). Compare by eye for live screens, by pixels for the gallery (`docs/ui-system-plan.md` §9) |

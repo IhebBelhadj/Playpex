@@ -1,0 +1,2481 @@
+{
+ "url": "http://localhost:4321/",
+ "at": "2026-11-02T14:46:14.409Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.48,
+    0.41,
+    0.41,
+    0.41,
+    0.44,
+    0.44,
+    0.44,
+    0.44,
+    0.45,
+    0.39,
+    0.39,
+    0.41
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 9,
+    "scripted": 11,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 22366,
+     "screens": 24.9,
+     "words": 483,
+     "img": 25,
+     "video": 1,
+     "canvas": 16,
+     "svg": 24,
+     "sections": 7,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 7,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "s_dashlib.YetAHG2-.jpg",
+      "s_player.DrnDLx61.jpg",
+      "s_downloads.Bbw3aaaI.jpg",
+      "s_watch.DTKuhS2W.jpg",
+      "s_subs._HK0vPGj.jpg",
+      "s_profiles.CpZOxQKE.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "chars": 27,
+     "lines": 2,
+     "size": 128,
+     "vw": 8.9,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.57,
+     "top": 257,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "lines": 2,
+     "size": 128,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Your library. Every screen.",
+      "words": 4,
+      "chars": 27,
+      "lines": 2,
+      "size": 128,
+      "vw": 8.9,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.57,
+      "top": 257,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "It starts on the server.",
+      "words": 5,
+      "chars": 24,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.31,
+      "top": 8297,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Made for the remote on your couch",
+      "words": 7,
+      "chars": 33,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.43,
+      "top": 12604,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "The server does the rest",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 13342,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "A torrent client that keeps what you get",
+      "words": 8,
+      "chars": 40,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.3,
+      "top": 13956,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A player in your browser",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.3,
+      "top": 13962,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles, found for you",
+      "words": 4,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.3,
+      "top": 13962,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A profile for everyone",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.3,
+      "top": 13962,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Four people, one house",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.54,
+      "top": 16982,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sam starts on the TV and finishes in bed.",
+      "words": 9,
+      "chars": 41,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 17385,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Alex keeps the film’s own sound.",
+      "words": 6,
+      "chars": 32,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 18105,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Noor watches with subtitles.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 18840,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "The kids see what’s for them.",
+      "words": 6,
+      "chars": 29,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 19545,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Everyone pauses the TV from the sofa.",
+      "words": 7,
+      "chars": 37,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 20249,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Start with the server.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.54,
+      "top": 21416,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 15,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      13,
+      15,
+      18,
+      19,
+      20,
+      36,
+      61,
+      81,
+      128
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 20,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 128,
+      "vw": 8.9,
+      "font": "Jost Variable",
+      "text": "Your library."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.03,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 7920,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 8153,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 20859,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.84
+      },
+      {
+       "color": "#141414",
+       "share": 0.09
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.03
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 2,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Download for Linux",
+      "Download for Linux"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 1,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 22,
+     "boxRadius": 16,
+     "squareMedia": 1,
+     "roundedMedia": 18,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.34
+     }
+    ],
+    "nav": {
+     "links": 5,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 22366,
+    "margins": {
+     "left": 32,
+     "right": 32
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.is-held",
+      "tag": "section",
+      "top": 0,
+      "height": 7920,
+      "words": 45,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Your library.",
+       "size": 128,
+       "tag": "h1"
+      },
+      "left": 32,
+      "right": 629,
+      "textLeft": 32,
+      "textRight": 629,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 7920,
+      "height": 4500,
+      "words": 17,
+      "media": 1,
+      "middle": 92,
+      "heading": {
+       "text": "It starts on the server.",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 1009,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 12420,
+      "height": 802,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#server.scene.sc-rooms",
+      "tag": "section",
+      "top": 13222,
+      "height": 3600,
+      "words": 33,
+      "media": 4,
+      "middle": 2026,
+      "heading": {
+       "text": "The server does the rest",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 0,
+      "textLeft": 32,
+      "textRight": 231,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#features.feats",
+      "tag": "section",
+      "top": 16822,
+      "height": 3876,
+      "words": 137,
+      "media": 5,
+      "middle": 0,
+      "heading": {
+       "text": "Four people, one house",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 69,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 20859,
+      "height": 810,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 21669,
+      "height": 697,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 50,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Your library. Every screen.",
+      "size": 128,
+      "top": 257,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 32,
+      "n": 8
+     },
+     {
+      "x": 190,
+      "n": 1
+     },
+     {
+      "x": 646,
+      "n": 1
+     },
+     {
+      "x": 855,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 11,
+    "bodySize": 20,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.57,
+    0.46,
+    0.44,
+    0.44,
+    0.44,
+    0.49,
+    0.5,
+    0.52,
+    0.44,
+    0.47,
+    0.48,
+    0.48
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 9,
+    "scripted": 11,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 26506,
+     "screens": 25.9,
+     "words": 475,
+     "img": 25,
+     "video": 1,
+     "canvas": 16,
+     "svg": 24,
+     "sections": 7,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 7,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "s_dashlib.YetAHG2-.jpg",
+      "s_player.DrnDLx61.jpg",
+      "s_downloads.Bbw3aaaI.jpg",
+      "s_watch.DTKuhS2W.jpg",
+      "s_subs._HK0vPGj.jpg",
+      "s_profiles.CpZOxQKE.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "chars": 27,
+     "lines": 2,
+     "size": 69.1,
+     "vw": 9,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.96,
+     "top": 153,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "lines": 2,
+     "size": 69.1,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Your library. Every screen.",
+      "words": 4,
+      "chars": 27,
+      "lines": 2,
+      "size": 69.1,
+      "vw": 9,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 153,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "It starts on the server.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 9249,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Made for the remote on your couch",
+      "words": 7,
+      "chars": 33,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.8,
+      "top": 14315,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sintel",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.01,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 14495,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "The server does the rest",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 15405,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "A torrent client that keeps what you get",
+      "words": 8,
+      "chars": 40,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.86,
+      "top": 15865,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A player in your browser",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 15879,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles, found for you",
+      "words": 4,
+      "chars": 24,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 15879,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A profile for everyone",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 15879,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Four people, one house",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 19408,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sam starts on the TV and finishes in bed.",
+      "words": 9,
+      "chars": 41,
+      "lines": 2,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.56,
+      "top": 19766,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Alex keeps the film’s own sound.",
+      "words": 6,
+      "chars": 32,
+      "lines": 2,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.56,
+      "top": 20842,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Noor watches with subtitles.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.56,
+      "top": 21804,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "The kids see what’s for them.",
+      "words": 6,
+      "chars": 29,
+      "lines": 2,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.56,
+      "top": 22736,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Everyone pauses the TV from the sofa.",
+      "words": 7,
+      "chars": 37,
+      "lines": 2,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.56,
+      "top": 23666,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Start with the server.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 46,
+      "vw": 6,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 24916,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      46,
+      69
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 20,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 69.1,
+      "vw": 9,
+      "font": "Jost Variable",
+      "text": "Your library."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.02,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 9011,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 9447,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 24715,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.85
+      },
+      {
+       "color": "#141414",
+       "share": 0.09
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.03
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 2,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Download",
+      "Download for Linux"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 1,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 13,
+     "boxRadius": 16,
+     "squareMedia": 1,
+     "roundedMedia": 18,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.39
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 26506,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.is-held",
+      "tag": "section",
+      "top": 0,
+      "height": 9011,
+      "words": 45,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Your library.",
+       "size": 69,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 166,
+      "textLeft": 16,
+      "textRight": 166,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 9011,
+      "height": 5120,
+      "words": 17,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "It starts on the server.",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 296,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 14131,
+      "height": 1021,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#server.scene.sc-rooms",
+      "tag": "section",
+      "top": 15152,
+      "height": 4096,
+      "words": 33,
+      "media": 4,
+      "middle": 1363,
+      "heading": {
+       "text": "The server does the rest",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 70,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#features.feats",
+      "tag": "section",
+      "top": 19248,
+      "height": 5307,
+      "words": 137,
+      "media": 5,
+      "middle": 0,
+      "heading": {
+       "text": "Four people, one house",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 191,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 24715,
+      "height": 922,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 25637,
+      "height": 869,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 34,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Your library. Every screen.",
+      "size": 69,
+      "top": 153,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 9
+     },
+     {
+      "x": 54,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 11,
+    "bodySize": 20,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.58,
+    0.37,
+    0.31,
+    0.31,
+    0.47,
+    0.47,
+    0.45,
+    0.49,
+    0.41,
+    0.37,
+    0.39,
+    0.42
+   ],
+   "motion": {
+    "elements": 20,
+    "css": 0,
+    "transitions": 9,
+    "scripted": 11,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 22500,
+     "screens": 26.7,
+     "words": 475,
+     "img": 25,
+     "video": 1,
+     "canvas": 16,
+     "svg": 24,
+     "sections": 7,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 7,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "s_dashlib.YetAHG2-.jpg",
+      "s_player.DrnDLx61.jpg",
+      "s_downloads.Bbw3aaaI.jpg",
+      "s_watch.DTKuhS2W.jpg",
+      "s_subs._HK0vPGj.jpg",
+      "s_profiles.CpZOxQKE.jpg"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "chars": 27,
+     "lines": 2,
+     "size": 56,
+     "vw": 14.4,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.92,
+     "top": 108,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your library. Every screen.",
+     "words": 4,
+     "lines": 2,
+     "size": 56,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Your library. Every screen.",
+      "words": 4,
+      "chars": 27,
+      "lines": 2,
+      "size": 56,
+      "vw": 14.4,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 108,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "It starts on the server.",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 7687,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Made for the remote on your couch",
+      "words": 7,
+      "chars": 33,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 11831,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sintel",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.01,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 12074,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "The server does the rest",
+      "words": 5,
+      "chars": 24,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 12940,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "A torrent client that keeps what you get",
+      "words": 8,
+      "chars": 40,
+      "lines": 2,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.86,
+      "top": 13252,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A player in your browser",
+      "words": 5,
+      "chars": 24,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 13266,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles, found for you",
+      "words": 4,
+      "chars": 24,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 13280,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A profile for everyone",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 13280,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Four people, one house",
+      "words": 4,
+      "chars": 22,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 16267,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sam starts on the TV and finishes in bed.",
+      "words": 9,
+      "chars": 41,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 16691,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Alex keeps the film’s own sound.",
+      "words": 6,
+      "chars": 32,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 17666,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Noor watches with subtitles.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 18392,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "The kids see what’s for them.",
+      "words": 6,
+      "chars": 29,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 19117,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Everyone pauses the TV from the sofa.",
+      "words": 7,
+      "chars": 37,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 19811,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Start with the server.",
+      "words": 4,
+      "chars": 22,
+      "lines": 2,
+      "size": 46,
+      "vw": 11.8,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 20856,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      46,
+      56
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 20,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 48,
+     "max": {
+      "size": 56,
+      "vw": 14.4,
+      "font": "Jost Variable",
+      "text": "Your library."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.02,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 7427,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 12046,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 20760,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      },
+      {
+       "color": "#101012",
+       "top": 21171,
+       "hsl": {
+        "h": 240,
+        "s": 0.06,
+        "l": 0.07
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.85
+      },
+      {
+       "color": "#141414",
+       "share": 0.09
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.03
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 2,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Download",
+      "Download for Linux"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 1,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 14,
+     "boxRadius": 16,
+     "squareMedia": 1,
+     "roundedMedia": 18,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.22
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 22500,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.is-held",
+      "tag": "section",
+      "top": 0,
+      "height": 7427,
+      "words": 45,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Your library.",
+       "size": 56,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 33,
+      "textLeft": 16,
+      "textRight": 33,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 7427,
+      "height": 4220,
+      "words": 17,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "It starts on the server.",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 33,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 11647,
+      "height": 1084,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#server.scene.sc-rooms",
+      "tag": "section",
+      "top": 12731,
+      "height": 3376,
+      "words": 33,
+      "media": 4,
+      "middle": 740,
+      "heading": {
+       "text": "The server does the rest",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 36,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#features.feats",
+      "tag": "section",
+      "top": 16107,
+      "height": 4493,
+      "words": 137,
+      "media": 5,
+      "middle": 0,
+      "heading": {
+       "text": "Four people, one house",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 20760,
+      "height": 889,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 21649,
+      "height": 851,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Your library. Every screen.",
+      "size": 56,
+      "top": 108,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 9
+     },
+     {
+      "x": 28,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 11,
+    "bodySize": 20,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "pinned-over-picture",
+   "width": 1440,
+   "message": "Pinned large text slides across pictures while the page scrolls: \"Your library. Every screen.\" (screen 1, 100% over a picture); \"Every screen.\" (screen 1, 100% over a picture); \"Your films sit in folders.\" (screen 2, 100% over a picture)",
+   "fix": "Jurors read a pinned title crossing drawings or photographs as a collision. Keep the pictures in the column the title does not occupy, or unpin it.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "long-pin",
+   "width": 1440,
+   "message": "The same large text stays on screen for 5 screens in a row: \"Four apps, one library\"",
+   "fix": "A pinned element earns two screens, and something must change at each. Shorten the run or give every screen its own content."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/desktop-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/desktop-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/desktop-page-02.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/desktop-page-03.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/tablet-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/tablet-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/tablet-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/mobile-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/mobile-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/inspect-astro/mobile-page-02.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

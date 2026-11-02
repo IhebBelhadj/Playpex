@@ -1,0 +1,119 @@
+- generic [active] [ref=f3e1]:
+  - navigation "Main" [ref=f3e3]:
+    - generic [ref=f3e4]:
+      - link "Playpex" [ref=f3e5] [cursor=pointer]:
+        - /url: "#home"
+      - generic [ref=f3e8]:
+        - link "Download" [ref=f3e9] [cursor=pointer]:
+          - /url: "#download"
+        - button "Open menu" [ref=f3e13] [cursor=pointer]
+  - main [ref=f3e16]:
+    - region [ref=f3e17]:
+      - generic [ref=f3e19]:
+        - heading "Your library. Every screen." [level=1] [ref=f3e20]:
+          - text: Your library.
+          - generic [ref=f3e21]: Every screen.
+        - paragraph [ref=f3e22]: Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.
+        - generic [ref=f3e23]:
+          - link "Download for Linux" [ref=f3e24] [cursor=pointer]:
+            - /url: "#download"
+          - link "See how it works" [ref=f3e27] [cursor=pointer]:
+            - /url: "#how"
+        - paragraph [ref=f3e28]: Version 0.10.1-alpha.1 for Windows, macOS, Linux and Android
+    - region [ref=f3e29]:
+      - generic [ref=f3e30]:
+        - generic [ref=f3e31]:
+          - heading "One server at home, an app for every screen" [level=2] [ref=f3e32]
+          - paragraph [ref=f3e33]: Install the Media Server once, on the computer that keeps your films. Every other app finds it on your Wi-Fi.
+        - generic [ref=f3e34]:
+          - list [ref=f3e35]:
+            - listitem [ref=f3e36]:
+              - button "Media Server Windows, macOS, Linux" [ref=f3e37] [cursor=pointer]:
+                - text: Media Server
+                - generic [ref=f3e38]: Windows, macOS, Linux
+            - listitem [ref=f3e39]:
+              - button "Playpex TV Windows, macOS, Linux" [ref=f3e40] [cursor=pointer]:
+                - text: Playpex TV
+                - generic [ref=f3e41]: Windows, macOS, Linux
+            - listitem [ref=f3e42]:
+              - button "Playpex for Android Android" [ref=f3e43] [cursor=pointer]:
+                - text: Playpex for Android
+                - generic [ref=f3e44]: Android
+            - listitem [ref=f3e45]:
+              - button "Server Manager Android" [ref=f3e46] [cursor=pointer]:
+                - text: Server Manager
+                - generic [ref=f3e47]: Android
+          - generic [ref=f3e51]:
+            - paragraph [ref=f3e52]: "The big-screen app for a computer plugged into your TV. Made for a remote: arrows, OK and Back move everything."
+            - generic [ref=f3e53]: Windows, macOS, Linux
+    - region [ref=f3e54]:
+      - generic [ref=f3e55]:
+        - generic [ref=f3e56]:
+          - heading "Set up once, then just watch" [level=2] [ref=f3e57]
+          - paragraph [ref=f3e58]: No account and no cloud. Everything stays on your network.
+        - list [ref=f3e59]:
+          - listitem [ref=f3e60]:
+            - heading "Install the server" [level=3] [ref=f3e98]
+            - paragraph [ref=f3e99]: "On the computer that keeps your films. Its dashboard opens in your browser: choose a password and a name."
+          - listitem [ref=f3e100]:
+            - heading "Add your folders" [level=3] [ref=f3e138]
+            - paragraph [ref=f3e139]: Point it at your film and series folders. Playpex matches every title and adds posters, seasons and details.
+          - listitem [ref=f3e140]:
+            - heading "Pair your screens" [level=3] [ref=f3e178]
+            - paragraph [ref=f3e179]: Open Playpex on your TV or phone. It finds the server and shows a code; approve it once on the dashboard.
+            - generic [ref=f3e180]:
+              - generic [ref=f3e181]: Playpex TV shows
+              - img "QXRK-M4TD" [ref=f3e182]
+    - region [ref=f3e499]:
+      - generic [ref=f3e500]:
+        - heading "What you get" [level=2] [ref=f3e502]
+        - list [ref=f3e503]:
+          - listitem [ref=f3e504]:
+            - heading "Your library, organised" [level=3] [ref=f3e505]
+            - paragraph [ref=f3e506]: Folders on the server, network shares included, become one catalogue with posters, seasons, cast and ratings.
+          - listitem [ref=f3e507]:
+            - heading "Made for the couch" [level=3] [ref=f3e508]
+            - paragraph [ref=f3e509]: "Playpex TV is built for a remote: arrows, OK and Back move everything, and it scales to your screen."
+          - listitem [ref=f3e510]:
+            - heading "Live TV with a guide" [level=3] [ref=f3e511]
+            - paragraph [ref=f3e512]: Add your channel list and its programme guide, then flip channels in the player like on any TV.
+          - listitem [ref=f3e513]:
+            - heading "Your phone as a remote" [level=3] [ref=f3e514]
+            - paragraph [ref=f3e515]: Pause or stop what any screen is playing, or drive the TV with a touchpad and keyboard.
+          - listitem [ref=f3e516]:
+            - heading "Plugins" [level=3] [ref=f3e517]
+            - paragraph [ref=f3e518]: Add sources, ratings from services like Trakt and whole new sections. You approve what each one may do.
+          - listitem [ref=f3e519]:
+            - heading "A profile for everyone" [level=3] [ref=f3e520]
+            - paragraph [ref=f3e521]: A watch list, resume points and languages per person. Kids' profiles only see what's for them.
+    - region [ref=f3e522]:
+      - generic [ref=f3e524]:
+        - heading "Download Playpex." [level=2] [ref=f3e525]:
+          - text: Download
+          - generic [ref=f3e526]: Playpex.
+        - paragraph [ref=f3e527]: Start with the Media Server on the computer that keeps your films. Version 0.10.1-alpha.1, released 1 November 2026.
+        - generic [ref=f3e528]:
+          - link "Download for Linux" [ref=f3e529] [cursor=pointer]:
+            - /url: "#"
+          - link "All downloads" [ref=f3e532] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=f3e533]:
+          - generic [ref=f3e534]: Also for
+          - link "Windows" [ref=f3e535] [cursor=pointer]:
+            - /url: "#"
+          - link "macOS" [ref=f3e536] [cursor=pointer]:
+            - /url: "#"
+          - link "Linux (.deb)" [ref=f3e537] [cursor=pointer]:
+            - /url: "#"
+          - link "Android apps" [ref=f3e538] [cursor=pointer]:
+            - /url: "#"
+  - contentinfo [ref=f3e539]:
+    - generic [ref=f3e540]:
+      - paragraph [ref=f3e541]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play.
+      - navigation "Project" [ref=f3e542]:
+        - link "Source code" [ref=f3e543] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "All releases" [ref=f3e544] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex/releases
+        - link "Licence" [ref=f3e545] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md

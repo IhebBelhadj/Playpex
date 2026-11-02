@@ -1,0 +1,2 @@
+[      68ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/assets/scenes/%3Cscene%3E.js:0
+[      68ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/assets/scenes/stage.js:0
