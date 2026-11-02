@@ -1,0 +1,2243 @@
+{
+ "url": "http://localhost:4321/tv",
+ "at": "2026-11-02T20:25:11.286Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 4,
+   "filled": [
+    0.37,
+    0.66,
+    0.35,
+    0.36
+   ],
+   "motion": {
+    "elements": 11,
+    "css": 0,
+    "transitions": 11,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 3253,
+     "screens": 3.6,
+     "words": 435,
+     "img": 14,
+     "video": 0,
+     "canvas": 10,
+     "svg": 14,
+     "sections": 3,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 9,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "chars": 22,
+     "lines": 2,
+     "size": 80.6,
+     "vw": 5.6,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.34,
+     "top": 335,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "lines": 2,
+     "size": 80.6,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "words": 4,
+      "chars": 22,
+      "lines": 2,
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.34,
+      "top": 335,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.4,
+      "top": 632,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Inside Playpex TV",
+      "words": 3,
+      "chars": 17,
+      "lines": 1,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.33,
+      "top": 1060,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A page for every title",
+      "words": 5,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back where you stopped",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track in the file",
+      "words": 5,
+      "chars": 23,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles for the sofa",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Who’s watching?",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the arrows",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list",
+      "words": 2,
+      "chars": 9,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your TV",
+      "words": 4,
+      "chars": 17,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.69,
+      "top": 1759,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Download Playpex TV",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.46,
+      "top": 2099,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Linux",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.28,
+      "top": 2234,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Windows",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.27,
+      "top": 2236,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "macOS",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.27,
+      "top": 2236,
+      "tag": "b",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      13,
+      15,
+      18,
+      19,
+      20,
+      36,
+      61,
+      81
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.01,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#0a0a0a",
+       "top": 1174,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.04
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.97
+      },
+      {
+       "color": "#141414",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 5,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download for Linux",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 13,
+     "boxRadius": 6,
+     "squareMedia": 0,
+     "roundedMedia": 10,
+     "mediaRadius": 6,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 0.13
+     }
+    ],
+    "nav": {
+     "links": 5,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 3253,
+    "margins": {
+     "left": 32,
+     "right": 28
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 836,
+      "words": 58,
+      "media": 2,
+      "middle": 59,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 81,
+       "tag": "h1"
+      },
+      "left": 32,
+      "right": 40,
+      "textLeft": 32,
+      "textRight": 85,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.shots",
+      "tag": "section",
+      "top": 900,
+      "height": 1010,
+      "words": 49,
+      "media": 9,
+      "middle": 6816,
+      "heading": {
+       "text": "Inside Playpex TV",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 0,
+      "textLeft": 32,
+      "textRight": 0,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#fc-get.getit",
+      "tag": "section",
+      "top": 1910,
+      "height": 646,
+      "words": 85,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Download Playpex TV",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 28,
+      "textLeft": 32,
+      "textRight": 72,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 2555,
+      "height": 697,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 50,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "size": 81,
+      "top": 335,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [
+     {
+      "text": "The story, the cast, the ratings and the films lik",
+      "side": "right",
+      "px": 0
+     }
+    ],
+    "edges": [
+     {
+      "x": 32,
+      "n": 5
+     },
+     {
+      "x": 744,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 6,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0.13,
+    "voidBox": {
+     "x": 0,
+     "y": 120,
+     "w": 1440,
+     "h": 120
+    }
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 4,
+   "filled": [
+    0.52,
+    0.43,
+    0.69,
+    0.26
+   ],
+   "motion": {
+    "elements": 11,
+    "css": 0,
+    "transitions": 11,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 3973,
+     "screens": 3.9,
+     "words": 427,
+     "img": 14,
+     "video": 0,
+     "canvas": 10,
+     "svg": 14,
+     "sections": 3,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 9,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "chars": 22,
+     "lines": 2,
+     "size": 52,
+     "vw": 6.8,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.96,
+     "top": 96,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "lines": 2,
+     "size": 52,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "words": 4,
+      "chars": 22,
+      "lines": 2,
+      "size": 52,
+      "vw": 6.8,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 96,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.75,
+      "top": 1015,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Inside Playpex TV",
+      "words": 3,
+      "chars": 17,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.37,
+      "top": 1455,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A page for every title",
+      "words": 5,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back where you stopped",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track in the file",
+      "words": 5,
+      "chars": 23,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles for the sofa",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Who’s watching?",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the arrows",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list",
+      "words": 2,
+      "chars": 9,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your TV",
+      "words": 4,
+      "chars": 17,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.74,
+      "top": 1886,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Download Playpex TV",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 2186,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Windows",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 2408,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "macOS",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 2612,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Linux",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 2815,
+      "tag": "b",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      52
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 52,
+      "vw": 6.8,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#0a0a0a",
+       "top": 413,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.04
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.97
+      },
+      {
+       "color": "#141414",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 5,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 13,
+     "boxRadius": 6,
+     "squareMedia": 0,
+     "roundedMedia": 10,
+     "mediaRadius": 6,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 0.36
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 3973,
+    "margins": {
+     "left": 16,
+     "right": 0
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 1211,
+      "words": 40,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 52,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 213,
+      "textLeft": 16,
+      "textRight": 213,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.shots",
+      "tag": "section",
+      "top": 1275,
+      "height": 751,
+      "words": 49,
+      "media": 9,
+      "middle": 4019,
+      "heading": {
+       "text": "Inside Playpex TV",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 0,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#fc-get.getit",
+      "tag": "section",
+      "top": 2026,
+      "height": 1078,
+      "words": 85,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Download Playpex TV",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 80,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 3104,
+      "height": 869,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 34,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "size": 52,
+      "top": 96,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [
+     {
+      "text": "A page for every title",
+      "side": "right",
+      "px": 0
+     },
+     {
+      "text": "The story, the cast, the ratings and the films lik",
+      "side": "right",
+      "px": 0
+     }
+    ],
+    "edges": [
+     {
+      "x": 16,
+      "n": 6
+     }
+    ],
+    "leftBlocks": 6,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 5,
+   "filled": [
+    0.55,
+    0.5,
+    0.62,
+    0.49,
+    0.34
+   ],
+   "motion": {
+    "elements": 11,
+    "css": 0,
+    "transitions": 11,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 3855,
+     "screens": 4.6,
+     "words": 427,
+     "img": 14,
+     "video": 0,
+     "canvas": 10,
+     "svg": 14,
+     "sections": 3,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 9,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "chars": 22,
+     "lines": 2,
+     "size": 52,
+     "vw": 13.3,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.92,
+     "top": 96,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. Four keys.",
+     "words": 4,
+     "lines": 2,
+     "size": 52,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "words": 4,
+      "chars": 22,
+      "lines": 2,
+      "size": 52,
+      "vw": 13.3,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 96,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 2,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.51,
+      "top": 798,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Inside Playpex TV",
+      "words": 3,
+      "chars": 17,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.58,
+      "top": 1251,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Your films, in rows",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "A page for every title",
+      "words": 5,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back where you stopped",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track in the file",
+      "words": 5,
+      "chars": 23,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Subtitles for the sofa",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Who’s watching?",
+      "words": 2,
+      "chars": 15,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the arrows",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list",
+      "words": 2,
+      "chars": 9,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your TV",
+      "words": 4,
+      "chars": 17,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 1583,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Download Playpex TV",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1910,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Windows",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 2192,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "macOS",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 2412,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "Linux",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.02,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.79,
+      "top": 2614,
+      "tag": "b",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 16,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      52
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 48,
+     "max": {
+      "size": 52,
+      "vw": 13.3,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.97
+      },
+      {
+       "color": "#141414",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 5,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 13,
+     "boxRadius": 6,
+     "squareMedia": 0,
+     "roundedMedia": 10,
+     "mediaRadius": 6,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 0.19
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 3855,
+    "margins": {
+     "left": 16,
+     "right": 0
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 1027,
+      "words": 40,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 52,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 28,
+      "textLeft": 16,
+      "textRight": 28,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.shots",
+      "tag": "section",
+      "top": 1091,
+      "height": 659,
+      "words": 49,
+      "media": 9,
+      "middle": 2359,
+      "heading": {
+       "text": "Inside Playpex TV",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 0,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#fc-get.getit",
+      "tag": "section",
+      "top": 1750,
+      "height": 1255,
+      "words": 85,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Download Playpex TV",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 12,
+      "right": 12,
+      "textLeft": 16,
+      "textRight": 23,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 3004,
+      "height": 851,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. Four keys.",
+      "size": 52,
+      "top": 96,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [
+     {
+      "text": "A page for every title",
+      "side": "right",
+      "px": 0
+     },
+     {
+      "text": "The story, the cast, the ratings and the films lik",
+      "side": "right",
+      "px": 0
+     }
+    ],
+    "edges": [
+     {
+      "x": 16,
+      "n": 6
+     }
+    ],
+    "leftBlocks": 6,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "side-scroll",
+   "width": 1440,
+   "message": "1 row(s) scroll sideways with content past their edge.",
+   "fix": "Jurors and most visitors read a row cut at the edge as clipped, not as scrollable. Wrap it onto more lines, or end it inside the grid.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "empty-middle",
+   "width": 1440,
+   "message": "1 section(s) have content at both edges and 6816px of nothing between: \"Inside Playpex TV\"",
+   "fix": "Bring the two parts together on the grid, or put the picture or figure of the section in the middle. An empty middle third reads as a hole, the same as an empty half.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "edge-text",
+   "width": 1440,
+   "message": "1 text block(s) sit within 16px of the screen edge: \"The story, the cast, the ratin\" (0px from the right)",
+   "fix": "Keep text inside the page margin (16–32px or more). Only display type deliberately bled past the edge may touch it.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "still-page",
+   "width": 1440,
+   "message": "Little motion: 11 element(s) moved while the page loaded and scrolled.",
+   "fix": "Give every section an entrance for its parts (not one fade of the whole block) and add one moving picture: a looping clip or a slow move on a photograph."
+  },
+  {
+   "level": "WARN",
+   "id": "off-centre",
+   "width": 768,
+   "message": "The margins differ: 16px on the left, 0px on the right, at 768px.",
+   "fix": "Put the navigation and the content on one pair of margins; check for padding on one side only, a scrollbar gutter, or a header on another inset than the page.",
+   "alsoAt": [
+    390
+   ]
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-final/desktop-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-final/desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-final/tablet-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-final/tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-final/mobile-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-final/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

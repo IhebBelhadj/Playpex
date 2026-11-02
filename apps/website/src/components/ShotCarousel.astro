@@ -1,0 +1,94 @@
+---
+// A carousel of screenshots (the product pages): the slide in view is itself, under the TV's white focus ring; the
+// others are the brand's gold dots, and each turns into itself as it comes into focus. Moved by the round buttons, a
+// swipe, the arrow keys (once the track has focus) or a click on a slide.
+import { getImage } from 'astro:assets';
+import { IMG } from '../lib/images';
+
+export interface Slide { shot: string; title: string; text: string }
+interface Props { title: string; label: string; slides: Slide[] }
+const { title, label, slides } = Astro.props;
+const src = Object.fromEntries(await Promise.all([...new Set(slides.map((s) => s.shot))].map(async (k) => [k, (await getImage({ src: IMG[k], width: 1600, format: 'webp', quality: 80 })).src])));
+---
+  <section class="shots" aria-labelledby="shots-h">
+    <div class="shots-head rv">
+      <h2 id="shots-h">{title}</h2>
+      <div class="nav">
+        <button type="button" class="prev" aria-label="Previous screen" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></button>
+        <button type="button" class="next" aria-label="Next screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <ul class="track rv" style="--d:1" tabindex="0" aria-label={label} aria-roledescription="carousel">
+      {slides.map((s, i) => (
+        <li class:list={['slide', { on: i === 0 }]} aria-roledescription="slide" aria-label={`${i + 1} of ${slides.length}: ${s.title}`}>
+          <figure data-src={src[s.shot]}><img src={src[s.shot]} alt={s.title} loading={i < 2 ? 'eager' : 'lazy'} decoding="async" /></figure>
+          <h3>{s.title}</h3>
+          <p>{s.text}</p>
+        </li>
+      ))}
+    </ul>
+    <div class="pips" aria-hidden="true">{slides.map((_, i) => <i class:list={{ on: i === 0 }}></i>)}</div>
+  </section>
+
+<style>
+  /* the screens: a carousel; the slide in view in focus (itself, the white ring), the others gold dots */
+  .shots { padding-top: var(--gap-section); }
+  .shots-head { max-width: 1440px; margin: 0 auto; padding: 0 var(--m); display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+  .shots-head h2 { font-size: var(--t-h2); }
+  .nav { display: flex; gap: 10px; }
+  .nav button { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--button-dark); color: var(--text); transition: background .2s, transform .1s, opacity .2s; }
+  .nav .next { background: var(--dot); color: var(--on-gold); }
+  .nav button:hover { background: var(--pressed); } .nav .next:hover { background: var(--gold); }
+  .nav button:active { transform: scale(.93); }
+  .nav button:disabled { opacity: .3; pointer-events: none; }
+  .nav button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  .nav svg { width: 22px; height: 22px; }
+  .track { --pad: max(var(--m), calc((100vw - 1440px) / 2 + var(--m))); list-style: none; margin: 40px 0 0; padding: 14px var(--pad) 18px; display: flex; gap: 28px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--pad); scrollbar-width: none; overscroll-behavior-x: contain; outline: none; }
+  .track::-webkit-scrollbar { display: none; }
+  .slide { flex: none; width: min(74vw, 1000px); scroll-snap-align: start; display: grid; gap: 10px; align-content: start; }
+  .slide figure { position: relative; margin: 0 0 12px; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: var(--device); transition: box-shadow .25s; cursor: pointer; }
+  .slide figure img, .slide figure :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .slide figure { outline: 3px solid transparent; outline-offset: 0; transition: outline-color .25s; }
+  .slide.on figure { outline-color: var(--text); }
+  .track:focus-visible .slide.on figure { outline: 3px solid var(--dot); outline-offset: 4px; }
+  .slide h3 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .slide p { max-width: 34em; }
+  .slide:not(.on) h3, .slide:not(.on) p { color: var(--muted); }
+  .pips { max-width: 1440px; margin: 20px auto 0; padding: 0 var(--m); display: flex; gap: 8px; }
+  .pips i { width: 9px; height: 9px; border-radius: 50%; background: var(--unlit); transition: background .2s, transform .2s; }
+  .pips i.on { background: var(--dot); transform: scale(1.25); }
+  @media (max-width: 767px) { .slide { width: 84vw; } .track { gap: 14px; } .nav button { width: 48px; height: 48px; } }
+</style>
+
+<script>
+  import { Pic } from '../scripts/home/dither.js';
+
+  document.querySelectorAll('.shots').forEach((root) => {
+    // ── the screens: the slide at the start of the track is in focus (itself), the others are gold dots ──
+    const track = root.querySelector('.track'), slides = [...track.querySelectorAll('.slide')];
+    const pips = [...root.querySelectorAll('.pips i')], prev = root.querySelector('.prev'), next = root.querySelector('.next');
+    const pics = slides.map((s) => {
+      const f = s.querySelector('figure'), p = Pic(f);
+      f.querySelector('img').style.visibility = 'hidden';   // the canvas paints it from here (dots, or itself in focus)
+      return p;
+    });
+    let cur = -1;
+    function setOn(k) {
+      if (k === cur) return;
+      cur = k;
+      slides.forEach((s, i) => { s.classList.toggle('on', i === k); pics[i].show(s.querySelector('figure').dataset.src, i === k); });
+      pips.forEach((p, i) => p.classList.toggle('on', i === k));
+      prev.disabled = k <= 0; next.disabled = k >= slides.length - 1;
+    }
+    const step = () => slides[1].offsetLeft - slides[0].offsetLeft;
+    const near = () => Math.max(0, Math.min(slides.length - 1, Math.round(track.scrollLeft / step())));
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const go = (k) => track.scrollTo({ left: Math.max(0, Math.min(slides.length - 1, k)) * step(), behavior: smooth ? 'smooth' : 'auto' });
+    track.addEventListener('scroll', () => requestAnimationFrame(() => setOn(near())), { passive: true });
+    prev.addEventListener('click', () => go(near() - 1));
+    next.addEventListener('click', () => go(near() + 1));
+    track.addEventListener('keydown', (e) => { const d = { ArrowLeft: -1, ArrowRight: 1 }[e.key]; if (d) { e.preventDefault(); go(near() + d); } });
+    slides.forEach((s, i) => s.querySelector('figure').addEventListener('click', () => go(i)));
+    setOn(0);
+  });
+</script>

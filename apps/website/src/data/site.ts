@@ -29,6 +29,7 @@ export interface Product {
   shot: string;         // a picture in src/assets/img
   shotAlt: string;
   preview?: string;     // the Products menu's screenshot (none: "Screenshot to come")
+  page?: string;        // its own page (src/pages/<page>.astro), once it has one
 }
 
 export const PRODUCTS: Product[] = [
@@ -36,46 +37,60 @@ export const PRODUCTS: Product[] = [
     id: 'server', name: 'Media Server', short: 'Server', line: 'Keeps your films and streams them', device: 'web',
     about: 'Keeps your films, shows and channels on a computer at home and streams them to every screen in the house. You run it from its dashboard in a browser.',
     blurb: 'Keeps the films, finds their posters and streams them. You run it from a browser.',
-    systems: 'Windows, macOS, Linux', shot: 's_dashlib', shotAlt: 'The Media Server’s dashboard: the Library as a poster index, A to Z',
+    systems: 'Windows, macOS, Linux', shot: 's_dashlib', shotAlt: 'The Media Server’s dashboard: the Library as a poster index, A to Z', preview: 's_dashtitles', page: 'server',
   },
   {
     id: 'tv', name: 'Playpex TV', short: 'TV', line: 'Watch on the big screen', device: 'tv',
     about: 'The big-screen app for a computer plugged into your TV. Made for a remote: arrows, OK and Back move everything.',
     blurb: 'For the computer by your TV. Arrows, OK and Back do everything.',
-    systems: 'Windows, macOS, Linux', shot: 's_tvlib', shotAlt: 'Playpex TV: Sintel at the top of Recently added, the films of the server in a row', preview: 's_continue',
+    systems: 'Windows, macOS, Linux', shot: 's_tvlib', shotAlt: 'Playpex TV: Sintel at the top of Recently added, the films of the server in a row', preview: 's_continue', page: 'tv',
   },
   {
-    id: 'android', name: 'Playpex for Android', short: 'Android', line: 'Watch on your phone', device: 'phone',
+    id: 'mobile', name: 'Playpex Mobile', short: 'Mobile', line: 'Watch on your phone', device: 'phone',
     about: 'Your library on your phone and tablet. Plays files as they are, with every audio track and subtitle.',
     blurb: 'Plays files as they are, with every track, and picks up at the minute the TV stopped.',
-    systems: 'Phones and tablets', shot: 's_mtitle', shotAlt: 'Playpex for Android: Sintel’s page, with Resume from 6:31',
+    systems: 'Phones and tablets', shot: 's_mtitle', shotAlt: 'Playpex Mobile: Sintel’s page, with Resume from 6:31', preview: 'a_home', page: 'mobile',
   },
   {
     id: 'manager', name: 'Server Manager', short: 'Manager', line: 'Run your server from your phone', device: 'phone',
     about: 'Finds your server on the Wi-Fi and opens its dashboard on your phone, with the remote control for your TV.',
     blurb: 'Finds the server on your Wi-Fi and opens its dashboard on your phone: the library, downloads and who is watching.',
-    systems: 'Android', shot: 's_man', shotAlt: 'Server Manager on a phone: the Library of the server Living room',
+    systems: 'Android', shot: 's_man', shotAlt: 'Server Manager on a phone: the Library of the server Living room', preview: 'm_lib', page: 'manager',
   },
 ];
 
-// the top-level pages (not built yet: their links stay on this page)
+// where a product's links go: its own page, else the four apps on the home page ('#products' on the home page
+// itself, where the intro script scrolls to them)
+export function productHref(p: Product, base: string, onHome: boolean): string {
+  if (p.page) return base + p.page;
+  return onHome ? '#products' : base + '#products';
+}
+
+// where Download goes: this page's own download section, or the home page's on pages that have none (the plugins, the docs)
+export function downloadHref(pathname: string, base: string): string {
+  const page = pathname.slice(base.replace(/\/?$/, '/').length - 1).replace(/^\/|\/$/g, '');
+  return page === 'plugins' || page === 'docs' || page.startsWith('docs/') ? base.replace(/\/?$/, '/') + '#download' : '#download';
+}
+
+// the top-level pages: a bare name is a page of the site (src/pages/<name>.astro); '#…' is still on the home page
 export const PAGES = [
-  { href: '#plugins', name: 'Plugins' },
-  { href: '#docs', name: 'Docs' },
-  { href: '#releases', name: 'Releases' },
+  { href: 'plugins', name: 'Plugins' },
+  { href: 'docs/', name: 'Docs' },
+  { href: 'releases', name: 'Releases' },
   { href: SITE.repo, name: 'GitHub' },
 ];
 
-export interface Doc { group: 'Use Playpex' | 'Build on Playpex'; title: string }
+// the bar's Docs menu: a few pages of src/content/docs by their slug (docs/<slug>)
+export interface Doc { group: 'Use Playpex' | 'Build on Playpex'; title: string; slug: string }
 export const DOCS: Doc[] = [
-  { group: 'Use Playpex', title: 'Get started' },
-  { group: 'Use Playpex', title: 'Pair a screen' },
-  { group: 'Use Playpex', title: 'Add your library' },
-  { group: 'Use Playpex', title: 'Live TV and channels' },
-  { group: 'Use Playpex', title: 'Troubleshooting' },
-  { group: 'Build on Playpex', title: 'Client API' },
-  { group: 'Build on Playpex', title: 'Plugin guide' },
-  { group: 'Build on Playpex', title: 'API reference' },
+  { group: 'Use Playpex', title: 'Connect a screen', slug: 'connect-a-screen' },
+  { group: 'Use Playpex', title: 'Add your library', slug: 'add-your-library' },
+  { group: 'Use Playpex', title: 'Live TV', slug: 'live-tv' },
+  { group: 'Use Playpex', title: 'Troubleshooting', slug: 'troubleshooting' },
+  { group: 'Build on Playpex', title: 'Write a plugin', slug: 'plugins-overview' },
+  { group: 'Build on Playpex', title: 'Hooks', slug: 'hooks' },
+  { group: 'Build on Playpex', title: 'Publish a plugin', slug: 'publishing' },
+  { group: 'Build on Playpex', title: 'Build a client', slug: 'client-api' },
 ];
 
 // the remote's row: the films on the demo server, with their posters p0…p8
@@ -88,7 +103,7 @@ export const FILMS = [
 // Who's watching: each profile of the demo house, its colours (fill behind the row, face) and the feature it switches on
 export const PEOPLE = [
   { name: 'Sam', fill: 'var(--who-sam)', face: 'var(--face-sam)', line: 'Sam starts on the TV and finishes in bed.', toggle: 'Resume on any screen',
-    note: 'Sintel opens on Sam’s phone at 6:31, the minute the TV stopped.', shot: 's_mtitle', alt: 'Playpex for Android: Sintel, Resume from 6:31', tall: true },
+    note: 'Sintel opens on Sam’s phone at 6:31, the minute the TV stopped.', shot: 's_mtitle', alt: 'Playpex Mobile: Sintel, Resume from 6:31', tall: true },
   { name: 'Alex', fill: 'var(--who-alex)', face: 'var(--face-alex)', line: 'Alex keeps the film’s own sound.', toggle: 'Sound for every film',
     note: 'Dolby and DTS tracks are turned into AAC by the server, so no film plays silent.', shot: 's_player', alt: 'Playpex TV playing Sintel', tall: false },
   { name: 'Noor', fill: 'var(--who-noor)', face: 'var(--face-noor)', line: 'Noor watches with subtitles.', toggle: 'Subtitles in any language',

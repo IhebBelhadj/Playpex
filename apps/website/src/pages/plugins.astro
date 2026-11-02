@@ -1,0 +1,178 @@
+---
+// The plugins: a search field at display size opens the page, the kinds under it; the plugins as rows that open in
+// place to show what each adds, what it asks for and how to install it, a page of PER at a time. The search, the
+// kinds and the page are kept in the address (?q=…&kind=…&page=…), so a search can be shared. Then repositories and
+// writing your own. The list is data/plugins.ts.
+import Base from '../layouts/Base.astro';
+import { PLUGINS, KINDS, REPOS, OFFICIAL_INDEX } from '../data/plugins';
+
+const PER = 6;
+---
+<Base title="Playpex plugins" description="Plugins add sources, live TV, Trakt and more to a Playpex server. Search them, see what each adds and asks for, and install them from the dashboard." current="plugins">
+<main id="main" class="plg">
+  <section class="query" aria-labelledby="plg-h">
+    <h1 id="plg-h" class="vh">Playpex plugins</h1>
+    <label class="vh" for="plg-q">Search plugins</label>
+    <input id="plg-q" type="search" placeholder="Search plugins" autocomplete="off" enterkeyhint="search" />
+    <div class="kinds" role="group" aria-label="Kinds of plugin">
+      {KINDS.map((k) => <button type="button" aria-pressed="false" data-k={k}>{k}</button>)}
+    </div>
+    <p class="count" id="plg-count" aria-live="polite">{PLUGINS.length} plugins</p>
+  </section>
+
+  <section class="list" aria-label="Plugins" data-per={PER}>
+    <ul id="plg-list">
+      {PLUGINS.map((p, i) => (
+        <li class="row" hidden={i >= PER} data-kinds={p.kinds.join('|')} data-text={`${p.name} ${p.line} ${p.kinds.join(' ')} ${p.adds.join(' ')}`.toLowerCase()}>
+          <button type="button" class="head" aria-expanded="false" aria-controls={`plg-d-${p.id}`}>
+            <span class="icon" aria-hidden="true">{p.icon ? <Fragment set:html={p.icon} /> : <b>{p.name[0]}</b>}</span>
+            <span class="what"><b>{p.name}</b><span>{p.line}</span></span>
+            <span class="meta"><span>{p.kinds.join(', ')}</span><small>{REPOS[p.repo].name}, {p.version}</small></span>
+          </button>
+          <div class="detail" id={`plg-d-${p.id}`} hidden>
+            <div><h2>What it adds</h2><ul>{p.adds.map((a) => <li>{a}</li>)}</ul></div>
+            <div><h2>What it asks for</h2><ul>{p.asks.map((a) => <li>{a}</li>)}</ul></div>
+            <div class="how"><h2>Install it</h2><p>{REPOS[p.repo].how}</p>{p.site && <a href={p.site}>{p.site.replace('https://', '')}</a>}</div>
+          </div>
+        </li>
+      ))}
+    </ul>
+    <p class="none" id="plg-none" hidden>No plugin matches. Try another word, or clear the kinds.</p>
+    <nav class="pages" aria-label="Pages of plugins">
+      <button type="button" class="step" id="plg-prev" aria-label="Previous page" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></button>
+      <ol id="plg-nums"><li><button type="button" aria-current="page">1</button></li></ol>
+      <button type="button" class="step next" id="plg-next" aria-label="Next page" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+      <p class="range" id="plg-range">1 to {Math.min(PER, PLUGINS.length)} of {PLUGINS.length}</p>
+    </nav>
+  </section>
+
+  <section class="more" aria-labelledby="more-h">
+    <div class="rv">
+      <h2 id="more-h">Add a repository</h2>
+      <p>The official repository is in every server already. To add another, paste its address on the dashboard: Plugins › Repositories. Each one is signed, and updates follow the policy you choose.</p>
+      <div class="copy"><code id="plg-url">{OFFICIAL_INDEX}</code><button type="button" id="plg-copy">Copy</button></div>
+    </div>
+    <div class="rv" style="--d:1">
+      <h2>Write your own</h2>
+      <p>A plugin is a small package: a manifest and server code that runs in a sandbox, with screens the apps draw for it. Start from Hello and the plugin guide.</p>
+      <a class="btn" href={import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'docs/plugins-overview'}>Read the plugin guide</a>
+    </div>
+  </section>
+</main>
+</Base>
+
+<style>
+  [hidden] { display: none !important; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .query, .list, .more { max-width: 1440px; margin: 0 auto; padding-left: var(--m); padding-right: var(--m); }
+  .query { padding-top: 64px; display: grid; gap: 18px; }
+  .query input { width: 100%; background: transparent; border: 0; border-bottom: 3px solid var(--unlit); color: var(--text); font: 700 clamp(34px, 4.4vw, 72px)/1.2 var(--font); letter-spacing: -.03em; padding: 8px 0 14px; outline: none; transition: border-color .2s; }
+  .query input::placeholder { color: var(--unlit); }
+  .query input:focus { border-color: var(--dot); }
+  .kinds { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kinds button { padding: 10px 18px; border-radius: 99px; background: var(--raised-2); color: var(--text); font: 600 15px var(--font); transition: background .15s, color .15s; }
+  .kinds button:hover { background: var(--pressed); }
+  .kinds button[aria-pressed='true'] { background: var(--dot); color: var(--on-gold); }
+  .kinds button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .count { color: var(--muted); font-size: var(--t-small); }
+
+  .list { padding-top: 40px; }
+  .list > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .row { border-radius: 18px; background: var(--raised); overflow: hidden; }
+  .head { width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 20px; align-items: center; padding: 20px; text-align: left; color: var(--text); transition: background .15s; }
+  .head:hover { background: var(--raised-2); }
+  .head:focus-visible { outline: 2px solid var(--dot); outline-offset: -2px; }
+  .icon { width: 64px; height: 64px; border-radius: 16px; background: var(--text); display: grid; place-items: center; padding: 12px; }
+  .icon :global(svg) { width: 100%; height: 100%; }
+  .icon b { color: var(--ground); font-size: 28px; }
+  .what { display: grid; gap: 4px; }
+  .what b { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; }
+  .what span { max-width: 44em; }
+  .meta { grid-column: 2; display: grid; gap: 2px; color: var(--muted); font-size: var(--t-small); }
+  .meta span { color: var(--dot); font-weight: 600; }
+  @media (min-width: 900px) { .head { grid-template-columns: 64px minmax(0, 1fr) 240px; } .meta { grid-column: auto; text-align: right; } }
+  .detail { display: grid; gap: 24px; padding: 4px 20px 24px 104px; }
+  .detail h2 { font-size: var(--t-body); font-weight: 700; margin-bottom: 8px; }
+  .detail ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .detail li::marker { color: var(--dot); }
+  .how p { max-width: 30em; }
+  .how a { display: inline-block; margin-top: 8px; color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+  @media (min-width: 900px) { .detail { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 767px) { .detail { padding-left: 20px; } }
+  .none { margin-top: 24px; font-size: var(--t-lead); }
+
+  /* pagination: round steps either side of the page numbers, the range on the right */
+  .pages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 28px; }
+  .pages ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+  .pages ol :global(button) { min-width: 44px; height: 44px; padding: 0 12px; border-radius: 99px; color: var(--muted); font: 600 15px var(--font); font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+  .pages ol :global(button:hover) { color: var(--text); background: var(--hover); }
+  .pages ol :global(button[aria-current='page']) { background: var(--text); color: var(--ground); }
+  .step { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--button-dark); color: var(--text); transition: background .15s, opacity .2s, transform .1s; }
+  .step.next { background: var(--dot); color: var(--on-gold); }
+  .step:hover { background: var(--pressed); } .step.next:hover { background: var(--gold); }
+  .step:active { transform: scale(.93); }
+  .step:disabled { opacity: .3; pointer-events: none; }
+  .step svg { width: 20px; height: 20px; }
+  .pages :global(button:focus-visible) { outline: 2px solid var(--text); outline-offset: 3px; }
+  .range { margin-left: auto; color: var(--muted); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+
+  .more { padding-top: var(--gap-section); padding-bottom: 40px; display: grid; gap: 56px; }
+  .more h2 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; }
+  .more p { margin: 14px 0 22px; font-size: var(--t-lead); max-width: 30em; }
+  .copy { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .copy code { padding: 12px 16px; border-radius: 12px; background: var(--raised); font-size: 15px; overflow-wrap: anywhere; }
+  .copy button { padding: 12px 18px; border-radius: 99px; background: var(--raised-2); color: var(--text); font: 600 15px var(--font); }
+  .copy button:hover { background: var(--pressed); }
+  @media (min-width: 900px) { .more { grid-template-columns: 1fr 1fr; } }
+</style>
+
+<script>
+  const PER = +document.querySelector('.plg .list').dataset.per;
+  const q = document.getElementById('plg-q'), rows = [...document.querySelectorAll('.plg .row')];
+  const count = document.getElementById('plg-count'), none = document.getElementById('plg-none');
+  const kinds = [...document.querySelectorAll('.plg .kinds button')];
+  const nums = document.getElementById('plg-nums'), prev = document.getElementById('plg-prev'), next = document.getElementById('plg-next'), range = document.getElementById('plg-range');
+  let page = 1;
+
+  // the search, the kinds and the page live in the address
+  const url = new URL(location.href);
+  q.value = url.searchParams.get('q') || '';
+  const picked = new Set((url.searchParams.get('kind') || '').split(',').filter(Boolean));
+  kinds.forEach((k) => k.setAttribute('aria-pressed', String(picked.has(k.dataset.k))));
+  page = Math.max(1, +(url.searchParams.get('page') || 1));
+
+  function save() {
+    const u = new URL(location.href), on = kinds.filter((k) => k.getAttribute('aria-pressed') === 'true').map((k) => k.dataset.k);
+    q.value ? u.searchParams.set('q', q.value) : u.searchParams.delete('q');
+    on.length ? u.searchParams.set('kind', on.join(',')) : u.searchParams.delete('kind');
+    page > 1 ? u.searchParams.set('page', String(page)) : u.searchParams.delete('page');
+    history.replaceState(null, '', u);
+  }
+  function render() {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean), on = kinds.filter((k) => k.getAttribute('aria-pressed') === 'true').map((k) => k.dataset.k);
+    const hits = rows.filter((r) => words.every((w) => r.dataset.text.includes(w)) && (!on.length || on.some((k) => r.dataset.kinds.split('|').includes(k))));
+    const pages = Math.max(1, Math.ceil(hits.length / PER));
+    page = Math.min(page, pages);
+    const from = (page - 1) * PER;
+    rows.forEach((r) => { r.hidden = true; });
+    hits.slice(from, from + PER).forEach((r) => { r.hidden = false; });
+    count.textContent = hits.length === 1 ? '1 plugin' : hits.length + ' plugins';
+    none.hidden = hits.length > 0;
+    nums.innerHTML = Array.from({ length: pages }, (_, i) => `<li><button type="button" data-p="${i + 1}"${i + 1 === page ? ' aria-current="page"' : ''} aria-label="Page ${i + 1}">${i + 1}</button></li>`).join('');
+    prev.disabled = page <= 1; next.disabled = page >= pages;
+    range.textContent = hits.length ? `${from + 1} to ${Math.min(from + PER, hits.length)} of ${hits.length}` : '';
+    save();
+  }
+  function go(p) { page = p; render(); document.querySelector('.plg .list').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
+  q.addEventListener('input', () => { page = 1; render(); });
+  kinds.forEach((k) => k.addEventListener('click', () => { k.setAttribute('aria-pressed', String(k.getAttribute('aria-pressed') !== 'true')); page = 1; render(); }));
+  nums.addEventListener('click', (e) => { const b = e.target.closest('[data-p]'); if (b) go(+b.dataset.p); });
+  prev.addEventListener('click', () => go(page - 1));
+  next.addEventListener('click', () => go(page + 1));
+  rows.forEach((r) => { const b = r.querySelector('.head'), d = r.querySelector('.detail'); b.addEventListener('click', () => { const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', String(open)); d.hidden = !open; }); });
+  document.getElementById('plg-copy').addEventListener('click', (e) => { navigator.clipboard?.writeText(document.getElementById('plg-url').textContent).then(() => { e.target.textContent = 'Copied'; setTimeout(() => (e.target.textContent = 'Copy'), 1600); }); });
+  render();
+
+  const rise = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rise.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach((el) => rise.observe(el));
+</script>

@@ -1,0 +1,189 @@
+---
+// A docs page, laid out the way docs usually are: the sections on the left (with search), the article in the middle
+// (breadcrumbs, then previous / next and "Edit this page" at its foot), "On this page" on the right. The pages are
+// src/content/docs/*.md; their order comes from each file's group and order.
+import type { MarkdownHeading } from 'astro';
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Base from './Base.astro';
+import { GROUPS } from '../content.config';
+import { SITE } from '../data/site';
+
+interface Props { doc: CollectionEntry<'docs'>; headings: MarkdownHeading[] }
+const { doc, headings } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const all = (await getCollection('docs')).sort((a, b) => GROUPS.indexOf(a.data.group) - GROUPS.indexOf(b.data.group) || a.data.order - b.data.order);
+const url = (d: CollectionEntry<'docs'>) => base + 'docs/' + (d.id === 'introduction' ? '' : d.id);
+const i = all.findIndex((d) => d.id === doc.id);
+const prev = all[i - 1], next = all[i + 1];
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+<Base title={`${doc.data.title} · Playpex docs`} description={doc.data.description} current="docs/">
+<div class="docs">
+  <aside class="side" aria-label="Docs">
+    <div class="search">
+      <label class="vh" for="ds-q">Search the docs</label>
+      <input id="ds-q" data-index={base + 'docs/search.json'} type="search" placeholder="Search the docs" autocomplete="off" aria-controls="ds-results" />
+      <kbd aria-hidden="true">/</kbd>
+      <ul id="ds-results" class="results" role="listbox" hidden></ul>
+    </div>
+    <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="ds-nav">Docs menu</button>
+    <nav id="ds-nav" class="nav">
+      {GROUPS.map((g) => (
+        <div class="group">
+          <p class="gname">{g}</p>
+          <ul>{all.filter((d) => d.data.group === g).map((d) => <li><a href={url(d)} aria-current={d.id === doc.id ? 'page' : undefined}>{d.data.title}</a></li>)}</ul>
+        </div>
+      ))}
+    </nav>
+  </aside>
+
+  <main id="main" class="article">
+    <p class="crumbs"><a href={base + 'docs/'}>Docs</a><span aria-hidden="true">/</span><span>{doc.data.group}</span></p>
+    <h1>{doc.data.title}</h1>
+    <p class="lead">{doc.data.description}</p>
+    <div class="prose"><slot /></div>
+    <nav class="pn" aria-label="More docs">
+      {prev ? <a class="prev" href={url(prev)}><small>Previous</small><b>{prev.data.title}</b></a> : <span></span>}
+      {next && <a class="next" href={url(next)}><small>Next</small><b>{next.data.title}</b></a>}
+    </nav>
+    <p class="edit"><a href={`${SITE.repo}/edit/main/apps/website/src/content/docs/${doc.id}.md`}>Edit this page on GitHub</a></p>
+  </main>
+
+  <aside class="toc" aria-labelledby="toc-h">
+    {toc.length > 0 && <>
+      <p id="toc-h" class="gname">On this page</p>
+      <ul>{toc.map((h) => <li class={`d${h.depth}`}><a href={`#${h.slug}`} data-slug={h.slug}>{h.text}</a></li>)}</ul>
+    </>}
+  </aside>
+</div>
+</Base>
+
+<style>
+  [hidden] { display: none !important; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .docs { max-width: 1440px; margin: 0 auto; padding: 0 var(--m); display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 48px; }
+  @media (min-width: 900px) { .docs { grid-template-columns: 250px minmax(0, 1fr); } }
+  @media (min-width: 1200px) { .docs { grid-template-columns: 250px minmax(0, 760px) 220px; justify-content: space-between; } }
+
+  /* the sections */
+  .side { padding-top: 24px; }
+  @media (min-width: 900px) { .side { position: sticky; top: var(--bar-h); align-self: start; max-height: calc(100vh - var(--bar-h)); overflow-y: auto; padding: 32px 4px 40px 0; scrollbar-width: thin; } }
+  .search { position: relative; }
+  .search input { width: 100%; height: 42px; padding: 0 40px 0 14px; border-radius: 10px; border: 0; background: var(--raised-2); color: var(--text); font: 500 15px var(--font); outline: none; }
+  @media (hover: none) { .search kbd { display: none; } }
+  .search input:focus { box-shadow: inset 0 0 0 2px var(--dot); }
+  .search kbd { position: absolute; right: 10px; top: 10px; min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: var(--pressed); color: var(--muted); font: 600 12px var(--font); }
+  .results { position: absolute; z-index: 10; left: 0; right: 0; top: 48px; margin: 0; padding: 6px; list-style: none; border-radius: 12px; background: var(--menu); box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow) 60%, transparent); max-height: 60vh; overflow-y: auto; }
+  .results :global(a) { display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; color: var(--text); }
+  .results :global(a small) { color: var(--muted); font-size: 13px; }
+  .results :global(a:hover), .results :global(a.on) { background: var(--hover); }
+  .results :global(.none) { padding: 10px 12px; color: var(--muted); font-size: 14px; }
+  .menu-toggle { display: none; }
+  .gname { font-size: 13px; font-weight: 700; color: var(--text); margin: 0 0 8px; padding-left: 10px; }
+  .group { margin-top: 26px; }
+  .nav ul, .toc ul { list-style: none; margin: 0; padding: 0; }
+  .nav a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--muted); font-size: 15px; transition: color .12s, background .12s; }
+  .nav a:hover { color: var(--text); background: var(--hover); }
+  .nav a { position: relative; padding-left: 24px; }
+  .nav a[aria-current='page'] { color: var(--text); font-weight: 600; }
+  .nav a[aria-current='page']::before { content: ""; position: absolute; left: 9px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--dot); }
+  @media (max-width: 899px) {
+    .menu-toggle { display: block; margin-top: 12px; width: 100%; height: 42px; border-radius: 10px; background: var(--raised); color: var(--text); font: 600 15px var(--font); text-align: left; padding: 0 14px; }
+    .nav { display: none; padding-bottom: 8px; }
+    .nav.open { display: block; }
+  }
+
+  /* the article */
+  .article { padding: 32px 0 40px; min-width: 0; }
+  .crumbs { display: flex; gap: 8px; color: var(--muted); font-size: 14px; }
+  .crumbs a { color: var(--muted); } .crumbs a:hover { color: var(--text); }
+  .article h1 { margin-top: 12px; font-size: clamp(34px, 3.4vw, 46px); font-weight: 800; letter-spacing: -.03em; line-height: 1.08; }
+  .lead { margin-top: 12px; font-size: 19px; color: var(--text-2); max-width: 40em; }
+  .prose { margin-top: 28px; font-size: 17px; line-height: 1.7; }
+  .prose :global(h2) { margin: 48px 0 12px; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; scroll-margin-top: calc(var(--bar-h) + 16px); }
+  .prose :global(h3) { margin: 32px 0 8px; font-size: 20px; font-weight: 700; scroll-margin-top: calc(var(--bar-h) + 16px); }
+  .prose :global(p) { margin: 0 0 16px; }
+  .prose :global(ul), .prose :global(ol) { margin: 0 0 16px; padding-left: 22px; }
+  .prose :global(li) { margin: 4px 0; }
+  .prose :global(li::marker) { color: var(--dot); }
+  .prose :global(a) { color: var(--dot); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--dot) 40%, transparent); }
+  .prose :global(a:hover) { text-decoration-color: var(--dot); }
+  .prose :global(strong) { font-weight: 700; color: var(--text); }
+  .prose :global(code) { font-size: .88em; padding: 2px 6px; border-radius: 6px; background: var(--raised-2); }
+  .prose :global(pre) { margin: 0 0 20px; padding: 16px 18px; border-radius: 12px; overflow-x: auto; background: var(--raised) !important; font-size: 14px; line-height: 1.6; }
+  .prose :global(pre code) { padding: 0; background: none; font-size: inherit; }
+  .prose :global(table) { width: 100%; margin: 0 0 20px; border-collapse: collapse; font-size: 15px; display: block; overflow-x: auto; }
+  .prose :global(th), .prose :global(td) { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .prose :global(th) { font-weight: 700; background: var(--raised); }
+  .prose :global(td code) { white-space: nowrap; }
+  .pn { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 56px; }
+  .pn a { display: grid; gap: 4px; padding: 16px 18px; border-radius: 12px; background: var(--raised); color: var(--text); transition: background .12s; }
+  .pn a:hover { background: var(--raised-2); }
+  .pn small { color: var(--muted); font-size: 13px; }
+  .pn .next { grid-column: 2; text-align: right; }
+  .edit { margin-top: 20px; font-size: 14px; }
+  .edit a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .edit a:hover { color: var(--text); }
+
+  /* on this page */
+  .toc { display: none; }
+  .toc .gname { padding-left: 16px; }
+  @media (min-width: 1200px) { .toc { display: block; position: sticky; top: var(--bar-h); align-self: start; padding-top: 40px; max-height: calc(100vh - var(--bar-h)); overflow-y: auto; } }
+  .toc a { position: relative; display: block; padding: 5px 0 5px 16px; color: var(--muted); font-size: 14px; transition: color .12s; }
+  .toc .d3 a { padding-left: 28px; font-size: 13px; }
+  .toc a.on::before { content: ""; position: absolute; left: 2px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--dot); }
+  .toc .d3 a.on::before { left: 14px; }
+  .toc a:hover { color: var(--text); }
+  .toc a.on { color: var(--text); }
+</style>
+
+<script>
+  // search: titles, descriptions and sections (docs/search.json), as you type; "/" focuses it, arrows and Enter pick
+  const q = document.getElementById('ds-q'), list = document.getElementById('ds-results');
+  let INDEX = null, hits = [], at = 0;
+  const load = () => (INDEX ??= fetch(q.dataset.index).then((r) => r.json()).catch(() => []));
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  // a page whose title has the words first, then its description, then one of its sections (linked to it), then its text
+  async function show() {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) { list.hidden = true; return; }
+    const pages = await load();
+    const has = (s) => words.every((w) => s.toLowerCase().includes(w));
+    hits = [];
+    for (const p of pages) {
+      if (has(p.t)) hits.push({ s: 3, t: p.t, sub: p.g + '. ' + p.d, u: p.u });
+      else if (has(p.t + ' ' + p.d + ' ' + p.g)) hits.push({ s: 2, t: p.t, sub: p.g + '. ' + p.d, u: p.u });
+      for (const [text, slug] of p.h) if (has(text)) hits.push({ s: 1, t: text, sub: p.t, u: p.u + '#' + slug });
+      if (!hits.some((h) => h.u.startsWith(p.u)) && has(p.x)) hits.push({ s: 0, t: p.t, sub: p.g + '. ' + p.d, u: p.u });
+    }
+    hits = hits.sort((a, b) => b.s - a.s).slice(0, 8);
+    at = 0;
+    list.innerHTML = hits.length ? hits.map((h, i) => `<li role="option"><a href="${h.u}" class="${i === 0 ? 'on' : ''}">${esc(h.t)}<small>${esc(h.sub)}</small></a></li>`).join('') : '<li class="none">No page matches. Try fewer words.</li>';
+    list.hidden = false;
+  }
+  q.addEventListener('focus', load, { once: true });
+  q.addEventListener('input', show);
+  q.addEventListener('keydown', (e) => {
+    const links = [...list.querySelectorAll('a')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % Math.max(1, links.length); links.forEach((a, i) => a.classList.toggle('on', i === at)); }
+    else if (e.key === 'Enter' && links[at]) { e.preventDefault(); location.href = links[at].href; }
+    else if (e.key === 'Escape') { q.value = ''; list.hidden = true; }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.search')) list.hidden = true; });
+  document.addEventListener('keydown', (e) => {
+    const a = document.activeElement;
+    if (e.key === '/' && a !== q && !(a && /INPUT|TEXTAREA/.test(a.tagName))) { e.preventDefault(); q.focus(); }
+  });
+
+  // phones: the sections behind a button
+  const toggle = document.querySelector('.menu-toggle'), nav = document.getElementById('ds-nav');
+  toggle.addEventListener('click', () => { const open = !nav.classList.contains('open'); nav.classList.toggle('open', open); toggle.setAttribute('aria-expanded', String(open)); });
+
+  // on this page: the heading you're reading
+  const links = [...document.querySelectorAll('.toc a')];
+  if (links.length) {
+    const map = new Map(links.map((a) => [a.dataset.slug, a]));
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { links.forEach((a) => a.classList.remove('on')); map.get(e.target.id)?.classList.add('on'); } }), { rootMargin: '-15% 0px -75% 0px' });
+    document.querySelectorAll('.prose h2[id], .prose h3[id]').forEach((h) => io.observe(h));
+  }
+</script>

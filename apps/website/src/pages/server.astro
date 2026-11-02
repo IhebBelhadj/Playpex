@@ -1,0 +1,276 @@
+---
+// Playpex Media Server's page, read top to bottom:
+// the hero: a folder of film files; pick one and its poster forms out of gold dots, with the title it was matched to;
+// the library and the folders, each a large dashboard screen with its words beside;
+// downloads: a download drawn as its pieces (Sintel's 987, gold as they arrive, with its own Pause), then the
+//   torrent client and the player that streams while it downloads;
+// search; then discovery on the Wi-Fi: the server's address in the footer's dot-matrix letters;
+// the gold download field.
+import { Image, getImage } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import DownloadField from '../components/DownloadField.astro';
+import { IMG } from '../lib/images';
+import { ICON } from '../lib/icons';
+import { led } from '../lib/led';
+import { SITE, DOWNLOADS } from '../data/site';
+
+const FILES = [
+  { file: 'Sintel (2010).mkv', size: '129 MB', title: 'Sintel', meta: '2010, animation, 14 min', poster: 'p0' },
+  { file: 'The Kid (1921).mkv', size: '1.3 GB', title: 'The Kid', meta: '1921, Charlie Chaplin, 68 min', poster: 'p1' },
+  { file: 'Tears of Steel (2012).mp4', size: '366 MB', title: 'Tears of Steel', meta: '2012, science fiction, 12 min', poster: 'p2' },
+  { file: 'The Cabinet of Dr. Caligari (1920).mkv', size: '2.1 GB', title: 'The Cabinet of Dr. Caligari', meta: '1920, Robert Wiene, 76 min', poster: 'p3' },
+  { file: 'The General (1926).avi', size: '1.6 GB', title: 'The General', meta: '1926, Buster Keaton, 78 min', poster: 'p4' },
+  { file: 'Spring (2019).mkv', size: '210 MB', title: 'Spring', meta: '2019, animation, 8 min', poster: 'p5' },
+  { file: 'Sherlock Jr. (1924).mkv', size: '1.2 GB', title: 'Sherlock Jr.', meta: '1924, Buster Keaton, 45 min', poster: 'p6' },
+  { file: 'Night of the Living Dead (1968).mkv', size: '3.1 GB', title: 'Night of the Living Dead', meta: '1968, George A. Romero, 96 min', poster: 'p7' },
+  { file: 'Nosferatu (1922).mkv', size: '2.2 GB', title: 'Nosferatu', meta: '1922, F. W. Murnau, 94 min', poster: 'p8' },
+];
+const posters = await Promise.all(FILES.map(async (f) => (await getImage({ src: IMG[f.poster], width: 600, format: 'webp' })).src));
+const LIBRARY = [
+  { shot: 's_dashtitles', title: 'A library you didn’t have to make', text: 'Every film and series it found, as a wall of posters, A to Z or newest first, with the cast, the ratings and the story behind each. Series are sorted by season and episode.' },
+  { shot: 's_dashfiles', title: 'Your folders, as they are', text: 'Each folder as a file browser, every file with the title it was matched to, its size and when it came. Nothing is moved, renamed or deleted; a wrong match is fixed in two clicks.' },
+];
+const COLS = 84, ROWS = 12, PIECES = 987;   // Sintel: 987 pieces of 128 KB, 123 MB; the band holds 1008 places
+const WIFI = [
+  { b: 'Screens find it by themselves', t: 'Playpex TV and Playpex Mobile look for it on your Wi-Fi when they start. No address to type.' },
+  { b: 'Paired once', t: 'A new screen shows a code; you approve it on the dashboard, and it stays paired.' },
+  { b: 'Any browser runs it', t: 'The dashboard opens at playpex.local:28470 on any computer or phone in the house.' },
+];
+---
+<Base title="Playpex Media Server: your folders, made a library" description="Playpex Media Server runs on a computer in your home. Point it at your folders: it finds every title and its poster, downloads, and streams to every screen on your Wi-Fi.">
+<main id="main" class="srv">
+  <section class="hero" aria-labelledby="sv-h">
+    <div class="words rv">
+      <h1 id="sv-h">Your folders,<span>made a library.</span></h1>
+      <p class="lede">Playpex Media Server runs on a computer in your home. Point it at the folders where your films are: it finds each title, its poster and its story, and streams them to every screen on your Wi-Fi.</p>
+      <div class="ctas"><a class="btn" href="#download"><Fragment set:html={ICON.download} />Download the server</a></div>
+    </div>
+    <div class="live rv" style="--d:1">
+      <div class="folder" data-ui>
+        <div class="fhead"><b>Films</b><span>/media/Films</span></div>
+        <ul class="files" role="listbox" aria-label="Files in the folder Films" tabindex="0" aria-activedescendant="sv-f0">
+          {FILES.map((f, i) => (
+            <li role="option" id={`sv-f${i}`} aria-selected={i === 0 ? 'true' : 'false'} class:list={{ on: i === 0 }} data-src={posters[i]} data-title={f.title} data-meta={f.meta}>
+              <span class="fi" aria-hidden="true"></span><span class="fn">{f.file}</span><span class="fs">{f.size}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="match">
+        <figure class="poster" id="sv-poster"><noscript><img src={posters[0]} alt="" /></noscript></figure>
+        <p class="mt" aria-live="polite"><b id="sv-title">{FILES[0].title}</b><span id="sv-meta">{FILES[0].meta}</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lib" aria-labelledby="lib-h">
+    <h2 id="lib-h" class="rv">Then it’s a library</h2>
+    {LIBRARY.map((s) => (
+      <article class="stop">
+        <figure class="rv" data-ui><Image src={IMG[s.shot]} alt={s.title} widths={[800, 1200, 1600]} sizes="(min-width: 900px) 90vw, 100vw" loading="lazy" /></figure>
+        <div class="stext rv" style="--d:1"><h3>{s.title}</h3><p>{s.text}</p></div>
+      </article>
+    ))}
+  </section>
+
+  <section class="dls" aria-labelledby="dls-h">
+    <div class="dtop">
+      <div class="rv">
+        <h2 id="dls-h">It downloads.<span>Plays as it goes.</span></h2>
+        <p class="lede">A torrent client that keeps what it gets, and a player that starts before the download ends. Leaving the player pauses a download; nothing is deleted unless you remove it.</p>
+      </div>
+      <div class="card rv" style="--d:1" data-ui>
+        <div class="crow"><b>Sintel</b><span id="sv-state">Downloading</span></div>
+        <p class="cbig"><span id="sv-pct">0</span> %</p>
+        <div class="crow small"><span id="sv-got">0 MB of 123 MB</span><span id="sv-speed">↓ 4.2 MB/s</span></div>
+        <button type="button" class="pause" id="sv-pause" aria-pressed="false">Pause</button>
+      </div>
+    </div>
+    <div class="strip rv" style="--d:2">
+      <canvas id="sv-strip" role="img" aria-label="Sintel’s 987 pieces, gold as they arrive" data-cols={COLS} data-rows={ROWS} data-pieces={PIECES} style={`aspect-ratio:${COLS} / ${ROWS}`}></canvas>
+    </div>
+    <div class="pair">
+      <figure class="rv" data-ui>
+        <Image src={IMG.s_downloads} alt="The dashboard’s Downloads: Sintel downloaded and seeding, with its details" widths={[800, 1200]} sizes="(min-width: 900px) 46vw, 100vw" loading="lazy" />
+        <figcaption><b>Downloads it keeps</b><span>Queues, seeding goals and speed limits, with each torrent’s files, peers, trackers and pieces.</span></figcaption>
+      </figure>
+      <figure class="rv" style="--d:1" data-ui>
+        <Image src={IMG.s_watch} alt="Sintel playing in the dashboard’s player in a browser" widths={[800, 1200]} sizes="(min-width: 900px) 46vw, 100vw" loading="lazy" />
+        <figcaption><b>Plays while it downloads</b><span>Open a film the moment it starts downloading, in the dashboard or on any screen.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="lib search" aria-labelledby="search-h">
+    <article class="stop">
+      <figure class="rv" data-ui><Image src={IMG.s_dashsearch} alt="The dashboard’s Search: Sintel on this server, its torrent and its page in the catalog" widths={[800, 1200, 1600]} sizes="(min-width: 900px) 90vw, 100vw" loading="lazy" /></figure>
+      <div class="stext rv" style="--d:1"><h2 id="search-h">One search for everything</h2><p>What’s on the server, the catalog, your plugins’ sources and links you paste, in one list, however the name is spelt.</p></div>
+    </article>
+  </section>
+
+  <section class="wifi" aria-labelledby="wifi-h">
+    <h2 id="wifi-h" class="rv">Every screen finds it</h2>
+    <p class="addr rv" style="--d:1" role="img" aria-label="playpex.local"><Fragment set:html={led('PLAYPEX.LOCAL', 'mark')} /></p>
+    <ul class="facts">
+      {WIFI.map((f, i) => <li class="rv" style={`--d:${i + 1}`}><b>{f.b}</b><span>{f.t}</span></li>)}
+    </ul>
+  </section>
+
+  <DownloadField
+    title="Install the server."
+    text="It’s free. Install it on the computer that keeps your films; Playpex TV and Playpex Mobile find it on your Wi-Fi after that."
+    links={[{ href: `${import.meta.env.BASE_URL}tv`, label: 'Playpex TV' }, { href: `${import.meta.env.BASE_URL}mobile`, label: 'Playpex Mobile' }, { href: `${import.meta.env.BASE_URL}releases?app=server`, label: 'All releases' }]}
+    dialog="Download Playpex Media Server" files={DOWNLOADS} />
+</main>
+</Base>
+
+<style>
+  .hero, .lib, .dls, .wifi { max-width: 1440px; margin: 0 auto; padding-left: var(--m); padding-right: var(--m); }
+  h2 { font-size: var(--t-h2); }
+  .lede { color: var(--text-2); font-size: 18.5px; line-height: 1.55; max-width: 30em; margin: 24px 0 28px; }
+
+  /* the hero: the folder, and the poster each file becomes */
+  .hero { padding-top: 56px; display: grid; gap: 48px; align-items: center; min-height: calc(100svh - var(--bar-h)); }
+  .words h1, .dls h2 { font-size: clamp(48px, 5.2vw, 90px); font-weight: 800; letter-spacing: -.035em; line-height: .93; }
+  .words h1 span, .dls h2 span { display: block; color: var(--text-3); }
+  .live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .62fr); gap: 24px; align-items: center; }
+  .folder { background: var(--ui-bg); border-radius: 12px; overflow: hidden; }
+  .fhead { display: flex; gap: 12px; align-items: baseline; padding: 14px 18px; background: var(--ui-raised); }
+  .fhead b { font-size: 16px; } .fhead span { color: var(--ui-muted); font-size: 13px; }
+  .files { list-style: none; margin: 0; padding: 6px; outline: none; }
+  .files li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 12px; border-radius: 8px; color: var(--ui-text-2); font-size: 15px; cursor: pointer; transition: background .15s, color .15s; }
+  .files li:hover { background: var(--ui-field); }
+  .files li.on { background: var(--ui-text); color: var(--ui-on-light); }
+  .files:focus-visible li.on { outline: 2px solid var(--dot); outline-offset: 2px; }
+  .fi { width: 16px; height: 20px; border-radius: 3px; background: var(--pressed); }
+  .files li.on .fi { background: var(--dot); }
+  .fn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fs { font-size: 13px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .poster { position: relative; margin: 0; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--raised); }
+  .poster :global(canvas), .poster :global(noscript img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .mt { display: grid; gap: 4px; margin-top: 14px; min-height: 3.6em; }
+  .mt b { font-size: var(--t-lead); font-weight: 700; letter-spacing: -.01em; }
+  .mt span { color: var(--muted); font-size: var(--t-small); }
+  @media (min-width: 1000px) { .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+  @media (max-width: 599px) { .live { grid-template-columns: minmax(0, 1fr) 38%; gap: 14px; } .files li { font-size: 13px; padding: 8px; gap: 8px; grid-template-columns: 14px minmax(0, 1fr); } .fs { display: none; } .fi { width: 12px; height: 15px; } }
+
+  /* the library and search: a large screen, its words beside */
+  .lib { padding-top: var(--gap-section); display: grid; gap: 96px; }
+  .lib > h2 { margin-bottom: -48px; }
+  .stop { display: grid; gap: 20px; }
+  .stop figure { margin: 0; border-radius: 12px; overflow: hidden; background: var(--ui-bg); aspect-ratio: 16 / 10; }
+  .stop figure img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+  .stext { display: grid; gap: 12px; }
+  .stext h3 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .stext p { font-size: var(--t-lead); max-width: 34em; }
+  @media (min-width: 900px) { .stext { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: baseline; } }
+
+  /* downloads: the download as its pieces, then the client and the player */
+  .dls { padding-top: var(--gap-section); display: grid; gap: 40px; }
+  .dtop { display: grid; gap: 32px; align-items: end; }
+  .card { background: var(--ui-bg); border-radius: 14px; padding: 22px 24px; display: grid; gap: 8px; }
+  .crow { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .crow b { font-size: var(--t-lead); }
+  .crow span { color: var(--ui-muted); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+  .cbig { margin: 4px 0 0; font-size: clamp(48px, 5vw, 76px); font-weight: 800; letter-spacing: -.04em; line-height: 1; color: var(--dot); font-variant-numeric: tabular-nums; }
+  .pause { margin-top: 10px; justify-self: start; height: 44px; padding: 0 20px; border-radius: 99px; background: var(--ui-field); color: var(--ui-text); font: 600 15px var(--font); transition: background .15s, transform .1s; }
+  .pause:hover { background: var(--pressed); }
+  .pause:active { transform: scale(.96); }
+  .pause:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  .strip canvas { display: block; width: 100%; }
+  .pair { display: grid; gap: 32px; margin-top: 24px; }
+  .pair figure { margin: 0; display: grid; gap: 14px; }
+  .pair img { width: 100%; height: auto; border-radius: 12px; aspect-ratio: 16 / 10; object-fit: cover; object-position: left top; background: var(--ui-bg); }
+  .pair figcaption { display: grid; gap: 6px; }
+  .pair b { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .pair span { max-width: 30em; }
+  @media (min-width: 900px) { .dtop { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); } .pair { grid-template-columns: 1fr 1fr; } }
+
+  /* search: one stop, its title a section heading */
+  .search .stext h2 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+
+  /* discovery: the address in dots, three facts under it */
+  .wifi { padding-top: var(--gap-section); display: grid; gap: 36px; }
+  .wifi h2 { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; }
+  .addr { margin: 0; }
+  .addr :global(.mark) { width: 100%; height: auto; display: block; }
+  .facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
+  .facts li { display: grid; gap: 8px; }
+  .facts b { font-size: var(--t-lead); font-weight: 700; }
+  .facts span { max-width: 26em; }
+  @media (min-width: 900px) { .facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; } }
+</style>
+
+<script>
+  import { Pic } from '../scripts/home/dither.js';
+  import { initDownload } from '../scripts/home/download.js';
+  import { BAYER4, THEME, dpr, still, system } from '../scripts/home/util.js';
+
+  // ── the folder: a file picked, its poster forms out of gold dots, with the title it was matched to ──
+  const list = document.querySelector('.files'), rows = [...list.querySelectorAll('li')];
+  const pic = Pic(document.getElementById('sv-poster'));
+  const title = document.getElementById('sv-title'), meta = document.getElementById('sv-meta');
+  let at = 0;
+  function pick(i) {
+    at = Math.max(0, Math.min(rows.length - 1, i));
+    rows.forEach((r, k) => { r.classList.toggle('on', k === at); r.setAttribute('aria-selected', String(k === at)); });
+    list.setAttribute('aria-activedescendant', rows[at].id);
+    const r = rows[at];
+    pic.show(r.dataset.src, false);
+    setTimeout(() => pic.show(r.dataset.src, true), 120);
+    title.textContent = r.dataset.title; meta.textContent = r.dataset.meta;
+  }
+  rows.forEach((r, i) => r.addEventListener('click', () => pick(i)));
+  list.addEventListener('keydown', (e) => { const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (d) { e.preventDefault(); pick(at + d); } });
+  pick(0);
+
+  // ── the download: its pieces arrive scattered (rarest first, as a torrent fetches them), each a dot turning gold ──
+  const cv = document.getElementById('sv-strip'), C = +cv.dataset.cols, R = +cv.dataset.rows, N = +cv.dataset.pieces;
+  const pct = document.getElementById('sv-pct'), got = document.getElementById('sv-got'), state = document.getElementById('sv-state'), speed = document.getElementById('sv-speed');
+  const btn = document.getElementById('sv-pause');
+  const have = new Uint8Array(N);
+  const order = [...Array(N).keys()].sort((a, b) => (BAYER4[(Math.floor(a / C) % 4) * 4 + a % 4] - BAYER4[(Math.floor(b / C) % 4) * 4 + b % 4]) || (Math.random() - .5));
+  let done = 0, paused = false, last = 0;
+  function draw() {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d'), cw = cv.width / C, ch = cv.height / R, r = Math.min(cw, ch) * .36;
+    g.clearRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < N; i++) {
+      g.fillStyle = have[i] ? THEME.css.dot : THEME.css.unlit;
+      g.beginPath(); g.arc((i % C + .5) * cw, (Math.floor(i / C) + .5) * ch, r, 0, 6.2832); g.fill();
+    }
+  }
+  function text() {
+    pct.textContent = String(Math.round(done / N * 100));
+    got.textContent = Math.round(done * 128 / 1024) + ' MB of 123 MB';
+    state.textContent = done >= N ? 'Seeding' : paused ? 'Paused' : 'Downloading';
+    speed.textContent = done >= N ? '↑ 0.6 MB/s' : paused ? '↓ 0 B/s' : '↓ 4.2 MB/s';
+    btn.textContent = done >= N ? 'Download again' : paused ? 'Resume' : 'Pause';
+    btn.setAttribute('aria-pressed', String(paused));
+  }
+  function tick(now) {
+    if (!paused && done < N && now - last > 16) {
+      last = now;
+      for (let k = 0; k < 3 && done < N; k++) have[order[done++]] = 1;
+      draw(); text();
+    }
+    if (done < N && !paused) requestAnimationFrame(tick);
+  }
+  btn.addEventListener('click', () => {
+    if (done >= N) { have.fill(0); done = 0; paused = false; draw(); text(); requestAnimationFrame(tick); return; }
+    paused = !paused; text();
+    if (!paused) requestAnimationFrame(tick);
+  });
+  if (still) { have.fill(1); done = N; draw(); text(); }
+  else {
+    draw(); text();
+    const io = new IntersectionObserver((es) => { if (es[0].isIntersecting) { io.disconnect(); requestAnimationFrame(tick); } }, { threshold: .3 });
+    io.observe(cv);
+  }
+  addEventListener('resize', draw);
+
+  const rise = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rise.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach((el) => rise.observe(el));
+  initDownload(system());
+</script>

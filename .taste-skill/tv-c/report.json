@@ -1,0 +1,2290 @@
+{
+ "url": "http://localhost:4321/drafts/tv-c",
+ "at": "2026-11-02T19:48:36.185Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 6,
+   "filled": [
+    0.81,
+    0.94,
+    0.93,
+    0.97,
+    0.97,
+    0.61
+   ],
+   "motion": {
+    "elements": 14,
+    "css": 0,
+    "transitions": 14,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 5287,
+     "screens": 5.9,
+     "words": 355,
+     "img": 8,
+     "video": 0,
+     "canvas": 1,
+     "svg": 11,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 8,
+     "uiAbuse": false,
+     "realPictures": 1,
+     "videoCount": 0,
+     "uiPictures": 8,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "now showing at home",
+     "words": 4,
+     "chars": 19,
+     "lines": 2,
+     "size": 151.2,
+     "vw": 10.5,
+     "font": "Jost Variable",
+     "weight": 900,
+     "tracking": -0.05,
+     "leading": 0.84,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.96,
+     "top": 154,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "now showing at home",
+     "words": 4,
+     "lines": 2,
+     "size": 151.2,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "now showing at home",
+      "words": 4,
+      "chars": 19,
+      "lines": 2,
+      "size": 151.2,
+      "vw": 10.5,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.05,
+      "leading": 0.84,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 154,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "The foyer and the screen",
+      "words": 5,
+      "chars": 24,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.23,
+      "top": 928,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "OK Back",
+      "words": 2,
+      "chars": 7,
+      "lines": 1,
+      "size": 64.8,
+      "vw": 4.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.23,
+      "top": 1716,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "Small things, from the sofa",
+      "words": 5,
+      "chars": 27,
+      "lines": 2,
+      "size": 60,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.46,
+      "top": 1814,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "You stopped at 5:18",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 39.6,
+      "vw": 2.8,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 1982,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "DTS → AAC",
+      "words": 3,
+      "chars": 9,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 3.3,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": true,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.22,
+      "top": 2195,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "I’ve been looking for you.",
+      "words": 5,
+      "chars": 26,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 3.3,
+      "font": "Jost Variable",
+      "weight": 500,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.4,
+      "top": 2255,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Up next in 12",
+      "words": 4,
+      "chars": 13,
+      "lines": 1,
+      "size": 43.2,
+      "vw": 3,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.22,
+      "top": 2427,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Tonight on Living room TV",
+      "words": 5,
+      "chars": 25,
+      "lines": 2,
+      "size": 46,
+      "vw": 3.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.36,
+      "top": 2820,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "install",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 388.8,
+      "vw": 27,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.06,
+      "leading": 0.78,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.67,
+      "top": 4286,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 10,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 1,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      13,
+      14,
+      15,
+      18,
+      20,
+      22,
+      36,
+      46,
+      60,
+      151,
+      389
+     ],
+     "sizeCount": 11,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.55,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 388.8,
+      "vw": 27,
+      "font": "Jost Variable",
+      "text": "Install"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.1,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#edcc75",
+       "top": 64,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 900,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#2f6fe4",
+       "top": 900,
+       "hsl": {
+        "h": 219,
+        "s": 0.77,
+        "l": 0.54
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 2756,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.55
+      },
+      {
+       "color": "#111111",
+       "share": 0.31
+      },
+      {
+       "color": "#141414",
+       "share": 0.13
+      },
+      {
+       "color": "#edcc75",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 4,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 47,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download for Linux",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 3,
+     "boxRadius": 50,
+     "squareMedia": 1,
+     "roundedMedia": 3,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 1738
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.16
+     }
+    ],
+    "nav": {
+     "links": 5,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 5287,
+    "margins": {
+     "left": 30,
+     "right": 32
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 836,
+      "words": 26,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Now showing",
+       "size": 151,
+       "tag": "h1"
+      },
+      "left": 32,
+      "right": 58,
+      "textLeft": 32,
+      "textRight": 58,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.pair",
+      "tag": "section",
+      "top": 900,
+      "height": 828,
+      "words": 23,
+      "media": 2,
+      "middle": 0,
+      "heading": {
+       "text": "The foyer and the screen",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 0,
+      "textLeft": 32,
+      "textRight": 436,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.board",
+      "tag": "section",
+      "top": 1728,
+      "height": 908,
+      "words": 81,
+      "media": 0,
+      "middle": 86,
+      "heading": {
+       "text": "OK",
+       "size": 65,
+       "tag": "span"
+      },
+      "left": 30,
+      "right": 10,
+      "textLeft": 30,
+      "textRight": 10,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.prog",
+      "tag": "section",
+      "top": 2636,
+      "height": 1414,
+      "words": 120,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Tonight on Living room TV",
+       "size": 46,
+       "tag": "h2"
+      },
+      "left": 500,
+      "right": 500,
+      "textLeft": 500,
+      "textRight": 500,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "a#get.cta",
+      "tag": "a",
+      "top": 4050,
+      "height": 540,
+      "words": 16,
+      "media": 0,
+      "middle": 361,
+      "heading": {
+       "text": "Install",
+       "size": 389,
+       "tag": "span"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 441,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 4590,
+      "height": 697,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 50,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "now showing at home",
+      "size": 151,
+      "top": 154,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 30,
+      "n": 5
+     }
+    ],
+    "leftBlocks": 5,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0.19,
+    "voidBox": {
+     "x": 0,
+     "y": 480,
+     "w": 840,
+     "h": 300
+    }
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 8,
+   "filled": [
+    0.78,
+    0.95,
+    0.8,
+    0.79,
+    0.93,
+    0.93,
+    0.93,
+    0.36
+   ],
+   "motion": {
+    "elements": 15,
+    "css": 0,
+    "transitions": 15,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 8181,
+     "screens": 8,
+     "words": 347,
+     "img": 8,
+     "video": 0,
+     "canvas": 1,
+     "svg": 11,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 8,
+     "uiAbuse": false,
+     "realPictures": 1,
+     "videoCount": 0,
+     "uiPictures": 8,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "now showing at home",
+     "words": 4,
+     "chars": 19,
+     "lines": 2,
+     "size": 119,
+     "vw": 15.5,
+     "font": "Jost Variable",
+     "weight": 900,
+     "tracking": -0.05,
+     "leading": 0.84,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.96,
+     "top": 166,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "now showing at home",
+     "words": 4,
+     "lines": 2,
+     "size": 119,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "now showing at home",
+      "words": 4,
+      "chars": 19,
+      "lines": 2,
+      "size": 119,
+      "vw": 15.5,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.05,
+      "leading": 0.84,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 166,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "The foyer and the screen",
+      "words": 5,
+      "chars": 24,
+      "lines": 2,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.3,
+      "top": 1052,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Small things, from the sofa",
+      "words": 5,
+      "chars": 27,
+      "lines": 1,
+      "size": 60,
+      "vw": 7.8,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 3270,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "OK Back",
+      "words": 2,
+      "chars": 7,
+      "lines": 1,
+      "size": 51.8,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.35,
+      "top": 3339,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "You stopped at 5:18",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 39.6,
+      "vw": 5.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.57,
+      "top": 4039,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "I’ve been looking for you.",
+      "words": 5,
+      "chars": 26,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 6.1,
+      "font": "Jost Variable",
+      "weight": 500,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.74,
+      "top": 4601,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "DTS → AAC",
+      "words": 3,
+      "chars": 9,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 6.1,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": true,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.42,
+      "top": 4913,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "Up next in 12",
+      "words": 4,
+      "chars": 13,
+      "lines": 1,
+      "size": 43.2,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.41,
+      "top": 4921,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Tonight on Living room TV",
+      "words": 5,
+      "chars": 25,
+      "lines": 1,
+      "size": 30.7,
+      "vw": 4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.71,
+      "top": 5530,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "install",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 207.4,
+      "vw": 27,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.06,
+      "leading": 0.78,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.67,
+      "top": 7150,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 10,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 1,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      14,
+      15,
+      18,
+      20,
+      22,
+      26,
+      31,
+      60,
+      119,
+      207
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.55,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 207.4,
+      "vw": 27,
+      "font": "Jost Variable",
+      "text": "Install"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.1,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#edcc75",
+       "top": 64,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 1024,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#2f6fe4",
+       "top": 1966,
+       "hsl": {
+        "h": 219,
+        "s": 0.77,
+        "l": 0.54
+       }
+      },
+      {
+       "color": "#141414",
+       "top": 2914,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#0a0a0a",
+       "top": 4461,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.04
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 5466,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.54
+      },
+      {
+       "color": "#111111",
+       "share": 0.32
+      },
+      {
+       "color": "#141414",
+       "share": 0.13
+      },
+      {
+       "color": "#edcc75",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 4,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 47,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 13,
+     "squareMedia": 1,
+     "roundedMedia": 3,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 4019
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.27
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 8181,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 960,
+      "words": 26,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Now showing",
+       "size": 119,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 63,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.half.a",
+      "tag": "div",
+      "top": 1024,
+      "height": 942,
+      "words": 14,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "The foyer and the screen",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 508,
+      "textLeft": 16,
+      "textRight": 508,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.half.b",
+      "tag": "div",
+      "top": 1966,
+      "height": 942,
+      "words": 9,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 16,
+      "right": 500,
+      "textLeft": 16,
+      "textRight": 500,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.rv.tile",
+      "tag": "div",
+      "top": 2914,
+      "height": 436,
+      "words": 5,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Small things, from the sofa",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 26,
+      "right": 47,
+      "textLeft": 26,
+      "textRight": 47,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.rv.tile",
+      "tag": "div",
+      "top": 3356,
+      "height": 657,
+      "words": 12,
+      "media": 0,
+      "middle": 338,
+      "heading": {
+       "text": "OK",
+       "size": 52,
+       "tag": "span"
+      },
+      "left": 26,
+      "right": 6,
+      "textLeft": 26,
+      "textRight": 6,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.rv.tile",
+      "tag": "div",
+      "top": 4461,
+      "height": 436,
+      "words": 14,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "I’ve been looking for you.",
+       "size": 47,
+       "tag": "p"
+      },
+      "left": 26,
+      "right": 118,
+      "textLeft": 26,
+      "textRight": 118,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.prog",
+      "tag": "section",
+      "top": 5346,
+      "height": 1352,
+      "words": 120,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Tonight on Living room TV",
+       "size": 31,
+       "tag": "h2"
+      },
+      "left": 164,
+      "right": 164,
+      "textLeft": 164,
+      "textRight": 164,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "a#get.cta",
+      "tag": "a",
+      "top": 6698,
+      "height": 614,
+      "words": 16,
+      "media": 0,
+      "middle": 172,
+      "heading": {
+       "text": "Install",
+       "size": 207,
+       "tag": "span"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 236,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 7312,
+      "height": 869,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 34,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "now showing at home",
+      "size": 119,
+      "top": 166,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 5
+     }
+    ],
+    "leftBlocks": 5,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 8,
+   "filled": [
+    0.85,
+    0.96,
+    0.8,
+    0.93,
+    0.97,
+    0.93,
+    0.73,
+    0.38
+   ],
+   "motion": {
+    "elements": 15,
+    "css": 0,
+    "transitions": 15,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 6432,
+     "screens": 7.6,
+     "words": 347,
+     "img": 8,
+     "video": 0,
+     "canvas": 1,
+     "svg": 11,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 8,
+     "uiAbuse": false,
+     "realPictures": 1,
+     "videoCount": 0,
+     "uiPictures": 4,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "now showing at home",
+     "words": 4,
+     "chars": 19,
+     "lines": 2,
+     "size": 60.5,
+     "vw": 15.5,
+     "font": "Jost Variable",
+     "weight": 900,
+     "tracking": -0.05,
+     "leading": 0.84,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.92,
+     "top": 148,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "now showing at home",
+     "words": 4,
+     "lines": 2,
+     "size": 60.5,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "now showing at home",
+      "words": 4,
+      "chars": 19,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 15.5,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.05,
+      "leading": 0.84,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 148,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "The foyer and the screen",
+      "words": 5,
+      "chars": 24,
+      "lines": 2,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.6,
+      "top": 872,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Small things, from the sofa",
+      "words": 5,
+      "chars": 27,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.87,
+      "top": 2535,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "OK Back",
+      "words": 2,
+      "chars": 7,
+      "lines": 1,
+      "size": 51.8,
+      "vw": 13.3,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.68,
+      "top": 2616,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "You stopped at 5:18",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 39.6,
+      "vw": 10.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.63,
+      "top": 2999,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "I’ve been looking for you.",
+      "words": 5,
+      "chars": 26,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 12,
+      "font": "Jost Variable",
+      "weight": 500,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 1.46,
+      "top": 3281,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "DTS → AAC",
+      "words": 3,
+      "chars": 9,
+      "lines": 1,
+      "size": 46.8,
+      "vw": 12,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": true,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.82,
+      "top": 3449,
+      "tag": "div",
+      "kind": "heading"
+     },
+     {
+      "text": "Up next in 12",
+      "words": 4,
+      "chars": 13,
+      "lines": 1,
+      "size": 43.2,
+      "vw": 11.1,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.8,
+      "top": 3457,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Tonight on Living room TV",
+      "words": 5,
+      "chars": 25,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.81,
+      "top": 3854,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Early evening",
+      "words": 2,
+      "chars": 13,
+      "lines": 1,
+      "size": 22,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.81,
+      "top": 4017,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "The silent hour",
+      "words": 3,
+      "chars": 15,
+      "lines": 1,
+      "size": 22,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.81,
+      "top": 4290,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Late show",
+      "words": 2,
+      "chars": 9,
+      "lines": 1,
+      "size": 22,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.81,
+      "top": 4563,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "install",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 110,
+      "vw": 28.2,
+      "font": "Jost Variable",
+      "weight": 900,
+      "tracking": -0.06,
+      "leading": 0.78,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.7,
+      "top": 5495,
+      "tag": "span",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 13,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 4,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      14,
+      15,
+      18,
+      20,
+      22,
+      26,
+      30,
+      36,
+      61,
+      110
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.55,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 48,
+     "max": {
+      "size": 110,
+      "vw": 28.2,
+      "font": "Jost Variable",
+      "text": "Install"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.1,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#edcc75",
+       "top": 64,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 844,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#2f6fe4",
+       "top": 1620,
+       "hsl": {
+        "h": 219,
+        "s": 0.77,
+        "l": 0.54
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 3790,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.54
+      },
+      {
+       "color": "#111111",
+       "share": 0.32
+      },
+      {
+       "color": "#141414",
+       "share": 0.13
+      },
+      {
+       "color": "#edcc75",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 4,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 47,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 13,
+     "squareMedia": 1,
+     "roundedMedia": 3,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": false,
+       "top": 2979
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.17
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 6432,
+    "margins": {
+     "left": 16,
+     "right": 6
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 780,
+      "words": 26,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Now showing",
+       "size": 60,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 24,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.half.a",
+      "tag": "div",
+      "top": 844,
+      "height": 776,
+      "words": 14,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "The foyer and the screen",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 130,
+      "textLeft": 16,
+      "textRight": 130,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.half.b",
+      "tag": "div",
+      "top": 1620,
+      "height": 776,
+      "words": 9,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 16,
+      "right": 122,
+      "textLeft": 16,
+      "textRight": 122,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.board",
+      "tag": "section",
+      "top": 2397,
+      "height": 1273,
+      "words": 80,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "OK",
+       "size": 52,
+       "tag": "span"
+      },
+      "left": 6,
+      "right": 6,
+      "textLeft": 6,
+      "textRight": 6,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "canvas.wall",
+      "tag": "canvas",
+      "top": 3670,
+      "height": 1404,
+      "words": 0,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "div.sheet-p.rv",
+      "tag": "div",
+      "top": 3790,
+      "height": 1164,
+      "words": 120,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Tonight on Living room TV",
+       "size": 30,
+       "tag": "h2"
+      },
+      "left": 38,
+      "right": 38,
+      "textLeft": 38,
+      "textRight": 38,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "a#get.cta",
+      "tag": "a",
+      "top": 5074,
+      "height": 506,
+      "words": 16,
+      "media": 0,
+      "middle": 35,
+      "heading": {
+       "text": "Install",
+       "size": 110,
+       "tag": "span"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 99,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 5580,
+      "height": 851,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "now showing at home",
+      "size": 60,
+      "top": 148,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 5
+     }
+    ],
+    "leftBlocks": 5,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "size-count",
+   "width": 1440,
+   "message": "11 different font sizes (13, 14, 15, 18, 20, 22, 36, 46, 60, 151, 389).",
+   "fix": "A page needs about five: display, heading, lead, body, small.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "body-size",
+   "width": 1440,
+   "message": "Body text is 15px.",
+   "fix": "Body copy 16–20px.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "no-real-pictures",
+   "width": 1440,
+   "message": "Only 1 real photograph(s) or clip(s); the rest are interface fragments.",
+   "fix": "Add two or more real pictures of the customer's world from scripts/assets.mjs, not stock of people at laptops."
+  },
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "still-page",
+   "width": 1440,
+   "message": "Little motion: 14 element(s) moved while the page loaded and scrolled.",
+   "fix": "Give every section an entrance for its parts (not one fade of the whole block) and add one moving picture: a looping clip or a slow move on a photograph."
+  },
+  {
+   "level": "WARN",
+   "id": "lopsided",
+   "width": 768,
+   "message": "A section keeps its content on one side and leaves 508px of the width empty: \"The foyer and the screen\".",
+   "fix": "Fill the other side with what the section has (its picture, a second column, the figure), or defend the void in one sentence."
+  },
+  {
+   "level": "FAIL",
+   "id": "covered-text",
+   "width": 390,
+   "message": "Large text lies under another element at some scroll position: \"You stopped at 5:18\" (screen 4, 50% hidden); \"AAC\" (screen 5, 100% hidden); \"Up next in 12\" (screen 5, 25% hidden)",
+   "fix": "Nothing may sit on top of a headline or statement. Move the picture, shorten the pinned run, or raise the text above it (z-index) and give it a ground."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-c/desktop-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-c/desktop-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-c/desktop-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-c/tablet-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-c/tablet-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-c/tablet-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-c/mobile-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-c/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

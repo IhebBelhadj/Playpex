@@ -1,0 +1,121 @@
+- generic [active] [ref=f22e1]:
+  - link "Skip to the content" [ref=f22e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f22e4]:
+    - generic [ref=f22e5]:
+      - link "Playpex" [ref=f22e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f22e9]:
+        - listitem [ref=f22e10]:
+          - button "Products" [ref=f22e11] [cursor=pointer]
+        - listitem [ref=f22e14]:
+          - link "Plugins" [ref=f22e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f22e16]:
+          - button "Docs" [ref=f22e17] [cursor=pointer]
+        - listitem [ref=f22e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f22e21] [cursor=pointer]:
+            - /url: "#releases"
+            - text: Releases
+            - generic [ref=f22e22]: 0.10.1-alpha.1
+      - generic [ref=f22e23]:
+        - link "GitHub" [ref=f22e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f22e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=f22e31]:
+    - heading "Releases" [level=1] [ref=f22e32]
+    - paragraph [ref=f22e33]: Pick an app to see its versions. Files for Linux come first.
+    - tablist "Apps" [ref=f22e34]:
+      - tab "Playpex Media Server 0.10.1 alpha 1, 1 November 2026" [selected] [ref=f22e35] [cursor=pointer]:
+        - generic [ref=f22e37]: Playpex Media Server
+        - generic [ref=f22e38]: 0.10.1 alpha 1, 1 November 2026
+      - tab "Playpex TV 0.10.1 alpha 1, 1 November 2026" [ref=f22e39] [cursor=pointer]:
+        - generic [ref=f22e41]: Playpex TV
+        - generic [ref=f22e42]: 0.10.1 alpha 1, 1 November 2026
+      - tab "Playpex Mobile 0.10.1 alpha 1, 1 November 2026" [ref=f22e43] [cursor=pointer]:
+        - generic [ref=f22e45]: Playpex Mobile
+        - generic [ref=f22e46]: 0.10.1 alpha 1, 1 November 2026
+      - tab "Server Manager 0.10.1 alpha 1, 1 November 2026" [ref=f22e47] [cursor=pointer]:
+        - generic [ref=f22e49]: Server Manager
+        - generic [ref=f22e50]: 0.10.1 alpha 1, 1 November 2026
+    - tabpanel "Playpex Media Server 0.10.1 alpha 1, 1 November 2026" [ref=f22e51]:
+      - article [ref=f22e52]:
+        - generic [ref=f22e53]:
+          - heading "0.10.1 alpha 1" [level=2] [ref=f22e54]
+          - paragraph [ref=f22e55]:
+            - text: 1 November 2026
+            - emphasis [ref=f22e56]: Latest
+        - list [ref=f22e57]:
+          - listitem [ref=f22e58]: "Remote control from the dashboard: play, pause, seek and stop on any screen, or take over its keyboard and pointer."
+          - listitem [ref=f22e59]: Commands travel over a direct connection between the dashboard and the screen when the network allows it.
+        - list [ref=f22e60]:
+          - listitem [ref=f22e61]:
+            - link "Windows Playpex-Media-Server-Setup-0.10.1-alpha.1.exe" [ref=f22e62] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases/tag/server-v0.10.1-alpha.1
+              - generic [ref=f22e63]: Windows
+              - generic [ref=f22e64]: Playpex-Media-Server-Setup-0.10.1-alpha.1.exe
+          - listitem [ref=f22e65]:
+            - link "macOS Playpex-Media-Server-0.10.1-alpha.1.dmg" [ref=f22e66] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases/tag/server-v0.10.1-alpha.1
+              - generic [ref=f22e67]: macOS
+              - generic [ref=f22e68]: Playpex-Media-Server-0.10.1-alpha.1.dmg
+          - listitem [ref=f22e69]:
+            - link "Linux Playpex-Media-Server-0.10.1-alpha.1.AppImage, Playpex-Media-Server_0.10.1-alpha.1_amd64.deb" [ref=f22e70] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases/tag/server-v0.10.1-alpha.1
+              - generic [ref=f22e71]: Linux
+              - generic [ref=f22e72]: Playpex-Media-Server-0.10.1-alpha.1.AppImage, Playpex-Media-Server_0.10.1-alpha.1_amd64.deb
+      - article [ref=f22e73]:
+        - generic [ref=f22e74]:
+          - heading "0.10.0 alpha 1" [level=2] [ref=f22e75]
+          - paragraph [ref=f22e76]: 30 October 2026
+        - list [ref=f22e77]:
+          - listitem [ref=f22e78]: "A library of your folders: every file matched to its title, poster and story, with fixes for wrong matches."
+          - listitem [ref=f22e79]: "Downloads as a full torrent client: a queue, per-download rules and speed limits, three engines to choose from."
+          - listitem [ref=f22e80]: "Plugins: sources, live TV, ratings and more from signed repositories, each running in a sandbox."
+          - listitem [ref=f22e81]: Live TV with a programme guide, from your own M3U playlist.
+          - listitem [ref=f22e82]: One search for everything the server can reach, and pasted links read by the server.
+          - listitem [ref=f22e83]: A DLNA server for the TVs on your network, and the name playpex.local.
+        - list [ref=f22e84]:
+          - listitem [ref=f22e85]:
+            - link "Windows Playpex-Media-Server-Setup-0.10.0-alpha.1.exe" [ref=f22e86] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases/tag/server-v0.10.0-alpha.1
+              - generic [ref=f22e87]: Windows
+              - generic [ref=f22e88]: Playpex-Media-Server-Setup-0.10.0-alpha.1.exe
+  - contentinfo [ref=f22e89]:
+    - generic [ref=f22e90]:
+      - img "Playpex" [ref=f22e91]
+      - generic [ref=f22e95]:
+        - generic [ref=f22e96]:
+          - heading "Apps" [level=3] [ref=f22e97]
+          - link "Media Server" [ref=f22e98] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f22e99] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f22e100] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f22e101] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f22e102]:
+          - heading "Docs" [level=3] [ref=f22e103]
+          - link "First steps" [ref=f22e104] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f22e105] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f22e106] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f22e107] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f22e108]:
+          - heading "Project" [level=3] [ref=f22e109]
+          - link "Source code" [ref=f22e110] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f22e111] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=f22e112] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f22e113]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f22e114]:
+        - generic [ref=f22e115]: Playpex 2026
+        - link "Download" [ref=f22e116] [cursor=pointer]:
+          - /url: "#download"

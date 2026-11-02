@@ -1,0 +1,24 @@
+---
+// The rooms: a held track that moves by whole rooms on desktop, a carousel on phones (scripts/home/*/scenes.js,
+// scripts/product/*). Each room is a screenshot with a title and a line.
+import { Image } from 'astro:assets';
+import { IMG } from '../lib/images';
+
+export interface Room { shot: string; alt: string; title: string; text: string }
+interface Props { id: string; title: string; rooms: Room[] }
+const { id, title, rooms } = Astro.props;
+---
+<section class="scene sc-rooms" id={id} data-scene="rooms" aria-labelledby="rooms-title">
+    <div class="scene-stage">
+      <div class="rooms-head"><h2 id="rooms-title">{title}</h2></div>
+      <div class="rooms" id="rooms">
+        {rooms.map((r, i) => (
+          <article class:list={['room', { cur: i === 0 }]}>
+            <figure><Image src={IMG[r.shot]} alt={r.alt} widths={[480, 800, 1200]} sizes="(min-width: 900px) 56vw, 84vw" loading="lazy" /></figure>
+            <div class="rtext"><h3>{r.title}</h3><p>{r.text}</p></div>
+          </article>
+        ))}
+      </div>
+      <div class="rooms-count" aria-hidden="true">{rooms.map((_, i) => <i class:list={{ on: i === 0 }}></i>)}</div>
+    </div>
+  </section>

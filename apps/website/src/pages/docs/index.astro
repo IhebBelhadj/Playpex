@@ -1,0 +1,8 @@
+---
+// /docs/: the introduction page of the docs
+import { getEntry, render } from 'astro:content';
+import Docs from '../../layouts/Docs.astro';
+const doc = (await getEntry('docs', 'introduction'))!;
+const { Content, headings } = await render(doc);
+---
+<Docs doc={doc} headings={headings}><Content /></Docs>

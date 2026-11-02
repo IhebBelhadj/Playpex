@@ -1,0 +1,1838 @@
+{
+ "url": "http://localhost:4321/drafts/tv-a",
+ "at": "2026-11-02T19:48:11.022Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 8,
+   "filled": [
+    0.29,
+    0.43,
+    0.26,
+    0.25,
+    0.26,
+    0.36,
+    0.16,
+    0.38
+   ],
+   "motion": {
+    "elements": 34,
+    "css": 0,
+    "transitions": 34,
+    "scripted": 0,
+    "videos": 1,
+    "playingVideos": 1
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 6958,
+     "screens": 7.7,
+     "words": 430,
+     "img": 14,
+     "video": 1,
+     "canvas": 0,
+     "svg": 11,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 7,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 3,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "chars": 27,
+     "lines": 2,
+     "size": 80.6,
+     "vw": 5.6,
+     "font": "Jost Variable",
+     "weight": 600,
+     "tracking": -0.035,
+     "leading": 1,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.32,
+     "top": 262,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "lines": 2,
+     "size": 80.6,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Four keys run the whole TV.",
+      "words": 6,
+      "chars": 27,
+      "lines": 2,
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.035,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.32,
+      "top": 262,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "From the sofa",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 1643,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Arrows move the focus.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 1968,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "OK opens the title.",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 2629,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "It knows where you stopped.",
+      "words": 5,
+      "chars": 27,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 3257,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back always goes back.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 3925,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "In the player",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.76,
+      "top": 4611,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Everything it needs",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.72,
+      "top": 5254,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Put it on the computer by your TV, then pair it with your server once.",
+      "words": 15,
+      "chars": 70,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 500,
+      "tracking": -0.02,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.39,
+      "top": 5998,
+      "tag": "p",
+      "kind": "statement"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 1,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      13,
+      15,
+      17,
+      18,
+      20,
+      36,
+      81
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": null
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "text": "Four keys runthe whole TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.01,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#1c1c1c",
+       "top": 707,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.96
+      },
+      {
+       "color": "#141414",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download for Linux",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 2,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 6,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.16
+     }
+    ],
+    "nav": {
+     "links": 5,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 6958,
+    "margins": {
+     "left": 32,
+     "right": 32
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 1257,
+      "words": 39,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Four keys run",
+       "size": 81,
+       "tag": "h1"
+      },
+      "left": 317,
+      "right": 32,
+      "textLeft": 317,
+      "textRight": 588,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#keys.steps",
+      "tag": "section",
+      "top": 1321,
+      "height": 3130,
+      "words": 106,
+      "media": 1,
+      "middle": 60,
+      "heading": {
+       "text": "From the sofa",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 317,
+      "right": 32,
+      "textLeft": 317,
+      "textRight": 366,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.plate",
+      "tag": "section",
+      "top": 4451,
+      "height": 625,
+      "words": 92,
+      "media": 1,
+      "middle": 81,
+      "heading": {
+       "text": "In the player",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 40,
+      "right": 53,
+      "textLeft": 40,
+      "textRight": 53,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.keys",
+      "tag": "section",
+      "top": 5094,
+      "height": 634,
+      "words": 76,
+      "media": 0,
+      "middle": 72,
+      "heading": {
+       "text": "Everything it needs",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 317,
+      "right": 83,
+      "textLeft": 317,
+      "textRight": 83,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#get.close",
+      "tag": "section",
+      "top": 5728,
+      "height": 532,
+      "words": 22,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Put it on the computer by your TV, then pair it wi",
+       "size": 36,
+       "tag": "p"
+      },
+      "left": 317,
+      "right": 606,
+      "textLeft": 317,
+      "textRight": 606,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 6261,
+      "height": 697,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 50,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Four keys run the whole TV.",
+      "size": 81,
+      "top": 262,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 317,
+      "n": 15
+     }
+    ],
+    "leftBlocks": 15,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0.23,
+    "voidBox": {
+     "x": 900,
+     "y": 120,
+     "w": 540,
+     "h": 540
+    }
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 7,
+   "filled": [
+    0.46,
+    0.45,
+    0.61,
+    0.38,
+    0.32,
+    0.14,
+    0.25
+   ],
+   "motion": {
+    "elements": 26,
+    "css": 0,
+    "transitions": 26,
+    "scripted": 0,
+    "videos": 1,
+    "playingVideos": 1
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 7003,
+     "screens": 6.8,
+     "words": 414,
+     "img": 14,
+     "video": 1,
+     "canvas": 0,
+     "svg": 11,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 7,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 6,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "chars": 27,
+     "lines": 2,
+     "size": 46,
+     "vw": 6,
+     "font": "Jost Variable",
+     "weight": 600,
+     "tracking": -0.035,
+     "leading": 1,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.34,
+     "top": 284,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "lines": 2,
+     "size": 46,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Four keys run the whole TV.",
+      "words": 6,
+      "chars": 27,
+      "lines": 2,
+      "size": 46,
+      "vw": 6,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.035,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.34,
+      "top": 284,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "From the sofa",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 1234,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Arrows move the focus.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 1350,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "OK opens the title.",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 1969,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "It knows where you stopped.",
+      "words": 5,
+      "chars": 27,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 2589,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back always goes back.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 3208,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "In the player",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 3898,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Everything it needs",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 4829,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 8,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      17,
+      18,
+      20,
+      22,
+      26,
+      46
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 46,
+      "vw": 6,
+      "font": "Jost Variable",
+      "text": "Four keys runthe whole TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#1c1c1c",
+       "top": 660,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.96
+      },
+      {
+       "color": "#141414",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 6,
+     "mediaRadius": 10,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.34
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 7003,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 1010,
+      "words": 39,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Four keys run",
+       "size": 46,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 217,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#keys.steps",
+      "tag": "section",
+      "top": 1074,
+      "height": 2664,
+      "words": 98,
+      "media": 4,
+      "middle": 0,
+      "heading": {
+       "text": "From the sofa",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 56,
+      "textLeft": 16,
+      "textRight": 212,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.plate",
+      "tag": "section",
+      "top": 3738,
+      "height": 931,
+      "words": 92,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "In the player",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 26,
+      "textLeft": 16,
+      "textRight": 26,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.keys",
+      "tag": "section",
+      "top": 4669,
+      "height": 917,
+      "words": 76,
+      "media": 0,
+      "middle": 285,
+      "heading": {
+       "text": "Everything it needs",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 16,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#get.close",
+      "tag": "section",
+      "top": 5586,
+      "height": 548,
+      "words": 22,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Put it on the computer by your TV, then pair it wi",
+       "size": 22,
+       "tag": "p"
+      },
+      "left": 16,
+      "right": 286,
+      "textLeft": 16,
+      "textRight": 286,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 6134,
+      "height": 869,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 34,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Four keys run the whole TV.",
+      "size": 46,
+      "top": 284,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 15
+     }
+    ],
+    "leftBlocks": 15,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 7,
+   "filled": [
+    0.47,
+    0.39,
+    0.48,
+    0.42,
+    0.31,
+    0.31,
+    0.34
+   ],
+   "motion": {
+    "elements": 25,
+    "css": 0,
+    "transitions": 25,
+    "scripted": 0,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 5858,
+     "screens": 6.9,
+     "words": 414,
+     "img": 14,
+     "video": 1,
+     "canvas": 0,
+     "svg": 11,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 7,
+     "uiAbuse": false,
+     "realPictures": 0,
+     "videoCount": 0,
+     "uiPictures": 1,
+     "pictureSamples": [],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "chars": 27,
+     "lines": 2,
+     "size": 46,
+     "vw": 11.8,
+     "font": "Jost Variable",
+     "weight": 600,
+     "tracking": -0.035,
+     "leading": 1,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.67,
+     "top": 250,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Four keys run the whole TV.",
+     "words": 6,
+     "lines": 2,
+     "size": 46,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Four keys run the whole TV.",
+      "words": 6,
+      "chars": 27,
+      "lines": 2,
+      "size": 46,
+      "vw": 11.8,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.035,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.67,
+      "top": 250,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "From the sofa",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1058,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Arrows move the focus.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1174,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "OK opens the title.",
+      "words": 4,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1608,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "It knows where you stopped.",
+      "words": 5,
+      "chars": 27,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 2015,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Back always goes back.",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 2422,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "In the player",
+      "words": 3,
+      "chars": 13,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 2899,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Everything it needs",
+      "words": 3,
+      "chars": 19,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 3712,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Put it on the computer by your TV, then pair it with your server once.",
+      "words": 15,
+      "chars": 70,
+      "lines": 2,
+      "size": 22,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 500,
+      "tracking": -0.02,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 4743,
+      "tag": "p",
+      "kind": "statement"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 1,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      17,
+      18,
+      20,
+      22,
+      26,
+      46
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 15,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 48,
+     "max": {
+      "size": 46,
+      "vw": 11.8,
+      "font": "Jost Variable",
+      "text": "Four keys runthe whole TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.97
+      },
+      {
+       "color": "#141414",
+       "share": 0.03
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 0,
+     "shadowSamples": [],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 1,
+     "boxRadius": 16,
+     "squareMedia": 0,
+     "roundedMedia": 6,
+     "mediaRadius": 10,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.16
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 5858,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section.hero",
+      "tag": "section",
+      "top": 64,
+      "height": 834,
+      "words": 39,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Four keys run",
+       "size": 46,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 40,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#keys.steps",
+      "tag": "section",
+      "top": 898,
+      "height": 1841,
+      "words": 98,
+      "media": 4,
+      "middle": 0,
+      "heading": {
+       "text": "From the sofa",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 19,
+      "textLeft": 16,
+      "textRight": 19,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.plate",
+      "tag": "section",
+      "top": 2739,
+      "height": 813,
+      "words": 92,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "In the player",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 17,
+      "textLeft": 16,
+      "textRight": 17,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section.keys",
+      "tag": "section",
+      "top": 3552,
+      "height": 938,
+      "words": 76,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Everything it needs",
+       "size": 26,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 16,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#get.close",
+      "tag": "section",
+      "top": 4490,
+      "height": 517,
+      "words": 22,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Put it on the computer by your TV, then pair it wi",
+       "size": 22,
+       "tag": "p"
+      },
+      "left": 16,
+      "right": 58,
+      "textLeft": 16,
+      "textRight": 58,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 5007,
+      "height": 851,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Four keys run the whole TV.",
+      "size": 46,
+      "top": 250,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 15
+     }
+    ],
+    "leftBlocks": 15,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "body-size",
+   "width": 1440,
+   "message": "Body text is 15px.",
+   "fix": "Body copy 16–20px.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "few-pictures",
+   "width": 1440,
+   "message": "Only 3 picture(s) on the page (0 photographs, footage or raster images, 3 interface fragments). Drawings in SVG do not count.",
+   "fix": "Find real pictures of the subject's world with scripts/assets.mjs (photographs, archival images, maps, engravings, footage), download them to assets/ and give them room: a hero picture, one per section that has a subject, a full-width band. At least four, usually six to twelve."
+  },
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-a/desktop-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-a/desktop-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-a/desktop-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-a/tablet-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-a/tablet-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-a/tablet-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-a/mobile-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-a/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

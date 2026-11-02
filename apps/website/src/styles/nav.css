@@ -32,7 +32,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .link:hover, .link[aria-expanded="true"] { color: var(--text); background: var(--hover); }
 .link[aria-current="page"] { color: var(--text); }
-.link[aria-current="page"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -13px; height: 2px; border-radius: 2px; background: var(--amber); }
+.link[aria-current="page"] { padding-left: 22px; }
+.link[aria-current="page"]::after { content: ""; position: absolute; left: 9px; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--dot); }
 .link .chev { width: 10px; height: 10px; transition: transform .15s; opacity: .7; }
 .link[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .ver { font-size: 13px; font-weight: 500; color: var(--text-3); padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); }
@@ -71,19 +72,14 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
    the TV app's own focus, a white fill with dark text. */
 .menu.products { width: 760px; padding: 10px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 10px; }
 .plist { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
-/* the active product: an amber dot (the TV app's "you are here") and the name in white semibold */
+/* the product whose page this is: one lit dot (the site's "you are here"); the name you point at turns white */
 .pitem {
   position: relative; display: flex; align-items: center; height: 46px; padding: 0 14px 0 32px; border-radius: 9px;
   font-size: 16px; font-weight: 400; letter-spacing: .005em; color: var(--text-3); transition: color .15s;
 }
-.pitem::before {
-  content: ""; position: absolute; left: 14px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
-  background: var(--amber); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 14%, transparent);
-  transform: scale(0); transition: transform .22s cubic-bezier(.3, 1.5, .5, 1);
-}
-.pitem.sel { color: var(--text); font-weight: 600; letter-spacing: 0; }
-.pitem.sel::before { transform: scale(1); }
-.pitem:not(.sel):hover { color: var(--text-2); }
+.pitem.sel { color: var(--text); }
+.pitem[aria-current="page"] { color: var(--text); font-weight: 600; letter-spacing: 0; }
+.pitem[aria-current="page"]::before { content: ""; position: absolute; left: 15px; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--dot); }
 .plist .all { margin-top: auto; padding: 12px 14px 8px 32px; font-size: 14px; color: var(--text-3); }
 .plist .all:hover { color: var(--text); }
 
@@ -113,7 +109,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .ptext .sys { margin-top: 4px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-3); }
 .ptext .sys a { color: var(--text); font-weight: 500; }
 .ptext .sys a:hover { color: var(--gold); }
-@media (prefers-reduced-motion: reduce) { .pitem::before, .pitem { transition: none; } .pview .inner { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pitem { transition: none; } .pview .inner { animation: none; } }
 
 /* Docs: the first guide as a banner (most people opening Docs are new), the rest as short lists */
 .menu.docs { left: -150px; width: 620px; padding: 10px; display: grid; gap: 6px; }
@@ -129,14 +125,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .dcols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; padding: 10px 6px 6px; }
 .dcols .dgroup { margin: 4px 0 6px 22px; font-size: 13px; font-weight: 500; color: var(--text-3); }
 .ditem { position: relative; display: block; padding: 8px 10px 8px 22px; border-radius: 8px; font-size: 15.5px; color: var(--text-2); transition: color .15s; }
-.ditem::before {
-  content: ""; position: absolute; left: 8px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
-  background: var(--amber); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 14%, transparent);
-  transform: scale(0); transition: transform .22s cubic-bezier(.3, 1.5, .5, 1);
-}
-.ditem:hover, .ditem:focus-visible { color: var(--text); font-weight: 600; }
-.ditem:hover::before, .ditem:focus-visible::before { transform: scale(1); }
-@media (prefers-reduced-motion: reduce) { .ditem::before, .ditem { transition: none; } }
+.ditem:hover, .ditem:focus-visible { color: var(--text); }
+.ditem[aria-current="page"] { color: var(--text); font-weight: 600; }
+.ditem[aria-current="page"]::before { content: ""; position: absolute; left: 8px; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--dot); }
+@media (prefers-reduced-motion: reduce) { .ditem { transition: none; } }
 
 /* ── phones: the bar and its menu ─────────────────────
    The bar lies on the page with no band of its own, steps up out of the way while you read down and
@@ -190,7 +182,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .fi.on small { color: color-mix(in srgb, var(--ground) 66%, transparent); }
 .asep { height: 18px; }
 .fpage { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 12px; font-size: 38px; font-weight: 600; letter-spacing: -.03em; animation: arise .36s cubic-bezier(.2, .8, .2, 1) backwards; }
-.fpage[aria-current="page"]::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
+.fpage[aria-current="page"]::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
+.fprod { position: relative; }
+.fprod[aria-current="page"]::after { content: ""; position: absolute; right: 14px; top: 50%; margin-top: -4.5px; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); }
 .alist > :nth-child(3) { animation-delay: .03s; } .alist > :nth-child(4) { animation-delay: .06s; } .alist > :nth-child(5) { animation-delay: .09s; }
 .alist > :nth-child(7) { animation-delay: .14s; } .alist > :nth-child(8) { animation-delay: .17s; } .alist > :nth-child(9) { animation-delay: .2s; } .alist > :nth-child(10) { animation-delay: .23s; }
 @keyframes arise { from { opacity: 0; transform: translateY(10px); } }

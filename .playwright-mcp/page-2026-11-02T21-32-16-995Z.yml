@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - link "Skip to the content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=e4]:
+    - generic [ref=e5]:
+      - link "Playpex" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e9]:
+        - link "Download" [ref=e10] [cursor=pointer]:
+          - /url: "#download"
+        - button "Menu" [ref=e14] [cursor=pointer]
+  - main [ref=e17]:
+    - region [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Playpex for Android. Pocket size." [level=1] [ref=e20]:
+          - text: Playpex for Android.
+          - generic [ref=e21]: Pocket size.
+        - paragraph [ref=e22]: "The films and series on your Playpex server, on your phone: the whole catalog, what you started on the TV, and a player that takes every file as it is."
+        - link "Download for Android" [ref=e24] [cursor=pointer]:
+          - /url: "#download"
+      - generic [ref=e27]:
+        - figure [ref=e28]:
+          - 'img "My list: Continue watching Sintel and Big Buck Bunny, and the saved films" [ref=e29]'
+        - figure [ref=e30]:
+          - 'img "Movies: popular and trending films" [ref=e31]'
+        - figure [ref=e32]:
+          - 'img "Home: trending this week, and Continue watching" [ref=e33]'
+        - figure [ref=e34]:
+          - 'img "Breaking Bad’s page: five seasons, IMDb 9.5" [ref=e35]'
+        - figure [ref=e36]:
+          - 'img "Interstellar’s page: IMDb 8.7, Play" [ref=e37]'
+    - region [ref=e38]:
+      - generic [ref=e39]:
+        - heading "All the way down" [level=2] [ref=e40]
+        - paragraph [ref=e41]: "Every series has its page: seasons, each episode with its story and rating, the cast, and series like it. Scroll the phone."
+      - generic "Breaking Bad’s page in Playpex for Android, scrollable" [ref=e43]:
+        - 'img "Breaking Bad: Play the first episode, IMDb 9.5" [ref=e44]'
+        - img "Breaking Bad’s episodes, each with its story" [ref=e45]
+        - img "Breaking Bad’s cast and More like this" [ref=e46]
+    - region [ref=e47]:
+      - heading "The whole catalog" [level=2] [ref=e48]
+      - generic [ref=e49]:
+        - figure "Films Popular, trending, and every genre." [ref=e50]:
+          - img "Films" [ref=e52]
+          - generic [ref=e53]:
+            - generic [ref=e54]: Films
+            - generic [ref=e55]: Popular, trending, and every genre.
+        - figure "Series What everyone is watching this week." [ref=e56]:
+          - img "Series" [ref=e58]
+          - generic [ref=e59]:
+            - generic [ref=e60]: Series
+            - generic [ref=e61]: What everyone is watching this week.
+        - figure "Search Films, series and people as you type." [ref=e62]:
+          - img "Search" [ref=e64]
+          - generic [ref=e65]:
+            - generic [ref=e66]: Search
+            - generic [ref=e67]: Films, series and people as you type.
+    - region [ref=e68]:
+      - generic [ref=e69]:
+        - heading "Sideways, it’s the player" [level=2] [ref=e70]
+        - switch "Audio & subtitles" [ref=e71] [cursor=pointer]
+      - figure [ref=e74]
+      - paragraph [ref=e76]: Every container, codec and subtitle format is decoded on the phone, so files play as they are.
+    - region [ref=e77]:
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - heading "Put it on your phone." [level=2] [ref=e80]
+          - paragraph [ref=e81]: It’s free. Install it, and it finds your Playpex server on your Wi-Fi; approve the code it shows once on the dashboard.
+          - generic [ref=e82]:
+            - link "Get the server first" [ref=e83] [cursor=pointer]:
+              - /url: /server
+            - link "All releases" [ref=e84] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+        - group "Download Playpex for Android" [ref=e85]:
+          - paragraph [ref=e87]: Version 0.10.1-alpha.1, released 1 November 2026
+          - radiogroup "Your computer" [ref=e88]:
+            - radio "Android" [checked] [ref=e89] [cursor=pointer]
+          - generic [ref=e90]:
+            - generic [ref=e91]: Playpex-0.1.0-alpha.1-arm64.apk
+            - generic [ref=e92]: Open it on your phone. Android asks once to allow installs from your browser.
+          - link "Download for Android" [ref=e93] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=e96]:
+    - generic [ref=e97]:
+      - img "Playpex" [ref=e98]
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - heading "Apps" [level=3] [ref=e104]
+          - link "Media Server" [ref=e105] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=e106] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex for Android" [ref=e107] [cursor=pointer]:
+            - /url: /#products
+          - link "Server Manager" [ref=e108] [cursor=pointer]:
+            - /url: /#products
+        - generic [ref=e109]:
+          - heading "Docs" [level=3] [ref=e110]
+          - link "First steps" [ref=e111] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Pair a screen" [ref=e112] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Client API" [ref=e113] [cursor=pointer]:
+            - /url: "#docs"
+          - link "Plugin guide" [ref=e114] [cursor=pointer]:
+            - /url: "#docs"
+        - generic [ref=e115]:
+          - heading "Project" [level=3] [ref=e116]
+          - link "Source code" [ref=e117] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=e118] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=e119] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=e120]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=e121]:
+        - generic [ref=e122]: Playpex 2026
+        - link "Download" [ref=e123] [cursor=pointer]:
+          - /url: "#download"

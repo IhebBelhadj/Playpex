@@ -1,0 +1,128 @@
+- generic [active] [ref=f38e1]:
+  - link "Skip to the content" [ref=f38e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f38e4]:
+    - generic [ref=f38e5]:
+      - link "Playpex" [ref=f38e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f38e9]:
+        - listitem [ref=f38e10]:
+          - button "Products" [ref=f38e11] [cursor=pointer]
+        - listitem [ref=f38e14]:
+          - link "Plugins" [ref=f38e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f38e16]:
+          - button "Docs" [ref=f38e17] [cursor=pointer]
+        - listitem [ref=f38e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f38e21] [cursor=pointer]:
+            - /url: /releases
+            - text: Releases
+            - generic [ref=f38e22]: 0.10.1-alpha.1
+      - generic [ref=f38e23]:
+        - link "GitHub" [ref=f38e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f38e27] [cursor=pointer]:
+          - /url: /#download
+  - main [ref=f38e31]:
+    - region [ref=f38e32]:
+      - heading "Playpex plugins" [level=1] [ref=f38e33]
+      - generic [ref=f38e34]: Search plugins
+      - searchbox "Search plugins" [ref=f38e35]
+      - group "Kinds of plugin" [ref=f38e36]:
+        - button "Films" [ref=f38e37] [cursor=pointer]
+        - button "Live TV" [ref=f38e38] [cursor=pointer]
+        - button "Your history" [ref=f38e39] [cursor=pointer]
+        - button "Ratings" [ref=f38e40] [cursor=pointer]
+        - button "For developers" [ref=f38e41] [cursor=pointer]
+      - paragraph [ref=f38e42]: 4 plugins
+    - region "Plugins" [ref=f38e43]:
+      - list [ref=f38e44]:
+        - listitem [ref=f38e45]:
+          - button "Trakt Scrobbles what you watch to Trakt and keeps your watch list, history and ratings in sync. Your history, Ratings Official repository, 1.0.0" [ref=f38e46] [cursor=pointer]:
+            - generic [ref=f38e51]:
+              - generic [ref=f38e52]: Trakt
+              - generic [ref=f38e53]: Scrobbles what you watch to Trakt and keeps your watch list, history and ratings in sync.
+            - generic [ref=f38e54]:
+              - generic [ref=f38e55]: Your history, Ratings
+              - generic [ref=f38e56]: Official repository, 1.0.0
+        - listitem [ref=f38e57]:
+          - button "Live TV (M3U) Your own IPTV channels from an M3U playlist, with their programme guide from XMLTV. Live TV Official repository, 1.0.0" [ref=f38e58] [cursor=pointer]:
+            - generic [ref=f38e64]:
+              - generic [ref=f38e65]: Live TV (M3U)
+              - generic [ref=f38e66]: Your own IPTV channels from an M3U playlist, with their programme guide from XMLTV.
+            - generic [ref=f38e67]:
+              - generic [ref=f38e68]: Live TV
+              - generic [ref=f38e69]: Official repository, 1.0.0
+        - listitem [ref=f38e70]:
+          - button "Internet Archive Public-domain and openly licensed films from the Internet Archive, found in Search and offered when you press Play. Films From its folder, 1.0.0" [ref=f38e71] [cursor=pointer]:
+            - generic [ref=f38e73]: I
+            - generic [ref=f38e74]:
+              - generic [ref=f38e75]: Internet Archive
+              - generic [ref=f38e76]: Public-domain and openly licensed films from the Internet Archive, found in Search and offered when you press Play.
+            - generic [ref=f38e77]:
+              - generic [ref=f38e78]: Films
+              - generic [ref=f38e79]: From its folder, 1.0.0
+        - listitem [ref=f38e80]:
+          - 'button "Hello The example plugin: every screen template, slot and setting, with made-up titles. Start your own from it. For developers From its folder, 1.0.0" [ref=f38e81] [cursor=pointer]':
+            - generic [ref=f38e85]:
+              - generic [ref=f38e86]: Hello
+              - generic [ref=f38e87]: "The example plugin: every screen template, slot and setting, with made-up titles. Start your own from it."
+            - generic [ref=f38e88]:
+              - generic [ref=f38e89]: For developers
+              - generic [ref=f38e90]: From its folder, 1.0.0
+      - navigation "Pages of plugins" [ref=f38e91]:
+        - button "Previous page" [disabled]
+        - list [ref=f38e92]:
+          - listitem [ref=f38e93]:
+            - button "Page 1" [ref=f38e94] [cursor=pointer]: "1"
+        - button "Next page" [disabled]
+        - paragraph [ref=f38e95]: 1 to 4 of 4
+    - region [ref=f38e96]:
+      - generic [ref=f38e97]:
+        - heading "Add a repository" [level=2] [ref=f38e98]
+        - paragraph [ref=f38e99]: "The official repository is in every server already. To add another, paste its address on the dashboard: Plugins › Repositories. Each one is signed, and updates follow the policy you choose."
+        - generic [ref=f38e100]:
+          - code [ref=f38e101]: https://ihebbelhadj.github.io/playpex-official/index.json
+          - button "Copy" [ref=f38e102] [cursor=pointer]
+      - generic [ref=f38e103]:
+        - heading "Write your own" [level=2] [ref=f38e104]
+        - paragraph [ref=f38e105]: "A plugin is a small package: a manifest and server code that runs in a sandbox, with screens the apps draw for it. Start from Hello and the plugin guide."
+        - link "Read the plugin guide" [ref=f38e106] [cursor=pointer]:
+          - /url: /docs/plugins-overview
+  - contentinfo [ref=f38e107]:
+    - generic [ref=f38e108]:
+      - img "Playpex" [ref=f38e109]
+      - generic [ref=f38e113]:
+        - generic [ref=f38e114]:
+          - heading "Apps" [level=3] [ref=f38e115]
+          - link "Media Server" [ref=f38e116] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f38e117] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f38e118] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f38e119] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f38e120]:
+          - heading "Docs" [level=3] [ref=f38e121]
+          - link "First steps" [ref=f38e122] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f38e123] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f38e124] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f38e125] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f38e126]:
+          - heading "Project" [level=3] [ref=f38e127]
+          - link "Source code" [ref=f38e128] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f38e129] [cursor=pointer]:
+            - /url: /releases
+          - link "Licence" [ref=f38e130] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f38e131]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f38e132]:
+        - generic [ref=f38e133]: Playpex 2026
+        - link "Download" [ref=f38e134] [cursor=pointer]:
+          - /url: /#download

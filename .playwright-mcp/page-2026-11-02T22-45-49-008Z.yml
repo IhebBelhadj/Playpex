@@ -1,0 +1,147 @@
+- generic [active] [ref=e1]:
+  - link "Skip to the content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=e4]:
+    - generic [ref=e5]:
+      - link "Playpex" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - button "Products" [ref=e11] [cursor=pointer]
+        - listitem [ref=e14]:
+          - link "Plugins" [ref=e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=e16]:
+          - button "Docs" [ref=e17] [cursor=pointer]
+        - listitem [ref=e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=e21] [cursor=pointer]:
+            - /url: "#releases"
+            - text: Releases
+            - generic [ref=e22]: 0.10.1-alpha.1
+      - generic [ref=e23]:
+        - link "GitHub" [ref=e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=e31]:
+    - generic [ref=e32]:
+      - heading "A. One lit dot" [level=2] [ref=e33]
+      - paragraph [ref=e34]: "A single gold dot, nothing else: under the bar's link, before the product and the docs page. Pointing only brightens the words."
+      - list [ref=e36]:
+        - listitem [ref=e37]:
+          - generic [ref=e38]: Products
+        - listitem [ref=e39]:
+          - generic [ref=e40]: Plugins
+        - listitem [ref=e41]:
+          - generic [ref=e42]: Docs
+        - listitem [ref=e43]:
+          - generic [ref=e44]: Releases
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - paragraph [ref=e47]: Products menu, on the TV page, pointing at Mobile
+          - generic [ref=e48]: Playpex Media Server
+          - generic [ref=e49]: Playpex TV
+          - generic [ref=e50]: Playpex Mobile
+          - generic [ref=e51]: Server Manager
+        - generic [ref=e52]:
+          - paragraph [ref=e53]: Docs sidebar, on The manifest
+          - paragraph [ref=e54]: Build plugins
+          - generic [ref=e55]: Plugins for developers
+          - generic [ref=e56]: The manifest
+          - generic [ref=e57]: Server code
+          - generic [ref=e58]: Hooks
+          - generic [ref=e59]: Events and jobs
+          - generic [ref=e60]: Screens
+    - generic [ref=e61]:
+      - heading "B. Dot rail" [level=2] [ref=e62]
+      - paragraph [ref=e63]: Every item sits on an unlit dot, like the footer's dot-matrix letters; where you are is the one lit dot. The bar gets a short row of unlit dots with the middle one lit.
+      - list [ref=e65]:
+        - listitem [ref=e66]:
+          - generic [ref=e67]: Products
+        - listitem [ref=e68]:
+          - generic [ref=e69]: Plugins
+        - listitem [ref=e70]:
+          - generic [ref=e71]: Docs
+        - listitem [ref=e72]:
+          - generic [ref=e73]: Releases
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - paragraph [ref=e76]: Products menu, on the TV page, pointing at Mobile
+          - generic [ref=e77]: Playpex Media Server
+          - generic [ref=e78]: Playpex TV
+          - generic [ref=e79]: Playpex Mobile
+          - generic [ref=e80]: Server Manager
+        - generic [ref=e81]:
+          - paragraph [ref=e82]: Docs sidebar, on The manifest
+          - paragraph [ref=e83]: Build plugins
+          - generic [ref=e84]: Plugins for developers
+          - generic [ref=e85]: The manifest
+          - generic [ref=e86]: Server code
+          - generic [ref=e87]: Hooks
+          - generic [ref=e88]: Events and jobs
+          - generic [ref=e89]: Screens
+    - generic [ref=e90]:
+      - heading "C. Dither tail" [level=2] [ref=e91]
+      - paragraph [ref=e92]: "A small piece of the hero's dither: a lit dot trailing off into smaller, dimmer ones, as if the dots were dissolving into the page."
+      - list [ref=e94]:
+        - listitem [ref=e95]:
+          - generic [ref=e96]: Products
+        - listitem [ref=e97]:
+          - generic [ref=e98]: Plugins
+        - listitem [ref=e99]:
+          - generic [ref=e100]: Docs
+        - listitem [ref=e101]:
+          - generic [ref=e102]: Releases
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - paragraph [ref=e105]: Products menu, on the TV page, pointing at Mobile
+          - generic [ref=e106]: Playpex Media Server
+          - generic [ref=e107]: Playpex TV
+          - generic [ref=e108]: Playpex Mobile
+          - generic [ref=e109]: Server Manager
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: Docs sidebar, on The manifest
+          - paragraph [ref=e112]: Build plugins
+          - generic [ref=e113]: Plugins for developers
+          - generic [ref=e114]: The manifest
+          - generic [ref=e115]: Server code
+          - generic [ref=e116]: Hooks
+          - generic [ref=e117]: Events and jobs
+          - generic [ref=e118]: Screens
+  - contentinfo [ref=e119]:
+    - generic [ref=e120]:
+      - img "Playpex" [ref=e121]
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - heading "Apps" [level=3] [ref=e127]
+          - link "Media Server" [ref=e128] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=e129] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=e130] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=e131] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=e132]:
+          - heading "Docs" [level=3] [ref=e133]
+          - link "First steps" [ref=e134] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=e135] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=e136] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=e137] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=e138]:
+          - heading "Project" [level=3] [ref=e139]
+          - link "Source code" [ref=e140] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=e141] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=e142] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=e143]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=e144]:
+        - generic [ref=e145]: Playpex 2026
+        - link "Download" [ref=e146] [cursor=pointer]:
+          - /url: "#download"

@@ -10,7 +10,7 @@ Educational project: keep that framing in every page (the footer already says it
 | Development | `npm run website` (repo root) or `npm run dev -w apps/website`: http://localhost:4321 |
 | Build | `npm run build:website` → `apps/website/dist/` (static files) |
 | Preview the build | `npx astro preview` from `apps/website` (runs as a daemon: `astro preview stop`) |
-| Published under a path | `SITE_URL=https://<user>.github.io BASE_PATH=/Playpex npm run build:website` |
+| Published under a path | `SITE_URL=https://<user>.github.io BASE_PATH=/Playpex npm run build:website` (the config adds a trailing slash: `BASE_URL` is always `…/`) |
 
 Astro is pinned to **7.4.1**: 7.4.2 and later need Node ≥ 22.23.4 and this machine has 22.23.2. Raise the pin
 once Node is upgraded.
@@ -25,8 +25,36 @@ src/
 ├── styles/                  nav.css (bar), base.css (shared: page, remote, download, footer), stage.css (scenes),
 │                            desktop.css (the desktop site, ≥768px), phone.css (the phone site, ≤767px; html.is-phone)
 ├── layouts/Base.astro       <head>: title, description, canonical, Open Graph / Twitter, JSON-LD, icons, font preload
-├── components/              SiteNav.astro (the bar, server-rendered), SiteFooter.astro (the dot-matrix name, lib/led.ts)
+├── components/              SiteNav.astro (the bar, server-rendered), SiteFooter.astro (the dot-matrix name, lib/led.ts),
+│                            Remote, Rooms, DownloadField (home sections; DownloadField also closes the product pages),
+│                            ShotCarousel (the product pages' screenshots: the slide in view itself, the others gold dots)
 ├── pages/index.astro        the home page: every word in the HTML, pictures through <Image> (WebP, srcset)
+├── pages/tv.astro, server.astro, mobile.astro, manager.astro   product pages, plain scroll (no held scenes), each its own
+│                            structure (never repeat one): TV = dot-matrix remote driving a screen + ShotCarousel;
+│                            server = folder hero, library, the download strip, playpex.local; mobile = Sintel's
+│                            resume line + MobileBody (sticky phone that turns sideways, mosaic); manager = gold dots
+│                            rippling from the phone until it finds "Living room", a strip of phone screens, the real
+│                            remote (touchpad, arrows). All end on
+│                            DownloadField. A product links to its page through data/site.ts `page` (productHref).
+│                            The phone app is "Playpex Mobile" (React Native: Android now, iOS later): never call it Android-only
+├── pages/plugins.astro       the plugins (data/plugins.ts): a display-size search, kinds, rows that open in place, pages of
+│                            6; the query lives in the address (?q, ?kind, ?page). Never the 18+ plugin; the torrent-site
+│                            and scraper plugins aren't listed. Site pages in data/site.ts PAGES are bare names (SiteNav `link`)
+├── pages/releases.astro      the releases (data/releases.ts: each version, each app's files and notes, newest first): four app
+│                            tiles (their screens) as tabs, ?app=<id> opens one (product pages' "All releases" do); each
+│                            version with its notes and files, this visitor's system first in gold; a search by number or
+│                            change and pages of 5, both in the address (?v, ?page; plugins' pagination). Files are downloaded
+│                            from the GitHub releases page (SITE.releases). Add a release at the top of RELEASES and
+│                            bump RELEASE in site.ts
+├── content/docs/*.md         the docs (content.config.ts: title, description, group in GROUPS, order): features, plugin
+│                            writing, the client API, sanitized from the repo's docs/ (no 18+ / Velvet / `audience: adults`).
+│                            Link another page by its bare slug ("hooks", "install-the-server#…"), the site by "/plugins":
+│                            lib/doc-links.mjs (a Sätteri mdast plugin, astro.config.mjs) adds docs/ and the base path.
+│                            Quote titles / descriptions holding a colon (YAML)
+├── layouts/Docs.astro, pages/docs/   the docs pages, deliberately conventional: sections + search on the left, the article
+│                            (breadcrumb, previous / next, Edit on GitHub), "On this page" on the right (≥1200px); phones get
+│                            a "Docs menu" button. Search reads docs/search.json (titles, sections, text) on first focus; "/"
+│                            focuses it. The bar's Docs menu lists data/site.ts DOCS by slug
 ├── pages/robots.txt.ts, sitemap.xml.ts, manifest.webmanifest.ts   base-aware; add new pages to the sitemap's list
 ├── lib/images.ts            IMG (pictures in src/assets/img by name), imageMap() (WebP URLs the scripts paint, as #img-map JSON)
 ├── lib/icons.ts             the inline SVG icons
@@ -69,4 +97,10 @@ new pieces instead.
 - Lighthouse (production build, `npx astro preview`): desktop 100 in every category; mobile 100 for accessibility,
   best practices and SEO. Mobile performance is held down by the hero's WebGL wall, which Lighthouse renders on the
   CPU (each frame a long task).
+- Markdown goes through Sätteri (Astro 7's default; `@astrojs/markdown-satteri`): plugins are `{ name, link(node, ctx) }`
+  visitors that change nodes with `ctx.setProperty`, never remark plugins (those need `@astrojs/markdown-remark`).
+- "You are here" is one lit dot (6px, `--dot`), nothing else: left of the bar's link (the Products button on a product page),
+  before the current product in the Products menu, the current docs page (bar menu, sidebar, On this page). Pointing
+  only turns words white. The nav works out the current product / docs page from the address.
+- Download links: `downloadHref()` (data/site.ts) sends pages without a download section (plugins, docs) to the home page's.
 - Respect `prefers-reduced-motion` (the stage and home.js already fall back to still frames).

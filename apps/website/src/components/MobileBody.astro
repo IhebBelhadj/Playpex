@@ -1,0 +1,126 @@
+---
+// Playpex Mobile, everything under the hero: a phone stays beside the words while you read down and turns
+// sideways for the player; the whole library as a mosaic of the app's screens; the gold download field.
+import { Image, getImage } from 'astro:assets';
+import DownloadField from './DownloadField.astro';
+import { IMG } from '../lib/images';
+import { SITE } from '../data/site';
+
+const STEPS = [
+  { shot: 'a_home', land: false, title: 'What’s new, what you started', text: 'Trending films and series, what you were watching with the minutes left, and rows picked from what you like.' },
+  { shot: 'a_bb', land: false, title: 'Every series, every episode', text: 'Breaking Bad: five seasons, each episode with its story and rating, the cast and series like it.' },
+  { shot: 'a_chooser', land: false, title: 'Back where you stopped', text: 'Sintel stopped at 7:46, on the TV or on this phone. Resume, start again, or pick another source.' },
+  { shot: 'a_player', land: true, title: 'Turn it sideways', text: 'The player fills the screen. Files play as they are: every container, codec and subtitle format is decoded on the phone.' },
+  { shot: 'a_subs', land: true, title: 'Every track in the file', text: 'Switch the audio and the subtitles in the film, or find more online, without stopping it.' },
+];
+const src = Object.fromEntries(await Promise.all(STEPS.map(async (s) => [s.shot, (await getImage({ src: IMG[s.shot], width: s.land ? 1600 : 540, format: 'webp', quality: 82 })).src])));
+const MOSAIC = [
+  { shot: 'a_home', title: 'Home', tall: true },
+  { shot: 'a_bb', title: 'Breaking Bad', tall: false },
+  { shot: 'a_inter', title: 'Interstellar', tall: false },
+  { shot: 'a_mylist', title: 'My list', tall: true },
+  { shot: 'a_shows', title: 'Series', tall: false },
+  { shot: 'a_chooser', title: 'Resume at 7:46', tall: false },
+  { shot: 'a_profiles', title: 'Who’s watching', tall: true },
+  { shot: 'a_search', title: 'Search', tall: false },
+];
+const FILES = { Android: { file: 'Playpex-0.1.0-alpha.1-arm64.apk', how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
+---
+<div class="mbody">
+  <div class="cols">
+    <div class="words">
+      {STEPS.map((s, i) => (
+        <section class="step" data-shot={s.shot} aria-labelledby={`mb-s${i}`}>
+          <h2 id={`mb-s${i}`}>{s.title}</h2>
+          <p>{s.text}</p>
+          <figure class:list={['inline', { land: s.land }]}><Image src={IMG[s.shot]} alt={s.title} widths={s.land ? [800, 1600] : [360, 540]} sizes={s.land ? '100vw' : '70vw'} loading="lazy" /></figure>
+        </section>
+      ))}
+    </div>
+    <div class="hold" aria-hidden="true">
+      <div class="device port on" id="mb-port"><div class="scr" data-src={JSON.stringify(src)}></div></div>
+      <div class="device land" id="mb-land"><div class="scr"></div></div>
+    </div>
+  </div>
+
+  <section class="mos" aria-labelledby="mos-h">
+    <h2 id="mos-h" class="rv">The whole library, pocket size</h2>
+    <div class="mgrid">
+      {MOSAIC.map((m, i) => (
+        <figure class:list={['tile', 'rv', { tall: m.tall }]} style={`--d:${i % 4}`}>
+          <div class="ph"><Image src={IMG[m.shot]} alt={m.title} widths={[300, 540]} sizes="(min-width: 900px) 22vw, 45vw" loading="lazy" /></div>
+          <figcaption>{m.title}</figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <DownloadField
+    title="Put it on your phone."
+    text="It’s free. Install it, and it finds your Playpex server on your Wi-Fi; approve the code it shows once on the dashboard."
+    links={[{ href: `${import.meta.env.BASE_URL}server`, label: 'Get the server first' }, { href: `${import.meta.env.BASE_URL}releases?app=mobile`, label: 'All releases' }]}
+    dialog="Download Playpex Mobile" files={FILES} />
+</div>
+
+<style>
+  .cols { max-width: 1440px; margin: 0 auto; padding: var(--gap-section) var(--m) 0; display: grid; }
+  .step { padding: 48px 0; display: grid; gap: 18px; align-content: center; }
+  .step h2 { font-size: var(--t-h2); }
+  .step p { font-size: var(--t-lead); max-width: 26em; }
+  .inline { margin: 12px 0 0; width: min(70vw, 300px); aspect-ratio: 540 / 1094; border-radius: 28px; overflow: hidden; background: var(--device); border: 6px solid var(--device); }
+  .inline.land { width: 100%; aspect-ratio: 1600 / 794; border-radius: 20px; }
+  .inline img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hold { display: none; }
+  @media (min-width: 900px) {
+    .cols { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 48px; padding-top: 0; }
+    .step { min-height: 92vh; padding: 0; }
+    .inline { display: none; }
+    .hold { display: grid; place-items: center; position: sticky; top: var(--bar-h); height: calc(100vh - var(--bar-h)); }
+    .device { grid-area: 1 / 1; background: var(--device); border: 10px solid var(--device); overflow: hidden; transition: transform .7s cubic-bezier(.2, .7, .2, 1), opacity .45s; }
+    .port { height: min(76vh, 760px); aspect-ratio: 540 / 1094; border-radius: 40px; }
+    .land { width: min(100%, calc(76vh * 1600 / 794 / 1.6)); aspect-ratio: 1600 / 794; border-radius: 32px; opacity: 0; transform: rotate(90deg) scale(.7); }
+    .port:not(.on) { opacity: 0; transform: rotate(-90deg) scale(.8); }
+    .land.on { opacity: 1; transform: none; }
+    .scr { position: relative; width: 100%; height: 100%; border-radius: 30px; overflow: hidden; }
+    .land .scr { border-radius: 22px; }
+    .scr :global(canvas) { position: absolute; inset: 0; width: 100%; height: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .device { transition: none; } }
+
+  .mos { max-width: 1440px; margin: 0 auto; padding: var(--gap-section) var(--m) 0; }
+  .mos h2 { font-size: var(--t-h2); }
+  .mgrid { margin-top: 48px; columns: 2; column-gap: 16px; }
+  .tile { margin: 0 0 28px; break-inside: avoid; display: grid; gap: 10px; }
+  .ph { aspect-ratio: 540 / 760; border-radius: 22px; overflow: hidden; background: var(--device); border: 5px solid var(--device); }
+  .tile.tall .ph { aspect-ratio: 540 / 1094; }
+  .ph img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .tile figcaption { font-weight: 600; font-size: var(--t-body); }
+  @media (min-width: 900px) { .mgrid { columns: 4; column-gap: 24px; } }
+</style>
+
+<script>
+  import { Pic } from '../scripts/home/dither.js';
+  import { initDownload } from '../scripts/home/download.js';
+
+  // the paragraph across the middle of the screen sets the phone's screen; the player turns it sideways
+  const port = document.getElementById('mb-port'), land = document.getElementById('mb-land');
+  const SRC = JSON.parse(port.querySelector('.scr').dataset.src);
+  const LAND = new Set(['a_player', 'a_subs']);
+  const pp = Pic(port.querySelector('.scr')), pl = Pic(land.querySelector('.scr'));
+  let cur = '';
+  function show(k) {
+    if (k === cur) return;
+    cur = k;
+    const sideways = LAND.has(k);
+    port.classList.toggle('on', !sideways); land.classList.toggle('on', sideways);
+    (sideways ? pl : pp).show(SRC[k], true);
+  }
+  pp.show(SRC.a_home, false);
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) show(e.target.dataset.shot); }), { rootMargin: '-48% 0px -48% 0px' });
+  document.querySelectorAll('.mbody .step').forEach((s) => io.observe(s));
+  new IntersectionObserver((es) => { if (es[0].isIntersecting && !cur) show('a_home'); }).observe(port);
+
+  const rise = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rise.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach((el) => rise.observe(el));
+  initDownload('Android');
+</script>

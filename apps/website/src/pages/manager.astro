@@ -1,0 +1,149 @@
+---
+// Server Manager's page. The hero, "Nobody types an address": gold dots ripple out from the phone while it looks for
+// servers on the Wi-Fi; the server it finds is the app's own row, and opening it brings the dashboard up on the phone.
+// Then the whole dashboard as a strip of phone screens, the remote for any screen in the house, the download.
+import { Image, getImage } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import DownloadField from '../components/DownloadField.astro';
+import { IMG } from '../lib/images';
+import { ICON } from '../lib/icons';
+import { SITE } from '../data/site';
+
+const splash = (await getImage({ src: IMG.m_splash, width: 540, format: 'webp' })).src;
+const over = (await getImage({ src: IMG.m_over, width: 540, format: 'webp' })).src;
+const STRIP = [
+  { shot: 'm_menu', title: 'Everything in one menu', text: 'Library, downloads, activity, devices, plugins and settings.' },
+  { shot: 'm_lib', title: 'The library', text: 'Every title on the server, as posters.' },
+  { shot: 'm_dl', title: 'Downloads', text: 'What’s coming in, what’s seeding, pause all.' },
+  { shot: 'm_search', title: 'Search', text: 'The server, the catalog and your sources.' },
+  { shot: 'm_act', title: 'Who’s watching', text: 'What every screen plays, with Stop.' },
+  { shot: 'm_prof', title: 'Profiles', text: 'Who’s on the “Who’s watching?” screen.' },
+];
+const FILES = { Android: { file: 'Playpex-Server-Manager-0.1.0.apk', how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
+---
+<Base title="Playpex Server Manager: your server, from your phone" description="Server Manager finds the Playpex server on your Wi-Fi by itself and opens its dashboard on your phone, with the remote for your TV.">
+<main id="main" class="ma">
+  <section class="hero" aria-labelledby="ma-h">
+    <div class="words rv">
+      <h1 id="ma-h">Server Manager.<span>Nobody types an address.</span></h1>
+      <p class="lede">It finds the Playpex server on your Wi-Fi by itself and opens its dashboard on your phone: the library, the downloads, who’s watching, and the remote for your TV.</p>
+      <div class="ctas"><a class="btn" href="#download"><Fragment set:html={ICON.download} />Download Server Manager</a></div>
+    </div>
+    <div class="scan rv" style="--d:1">
+      <canvas id="ma-waves" aria-hidden="true"></canvas>
+      <div class="phone" id="ma-phone" data-splash={splash} data-over={over}><noscript><img src={over} alt="" /></noscript></div>
+      <div class="found" id="ma-found" data-ui>
+        <p class="fl">On this network</p>
+        <button type="button" class="row" id="ma-open"><span><b>Living room</b><small>playpex.local:28470, version 0.9.0</small></span><i aria-hidden="true">›</i></button>
+      </div>
+      <button type="button" class="again" id="ma-again">Look again</button>
+    </div>
+  </section>
+
+  <section class="strip" aria-labelledby="strip-h">
+    <h2 id="strip-h" class="rv">The whole dashboard, in your hand</h2>
+    <ul class="rail" tabindex="0" aria-label="Pages of the dashboard on a phone">
+      {STRIP.map((s, i) => (
+        <li class="rv" style={`--d:${i % 3}`}>
+          <div class="ph"><Image src={IMG[s.shot]} alt={s.title} widths={[300, 540]} sizes="280px" loading="lazy" /></div>
+          <b>{s.title}</b><span>{s.text}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="remote" aria-labelledby="rem-h">
+    <div class="rtext rv">
+      <h2 id="rem-h">The remote for every screen</h2>
+      <p>Pick a screen in the house and the phone becomes its remote. Drag to move the pointer, tap to click, long press to go back, two fingers to scroll. Or switch to the arrows and OK, with pause and skipping back or forward always at hand.</p>
+    </div>
+    <div class="pair">
+      <div class="ph big rv" style="--d:1"><Image src={IMG.m_remote} alt="Server Manager’s remote: Playpex TV connected, the touchpad with Click and Back, pause and skip" widths={[360, 540]} sizes="320px" loading="lazy" /></div>
+      <div class="ph big rv" style="--d:2"><Image src={IMG.m_arrows} alt="Server Manager’s remote with the arrows, OK and Back" widths={[360, 540]} sizes="320px" loading="lazy" /></div>
+    </div>
+  </section>
+
+  <DownloadField
+    title="Put it on your phone."
+    text="It’s free. Open it on the same Wi-Fi as your server, pick the server, and sign in as its admin."
+    links={[{ href: `${import.meta.env.BASE_URL}server`, label: 'Get the server first' }, { href: `${import.meta.env.BASE_URL}releases?app=manager`, label: 'All releases' }]}
+    dialog="Download Server Manager" files={FILES} />
+</main>
+</Base>
+
+<style>
+  .hero, .strip, .remote { max-width: 1440px; margin: 0 auto; padding-left: var(--m); padding-right: var(--m); }
+  h2 { font-size: var(--t-h2); }
+  .hero { padding-top: 40px; display: grid; gap: 40px; align-items: center; min-height: calc(100svh - var(--bar-h)); }
+  .words h1 { font-size: clamp(42px, 3.8vw, 70px); font-weight: 800; letter-spacing: -.035em; line-height: .93; }
+  .words h1 span { display: block; color: var(--text-3); }
+  .lede { color: var(--text-2); font-size: 18.5px; line-height: 1.55; max-width: 30em; margin: 24px 0 28px; }
+  .scan { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 28px; min-height: 620px; }
+  .scan canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .phone { position: relative; height: min(70vh, 640px); aspect-ratio: 540 / 1094; border-radius: 36px; overflow: hidden; background: var(--device); border: 8px solid var(--device); z-index: 1; }
+  .phone :global(canvas), .phone :global(noscript img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .found { position: relative; z-index: 1; display: grid; gap: 10px; opacity: 0; transform: translateY(16px); transition: opacity .5s, transform .5s; }
+  .found.on { opacity: 1; transform: none; }
+  .fl { font-weight: 600; font-size: var(--t-body); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: min(100%, 380px); padding: 18px 20px; border-radius: 16px; background: var(--ui-raised); color: var(--ui-text); text-align: left; transition: background .15s, transform .1s; }
+  .row:hover { background: var(--ui-field); }
+  .row:active { transform: scale(.98); }
+  .row:focus-visible { outline: 2px solid var(--dot); outline-offset: 3px; }
+  .row span { display: grid; gap: 4px; } .row b { font-size: var(--t-lead); } .row small { color: var(--ui-muted); font-size: var(--t-small); }
+  .row i { font-style: normal; font-size: 26px; color: var(--ui-muted); }
+  .again { position: absolute; z-index: 1; right: 0; bottom: 0; color: var(--muted); font: 600 var(--t-small) var(--font); text-decoration: underline; text-underline-offset: 4px; }
+  .again:hover { color: var(--text); }
+  @media (min-width: 1000px) { .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+  @media (max-width: 767px) { .scan { grid-template-columns: 1fr; justify-items: center; min-height: 0; padding-bottom: 40px; } .phone { height: 58svh; } }
+
+  .strip { padding-top: var(--gap-section); }
+  .rail { list-style: none; margin: 40px calc(-1 * var(--m)) 0; padding: 0 var(--m) 12px; display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail:focus-visible { outline: 2px solid var(--dot); outline-offset: 4px; }
+  .rail li { flex: none; width: 260px; scroll-snap-align: start; display: grid; gap: 6px; }
+  .rail b { margin-top: 12px; font-size: var(--t-lead); font-weight: 700; } .rail span { color: var(--muted); font-size: var(--t-small); }
+  .ph { aspect-ratio: 540 / 1094; border-radius: 30px; overflow: hidden; background: var(--device); border: 6px solid var(--device); }
+  .ph img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+
+  .remote { padding-top: var(--gap-section); display: grid; gap: 40px; align-items: center; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: min(100%, 600px); justify-self: center; padding-bottom: 64px; }
+  .ph.big { aspect-ratio: 540 / 1094; border-radius: 36px; border-width: 8px; }
+  .pair .ph.big:nth-child(2) { margin-top: 64px; }
+  .rtext p { margin-top: 18px; font-size: var(--t-lead); max-width: 26em; }
+  @media (min-width: 900px) { .remote { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+</style>
+
+<script>
+  import { Pic } from '../scripts/home/dither.js';
+  import { BAYER4, THEME, dpr, still } from '../scripts/home/util.js';
+  import { initDownload } from '../scripts/home/download.js';
+
+  // the phone looks for servers: rings of gold dots go out from it; then the server it found appears
+  const cv = document.getElementById('ma-waves'), phone = document.getElementById('ma-phone'), found = document.getElementById('ma-found');
+  const pic = Pic(phone);
+  pic.show(phone.dataset.splash, true);
+  let t0 = 0, raf = 0;
+  function waves(now) {
+    if (!t0) t0 = now;
+    const t = (now - t0) / 1000, w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const g = cv.getContext('2d'), cell = 12 * dpr, pr = phone.getBoundingClientRect(), cr = cv.getBoundingClientRect();
+    const cx = (pr.left - cr.left + pr.width / 2) * dpr, cy = (pr.top - cr.top + pr.height / 2) * dpr;
+    for (let y = 0, j = 0; y < cv.height; y += cell, j++) for (let x = 0, i = 0; x < cv.width; x += cell, i++) {
+      const d = Math.hypot(x - cx, y - cy) / (cell * 3), wave = Math.max(0, Math.cos((d - t * 3.2) * 1.1)) * Math.exp(-d / 9) * (t < 2.6 ? 1 : Math.max(0, 1 - (t - 2.6) * .8));
+      if (wave <= (BAYER4[(j & 3) * 4 + (i & 3)] + .5) / 16) continue;
+      g.fillStyle = THEME.css.dot; g.globalAlpha = Math.min(1, wave * 1.4);
+      g.beginPath(); g.arc(x + cell / 2, y + cell / 2, cell * .3, 0, 6.2832); g.fill();
+    }
+    if (t > 1.6) found.classList.add('on');
+    raf = t < 4 ? requestAnimationFrame(waves) : 0;
+  }
+  function look() { found.classList.remove('on'); pic.show(phone.dataset.splash, true); t0 = 0; if (still) { found.classList.add('on'); return; } cancelAnimationFrame(raf); raf = requestAnimationFrame(waves); }
+  document.getElementById('ma-open').addEventListener('click', () => pic.show(phone.dataset.over, true));
+  document.getElementById('ma-again').addEventListener('click', look);
+  look();
+
+  const rise = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rise.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach((el) => rise.observe(el));
+  initDownload('Android');
+</script>

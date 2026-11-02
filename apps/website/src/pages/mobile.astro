@@ -1,0 +1,70 @@
+---
+// Playpex Mobile's page. The hero, "Carry on": Sintel's running time as a line of gold dots, lit up to 7:46, where it
+// stopped; the phone's own resume card beside it. Resume carries the dots on and the clock counts. Then the phone
+// beside the words, turning sideways for the player, the library as a mosaic and the download (components/MobileBody).
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import MobileBody from '../components/MobileBody.astro';
+import { IMG } from '../lib/images';
+import { ICON } from '../lib/icons';
+
+const LENGTH = 888, AT = 466, STEP = 6;   // Sintel: 14:48, stopped at 7:46; a dot for every 6 seconds
+const DOTS = Math.ceil(LENGTH / STEP);
+---
+<Base title="Playpex Mobile: carry on where you stopped" description="Playpex Mobile plays the films and series on your Playpex server on your phone, from the minute you stopped on any other screen.">
+<main id="main" class="h1p">
+  <section class="hero" aria-labelledby="h-h">
+    <div class="top">
+      <div class="words rv">
+        <h1 id="h-h">Stopped on the TV.<span>Carry on in bed.</span></h1>
+        <p class="lede">Playpex Mobile plays the films and series on your Playpex server on your phone, from the minute you stopped on any other screen, every file as it is.</p>
+        <div class="ctas"><a class="btn" href="#download"><Fragment set:html={ICON.download} />Download the app</a></div>
+      </div>
+      <figure class="card rv" style="--d:1" data-ui><Image src={IMG.a_chooser} alt="Playpex Mobile: You stopped at 7:46, Sintel.mp4, Resume or From the start" widths={[540]} sizes="420px" loading="eager" /></figure>
+    </div>
+    <div class="line rv" style="--d:2">
+      <div class="dots" id="h-dots" role="img" aria-label={`Sintel, 14:48 long, stopped at 7:46`} data-dots={DOTS} data-at={AT} data-step={STEP} data-length={LENGTH}>
+        {Array.from({ length: DOTS }, (_, i) => <i class:list={{ on: i * STEP < AT }}></i>)}
+      </div>
+      <div class="times"><span>0:00</span><b id="h-now">7:46</b><span>14:48</span></div>
+      <button type="button" class="btn ghost" id="h-play" aria-pressed="false">Resume</button>
+    </div>
+  </section>
+  <MobileBody />
+</main>
+</Base>
+
+<style>
+  .hero { max-width: 1440px; margin: 0 auto; padding: 56px var(--m) 0; display: grid; gap: 56px; min-height: calc(100svh - var(--bar-h)); align-content: center; }
+  .top { display: grid; gap: 40px; align-items: center; }
+  .words h1 { font-size: clamp(46px, 5.4vw, 92px); font-weight: 800; letter-spacing: -.035em; line-height: .93; }
+  .words h1 span { display: block; color: var(--text-3); }
+  .lede { color: var(--text-2); font-size: 18.5px; line-height: 1.55; max-width: 30em; margin: 24px 0 28px; }
+  .card { margin: 0; justify-self: end; width: min(100%, 420px); aspect-ratio: 540 / 330; border-radius: 24px; overflow: hidden; background: var(--device); }
+  .card img { width: 100%; height: auto; display: block; margin-top: -6%; }
+  @media (min-width: 1000px) { .top { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } }
+  .line { display: grid; gap: 14px; }
+  .dots { display: grid; grid-template-columns: repeat(var(--n, 148), minmax(0, 1fr)); gap: 3px; }
+  .dots i { aspect-ratio: 1; border-radius: 50%; background: var(--unlit); transition: background .2s; }
+  .dots i.on { background: var(--dot); }
+  .times { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; color: var(--muted); font-size: var(--t-small); }
+  .times b { color: var(--dot); font-size: var(--t-lead); }
+  .ghost { justify-self: start; background: var(--raised-2); color: var(--text); }
+  .ghost:hover { background: var(--pressed); }
+  @media (max-width: 767px) { .dots { grid-template-columns: repeat(37, minmax(0, 1fr)); } }
+</style>
+
+<script>
+  const box = document.getElementById('h-dots'), dots = [...box.children], now = document.getElementById('h-now'), btn = document.getElementById('h-play');
+  box.style.setProperty('--n', String(dots.length));
+  const STEP = +box.dataset.step, LEN = +box.dataset.length;
+  let t = +box.dataset.at, timer = 0;
+  const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  function paint() { dots.forEach((d, i) => d.classList.toggle('on', i * STEP < t)); now.textContent = fmt(t); }
+  btn.addEventListener('click', () => {
+    if (timer) { clearInterval(timer); timer = 0; btn.textContent = 'Resume'; btn.setAttribute('aria-pressed', 'false'); return; }
+    if (t >= LEN) t = 0;
+    btn.textContent = 'Pause'; btn.setAttribute('aria-pressed', 'true');
+    timer = setInterval(() => { t = Math.min(LEN, t + 2); paint(); if (t >= LEN) { clearInterval(timer); timer = 0; btn.textContent = 'Watch again'; } }, 60);
+  });
+</script>

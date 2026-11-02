@@ -1,0 +1,2036 @@
+{
+ "url": "http://localhost:4321/tv",
+ "at": "2026-11-02T20:08:18.577Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.46,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.4,
+    0.41,
+    0.39,
+    0.39,
+    0.41,
+    0.63
+   ],
+   "motion": {
+    "elements": 26,
+    "css": 0,
+    "transitions": 14,
+    "scripted": 12,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 14170,
+     "screens": 15.7,
+     "words": 331,
+     "img": 20,
+     "video": 1,
+     "canvas": 11,
+     "svg": 16,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 6,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "chars": 25,
+     "lines": 2,
+     "size": 128,
+     "vw": 8.9,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.57,
+     "top": 243,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "lines": 2,
+     "size": 128,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "words": 5,
+      "chars": 25,
+      "lines": 2,
+      "size": 128,
+      "vw": 8.9,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.57,
+      "top": 243,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track, every subtitle.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.31,
+      "top": 6677,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Four keys run everything",
+      "words": 4,
+      "chars": 24,
+      "lines": 2,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.43,
+      "top": 9160,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "More from the sofa",
+      "words": 4,
+      "chars": 18,
+      "lines": 1,
+      "size": 60.5,
+      "vw": 4.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 9922,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list, and how far you got",
+      "words": 7,
+      "chars": 30,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.3,
+      "top": 10536,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your screen",
+      "words": 4,
+      "chars": 21,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.3,
+      "top": 10542,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the remote",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.3,
+      "top": 10556,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Put it by your TV.",
+      "words": 5,
+      "chars": 18,
+      "lines": 1,
+      "size": 80.6,
+      "vw": 5.6,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.54,
+      "top": 13219,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 8,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      13,
+      15,
+      18,
+      19,
+      20,
+      36,
+      61,
+      81,
+      128
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 128,
+      "vw": 8.9,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.04,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 6300,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 6533,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 12662,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.77
+      },
+      {
+       "color": "#141414",
+       "share": 0.14
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.05
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download for Linux",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div#iscrim.iscrim → linear-gradient(90deg, color(srgb 0.0784314 0.0784314 0.0784314 / 0.97) 28%, color(srgb 0.0784314 0.0784314 0."
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 16,
+     "boxRadius": 8,
+     "squareMedia": 1,
+     "roundedMedia": 6,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.34
+     }
+    ],
+    "nav": {
+     "links": 5,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 14170,
+    "margins": {
+     "left": 32,
+     "right": 32
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.pintro",
+      "tag": "section",
+      "top": 0,
+      "height": 6300,
+      "words": 49,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 128,
+       "tag": "h1"
+      },
+      "left": 32,
+      "right": 697,
+      "textLeft": 32,
+      "textRight": 697,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 6300,
+      "height": 2700,
+      "words": 19,
+      "media": 1,
+      "middle": 54,
+      "heading": {
+       "text": "Every track, every subtitle.",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 972,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 9000,
+      "height": 802,
+      "words": 43,
+      "media": 10,
+      "middle": 76,
+      "heading": {
+       "text": "Four keys run everything",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 0,
+      "textLeft": 32,
+      "textRight": 116,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#more.scene.sc-rooms",
+      "tag": "section",
+      "top": 9802,
+      "height": 2700,
+      "words": 20,
+      "media": 3,
+      "middle": 934,
+      "heading": {
+       "text": "More from the sofa",
+       "size": 60,
+       "tag": "h2"
+      },
+      "left": 32,
+      "right": 0,
+      "textLeft": 32,
+      "textRight": 238,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 12662,
+      "height": 810,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 13472,
+      "height": 697,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 32,
+      "right": 32,
+      "textLeft": 32,
+      "textRight": 50,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "size": 128,
+      "top": 243,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 32,
+      "n": 8
+     },
+     {
+      "x": 190,
+      "n": 1
+     },
+     {
+      "x": 646,
+      "n": 1
+     }
+    ],
+    "leftBlocks": 10,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.57,
+    0.44,
+    0.43,
+    0.43,
+    0.43,
+    0.45,
+    0.45,
+    0.46,
+    0.44,
+    0.44,
+    0.4,
+    0.36
+   ],
+   "motion": {
+    "elements": 27,
+    "css": 0,
+    "transitions": 15,
+    "scripted": 12,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 16284,
+     "screens": 15.9,
+     "words": 323,
+     "img": 20,
+     "video": 1,
+     "canvas": 11,
+     "svg": 16,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 6,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "chars": 25,
+     "lines": 2,
+     "size": 69.1,
+     "vw": 9,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.96,
+     "top": 138,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "lines": 2,
+     "size": 69.1,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "words": 5,
+      "chars": 25,
+      "lines": 2,
+      "size": 69.1,
+      "vw": 9,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 138,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track, every subtitle.",
+      "words": 4,
+      "chars": 28,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 7406,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Four keys run everything",
+      "words": 4,
+      "chars": 24,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.8,
+      "top": 10400,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sintel",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.01,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 10580,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "More from the sofa",
+      "words": 4,
+      "chars": 18,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 11514,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your screen",
+      "words": 4,
+      "chars": 21,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 11974,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the remote",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.86,
+      "top": 11987,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list, and how far you got",
+      "words": 7,
+      "chars": 30,
+      "lines": 1,
+      "size": 26,
+      "vw": 3.4,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.86,
+      "top": 11987,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Put it by your TV.",
+      "words": 5,
+      "chars": 18,
+      "lines": 1,
+      "size": 46,
+      "vw": 6,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.96,
+      "top": 14694,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      46,
+      69
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 68,
+     "max": {
+      "size": 69.1,
+      "vw": 9,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.03,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 7168,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 7604,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 14493,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.77
+      },
+      {
+       "color": "#141414",
+       "share": 0.14
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.05
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div#iscrim.iscrim → linear-gradient(color(srgb 0.0784314 0.0784314 0.0784314 / 0.94) 0px, color(srgb 0.0784314 0.0784314 0.0784314"
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 7,
+     "boxRadius": 16,
+     "squareMedia": 1,
+     "roundedMedia": 6,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.39
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 16284,
+    "margins": {
+     "left": 16,
+     "right": 16
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.pintro",
+      "tag": "section",
+      "top": 0,
+      "height": 7168,
+      "words": 49,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 69,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 174,
+      "textLeft": 16,
+      "textRight": 174,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 7168,
+      "height": 3072,
+      "words": 19,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Every track, every subtitle.",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 311,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 10240,
+      "height": 1021,
+      "words": 43,
+      "media": 2,
+      "middle": 268,
+      "heading": {
+       "text": "Four keys run everything",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 177,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#more.scene.sc-rooms",
+      "tag": "section",
+      "top": 11261,
+      "height": 3072,
+      "words": 20,
+      "media": 3,
+      "middle": 671,
+      "heading": {
+       "text": "More from the sofa",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 157,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 14493,
+      "height": 922,
+      "words": 0,
+      "media": 0,
+      "middle": 0,
+      "heading": null,
+      "left": null,
+      "right": null,
+      "textLeft": null,
+      "textRight": null,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 15415,
+      "height": 869,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 34,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "size": 69,
+      "top": 138,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 16,
+      "n": 8
+     },
+     {
+      "x": 54,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 10,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 7,
+   "filled": [
+    0.37,
+    0.21,
+    0.53,
+    0.53,
+    0.64,
+    0.5,
+    0.34
+   ],
+   "motion": {
+    "elements": 22,
+    "css": 0,
+    "transitions": 21,
+    "scripted": 1,
+    "videos": 1,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 5410,
+     "screens": 6.4,
+     "words": 323,
+     "img": 20,
+     "video": 1,
+     "canvas": 11,
+     "svg": 22,
+     "sections": 5,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 2,
+     "uiAbuse": false,
+     "realPictures": 5,
+     "videoCount": 1,
+     "uiPictures": 2,
+     "pictureSamples": [
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F",
+      "_image?href=%2F%40fs%2Fhome%2Fiheb%2Fprojects%2F"
+     ],
+     "blendText": 0,
+     "sideScrollers": 1,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 1
+    },
+    "hero": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "chars": 25,
+     "lines": 2,
+     "size": 56,
+     "vw": 14.4,
+     "font": "Jost Variable",
+     "weight": 800,
+     "tracking": -0.035,
+     "leading": 0.93,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.92,
+     "top": 84,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Playpex TV. For the sofa.",
+     "words": 5,
+     "lines": 2,
+     "size": 56,
+     "font": "Jost Variable"
+    },
+    "headings": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "words": 5,
+      "chars": 25,
+      "lines": 2,
+      "size": 56,
+      "vw": 14.4,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.035,
+      "leading": 0.93,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 84,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Every track, every subtitle.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1432,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Four keys run everything",
+      "words": 4,
+      "chars": 24,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1848,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Sintel",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.01,
+      "leading": 1.5,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 2091,
+      "tag": "b",
+      "kind": "heading"
+     },
+     {
+      "text": "More from the sofa",
+      "words": 4,
+      "chars": 18,
+      "lines": 1,
+      "size": 36,
+      "vw": 9.2,
+      "font": "Jost Variable",
+      "weight": 700,
+      "tracking": -0.03,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 2932,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Your list, and how far you got",
+      "words": 7,
+      "chars": 30,
+      "lines": 2,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 3427,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Sized for your screen",
+      "words": 4,
+      "chars": 21,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.84,
+      "top": 3428,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Search with the remote",
+      "words": 4,
+      "chars": 22,
+      "lines": 1,
+      "size": 26,
+      "vw": 6.7,
+      "font": "Jost Variable",
+      "weight": 600,
+      "tracking": -0.02,
+      "leading": 1.1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.84,
+      "top": 3442,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Put it by your TV.",
+      "words": 5,
+      "chars": 18,
+      "lines": 1,
+      "size": 46,
+      "vw": 11.8,
+      "font": "Jost Variable",
+      "weight": 800,
+      "tracking": -0.04,
+      "leading": 0.92,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 3867,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Jost Variable",
+       "share": 1,
+       "mono": false
+      }
+     ],
+     "familyCount": 1,
+     "sizes": [
+      15,
+      18,
+      19,
+      20,
+      26,
+      36,
+      46,
+      56
+     ],
+     "sizeCount": 8,
+     "notLoaded": [],
+     "body": {
+      "font": "Jost Variable",
+      "size": 18,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 18.4
+     },
+     "measureChars": 48,
+     "max": {
+      "size": 56,
+      "vw": 14.4,
+      "font": "Jost Variable",
+      "text": "Playpex TV."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 0,
+     "microLabelShare": 0,
+     "microSamples": [],
+     "upperShare": 0,
+     "centerShare": 0.03,
+     "smallText": 0
+    },
+    "eyebrows": [],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#141414",
+     "bodyBgHsl": {
+      "h": 0,
+      "s": 0,
+      "l": 0.08
+     },
+     "dark": true,
+     "sectionBgs": [
+      {
+       "color": "#141414",
+       "top": 844,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.08
+       }
+      },
+      {
+       "color": "#1c1c1c",
+       "top": 844,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 0.11
+       }
+      },
+      {
+       "color": "#edcc75",
+       "top": 3795,
+       "hsl": {
+        "h": 44,
+        "s": 0.77,
+        "l": 0.69
+       }
+      },
+      {
+       "color": "#101012",
+       "top": 4110,
+       "hsl": {
+        "h": 240,
+        "s": 0.06,
+        "l": 0.07
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#ffffff",
+       "share": 0.77
+      },
+      {
+       "color": "#141414",
+       "share": 0.14
+      },
+      {
+       "color": "#a1a1aa",
+       "share": 0.05
+      },
+      {
+       "color": "#fafafa",
+       "share": 0.03
+      },
+      {
+       "color": "#d4d4d8",
+       "share": 0.01
+      }
+     ],
+     "button": {
+      "bg": "#edcc75",
+      "hsl": {
+       "h": 44,
+       "s": 0.77,
+       "l": 0.69
+      },
+      "fg": "#141414"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 7,
+     "inHero": 3,
+     "radius": "pill",
+     "height": 54,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Skip to the content",
+      "Download",
+      "Download Playpex TV"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 0,
+     "shadowOverlay": 2,
+     "shadowSamples": [],
+     "gradients": 2,
+     "scrims": 0,
+     "gradientSamples": [
+      "div#iscrim.iscrim → linear-gradient(color(srgb 0.0784314 0.0784314 0.0784314 / 0.94) 0px, color(srgb 0.0784314 0.0784314 0.0784314",
+      "div.scrim → linear-gradient(rgba(0, 0, 0, 0), color(srgb 0.0784314 0.0784314 0.0784314 / 0.9) 46%)"
+     ],
+     "gradientText": 0,
+     "hairlines": 0,
+     "hairlineSamples": [],
+     "outlinedBoxes": 0,
+     "dashed": 0,
+     "blurred": 0,
+     "roundedBoxes": 6,
+     "boxRadius": 22,
+     "squareMedia": 4,
+     "roundedMedia": 3,
+     "mediaRadius": 22,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "canvas",
+      "ratio": 1
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 64,
+     "floatingPill": false,
+     "blur": false
+    },
+    "fontsLoaded": [
+     "jost variable"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 5410,
+    "margins": {
+     "left": 16,
+     "right": 0
+    },
+    "sections": [
+     {
+      "sel": "section#intro.intro.pintro",
+      "tag": "section",
+      "top": 0,
+      "height": 844,
+      "words": 49,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Playpex TV.",
+       "size": 56,
+       "tag": "h1"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 27,
+      "fullBleed": true,
+      "footer": false,
+      "hero": true,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#screens.scene.sc-screens",
+      "tag": "section",
+      "top": 844,
+      "height": 844,
+      "words": 19,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 42,
+      "fullBleed": true,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": true
+     },
+     {
+      "sel": "section#remote.remote",
+      "tag": "section",
+      "top": 1688,
+      "height": 1084,
+      "words": 43,
+      "media": 2,
+      "middle": 646,
+      "heading": {
+       "text": "Four keys run everything",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 20,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#more.scene.sc-rooms",
+      "tag": "section",
+      "top": 2772,
+      "height": 863,
+      "words": 41,
+      "media": 3,
+      "middle": 309,
+      "heading": {
+       "text": "More from the sofa",
+       "size": 36,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 0,
+      "textLeft": 16,
+      "textRight": 0,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "section#download.get",
+      "tag": "section",
+      "top": 3795,
+      "height": 764,
+      "words": 57,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Put it by your TV.",
+       "size": 46,
+       "tag": "h2"
+      },
+      "left": 16,
+      "right": 18,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": false,
+      "hero": false,
+      "continues": true,
+      "pinned": false
+     },
+     {
+      "sel": "footer",
+      "tag": "footer",
+      "top": 4559,
+      "height": 851,
+      "words": 76,
+      "media": 1,
+      "middle": 0,
+      "heading": {
+       "text": "Apps",
+       "size": 15,
+       "tag": "h3"
+      },
+      "left": 16,
+      "right": 16,
+      "textLeft": 16,
+      "textRight": 18,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Playpex TV. For the sofa.",
+      "size": 56,
+      "top": 84,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [
+     {
+      "text": "Your list, and how far you got",
+      "side": "right",
+      "px": 0
+     },
+     {
+      "text": "The films you saved and the ones you started, with",
+      "side": "right",
+      "px": 0
+     }
+    ],
+    "edges": [
+     {
+      "x": 16,
+      "n": 12
+     },
+     {
+      "x": 358,
+      "n": 2
+     }
+    ],
+    "leftBlocks": 14,
+    "bodySize": 15,
+    "stage": false,
+    "explains": true,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": null,
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "width": 1440,
+   "message": "1 gradient fill(s): div#iscrim.iscrim → linear-gradient(90deg, color(srgb 0.0784314 0.0784314 0.0784314 / 0.97) 28%, color(srgb 0.0784314 0.0784314 0.",
+   "fix": "Use a flat colour or a real image. The only gradient allowed by default is a neutral scrim over a photo for legibility.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "dev-server",
+   "width": 1440,
+   "message": "This page is served by a development server (Vite, webpack or Next in dev mode).",
+   "fix": "Run the last gate on the production build too (vite build && vite preview, next build && next start, or the built index.html): minifiers and bundlers change the CSS a visitor receives.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "pinned-over-picture",
+   "width": 1440,
+   "message": "Pinned large text slides across pictures while the page scrolls: \"Playpex TV. For the sofa.\" (screen 1, 100% over a picture); \"For the sofa.\" (screen 1, 100% over a picture); \"Every film on your server.\" (screen 2, 100% over a picture)",
+   "fix": "Jurors read a pinned title crossing drawings or photographs as a collision. Keep the pictures in the column the title does not occupy, or unpin it.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "long-pin",
+   "width": 1440,
+   "message": "The same large text stays on screen for 3 screens in a row: \"Every title has its page.\"",
+   "fix": "A pinned element earns two screens, and something must change at each. Shorten the run or give every screen its own content."
+  },
+  {
+   "level": "WARN",
+   "id": "no-poster",
+   "width": 390,
+   "message": "1 clip(s) without a poster.",
+   "fix": "Give every clip a poster frame: in the study of 100 Sites of the Day only 31% had one, and the blank or grey boxes before the clips played were recorded as faults (references/imagery.md §11)."
+  },
+  {
+   "level": "WARN",
+   "id": "side-scroll",
+   "width": 390,
+   "message": "1 row(s) scroll sideways with content past their edge.",
+   "fix": "Jurors and most visitors read a row cut at the edge as clipped, not as scrollable. Wrap it onto more lines, or end it inside the grid."
+  },
+  {
+   "level": "WARN",
+   "id": "off-centre",
+   "width": 390,
+   "message": "The margins differ: 16px on the left, 0px on the right, at 390px.",
+   "fix": "Put the navigation and the content on one pair of margins; check for padding on one side only, a scrollbar gutter, or a header on another inset than the page."
+  },
+  {
+   "level": "FAIL",
+   "id": "edge-text",
+   "width": 390,
+   "message": "2 text block(s) sit within 12px of the screen edge: \"Your list, and how far you got\" (0px from the right); \"The films you saved and the on\" (0px from the right)",
+   "fix": "Keep text inside the page margin (16–20px). Only display type deliberately bled past the edge may touch it."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-page/desktop-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/desktop-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/desktop-page-02.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/desktop-page-03.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-page/tablet-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/tablet-page-01.jpg",
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/tablet-page-02.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/iheb/projects/Playpex/.taste-skill/tv-page/mobile-fold.jpg",
+   "pages": [
+    "/home/iheb/projects/Playpex/.taste-skill/tv-page/mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

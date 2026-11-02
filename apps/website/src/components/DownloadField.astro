@@ -1,0 +1,29 @@
+---
+// The gold download field: the words on the left, the download dialog already open on the right (the visitor's
+// system chosen by scripts/home/download.js).
+import { ICON } from '../lib/icons';
+import { SITE, RELEASE } from '../data/site';
+
+export type Files = Record<string, { file: string; how: string }>;
+interface Props { title: string; text: string; links: { href: string; label: string }[]; dialog: string; files: Files }
+const { title, text, links, dialog, files } = Astro.props;
+const first = Object.entries(files)[0];
+---
+<section class="get" id="download" aria-labelledby="get-title">
+    <div class="wrap">
+      <div class="get-words">
+        <h2 id="get-title" class="rv">{title}</h2>
+        <p class="rv" style="--d:1">{text}</p>
+        <div class="also rv" style="--d:2">{links.map((l) => <a href={l.href}>{l.label}</a>)}</div>
+      </div>
+      <div class="dl-dialog rv" style="--d:1" data-ui role="group" aria-labelledby="dl-title">
+        <b id="dl-title">{dialog}</b>
+        <p>Version {RELEASE.version}, released {RELEASE.dateText}</p>
+        <div class="seg" role="radiogroup" aria-label="Your computer" id="seg">
+          {Object.entries(files).map(([k, d], i) => <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-k={k} data-file={d.file} data-how={d.how}>{k}</button>)}
+        </div>
+        <div class="dl-file"><span id="dl-name">{first[1].file}</span><small id="dl-how">{first[1].how}</small></div>
+        <a class="btn" id="dl-go" href={SITE.releases}><Fragment set:html={ICON.download} />Download for {first[0]}</a>
+      </div>
+    </div>
+  </section>

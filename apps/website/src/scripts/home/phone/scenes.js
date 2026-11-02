@@ -56,7 +56,7 @@ export function initScenes() {
 
 // the round buttons and the dot track, as one element
 const DOTS = 30;
-function controls(cls, noun) {
+export function controls(cls, noun) {
   const ctl = document.createElement('div');
   ctl.className = cls;
   ctl.innerHTML = '<div class="rdots" aria-hidden="true">' + '<i></i>'.repeat(DOTS) + '</div>' +
@@ -71,7 +71,7 @@ function controls(cls, noun) {
 const arrowKey = (e) => ({ ArrowRight: 1, ArrowLeft: -1 })[e.key];
 
 // phones: a native scroll-snap carousel with the buttons and the dot track under it
-function carousel(track, label) {
+export function carousel(track, label) {
   const items = track.children, n = items.length;
   track.classList.add('pcar');
   track.setAttribute('aria-roledescription', 'carousel'); track.setAttribute('aria-label', label); track.tabIndex = 0;
@@ -95,7 +95,7 @@ function carousel(track, label) {
 
 // phones: a scene that stays one screen tall and moves between stops (timeline progress) with the buttons,
 // the arrow keys or a swipe, instead of the scroll
-function manualScene(root, build, stops, label) {
+export function manualScene(root, build, stops, label) {
   const stage = root.querySelector('.scene-stage');
   root.classList.add('is-live', 'is-manual');
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });

@@ -1,0 +1,191 @@
+---
+// Playpex TV's page, read top to bottom (no held scenes):
+// the hero: a remote drawn in dot-matrix dots, like the footer's name, beside a TV. Its keys are real buttons (and the
+//   keyboard's arrows, Enter, Escape, Space): each press moves the TV through the app, the screens dissolving into
+//   each other through gold dots, and says what the key did;
+// the screens: a carousel; the slide in view is itself under the TV's white focus ring, the others gold dots;
+// the download: one tile per system, the visitor's chosen, the file and how to install it.
+import { getImage } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import DownloadField from '../components/DownloadField.astro';
+import ShotCarousel from '../components/ShotCarousel.astro';
+import { IMG } from '../lib/images';
+import { ICON } from '../lib/icons';
+import { RELEASE, SITE } from '../data/site';
+
+const SLIDES = [
+  { shot: 's_tvshows', title: 'Series', text: 'Popular and new series in rows, with the story of the one you’re on above them.' },
+  { shot: 's_tvbb', title: 'Season by season', text: 'Breaking Bad: every season, every episode with its rating and when it aired, and Play on the next one.' },
+  { shot: 's_tvbbep', title: 'A page for every episode', text: 'The pilot: its story, who directed and wrote it, its ratings and its guest stars, with the rest of the season below.' },
+  { shot: 's_tvmovie', title: 'A page for every film', text: 'Interstellar: the story, the cast, the ratings and the films like it, with Play already under your thumb.' },
+  { shot: 's_tvcontinue', title: 'Continue watching', text: 'What you started comes first, with the minutes left on each.' },
+  { shot: 's_tvmylist', title: 'Watch later', text: 'Films and series you saved for later, in My list, kept for each profile.' },
+  { shot: 's_tvlibrary', title: 'Your library', text: 'Everything on this server, newest first: the films and series it found in your folders, with their posters.' },
+  { shot: 's_resume', title: 'Back where you stopped', text: 'Resume at the minute you left it, on this TV or any other screen in the house, or start again.' },
+  { shot: 's_player', title: 'Every track in the file', text: 'Dolby and DTS sound turned into AAC by the server, so no film plays silent.' },
+  { shot: 's_subs', title: 'Subtitles for the sofa', text: 'From the file, OpenSubtitles or YIFY, at a size you can read from three metres, with a timing offset.' },
+  { shot: 's_profiles', title: 'Who’s watching?', text: 'A profile each, with its own list and resume points. A PIN locks the grown-ups’; kids see what’s for them.' },
+  { shot: 's_tvsearch', title: 'Search with the arrows', text: 'One on-screen keyboard for titles, people, videos and links. Nothing to type on but the remote.' },
+];
+const SHOTS = ['s_tvlib', 's_sintel', 's_resume', 's_player', 's_subs', 's_tvsearch'];
+const src = Object.fromEntries(await Promise.all(SHOTS.map(async (k) => [k, (await getImage({ src: IMG[k], width: 1600, format: 'webp', quality: 80 })).src])));
+
+// the remote, 15 dots wide: its body, the ring of arrows, OK, and the two keys under them
+const COLS = 15, ROWS = 46, R = { cx: 7, cy: 13, ring: 6.2, hole: 3.1, ok: 2.4 };
+type Zone = 'body' | 'up' | 'down' | 'left' | 'right' | 'ok' | 'back' | 'play' | 'off';
+function zone(x: number, y: number): Zone {
+  const inBody = x >= 0 && x < COLS && y >= 0 && y < ROWS && !((x < 1 || x > COLS - 2) && (y < 2 || y > ROWS - 3));
+  if (!inBody) return 'off';
+  const dx = x - R.cx, dy = y - R.cy, d = Math.hypot(dx, dy);
+  if (d <= R.ok) return 'ok';
+  if (d > R.hole && d <= R.ring) return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  if (y >= 23 && y <= 26 && x >= 1 && x <= 5) return 'back';
+  if (y >= 23 && y <= 26 && x >= 9 && x <= 13) return 'play';
+  return 'body';
+}
+const dots: { x: number; y: number; z: Zone }[] = [];
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const z = zone(x, y); if (z !== 'off') dots.push({ x, y, z }); }
+const path = (z: Zone) => dots.filter((d) => d.z === z).map((d) => `M${d.x + .1} ${d.y + .5}a.4 .4 0 1 0 .8 0a.4 .4 0 1 0 -.8 0`).join('');
+const KEYS: { z: Zone; label: string; key: string }[] = [
+  { z: 'up', label: 'Up', key: 'ArrowUp' }, { z: 'left', label: 'Left', key: 'ArrowLeft' }, { z: 'ok', label: 'OK', key: 'Enter' },
+  { z: 'right', label: 'Right', key: 'ArrowRight' }, { z: 'down', label: 'Down', key: 'ArrowDown' }, { z: 'back', label: 'Back', key: 'Escape' }, { z: 'play', label: 'Play or pause', key: ' ' },
+];
+// each key's hit area, in dots
+const BOX: Record<string, [number, number, number, number]> = {
+  up: [4.5, 6.5, 6, 3.6], down: [4.5, 16.9, 6, 3.6], left: [0.5, 10.5, 3.6, 6], right: [10.9, 10.5, 3.6, 6], ok: [4.6, 10.6, 4.8, 4.8], back: [1, 23, 5, 4], play: [9, 23, 5, 4],
+};
+const FILES = {
+  Windows: { file: `Playpex-TV-Setup-${RELEASE.version}.exe`, how: 'Installs for your user only. Windows may ask you to confirm the first time.' },
+  macOS: { file: `Playpex-TV-${RELEASE.version}-arm64.dmg`, how: 'Drag Playpex TV to Applications.' },
+  Linux: { file: `Playpex-TV-${RELEASE.version}-x86_64.AppImage`, how: 'Or the .deb package on the releases page.' },
+};
+const home = import.meta.env.BASE_URL;
+---
+<Base title="Playpex TV: your films on the big screen" description="Playpex TV shows the films on your Playpex server on the computer plugged into your TV. A remote’s arrows, OK and Back do everything.">
+<main id="main" class="tvp">
+  <section class="hero" aria-labelledby="fc-h">
+    <div class="words rv">
+      <h1 id="fc-h">Playpex TV.<span>Four keys.</span></h1>
+      <p class="lede">The app for the computer plugged into your TV. It shows the films on your Playpex server and plays them; the arrows, OK and Back of any remote do everything. Try the one here.</p>
+      <div class="ctas"><a class="btn" href="#download"><Fragment set:html={ICON.download} />Download Playpex TV</a></div>
+    </div>
+    <div class="remote rv" style="--d:1" role="group" aria-label="A remote for Playpex TV">
+      <svg viewBox={`0 0 ${COLS} ${ROWS}`} aria-hidden="true">
+        <path class="body" d={path('body')} />
+        {KEYS.map((k) => <path class={`key k-${k.z}`} d={path(k.z)} />)}
+      </svg>
+      {KEYS.map((k) => {
+        const [x, y, w, h] = BOX[k.z];
+        return <button type="button" class={`hit h-${k.z}`} data-z={k.z} aria-label={k.label} style={`left:${x / COLS * 100}%;top:${y / ROWS * 100}%;width:${w / COLS * 100}%;height:${h / ROWS * 100}%`}></button>;
+      })}
+      <p class="brand" aria-hidden="true">Playpex</p>
+    </div>
+    <div class="tvside rv" style="--d:2">
+      <figure class="tv" id="fc-tv" data-src={JSON.stringify(src)}><noscript><img src={src.s_tvlib} alt="Playpex TV: the films on the server" /></noscript></figure>
+      <div class="said" aria-live="polite"><b id="fc-key">Your films, in rows</b><span id="fc-say">Press a key on the remote, or use your arrow keys, Enter and Escape.</span></div>
+    </div>
+  </section>
+
+  <ShotCarousel title="Inside Playpex TV" label="Screens of Playpex TV" slides={SLIDES} />
+
+  <DownloadField
+    title="Put it by your TV."
+    text="It’s free. Install it on the computer plugged into your TV; it finds your Playpex server on the Wi-Fi and asks for a code once."
+    links={[{ href: `${home}#download`, label: 'Get the server first' }, { href: `${import.meta.env.BASE_URL}releases?app=tv`, label: 'All releases' }]}
+    dialog="Download Playpex TV" files={FILES} />
+</main>
+</Base>
+
+<style>
+  .hero { max-width: 1440px; margin: 0 auto; padding: 48px var(--m) 0; display: grid; gap: 40px; align-items: center; min-height: calc(100svh - var(--bar-h)); }
+  .words h1 { font-size: clamp(52px, 5.6vw, 96px); font-weight: 800; letter-spacing: -.035em; line-height: .93; }
+  .words h1 span { display: block; color: var(--text-3); }
+  .lede { color: var(--text-2); font-size: 18.5px; line-height: 1.55; max-width: 30em; margin: 24px 0 28px; }
+  .remote { position: relative; width: min(46vw, 210px); aspect-ratio: 15 / 46; justify-self: center; }
+  .remote svg { width: 100%; height: 100%; display: block; }
+  .body { fill: var(--unlit); }
+  .key { fill: color-mix(in srgb, var(--dot) 38%, var(--unlit)); transition: fill .12s; }
+  .remote:hover .key { fill: color-mix(in srgb, var(--dot) 48%, var(--unlit)); }
+  .key.k-ok, .remote:hover .key.k-ok { fill: color-mix(in srgb, var(--dot) 72%, var(--unlit)); }
+  .key.hot { fill: var(--dot); }
+  .hit { position: absolute; border-radius: 50%; }
+  .hit:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .brand { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; font-weight: 600; letter-spacing: -.01em; color: var(--muted); font-size: 15px; }
+  .tv { margin: 0; position: relative; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: var(--device); border: 8px solid var(--device); }
+  .tv :global(canvas), .tv :global(noscript img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .said { margin-top: 26px; display: grid; gap: 6px; min-height: 5.5em; }
+  .said b { font-size: var(--t-mid); font-weight: 700; letter-spacing: -.02em; }
+  .said span { font-size: var(--t-body); max-width: 34em; }
+  @media (min-width: 1000px) {
+    .hero { grid-template-columns: minmax(0, 4.6fr) auto minmax(0, 5.4fr); gap: 40px; }
+    .remote { width: auto; height: min(78svh, 700px); }
+  }
+  @media (max-width: 999px) {
+    /* phones and tablets: the words, then the TV with the remote beside what it said */
+    .hero { padding-top: 32px; min-height: 0; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "words words" "tv tv" "remote said"; gap: 28px 24px; align-items: start; }
+    .words { grid-area: words; }
+    .tvside { display: contents; }
+    .tv { grid-area: tv; }
+    .said { grid-area: said; margin-top: 0; align-self: center; }
+    .remote { grid-area: remote; width: auto; height: min(52svh, 420px); }
+  }
+</style>
+
+<script>
+  import { Pic } from '../scripts/home/dither.js';
+  import { initDownload } from '../scripts/home/download.js';
+  import { system } from '../scripts/home/util.js';
+  const fig = document.getElementById('fc-tv'), SRC = JSON.parse(fig.dataset.src);
+  const pic = Pic(fig);
+  const keyEl = document.getElementById('fc-key'), say = document.getElementById('fc-say');
+  // where the TV is, and what each key does there: [next screen, what to say]
+  const SCREENS = {
+    lib: { shot: 's_tvlib', name: 'Your films, in rows' },
+    title: { shot: 's_sintel', name: 'Sintel’s page' },
+    resume: { shot: 's_resume', name: 'Resume or start again' },
+    player: { shot: 's_player', name: 'Playing Sintel' },
+    subs: { shot: 's_subs', name: 'Audio and subtitles' },
+    search: { shot: 's_tvsearch', name: 'Search' },
+  };
+  const MAP = {
+    lib: { ok: ['title', 'OK opened Sintel.'], right: [null, 'The focus moved along the row, to The Kid.'], left: [null, 'The focus moved to the menu on the left.'], up: ['search', 'Up, then OK on the menu: Search.'], down: [null, 'Down moves to the next row.'], back: [null, 'You’re home. Back has nowhere further to go.'], play: [null, 'Play starts the film in focus.'] },
+    title: { ok: ['resume', 'OK on Play: Sintel was started before.'], back: ['lib', 'Back went to the row.'], down: [null, 'Down moves to the cast and the films like it.'], right: [null, 'Right moves to Trailer, Download, Add to watch list.'], left: [null, 'Left opens the menu.'], up: [null, 'Up is the top of the page.'], play: ['resume', 'Play starts Sintel.'] },
+    resume: { ok: ['player', 'OK on Resume: back at 5:18.'], back: ['title', 'Back closed the question.'], down: [null, 'Down moves to Play from the beginning.'], up: [null, 'Up moves to Resume.'], left: [null, 'Two answers, up and down.'], right: [null, 'Two answers, up and down.'], play: ['player', 'Play resumed at 5:18.'] },
+    player: { ok: [null, 'OK paused it.'], play: [null, 'Paused. Play again to go on.'], left: [null, 'Left scrubs back. Held, it goes faster; the jump happens when you let go.'], right: [null, 'Right scrubs forward. Held, it goes faster.'], down: ['subs', 'The player’s settings: audio and subtitles.'], up: [null, 'Up shows the timeline.'], back: ['title', 'Back stopped the film at 6:01 and went to its page.'] },
+    subs: { back: ['player', 'Back closed the settings.'], ok: [null, 'OK picked the English subtitles.'], up: [null, 'Up and down move through the subtitles.'], down: [null, 'Up and down move through the subtitles.'], left: [null, 'Left and right move between the tabs.'], right: [null, 'Right moved to Size and timing.'], play: [null, 'Play goes on with the film.'] },
+    search: { back: ['lib', 'Back went to your films.'], ok: [null, 'OK typed the letter in focus.'], up: [null, 'The arrows move over the keyboard.'], down: [null, 'The arrows move over the keyboard.'], left: [null, 'The arrows move over the keyboard.'], right: [null, 'The arrows move over the keyboard.'], play: [null, 'Nothing to play yet.'] },
+  };
+  const LABEL = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', ok: 'OK', back: 'Back', play: 'Play' };
+  let at = 'lib';
+  pic.show(SRC.s_tvlib, false);
+  requestAnimationFrame(() => pic.show(SRC.s_tvlib, true));
+  function press(z) {
+    const k = document.querySelector('.k-' + z);
+    k.classList.add('hot'); setTimeout(() => k.classList.remove('hot'), 180);
+    const [next, words] = MAP[at][z];
+    if (next) { at = next; pic.show(SRC[SCREENS[at].shot], true); }
+    keyEl.textContent = LABEL[z] + ': ' + SCREENS[at].name;
+    say.textContent = words;
+  }
+  document.querySelectorAll('.hit').forEach((b) => b.addEventListener('click', () => press(b.dataset.z)));
+  const KEY = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back', Backspace: 'back', ' ': 'play' };
+  let inView = true;
+  new IntersectionObserver((es) => { inView = es[0].isIntersecting; }, { threshold: .4 }).observe(fig);
+  document.addEventListener('keydown', (e) => {
+    const z = KEY[e.key], a = document.activeElement;
+    if (!z || !inView || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (a && a !== document.body && !a.classList.contains('hit')) return;
+    if (a && a.classList.contains('hit') && (e.key === 'Enter' || e.key === ' ')) return;   // the button's own press
+    e.preventDefault();
+    press(z);
+  });
+
+  // the parts of each section rise into place as they arrive (.rv, base.css)
+  const rise = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); rise.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach((el) => rise.observe(el));
+
+
+
+  // ── the download: the dialog with the visitor's system chosen ──
+  initDownload(system());
+</script>

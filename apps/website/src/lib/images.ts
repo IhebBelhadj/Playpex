@@ -12,12 +12,12 @@ export const IMG: Record<string, ImageMetadata> = Object.fromEntries(Object.entr
 // the Sintel loop (played in the screens scene), as a plain fingerprinted URL
 export { default as LOOP_VIDEO } from '../assets/img/loop.mp4?url';
 
-// the pictures the scripts paint (home/*.js: the shader textures, the dissolves, the Who's watching pictures), at
+// the pictures the home page's scripts paint (home/*.js: the shader textures, the dissolves, the Who's watching pictures), at
 // the width they are needed (a texture or a dithered canvas never needs more)
 const SCRIPT_IMAGES = ['wall', 's_dashlib', 's_tvlib', 's_mtitle', 's_man', 's_sintel', 's_resume', 's_player', 'loopposter', 's_subs', 's_profiles', 's_remote'];
 
-export async function imageMap(): Promise<Record<string, string>> {
-  const entries = await Promise.all(SCRIPT_IMAGES.map(async (key) => {
+export async function imageMap(keys: string[] = SCRIPT_IMAGES): Promise<Record<string, string>> {
+  const entries = await Promise.all(keys.map(async (key) => {
     const src = IMG[key];
     const img = await getImage({ src, format: 'webp', width: Math.min(src.width, 1600), quality: 80 });
     return [key, img.src] as const;

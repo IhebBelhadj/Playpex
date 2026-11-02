@@ -11,6 +11,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.4",
     "@fontsource-variable/jost": "^5.3.0",
     "astro": "7.4.1",
     "gsap": "3.15.0",

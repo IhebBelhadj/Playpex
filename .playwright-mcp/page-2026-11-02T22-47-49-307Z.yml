@@ -1,0 +1,161 @@
+- generic [active] [ref=f4e1]:
+  - link "Skip to the content" [ref=f4e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - link "Playpex" [ref=f4e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f4e9]:
+        - listitem [ref=f4e10]:
+          - button "Products" [ref=f4e11] [cursor=pointer]
+        - listitem [ref=f4e14]:
+          - link "Plugins" [ref=f4e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f4e16]:
+          - button "Docs" [ref=f4e17] [cursor=pointer]
+        - listitem [ref=f4e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f4e21] [cursor=pointer]:
+            - /url: "#releases"
+            - text: Releases
+            - generic [ref=f4e22]: 0.10.1-alpha.1
+      - generic [ref=f4e23]:
+        - link "GitHub" [ref=f4e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f4e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=f4e31]:
+    - region [ref=f4e32]:
+      - generic [ref=f4e33]:
+        - heading "Playpex TV. Four keys." [level=1] [ref=f4e34]:
+          - text: Playpex TV.
+          - generic [ref=f4e35]: Four keys.
+        - paragraph [ref=f4e36]: The app for the computer plugged into your TV. It shows the films on your Playpex server and plays them; the arrows, OK and Back of any remote do everything. Try the one here.
+        - link "Download Playpex TV" [ref=f4e38] [cursor=pointer]:
+          - /url: "#download"
+      - group "A remote for Playpex TV" [ref=f4e41]:
+        - button "Up" [ref=f4e51] [cursor=pointer]
+        - button "Left" [ref=f4e52] [cursor=pointer]
+        - button "OK" [ref=f4e53] [cursor=pointer]
+        - button "Right" [ref=f4e54] [cursor=pointer]
+        - button "Down" [ref=f4e55] [cursor=pointer]
+        - button "Back" [ref=f4e56] [cursor=pointer]
+        - button "Play or pause" [ref=f4e57] [cursor=pointer]
+        - paragraph [aria-hidden] [ref=f4e58]: Playpex
+      - generic [ref=f4e59]:
+        - figure [ref=f4e60]
+        - generic [ref=f4e62]:
+          - generic [ref=f4e63]: Your films, in rows
+          - generic [ref=f4e64]: Press a key on the remote, or use your arrow keys, Enter and Escape.
+    - region [ref=f4e65]:
+      - generic [ref=f4e66]:
+        - heading "Inside Playpex TV" [level=2] [ref=f4e67]
+        - generic [ref=f4e68]:
+          - button "Previous screen" [disabled]
+          - button "Next screen" [ref=f4e69] [cursor=pointer]
+      - list "Screens of Playpex TV" [ref=f4e72]:
+        - 'listitem "1 of 12: Series" [ref=f4e73]':
+          - figure [ref=f4e74] [cursor=pointer]
+          - heading "Series" [level=3] [ref=f4e76]
+          - paragraph [ref=f4e77]: Popular and new series in rows, with the story of the one you’re on above them.
+        - 'listitem "2 of 12: Season by season" [ref=f4e78]':
+          - figure [ref=f4e79] [cursor=pointer]
+          - heading "Season by season" [level=3] [ref=f4e81]
+          - paragraph [ref=f4e82]: "Breaking Bad: every season, every episode with its rating and when it aired, and Play on the next one."
+        - 'listitem "3 of 12: A page for every episode" [ref=f4e83]':
+          - figure [ref=f4e84] [cursor=pointer]
+          - heading "A page for every episode" [level=3] [ref=f4e86]
+          - paragraph [ref=f4e87]: "The pilot: its story, who directed and wrote it, its ratings and its guest stars, with the rest of the season below."
+        - 'listitem "4 of 12: A page for every film" [ref=f4e88]':
+          - figure [ref=f4e89] [cursor=pointer]
+          - heading "A page for every film" [level=3] [ref=f4e91]
+          - paragraph [ref=f4e92]: "Interstellar: the story, the cast, the ratings and the films like it, with Play already under your thumb."
+        - 'listitem "5 of 12: Continue watching" [ref=f4e93]':
+          - figure [ref=f4e94] [cursor=pointer]
+          - heading "Continue watching" [level=3] [ref=f4e96]
+          - paragraph [ref=f4e97]: What you started comes first, with the minutes left on each.
+        - 'listitem "6 of 12: Watch later" [ref=f4e98]':
+          - figure [ref=f4e99] [cursor=pointer]
+          - heading "Watch later" [level=3] [ref=f4e101]
+          - paragraph [ref=f4e102]: Films and series you saved for later, in My list, kept for each profile.
+        - 'listitem "7 of 12: Your library" [ref=f4e103]':
+          - figure [ref=f4e104] [cursor=pointer]
+          - heading "Your library" [level=3] [ref=f4e106]
+          - paragraph [ref=f4e107]: "Everything on this server, newest first: the films and series it found in your folders, with their posters."
+        - 'listitem "8 of 12: Back where you stopped" [ref=f4e108]':
+          - figure [ref=f4e109] [cursor=pointer]
+          - heading "Back where you stopped" [level=3] [ref=f4e111]
+          - paragraph [ref=f4e112]: Resume at the minute you left it, on this TV or any other screen in the house, or start again.
+        - 'listitem "9 of 12: Every track in the file" [ref=f4e113]':
+          - figure [ref=f4e114] [cursor=pointer]
+          - heading "Every track in the file" [level=3] [ref=f4e116]
+          - paragraph [ref=f4e117]: Dolby and DTS sound turned into AAC by the server, so no film plays silent.
+        - 'listitem "10 of 12: Subtitles for the sofa" [ref=f4e118]':
+          - figure [ref=f4e119] [cursor=pointer]
+          - heading "Subtitles for the sofa" [level=3] [ref=f4e121]
+          - paragraph [ref=f4e122]: From the file, OpenSubtitles or YIFY, at a size you can read from three metres, with a timing offset.
+        - 'listitem "11 of 12: Who’s watching?" [ref=f4e123]':
+          - figure [ref=f4e124] [cursor=pointer]
+          - heading "Who’s watching?" [level=3] [ref=f4e126]
+          - paragraph [ref=f4e127]: A profile each, with its own list and resume points. A PIN locks the grown-ups’; kids see what’s for them.
+        - 'listitem "12 of 12: Search with the arrows" [ref=f4e128]':
+          - figure [ref=f4e129] [cursor=pointer]
+          - heading "Search with the arrows" [level=3] [ref=f4e131]
+          - paragraph [ref=f4e132]: One on-screen keyboard for titles, people, videos and links. Nothing to type on but the remote.
+    - region [ref=f4e146]:
+      - generic [ref=f4e147]:
+        - generic [ref=f4e148]:
+          - heading "Put it by your TV." [level=2] [ref=f4e149]
+          - paragraph [ref=f4e150]: It’s free. Install it on the computer plugged into your TV; it finds your Playpex server on the Wi-Fi and asks for a code once.
+          - generic [ref=f4e151]:
+            - link "Get the server first" [ref=f4e152] [cursor=pointer]:
+              - /url: /#download
+            - link "All releases" [ref=f4e153] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+        - group "Download Playpex TV" [ref=f4e154]:
+          - paragraph [ref=f4e156]: Version 0.10.1-alpha.1, released 1 November 2026
+          - radiogroup "Your computer" [ref=f4e157]:
+            - radio "Windows" [ref=f4e158] [cursor=pointer]
+            - radio "macOS" [ref=f4e159] [cursor=pointer]
+            - radio "Linux" [checked] [ref=f4e160] [cursor=pointer]
+          - generic [ref=f4e161]:
+            - generic [ref=f4e162]: Playpex-TV-0.10.1-alpha.1-x86_64.AppImage
+            - generic [ref=f4e163]: Or the .deb package on the releases page.
+          - link "Download for Linux" [ref=f4e164] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=f4e167]:
+    - generic [ref=f4e168]:
+      - img "Playpex" [ref=f4e169]
+      - generic [ref=f4e173]:
+        - generic [ref=f4e174]:
+          - heading "Apps" [level=3] [ref=f4e175]
+          - link "Media Server" [ref=f4e176] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f4e177] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f4e178] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f4e179] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f4e180]:
+          - heading "Docs" [level=3] [ref=f4e181]
+          - link "First steps" [ref=f4e182] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f4e183] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f4e184] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f4e185] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f4e186]:
+          - heading "Project" [level=3] [ref=f4e187]
+          - link "Source code" [ref=f4e188] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f4e189] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=f4e190] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f4e191]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f4e192]:
+        - generic [ref=f4e193]: Playpex 2026
+        - link "Download" [ref=f4e194] [cursor=pointer]:
+          - /url: "#download"

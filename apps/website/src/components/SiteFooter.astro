@@ -1,17 +1,19 @@
 ---
 // The footer: the name in dot-matrix letters across the page, the links, the educational notice.
 import { led } from '../lib/led';
-import { SITE, PRODUCTS } from '../data/site';
+import { SITE, PRODUCTS, productHref, downloadHref } from '../data/site';
+const home = import.meta.env.BASE_URL;
+const onHome = Astro.url.pathname.replace(/\/$/, '') === home.replace(/\/$/, '');
 ---
 <footer>
   <div class="wrap">
     <span role="img" aria-label="Playpex"><Fragment set:html={led('PLAYPEX', 'mark')} /></span>
     <div class="fcols">
-      <div><h3>Apps</h3>{PRODUCTS.map((p) => <a href="#products">{p.name}</a>)}</div>
-      <div><h3>Docs</h3><a href="#docs">First steps</a><a href="#docs">Pair a screen</a><a href="#docs">Client API</a><a href="#docs">Plugin guide</a></div>
-      <div><h3>Project</h3><a href={SITE.repo}>Source code</a><a href={SITE.releases}>Releases</a><a href={`${SITE.repo}/blob/main/licence.md`}>Licence</a></div>
+      <div><h3>Apps</h3>{PRODUCTS.map((p) => <a href={productHref(p, home, onHome)}>{p.name}</a>)}</div>
+      <div><h3>Docs</h3><a href={home + 'docs/install-the-server'}>First steps</a><a href={home + 'docs/connect-a-screen'}>Connect a screen</a><a href={home + 'docs/plugins-overview'}>Write a plugin</a><a href={home + 'docs/client-api'}>Build a client</a></div>
+      <div><h3>Project</h3><a href={SITE.repo}>Source code</a><a href={home + 'releases'}>Releases</a><a href={`${SITE.repo}/blob/main/licence.md`}>Licence</a></div>
       <p class="note">Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.</p>
     </div>
-    <div class="flast"><span>Playpex 2026</span><a class="btn" href="#download">Download</a></div>
+    <div class="flast"><span>Playpex 2026</span><a class="btn" href={downloadHref(Astro.url.pathname, home)}>Download</a></div>
   </div>
 </footer>

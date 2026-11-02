@@ -1,0 +1,166 @@
+---
+// Releases: pick the app (its screen as the button; ?app=<id> opens one), then its versions, each with its notes and
+// files, the files for your system first, PER versions a page. A search field filters the versions by number or by what
+// changed. The app, the search and the page live in the address (?app=…&v=…&page=…). Data: data/releases.ts.
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import { IMG } from '../lib/images';
+import { PRODUCTS, SITE } from '../data/site';
+import { RELEASES, APPS, OSES, releaseUrl } from '../data/releases';
+const PER = 5;
+const short = (v: string) => v.replace('-alpha.', ' alpha ');
+const shot = (id: string) => PRODUCTS.find((p) => p.id === id)!;
+const history = (id: string) => RELEASES.filter((r) => r.apps[id as 'tv']).map((r) => ({ r, a: r.apps[id as 'tv']! }));
+---
+<Base title="Releases · Playpex" description="Every Playpex release: what changed, and the files for the server, Playpex TV, Playpex Mobile and Server Manager." current="releases">
+<main class="rel">
+  <h1>Releases</h1>
+  <p class="lede">Pick an app to see its versions. <span id="osline">The files for your system come first.</span> Every file is on <a href={SITE.releases}>GitHub</a>.</p>
+  <div class="pick" role="tablist" aria-label="Apps">
+    {APPS.map((a, i) => { const p = shot(a.id); const h = history(a.id); return (
+      <button type="button" role="tab" id={`t-${a.id}`} aria-controls={`p-${a.id}`} aria-selected={i === 0 ? 'true' : 'false'} class:list={['tile', p.device]}>
+        <span class="th"><Image src={IMG[p.shot]} alt="" width={480} loading="eager" /></span>
+        <b>{a.name}</b><small>{short(h[0].a.version)}, {h[0].r.dateText}</small>
+      </button>
+    ); })}
+  </div>
+  <div class="find">
+    <label class="vh" for="rel-q">Search versions</label>
+    <input id="rel-q" type="search" placeholder="Search versions or changes" autocomplete="off" enterkeyhint="search" />
+    <p class="count" id="rel-count" aria-live="polite"></p>
+  </div>
+  {APPS.map((a, i) => (
+    <section class="panel" role="tabpanel" id={`p-${a.id}`} aria-labelledby={`t-${a.id}`} hidden={i !== 0}>
+      {history(a.id).map(({ r, a: ar }, k) => (
+        <article class:list={{ latest: k === 0 }} hidden={k >= PER} data-text={`${ar.version} ${short(ar.version)} ${r.dateText} ${r.title} ${ar.notes.join(' ')}`.toLowerCase()}>
+          <div class="v"><h2>{short(ar.version)}</h2><p>{r.dateText}{k === 0 && <em>Latest</em>}</p></div>
+          <ul class="notes">{ar.notes.map((n) => <li>{n}</li>)}</ul>
+          <ul class="files">
+            {OSES.filter((o) => ar.files[o]).map((o) => <li data-os={o}><a href={releaseUrl(a.id, ar.version)}><b>{o}</b><span>{ar.files[o]!.join(', ')}</span></a></li>)}
+          </ul>
+        </article>
+      ))}
+    </section>
+  ))}
+  <p class="none" id="rel-none" hidden></p>
+  <nav class="pages" aria-label="Pages of versions" data-per={PER}>
+    <button type="button" class="step" id="rel-prev" aria-label="Previous page" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg></button>
+    <ol id="rel-nums"><li><button type="button" aria-current="page">1</button></li></ol>
+    <button type="button" class="step next" id="rel-next" aria-label="Next page" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+    <p class="range" id="rel-range"></p>
+  </nav>
+</main>
+</Base>
+<style>
+  .rel { max-width: 1440px; margin: 0 auto; padding: 56px var(--m) 96px; }
+  h1 { font-size: clamp(44px, 5vw, 72px); font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+  .lede { margin-top: 16px; font-size: 19px; color: var(--text-2); }
+  .lede a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  .tile:focus-visible { outline: 2px solid var(--dot); outline-offset: 3px; }
+  .pick { margin-top: 40px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 899px) { .pick { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tile { display: grid; gap: 4px; text-align: left; padding: 10px 10px 16px; border-radius: 16px; background: var(--raised); color: var(--text-2); transition: background .15s; }
+  .tile:hover { background: var(--raised-2); }
+  .tile[aria-selected='true'] { background: var(--text); color: var(--ground); }
+  .tile[aria-selected='true'] small { color: color-mix(in srgb, var(--ground) 65%, transparent); }
+  .th { display: block; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; margin-bottom: 10px; background: var(--ground); }
+  .th img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+  .tile.phone .th img { object-position: center 18%; }
+  .tile b { font-size: 18px; font-weight: 700; padding: 0 4px; } .tile small { font-size: 14px; color: var(--muted); padding: 0 4px; }
+  [hidden] { display: none !important; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  /* the search: the plugins page's underlined field, at a smaller size */
+  .find { scroll-margin-top: calc(var(--bar-h) + 24px); margin-top: 56px; display: flex; flex-wrap: wrap; align-items: end; gap: 12px 32px; }
+  .find input { flex: 1 1 320px; min-width: 0; background: transparent; border: 0; border-bottom: 3px solid var(--unlit); color: var(--text); font: 700 clamp(26px, 2.6vw, 38px)/1.2 var(--font); letter-spacing: -.025em; padding: 6px 0 12px; outline: none; transition: border-color .2s; }
+  .find input::placeholder { color: var(--unlit); }
+  .find input:focus { border-color: var(--dot); }
+  .count { color: var(--muted); font-size: 15px; padding-bottom: 14px; font-variant-numeric: tabular-nums; }
+  .panel { margin-top: 24px; }
+  .panel article.top { border-top: 0; }
+  .none { margin-top: 24px; padding: 8px 0 32px; font-size: 18px; color: var(--text-2); max-width: 40em; }
+  .none b { color: var(--text); }
+  /* pagination, as on the plugins page */
+  .pages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .pages ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+  .pages ol :global(button) { min-width: 44px; height: 44px; padding: 0 12px; border-radius: 99px; color: var(--muted); font: 600 15px var(--font); font-variant-numeric: tabular-nums; transition: background .15s, color .15s; }
+  .pages ol :global(button:hover) { color: var(--text); background: var(--hover); }
+  .pages ol :global(button[aria-current='page']) { background: var(--text); color: var(--ground); }
+  .step { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--button-dark); color: var(--text); transition: background .15s, opacity .2s, transform .1s; }
+  .step.next { background: var(--dot); color: var(--on-gold); }
+  .step:hover { background: var(--pressed); } .step.next:hover { background: var(--gold); }
+  .step:active { transform: scale(.93); }
+  .step:disabled { opacity: .3; pointer-events: none; }
+  .step svg { width: 20px; height: 20px; }
+  .pages :global(button:focus-visible) { outline: 2px solid var(--text); outline-offset: 3px; }
+  .range { margin-left: auto; color: var(--muted); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+  article { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 32px 0; border-top: 1px solid var(--line); }
+  @media (min-width: 1000px) { article { grid-template-columns: 240px minmax(0, 1fr) 360px; gap: 40px; } }
+  .v h2 { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+  .v p { color: var(--text-2); margin-top: 4px; display: flex; gap: 10px; align-items: center; }
+  .v em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--on-gold); background: var(--dot); padding: 2px 10px; border-radius: 99px; }
+  .notes { margin: 0; padding-left: 20px; display: grid; align-content: start; gap: 8px; color: var(--text-2); line-height: 1.55; font-size: 17px; }
+  .notes li::marker { color: var(--dot); }
+  .files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; }
+  .files a { display: grid; gap: 2px; padding: 12px 16px; border-radius: 12px; background: var(--raised); }
+  .files a:hover { background: var(--raised-2); }
+  .files b { font-weight: 600; } .files span { font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .files li.mine { order: -1; } .files li.mine a { background: var(--dot); color: var(--on-gold); } .files li.mine span { color: color-mix(in srgb, var(--on-gold) 70%, transparent); }
+</style>
+<script>
+  const tabs = [...document.querySelectorAll('.tile')];
+  const PER = +document.querySelector('.pages').dataset.per;
+  const q = document.getElementById('rel-q'), count = document.getElementById('rel-count'), none = document.getElementById('rel-none');
+  const nums = document.getElementById('rel-nums'), prev = document.getElementById('rel-prev'), next = document.getElementById('rel-next'), range = document.getElementById('rel-range');
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const params = new URLSearchParams(location.search);
+  let tab = document.getElementById('t-' + params.get('app')) || tabs[0];
+  let page = Math.max(1, +(params.get('page') || 1));
+  q.value = params.get('v') || '';
+
+  // the app, the search and the page live in the address, so a search can be shared
+  function save() {
+    const u = new URL(location.href);
+    u.searchParams.set('app', tab.id.slice(2));
+    q.value ? u.searchParams.set('v', q.value) : u.searchParams.delete('v');
+    page > 1 ? u.searchParams.set('page', String(page)) : u.searchParams.delete('page');
+    history.replaceState(null, '', u);
+  }
+  // the chosen app's versions that have every word of the search, a page of PER
+  function render(push) {
+    tabs.forEach((x) => { const on = x === tab; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; document.getElementById(x.getAttribute('aria-controls')).hidden = !on; });
+    const panel = document.getElementById(tab.getAttribute('aria-controls'));
+    const all = [...panel.querySelectorAll('article')];
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const hits = all.filter((a) => words.every((w) => a.dataset.text.includes(w)));
+    const pages = Math.max(1, Math.ceil(hits.length / PER));
+    page = Math.min(page, pages);
+    const from = (page - 1) * PER;
+    all.forEach((a) => { a.hidden = true; a.classList.remove('top'); });
+    hits.slice(from, from + PER).forEach((a, i) => { a.hidden = false; a.classList.toggle('top', i === 0); });
+    const name = tab.querySelector('b').textContent;
+    count.textContent = words.length ? `${hits.length} of ${all.length} versions` : `${all.length} ${all.length === 1 ? 'version' : 'versions'}`;
+    none.hidden = hits.length > 0;
+    if (!hits.length) none.innerHTML = `No version of <b>${esc(name)}</b> matches “${esc(q.value)}”. Try a version number, like 0.10, or a word, like subtitles.`;
+    nums.innerHTML = Array.from({ length: pages }, (_, i) => `<li><button type="button" data-p="${i + 1}"${i + 1 === page ? ' aria-current="page"' : ''} aria-label="Page ${i + 1}">${i + 1}</button></li>`).join('');
+    prev.disabled = page <= 1; next.disabled = page >= pages;
+    range.textContent = hits.length ? `${from + 1} to ${Math.min(from + PER, hits.length)} of ${hits.length}` : '';
+    if (push) save();
+  }
+  const go = (p) => { page = p; render(true); document.querySelector('.find').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); };
+  nums.addEventListener('click', (e) => { const b = e.target.closest('button[data-p]'); if (b) go(+b.dataset.p); });
+  prev.addEventListener('click', () => go(page - 1));
+  next.addEventListener('click', () => go(page + 1));
+  q.addEventListener('input', () => { page = 1; render(true); });
+  const show = (t) => { tab = t; page = 1; render(true); };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => show(t));
+    // arrows move between the apps, as tabs do
+    t.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { e.preventDefault(); const n = tabs[(i + d + tabs.length) % tabs.length]; n.focus(); show(n); }
+    });
+  });
+  render(false);
+  const ua = navigator.userAgent; const os = /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'macOS' : /Win/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '';
+  if (os) { document.querySelectorAll(`.files li[data-os="${os}"]`).forEach((li) => li.classList.add('mine')); document.getElementById('osline').textContent = `Files for ${os} come first.`; }
+</script>

@@ -1,0 +1,560 @@
+- generic [active] [ref=f1e1]:
+  - link "Skip to the content" [ref=f1e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - link "Playpex" [ref=f1e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f1e9]:
+        - listitem [ref=f1e10]:
+          - button "Products" [ref=f1e11] [cursor=pointer]
+        - listitem [ref=f1e14]:
+          - link "Plugins" [ref=f1e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f1e16]:
+          - button "Docs" [ref=f1e17] [cursor=pointer]
+        - listitem [ref=f1e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f1e21] [cursor=pointer]:
+            - /url: "#releases"
+            - text: Releases
+            - generic [ref=f1e22]: 0.10.1-alpha.1
+      - generic [ref=f1e23]:
+        - link "GitHub" [ref=f1e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f1e27] [cursor=pointer]:
+          - /url: /#download
+  - generic [ref=f1e31]:
+    - complementary "Docs" [ref=f1e32]:
+      - generic [ref=f1e33]:
+        - generic [ref=f1e34]: Search the docs
+        - searchbox "Search the docs" [ref=f1e35]
+        - generic [aria-hidden] [ref=f1e36]: /
+      - navigation [ref=f1e37]:
+        - generic [ref=f1e38]:
+          - paragraph [ref=f1e39]: Get started
+          - list [ref=f1e40]:
+            - listitem [ref=f1e41]:
+              - link "Introduction" [ref=f1e42] [cursor=pointer]:
+                - /url: /docs/
+            - listitem [ref=f1e43]:
+              - link "Install the server" [ref=f1e44] [cursor=pointer]:
+                - /url: /docs/install-the-server
+            - listitem [ref=f1e45]:
+              - link "Add your library" [ref=f1e46] [cursor=pointer]:
+                - /url: /docs/add-your-library
+            - listitem [ref=f1e47]:
+              - link "Connect a screen" [ref=f1e48] [cursor=pointer]:
+                - /url: /docs/connect-a-screen
+        - generic [ref=f1e49]:
+          - paragraph [ref=f1e50]: Using Playpex
+          - list [ref=f1e51]:
+            - listitem [ref=f1e52]:
+              - link "Playpex TV" [ref=f1e53] [cursor=pointer]:
+                - /url: /docs/playpex-tv
+            - listitem [ref=f1e54]:
+              - link "Playpex Mobile" [ref=f1e55] [cursor=pointer]:
+                - /url: /docs/playpex-mobile
+            - listitem [ref=f1e56]:
+              - link "Server Manager" [ref=f1e57] [cursor=pointer]:
+                - /url: /docs/server-manager
+            - listitem [ref=f1e58]:
+              - link "Playing" [ref=f1e59] [cursor=pointer]:
+                - /url: /docs/playing
+            - listitem [ref=f1e60]:
+              - link "Downloads" [ref=f1e61] [cursor=pointer]:
+                - /url: /docs/downloads
+            - listitem [ref=f1e62]:
+              - link "Search" [ref=f1e63] [cursor=pointer]:
+                - /url: /docs/search
+            - listitem [ref=f1e64]:
+              - link "Profiles" [ref=f1e65] [cursor=pointer]:
+                - /url: /docs/profiles
+            - listitem [ref=f1e66]:
+              - link "Live TV" [ref=f1e67] [cursor=pointer]:
+                - /url: /docs/live-tv
+            - listitem [ref=f1e68]:
+              - link "Remote control" [ref=f1e69] [cursor=pointer]:
+                - /url: /docs/remote-control
+            - listitem [ref=f1e70]:
+              - link "Plugins on your server" [ref=f1e71] [cursor=pointer]:
+                - /url: /docs/plugins-for-admins
+            - listitem [ref=f1e72]:
+              - link "Troubleshooting" [ref=f1e73] [cursor=pointer]:
+                - /url: /docs/troubleshooting
+        - generic [ref=f1e74]:
+          - paragraph [ref=f1e75]: Build plugins
+          - list [ref=f1e76]:
+            - listitem [ref=f1e77]:
+              - link "Plugins for developers" [ref=f1e78] [cursor=pointer]:
+                - /url: /docs/plugins-overview
+            - listitem [ref=f1e79]:
+              - link "The manifest" [ref=f1e80] [cursor=pointer]:
+                - /url: /docs/manifest
+            - listitem [ref=f1e81]:
+              - link "Server code" [ref=f1e82] [cursor=pointer]:
+                - /url: /docs/server-code
+            - listitem [ref=f1e83]:
+              - link "Hooks" [ref=f1e84] [cursor=pointer]:
+                - /url: /docs/hooks
+            - listitem [ref=f1e85]:
+              - link "Events, jobs and accounts" [ref=f1e86] [cursor=pointer]:
+                - /url: /docs/events-and-jobs
+            - listitem [ref=f1e87]:
+              - link "Screens and slots" [ref=f1e88] [cursor=pointer]:
+                - /url: /docs/screens
+            - listitem [ref=f1e89]:
+              - link "Security" [ref=f1e90] [cursor=pointer]:
+                - /url: /docs/security
+            - listitem [ref=f1e91]:
+              - link "Publishing" [ref=f1e92] [cursor=pointer]:
+                - /url: /docs/publishing
+        - generic [ref=f1e93]:
+          - paragraph [ref=f1e94]: Build clients
+          - list [ref=f1e95]:
+            - listitem [ref=f1e96]:
+              - link "Client API" [ref=f1e97] [cursor=pointer]:
+                - /url: /docs/client-api
+    - main [ref=f1e98]:
+      - paragraph [ref=f1e99]:
+        - link "Docs" [ref=f1e100] [cursor=pointer]:
+          - /url: /docs/
+        - generic [aria-hidden] [ref=f1e101]: /
+        - generic [ref=f1e102]: Build plugins
+      - heading "The manifest" [level=1] [ref=f1e103]
+      - paragraph [ref=f1e104]: playpex-plugin.json, the file that says who you are, what you add and what you need.
+      - generic [ref=f1e105]:
+        - paragraph [ref=f1e106]:
+          - text: "The manifest is plain data: the server reads it without running your code. Its schema is"
+          - code [ref=f1e107]: plugin.schema.json
+          - text: in the
+          - code [ref=f1e108]: packages/protocol
+          - text: folder of the source code.
+        - code [ref=f1e110]:
+          - generic [ref=f1e111]: "{"
+          - generic [ref=f1e112]: "\"id\": \"trakt\", // [a-z][a-z0-9-]{1,31}, never changes"
+          - generic [ref=f1e113]: "\"name\": \"Trakt\","
+          - generic [ref=f1e114]: "\"description\": \"Scrobbles what you watch to Trakt…\","
+          - generic [ref=f1e115]: "\"version\": \"1.0.0\", // semver"
+          - generic [ref=f1e116]: "\"publisher\": { \"name\": \"Playpex\", \"key\": \"ed25519:…\" },"
+          - generic [ref=f1e117]: "\"api\": { \"server\": \"^1\", \"nav\": \"^1\", \"ui\": \"^1\" },"
+          - generic [ref=f1e118]: "\"icon\": \"assets/trakt.svg\","
+          - generic [ref=f1e119]: "\"listing\": { }, // what the dashboard's catalog shows"
+          - generic [ref=f1e120]: "\"permissions\": { },"
+          - generic [ref=f1e121]: "\"link\": [ ],"
+          - generic [ref=f1e122]: "\"requires\": [ ], \"exports\": [ ],"
+          - generic [ref=f1e123]: "\"contributes\": { }"
+          - generic [ref=f1e124]: "}"
+        - heading "Identity" [level=2] [ref=f1e125]
+        - list [ref=f1e126]:
+          - listitem [ref=f1e127]:
+            - strong [ref=f1e128]:
+              - code [ref=f1e129]: id
+            - text: is your namespace. Your screens are
+            - code [ref=f1e130]: plugin.<id>.<name>
+            - text: ", your settings"
+            - code [ref=f1e131]: plugin.<id>.<key>
+            - text: ", row keys start with"
+            - code [ref=f1e132]: "<id>:"
+            - text: . It never changes between versions.
+          - listitem [ref=f1e133]:
+            - text: Names inside the plugin (screens, data handlers, settings, secrets) are
+            - code [ref=f1e134]: "[a-z][A-Za-z0-9]{0,39}"
+            - text: .
+          - listitem [ref=f1e135]:
+            - text: Assets are paths under
+            - code [ref=f1e136]: assets/
+            - text: (
+            - code [ref=f1e137]: .svg
+            - text: ","
+            - code [ref=f1e138]: .png
+            - text: ","
+            - code [ref=f1e139]: .jpg
+            - text: ","
+            - code [ref=f1e140]: .webp
+            - text: ), checked to exist when the plugin is installed.
+        - heading "Listing" [level=2] [ref=f1e141]
+        - paragraph [ref=f1e142]: "What the dashboard’s catalog shows:"
+        - code [ref=f1e144]:
+          - generic [ref=f1e145]: "\"listing\": {"
+          - generic [ref=f1e146]: "\"summary\": \"Scrobbles what you watch to Trakt…\", // up to 150 characters"
+          - generic [ref=f1e147]: "\"description\": \"…\","
+          - generic [ref=f1e148]: "\"license\": \"MIT\", \"source\": \"https://github.com/…\","
+          - generic [ref=f1e149]: "\"categories\": [\"tracking\"], // catalog sources streams live resolvers subtitles metadata library tracking notifications tools"
+          - generic [ref=f1e150]: "\"screenshots\": [\"assets/shot-1.jpg\"]"
+          - generic [ref=f1e151]: "}"
+        - heading "Permissions" [level=2] [ref=f1e152]
+        - paragraph [ref=f1e153]: Each one is shown to the admin in words before installing. A new version asking for more stays off until the admin accepts the difference.
+        - table [ref=f1e154]:
+          - rowgroup [ref=f1e155]:
+            - row [ref=f1e156]:
+              - columnheader "Permission" [ref=f1e157]
+              - columnheader "Grants" [ref=f1e158]
+              - columnheader "Shown as" [ref=f1e159]
+          - rowgroup [ref=f1e160]:
+            - row [ref=f1e161]:
+              - cell [ref=f1e162]:
+                - code [ref=f1e163]: "network: [hosts]"
+              - cell [ref=f1e164]:
+                - code [ref=f1e165]: http.request
+                - text: "to those hosts over HTTPS: exact names or"
+                - code [ref=f1e166]: "*.domain"
+                - text: . No IP addresses or local names.
+              - cell "“Talks to api.trakt.tv”" [ref=f1e167]
+            - row [ref=f1e168]:
+              - cell [ref=f1e169]:
+                - code [ref=f1e170]: rateLimit
+              - cell "stricter request limits than the host’s (2 per second, burst 10, 4 in flight)" [ref=f1e171]
+              - cell [ref=f1e172]
+            - row [ref=f1e173]:
+              - cell [ref=f1e174]:
+                - code [ref=f1e175]: "storage: \"5MB\""
+              - cell "your own key/value store, up to 100 MB" [ref=f1e176]
+              - cell "“Keeps up to 5 MB of its own data”" [ref=f1e177]
+            - row [ref=f1e178]:
+              - cell [ref=f1e179]:
+                - code [ref=f1e180]: "secrets: [names]"
+              - cell "values the admin enters for this plugin only" [ref=f1e181]
+              - 'cell "“Asks for: traktClientId”" [ref=f1e182]'
+            - row [ref=f1e183]:
+              - cell [ref=f1e184]:
+                - code [ref=f1e185]: "play: true"
+              - cell [ref=f1e186]:
+                - text: the
+                - code [ref=f1e187]: play
+                - text: effect
+              - cell "“Can start playback”" [ref=f1e188]
+            - row [ref=f1e189]:
+              - cell [ref=f1e190]:
+                - code [ref=f1e191]: "sources: [kinds]"
+              - cell [ref=f1e192]:
+                - text: "the kinds of source you may give:"
+                - code [ref=f1e193]: magnet
+                - text: ","
+                - code [ref=f1e194]: http
+                - text: ","
+                - code [ref=f1e195]: hls
+                - text: ","
+                - code [ref=f1e196]: live
+              - cell "“Adds torrents to Play”" [ref=f1e197]
+            - row [ref=f1e198]:
+              - cell [ref=f1e199]:
+                - code [ref=f1e200]: "hooks: [names]"
+              - cell [ref=f1e201]:
+                - text: stages of core features (
+                - link "Hooks" [ref=f1e202] [cursor=pointer]:
+                  - /url: /docs/hooks
+                - text: )
+              - cell "one line per hook" [ref=f1e203]
+            - row [ref=f1e204]:
+              - cell [ref=f1e205]:
+                - code [ref=f1e206]: "events: [families]"
+              - cell [ref=f1e207]:
+                - code [ref=f1e208]: playback
+                - text: ","
+                - code [ref=f1e209]: downloads
+                - text: ","
+                - code [ref=f1e210]: library
+                - text: ","
+                - code [ref=f1e211]: watchlist
+              - cell "“Sees what you watch”" [ref=f1e212]
+            - row [ref=f1e213]:
+              - cell [ref=f1e214]:
+                - code [ref=f1e215]: "schedule: true"
+              - cell "background jobs" [ref=f1e216]
+              - cell "“Runs in the background”" [ref=f1e217]
+            - row [ref=f1e218]:
+              - cell [ref=f1e219]:
+                - code [ref=f1e220]: "write: [scopes]"
+              - cell [ref=f1e221]:
+                - code [ref=f1e222]: watchlist
+                - text: ","
+                - code [ref=f1e223]: watched
+                - text: ","
+                - code [ref=f1e224]: ratings
+                - text: ","
+                - code [ref=f1e225]: downloads
+              - cell "“Can change your watch list”" [ref=f1e226]
+            - row [ref=f1e227]:
+              - cell [ref=f1e228]:
+                - code [ref=f1e229]: "link: [names]"
+              - cell "account linking" [ref=f1e230]
+              - cell "“Links your Trakt account”" [ref=f1e231]
+            - row [ref=f1e232]:
+              - cell [ref=f1e233]:
+                - code [ref=f1e234]: "library: true"
+              - cell "the library’s titles (never paths)" [ref=f1e235]
+              - cell "“Sees what’s on this server”" [ref=f1e236]
+            - row [ref=f1e237]:
+              - cell [ref=f1e238]:
+                - code [ref=f1e239]: "files: true"
+              - cell [ref=f1e240]:
+                - text: library files’ relative paths, for
+                - code [ref=f1e241]: library.match
+              - cell "“Sees the names of your video files”" [ref=f1e242]
+            - row [ref=f1e243]:
+              - cell [ref=f1e244]:
+                - code [ref=f1e245]: "notify: true"
+              - cell "notifications" [ref=f1e246]
+              - cell "“Can show you notifications”" [ref=f1e247]
+        - paragraph [ref=f1e248]:
+          - strong [ref=f1e249]: Personal permissions
+          - text: ","
+          - code [ref=f1e250]: "events: [\"playback\"]"
+          - text: and the writes to
+          - code [ref=f1e251]: watchlist
+          - text: ","
+          - code [ref=f1e252]: watched
+          - text: and
+          - code [ref=f1e253]: ratings
+          - text: ", also need the admin to switch each profile on, in the plugin’s"
+          - strong [ref=f1e254]: Profiles
+          - text: tab.
+        - heading "Settings" [level=2] [ref=f1e255]
+        - paragraph [ref=f1e256]:
+          - text: Settings are drawn by the dashboard from your manifest; apps never show them. Read them with
+          - code [ref=f1e257]: playpex.settings.get(key, ctx)
+          - text: .
+        - code [ref=f1e259]:
+          - generic [ref=f1e260]: "\"contributes\": {"
+          - generic [ref=f1e261]: "\"settings\": ["
+          - generic [ref=f1e262]: "{ \"key\": \"playlist\", \"scope\": \"server\", \"type\": \"url\", \"label\": \"Playlist address\", \"grantsHost\": true },"
+          - generic [ref=f1e263]: "{ \"key\": \"quality\", \"scope\": \"profile\", \"type\": \"choice\", \"label\": \"Quality\","
+          - generic [ref=f1e264]: "\"options\": [[\"hd\", \"HD\"], [\"sd\", \"SD\"]], \"default\": \"hd\" }"
+          - generic [ref=f1e265]: "]"
+          - generic [ref=f1e266]: "}"
+        - table [ref=f1e267]:
+          - rowgroup [ref=f1e268]:
+            - row [ref=f1e269]:
+              - columnheader [ref=f1e270]:
+                - code [ref=f1e271]: type
+              - columnheader "Fields" [ref=f1e272]
+          - rowgroup [ref=f1e273]:
+            - row [ref=f1e274]:
+              - cell [ref=f1e275]:
+                - code [ref=f1e276]: switch
+              - cell [ref=f1e277]:
+                - code [ref=f1e278]: default
+                - text: (boolean)
+            - row [ref=f1e279]:
+              - cell [ref=f1e280]:
+                - code [ref=f1e281]: choice
+              - cell [ref=f1e282]:
+                - code [ref=f1e283]: "options: [[value, label], …]"
+                - text: ","
+                - code [ref=f1e284]: default
+            - row [ref=f1e285]:
+              - cell [ref=f1e286]:
+                - code [ref=f1e287]: slider
+              - cell [ref=f1e288]:
+                - code [ref=f1e289]: min
+                - text: ","
+                - code [ref=f1e290]: max
+                - text: ","
+                - code [ref=f1e291]: step?
+                - text: ","
+                - code [ref=f1e292]: unit?
+                - text: ","
+                - code [ref=f1e293]: default
+            - row [ref=f1e294]:
+              - cell [ref=f1e295]:
+                - code [ref=f1e296]: number
+              - cell [ref=f1e297]:
+                - code [ref=f1e298]: default
+                - text: ","
+                - code [ref=f1e299]: min?
+                - text: ","
+                - code [ref=f1e300]: max?
+                - text: ","
+                - code [ref=f1e301]: step?
+                - text: ","
+                - code [ref=f1e302]: integer?
+                - text: ","
+                - code [ref=f1e303]: unit?
+            - row [ref=f1e304]:
+              - cell [ref=f1e305]:
+                - code [ref=f1e306]: text
+              - cell [ref=f1e307]:
+                - code [ref=f1e308]: maxLength?
+                - text: ","
+                - code [ref=f1e309]: placeholder?
+                - text: ","
+                - code [ref=f1e310]: pattern?
+                - text: ","
+                - code [ref=f1e311]: default?
+            - row [ref=f1e312]:
+              - cell [ref=f1e313]:
+                - code [ref=f1e314]: url
+              - cell [ref=f1e315]:
+                - code [ref=f1e316]: schemes?
+                - text: ","
+                - code [ref=f1e317]: grantsHost?
+                - text: ","
+                - code [ref=f1e318]: streamHosts?
+                - text: ": with"
+                - code [ref=f1e319]: grantsHost
+                - text: ", saving it lets you reach that host, on its port, even over plain http"
+            - row [ref=f1e320]:
+              - cell [ref=f1e321]:
+                - code [ref=f1e322]: secret
+              - cell [ref=f1e323]:
+                - text: server scope, listed in
+                - code [ref=f1e324]: permissions.secrets
+                - text: ; read it with
+                - code [ref=f1e325]: playpex.secrets.get
+            - row [ref=f1e326]:
+              - cell [ref=f1e327]:
+                - code [ref=f1e328]: action
+              - cell [ref=f1e329]:
+                - code [ref=f1e330]: data
+                - text: ","
+                - code [ref=f1e331]: confirm?
+                - text: ": a button, such as “Sync now”"
+        - paragraph [ref=f1e332]:
+          - text: Every setting has
+          - code [ref=f1e333]: key
+          - text: ","
+          - code [ref=f1e334]: scope
+          - text: (
+          - code [ref=f1e335]: profile
+          - text: or
+          - code [ref=f1e336]: server
+          - text: ),
+          - code [ref=f1e337]: label
+          - text: and
+          - code [ref=f1e338]: description?
+          - text: ", and may have"
+          - code [ref=f1e339]: group
+          - text: ","
+          - code [ref=f1e340]: level
+          - text: (
+          - code [ref=f1e341]: basic
+          - text: or
+          - code [ref=f1e342]: advanced
+          - text: ) and
+          - code [ref=f1e343]: visibleIf
+          - text: /
+          - code [ref=f1e344]: enabledIf
+          - text: .
+        - heading "Contributes" [level=2] [ref=f1e345]
+        - code [ref=f1e347]:
+          - generic [ref=f1e348]: "\"contributes\": {"
+          - generic [ref=f1e349]: "\"sections\": [{ \"screen\": \"browse\", \"menu\": { \"label\": \"Live TV\", \"icon\": \"assets/live.svg\", \"order\": 50 } }],"
+          - generic [ref=f1e350]: "\"screens\": ["
+          - generic [ref=f1e351]: "{ \"name\": \"browse\", \"template\": \"catalog\", \"data\": \"browse\", \"title\": \"Live TV\" },"
+          - generic [ref=f1e352]: "{ \"name\": \"title\", \"template\": \"title\", \"data\": \"title\", \"params\": [\"id\"] }"
+          - generic [ref=f1e353]: "],"
+          - generic [ref=f1e354]: "\"slots\": [{ \"slot\": \"core.movie.rows\", \"data\": \"movieRows\", \"order\": 60 }],"
+          - generic [ref=f1e355]: "\"settings\": [ ]"
+          - generic [ref=f1e356]: "}"
+        - list [ref=f1e357]:
+          - listitem [ref=f1e358]:
+            - strong [ref=f1e359]: sections
+            - text: "(up to 2): a menu entry that opens one of your screens."
+          - listitem [ref=f1e360]:
+            - strong [ref=f1e361]: screens
+            - text: "(up to 16): a template and the data handler that fills it."
+          - listitem [ref=f1e362]:
+            - strong [ref=f1e363]: slots
+            - text: ": rows, action tiles and meta items on the apps’ own screens, up to 3 per slot."
+          - listitem [ref=f1e364]:
+            - strong [ref=f1e365]: releases
+            - text: ": with the"
+            - code [ref=f1e366]: releases.providers
+            - text: hook, the kinds of Find releases you list.
+        - paragraph [ref=f1e367]:
+          - text: "What each template and slot expects:"
+          - link "Screens and slots" [ref=f1e368] [cursor=pointer]:
+            - /url: /docs/screens
+          - text: .
+        - heading "Dependencies" [level=2] [ref=f1e369]
+        - paragraph [ref=f1e370]:
+          - code [ref=f1e371]: "requires: [{ id, version, optional? }]"
+          - text: names plugins yours works with; the dashboard installs them with yours.
+          - code [ref=f1e372]: "exports: [names]"
+          - text: lists your data handlers that plugins requiring yours may call with
+          - code [ref=f1e373]: playpex.plugins.call
+          - text: .
+        - heading "Translations" [level=2] [ref=f1e374]
+        - paragraph [ref=f1e375]:
+          - text: Any text people read can be
+          - code [ref=f1e376]: "\"@key\""
+          - text: ", looked up in"
+          - code [ref=f1e377]: i18n/<locale>.json
+          - text: (
+          - code [ref=f1e378]: en
+          - text: is required when any is used). Handlers translate their own strings with
+          - code [ref=f1e379]: playpex.i18n.t(key, vars)
+          - text: .
+      - navigation "More docs" [ref=f1e380]:
+        - link "Previous Plugins for developers" [ref=f1e381] [cursor=pointer]:
+          - /url: /docs/plugins-overview
+          - generic [ref=f1e382]: Previous
+          - generic [ref=f1e383]: Plugins for developers
+        - link "Next Server code" [ref=f1e384] [cursor=pointer]:
+          - /url: /docs/server-code
+          - generic [ref=f1e385]: Next
+          - generic [ref=f1e386]: Server code
+      - paragraph [ref=f1e387]:
+        - link "Edit this page on GitHub" [ref=f1e388] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex/edit/main/apps/website/src/content/docs/manifest.md
+    - complementary [ref=f1e389]:
+      - paragraph [ref=f1e390]: On this page
+      - list [ref=f1e391]:
+        - listitem [ref=f1e392]:
+          - link "Identity" [ref=f1e393] [cursor=pointer]:
+            - /url: "#identity"
+        - listitem [ref=f1e394]:
+          - link "Listing" [ref=f1e395] [cursor=pointer]:
+            - /url: "#listing"
+        - listitem [ref=f1e396]:
+          - link "Permissions" [ref=f1e397] [cursor=pointer]:
+            - /url: "#permissions"
+        - listitem [ref=f1e398]:
+          - link "Settings" [ref=f1e399] [cursor=pointer]:
+            - /url: "#settings"
+        - listitem [ref=f1e400]:
+          - link "Contributes" [ref=f1e401] [cursor=pointer]:
+            - /url: "#contributes"
+        - listitem [ref=f1e402]:
+          - link "Dependencies" [ref=f1e403] [cursor=pointer]:
+            - /url: "#dependencies"
+        - listitem [ref=f1e404]:
+          - link "Translations" [ref=f1e405] [cursor=pointer]:
+            - /url: "#translations"
+  - contentinfo [ref=f1e406]:
+    - generic [ref=f1e407]:
+      - img "Playpex" [ref=f1e408]
+      - generic [ref=f1e412]:
+        - generic [ref=f1e413]:
+          - heading "Apps" [level=3] [ref=f1e414]
+          - link "Media Server" [ref=f1e415] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f1e416] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f1e417] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f1e418] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f1e419]:
+          - heading "Docs" [level=3] [ref=f1e420]
+          - link "First steps" [ref=f1e421] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f1e422] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f1e423] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f1e424] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f1e425]:
+          - heading "Project" [level=3] [ref=f1e426]
+          - link "Source code" [ref=f1e427] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f1e428] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=f1e429] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f1e430]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f1e431]:
+        - generic [ref=f1e432]: Playpex 2026
+        - link "Download" [ref=f1e433] [cursor=pointer]:
+          - /url: /#download

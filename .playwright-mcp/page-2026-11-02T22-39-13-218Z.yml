@@ -1,0 +1,296 @@
+- generic [ref=f68e1]:
+  - link "Skip to the content" [ref=f68e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f68e4]:
+    - generic [ref=f68e5]:
+      - link "Playpex" [ref=f68e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f68e9]:
+        - link "Download" [ref=f68e10] [cursor=pointer]:
+          - /url: "#download"
+        - button "Menu" [ref=f68e14] [cursor=pointer]
+  - generic [ref=f68e17]:
+    - complementary "Docs" [ref=f68e18]:
+      - generic [ref=f68e19]:
+        - generic [ref=f68e20]: Search the docs
+        - searchbox "Search the docs" [active] [ref=f68e21]: collect
+        - generic [aria-hidden] [ref=f68e22]: /
+        - listbox [ref=f68e237]:
+          - option [ref=f68e238]:
+            - link "Hooks Build plugins. The stages of Play, metadata, subtitles, search and live TV that a plugin joins." [ref=f68e239] [cursor=pointer]:
+              - /url: /docs/hooks
+              - text: Hooks
+              - generic [ref=f68e240]: Build plugins. The stages of Play, metadata, subtitles, search and live TV that a plugin joins.
+          - option [ref=f68e241]:
+            - link "Plugins for developers Build plugins. What a Playpex plugin is, what it can add, and how to run your first one." [ref=f68e242] [cursor=pointer]:
+              - /url: /docs/plugins-overview
+              - text: Plugins for developers
+              - generic [ref=f68e243]: Build plugins. What a Playpex plugin is, what it can add, and how to run your first one.
+      - button "Docs menu" [ref=f68e23] [cursor=pointer]
+    - main [ref=f68e24]:
+      - paragraph [ref=f68e25]:
+        - link "Docs" [ref=f68e26] [cursor=pointer]:
+          - /url: /docs/
+        - generic [aria-hidden] [ref=f68e27]: /
+        - generic [ref=f68e28]: Build plugins
+      - heading "Hooks" [level=1] [ref=f68e29]
+      - paragraph [ref=f68e30]: The stages of Play, metadata, subtitles, search and live TV that a plugin joins.
+      - generic [ref=f68e31]:
+        - paragraph [ref=f68e32]:
+          - text: "Hooks are named stages of core features. Each has a fixed input and output, a timeout, and one rule:"
+          - strong [ref=f68e33]: a handler that throws, times out or answers out of shape is skipped
+          - text: . The core’s own sources run in the same stages, and a plugin can’t remove them.
+        - code [ref=f68e35]:
+          - generic [ref=f68e36]: "playpex.hooks.on('play.collect', async function (input, ctx) {"
+          - generic [ref=f68e37]: "var t = input.title; // { kind, tmdbId, imdbId, season, episode, title, year }"
+          - generic [ref=f68e38]: "var r = await playpex.http.request({ url: 'https://api.example.com/find?imdb=' + t.imdbId, responseType: 'json' });"
+          - generic [ref=f68e39]: "return r.body.items.map(function (i) {"
+          - generic [ref=f68e40]: "return { kind: 'http', url: i.url, label: i.name, quality: '1080p', size: i.size };"
+          - generic [ref=f68e41]: "});"
+          - generic [ref=f68e42]: "});"
+        - heading "The hooks" [level=2] [ref=f68e43]
+        - table [ref=f68e44]:
+          - rowgroup [ref=f68e45]:
+            - row [ref=f68e46]:
+              - columnheader "Hook" [ref=f68e47]
+              - columnheader "Timeout" [ref=f68e48]
+              - columnheader "Input → output" [ref=f68e49]
+          - rowgroup [ref=f68e50]:
+            - row [ref=f68e51]:
+              - cell [ref=f68e52]:
+                - code [ref=f68e53]: play.collect
+              - cell "8 s" [ref=f68e54]
+              - cell [ref=f68e55]:
+                - code [ref=f68e56]: "{ title }"
+                - text: → up to 50 sources
+            - row [ref=f68e57]:
+              - cell [ref=f68e58]:
+                - code [ref=f68e59]: play.rank
+              - cell "1 s" [ref=f68e60]
+              - cell [ref=f68e61]:
+                - code [ref=f68e62]: "{ title, sources }"
+                - text: →
+                - code [ref=f68e63]: "{ order?, hide?: [{ id, reason }] }"
+            - row [ref=f68e64]:
+              - cell [ref=f68e65]:
+                - code [ref=f68e66]: play.before
+              - cell "1 s" [ref=f68e67]
+              - cell [ref=f68e68]:
+                - code [ref=f68e69]: "{ title, source }"
+                - text: → continue, ask a question, or refuse with a reason
+            - row [ref=f68e70]:
+              - cell [ref=f68e71]:
+                - code [ref=f68e72]: play.resolve
+              - cell "3 s / 10 s" [ref=f68e73]
+              - cell "check which torrents a service has cached, then turn the chosen one into a direct stream" [ref=f68e74]
+            - row [ref=f68e75]:
+              - cell [ref=f68e76]:
+                - code [ref=f68e77]: releases.providers
+              - cell "10 s" [ref=f68e78]
+              - cell [ref=f68e79]:
+                - code [ref=f68e80]: "{ kind, title?, query?, page }"
+                - text: →
+                - code [ref=f68e81]: "{ releases, last }"
+                - text: ": a Find releases list"
+            - row [ref=f68e82]:
+              - cell [ref=f68e83]:
+                - code [ref=f68e84]: sources.search
+              - cell "15 s" [ref=f68e85]
+              - cell [ref=f68e86]:
+                - code [ref=f68e87]: "{ query, kind, page }"
+                - text: →
+                - code [ref=f68e88]: "{ results, last }"
+                - text: ": your streams in the dashboard’s Search"
+            - row [ref=f68e89]:
+              - cell [ref=f68e90]:
+                - code [ref=f68e91]: subtitles.providers
+              - cell "8 s" [ref=f68e92]
+              - cell [ref=f68e93]:
+                - code [ref=f68e94]: "{ title, languages, fileName? }"
+                - text: → subtitles; the core fetches and converts them
+            - row [ref=f68e95]:
+              - cell [ref=f68e96]:
+                - code [ref=f68e97]: metadata.details
+              - cell "5 s" [ref=f68e98]
+              - cell [ref=f68e99]:
+                - code [ref=f68e100]: "{ title, details }"
+                - text: → up to 3 ratings, 10 tags, 5 links, 3 meta lines
+            - row [ref=f68e101]:
+              - cell [ref=f68e102]:
+                - code [ref=f68e103]: player.markers
+              - cell "3 s" [ref=f68e104]
+              - cell [ref=f68e105]:
+                - code [ref=f68e106]: "{ title, duration }"
+                - text: → intro, recap, credits and chapter markers
+            - row [ref=f68e107]:
+              - cell [ref=f68e108]:
+                - code [ref=f68e109]: live.channels
+              - cell "30 s" [ref=f68e110]
+              - cell [ref=f68e111]:
+                - text: →
+                - code [ref=f68e112]: "{ channels }"
+                - text: ", up to 5000"
+            - row [ref=f68e113]:
+              - cell [ref=f68e114]:
+                - code [ref=f68e115]: live.guide
+              - cell "30 s" [ref=f68e116]
+              - cell [ref=f68e117]:
+                - code [ref=f68e118]: "{ channels, from, to }"
+                - text: →
+                - code [ref=f68e119]: "{ programmes }"
+            - row [ref=f68e120]:
+              - cell [ref=f68e121]:
+                - code [ref=f68e122]: live.stream
+              - cell "10 s" [ref=f68e123]
+              - cell [ref=f68e124]:
+                - code [ref=f68e125]: "{ channel }"
+                - text: →
+                - code [ref=f68e126]: "{ source }"
+                - text: ", asked when someone tunes in"
+            - row [ref=f68e127]:
+              - cell [ref=f68e128]:
+                - code [ref=f68e129]: library.match
+              - cell "10 s" [ref=f68e130]
+              - cell [ref=f68e131]:
+                - code [ref=f68e132]: "{ file }"
+                - text: →
+                - code [ref=f68e133]: "{ identity }"
+                - text: ", for the folders the admin set to your plugin"
+        - heading "Sources" [level=2] [ref=f68e134]
+        - table [ref=f68e135]:
+          - rowgroup [ref=f68e136]:
+            - row [ref=f68e137]:
+              - columnheader "Kind" [ref=f68e138]
+              - columnheader "You give" [ref=f68e139]
+              - columnheader "How it plays" [ref=f68e140]
+          - rowgroup [ref=f68e141]:
+            - row [ref=f68e142]:
+              - cell [ref=f68e143]:
+                - code [ref=f68e144]: magnet
+              - cell [ref=f68e145]:
+                - code [ref=f68e146]: magnet
+                - text: or
+                - code [ref=f68e147]: infoHash
+                - text: ","
+                - code [ref=f68e148]: label
+                - text: ","
+                - code [ref=f68e149]: quality?
+                - text: ","
+                - code [ref=f68e150]: size?
+                - text: ","
+                - code [ref=f68e151]: seeds?
+              - 'cell "as the server’s own torrents: kept, paused when left" [ref=f68e152]'
+            - row [ref=f68e153]:
+              - cell [ref=f68e154]:
+                - code [ref=f68e155]: http
+              - cell [ref=f68e156]:
+                - code [ref=f68e157]: url
+                - text: (HTTPS),
+                - code [ref=f68e158]: headers?
+                - text: ","
+                - code [ref=f68e159]: label
+                - text: ","
+                - code [ref=f68e160]: size?
+              - cell [ref=f68e161]:
+                - text: the server proxies it;
+                - strong [ref=f68e162]: the client never sees the URL or headers
+            - row [ref=f68e163]:
+              - cell [ref=f68e164]:
+                - code [ref=f68e165]: hls
+              - cell [ref=f68e166]:
+                - code [ref=f68e167]: url
+                - text: of an
+                - code [ref=f68e168]: .m3u8
+                - text: ","
+                - code [ref=f68e169]: headers?
+                - text: ","
+                - code [ref=f68e170]: label
+              - cell "the server rewrites the playlist to itself and streams the parts" [ref=f68e171]
+            - row [ref=f68e172]:
+              - cell [ref=f68e173]:
+                - code [ref=f68e174]: live
+              - cell [ref=f68e175]:
+                - code [ref=f68e176]: url
+                - text: of a continuous stream,
+                - code [ref=f68e177]: label
+              - 'cell "for channels: the server remuxes it for one viewer" [ref=f68e178]'
+        - paragraph [ref=f68e179]:
+          - text: Every plugin’s torrents are ranked together by the core, one per info hash. Give your best 50; reorder or hide with
+          - code [ref=f68e180]: play.rank
+          - text: . Hidden sources show to the user as “Hidden by
+          - generic [ref=f68e181]: ": ”."
+        - heading "Ratings on title pages" [level=2] [ref=f68e182]
+        - code [ref=f68e184]:
+          - generic [ref=f68e185]: "playpex.hooks.on('metadata.details', async function (input) {"
+          - generic [ref=f68e186]: "return {"
+          - generic [ref=f68e187]: "ratings: [{ source: 'Example', value: 8.4, max: 10, votes: 1200, url: 'https://example.com/t/1' }],"
+          - generic [ref=f68e188]: "tags: ['Space', 'Time travel'],"
+          - generic [ref=f68e189]: "};"
+          - generic [ref=f68e190]: "});"
+        - paragraph [ref=f68e191]:
+          - text: The admin orders metadata providers, and switches each on or off, in
+          - strong [ref=f68e192]: Settings › Metadata
+          - text: ". Cache what you fetch: title pages are opened often."
+        - heading "Live TV" [level=2] [ref=f68e193]
+        - paragraph [ref=f68e194]:
+          - text: "A live TV plugin answers three hooks: its channels, their guide for a window of time, and a channel’s stream when someone tunes in, so tokens in stream addresses stay fresh. Parse playlists with"
+          - code [ref=f68e195]: playpex.iptv.m3u
+          - text: and guides with
+          - code [ref=f68e196]: playpex.iptv.xmltv
+          - text: . A
+          - code [ref=f68e197]: guide
+          - text: screen draws the channels and guide for you (see
+          - link "Screens and slots" [ref=f68e198] [cursor=pointer]:
+            - /url: /docs/screens
+          - text: ). The
+          - strong [ref=f68e199]: Live TV (M3U)
+          - text: plugin is the reference.
+      - navigation "More docs" [ref=f68e200]:
+        - link "Previous Server code" [ref=f68e201] [cursor=pointer]:
+          - /url: /docs/server-code
+          - generic [ref=f68e202]: Previous
+          - generic [ref=f68e203]: Server code
+        - link "Next Events, jobs and accounts" [ref=f68e204] [cursor=pointer]:
+          - /url: /docs/events-and-jobs
+          - generic [ref=f68e205]: Next
+          - generic [ref=f68e206]: Events, jobs and accounts
+      - paragraph [ref=f68e207]:
+        - link "Edit this page on GitHub" [ref=f68e208] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex/edit/main/apps/website/src/content/docs/hooks.md
+  - contentinfo [ref=f68e209]:
+    - generic [ref=f68e210]:
+      - img "Playpex" [ref=f68e211]
+      - generic [ref=f68e215]:
+        - generic [ref=f68e216]:
+          - heading "Apps" [level=3] [ref=f68e217]
+          - link "Media Server" [ref=f68e218] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f68e219] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f68e220] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f68e221] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f68e222]:
+          - heading "Docs" [level=3] [ref=f68e223]
+          - link "First steps" [ref=f68e224] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f68e225] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f68e226] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f68e227] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f68e228]:
+          - heading "Project" [level=3] [ref=f68e229]
+          - link "Source code" [ref=f68e230] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f68e231] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+          - link "Licence" [ref=f68e232] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f68e233]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f68e234]:
+        - generic [ref=f68e235]: Playpex 2026
+        - link "Download" [ref=f68e236] [cursor=pointer]:
+          - /url: "#download"

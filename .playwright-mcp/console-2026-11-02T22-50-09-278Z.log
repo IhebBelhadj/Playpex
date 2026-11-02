@@ -1,0 +1,5 @@
+[     110ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap.js?v=ba06b918:0
+[     110ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/gsap_ScrollTrigger.js?v=7b920a58:0
+[     111ms] [ERROR] Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep) @ http://localhost:4321/node_modules/.vite/deps/lenis.js?v=470bfee4:0
+[     113ms] Failed to fetch dynamically imported module: http://localhost:4321/src/scripts/home/desktop/index.js
+[    9437ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:4321/@vite/client:1835
