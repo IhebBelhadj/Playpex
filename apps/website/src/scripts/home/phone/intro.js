@@ -3,6 +3,7 @@
 // scrolling; the snapping ends on them.
 import '../../stage.js';
 import { Painter } from '../gl.js';
+import { need } from '../preload.js';
 import { IMG } from '../assets.js';
 import { still, lerp, ramp, pl } from '../util.js';
 
@@ -21,11 +22,13 @@ export function initIntro(apps) {
   const hero = document.getElementById('heroblock'), b3 = document.getElementById('b3');
   const scrim = document.getElementById('iscrim'), list = document.getElementById('b3-list'), fact = document.getElementById('b3-fact');
   const P = Painter(document.getElementById('gl'), IMG.wall, [IMG.s_dashlib, IMG.s_dashlib, IMG.s_tvlib, IMG.s_mtitle, IMG.s_man]);
+  const wallIn = need();   // the loading screen waits for the wall's pictures (none without WebGL)
+  if (!P) wallIn();
   // not held (no WebGL, no motion): the static layout, the wall (if any) behind the hero
   if (!P || !Stage.live || Stage.reduced) {
     intro.classList.remove('is-held');
     document.documentElement.classList.remove('held');
-    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 1; P.q = 0; P.invalidate(); }
+    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 1; P.q = 0; P.onready = wallIn; P.invalidate(); }
     return;
   }
 
@@ -91,7 +94,7 @@ export function initIntro(apps) {
   // the folder and the library aren't part of the phone's intro: their words stay hidden
   ['b1', 'b2'].forEach((id) => show(document.getElementById(id), 0, 1));
   frame(0);
-  P.onready = () => frame(st.progress);
+  P.onready = () => { frame(st.progress); wallIn(); };
   window.addEventListener('resize', () => frame(st.progress));
 
   gestures(stage, st, pick, AV);

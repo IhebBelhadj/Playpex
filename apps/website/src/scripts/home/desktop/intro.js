@@ -3,6 +3,7 @@
 // clear away to the plain ground), snapping at each stop.
 import '../../stage.js';
 import { Painter } from '../gl.js';
+import { need } from '../preload.js';
 import { IMG } from '../assets.js';
 import { lerp, ramp } from '../util.js';
 
@@ -23,11 +24,13 @@ export function initIntro(apps) {
   const scrim = document.getElementById('iscrim'), list = document.getElementById('b3-list'), fact = document.getElementById('b3-fact');
   const wide = window.innerWidth >= 1000;
   const P = Painter(document.getElementById('gl'), IMG.wall, [folderPicture(), IMG.s_dashlib, IMG.s_tvlib, IMG.s_mtitle, IMG.s_man]);
+  const wallIn = need();   // the loading screen waits for the wall's pictures (none without WebGL)
+  if (!P) wallIn();
   // not held (no WebGL, no motion): the static layout, the wall (if any) behind the hero
   if (!P || !Stage.live || Stage.reduced) {
     intro.classList.remove('is-held');
     document.documentElement.classList.remove('held');
-    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 1; P.q = 0; P.invalidate(); }
+    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 1; P.q = 0; P.onready = wallIn; P.invalidate(); }
     return;
   }
 
@@ -90,7 +93,7 @@ export function initIntro(apps) {
     snap: { snapTo: STOPS.map((s) => s / END), inertia: false, delay: .12, duration: { min: .3, max: .8 }, ease: 'power2.inOut' },
   });
   frame(0);
-  P.onready = () => frame(st.progress);
+  P.onready = () => { frame(st.progress); wallIn(); };
   window.addEventListener('resize', () => frame(st.progress));
 
   document.getElementById('how-link').addEventListener('click', (e) => { e.preventDefault(); go(.5); });

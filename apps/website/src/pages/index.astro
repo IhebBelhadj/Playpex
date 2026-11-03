@@ -31,6 +31,16 @@ const face = (fill: string) => `<svg viewBox="0 0 100 100" aria-hidden="true"><c
 const SCREEN_SIZES = '(min-width: 900px) 60vw, 100vw';
 ---
 <Base>
+<!-- the loading screen (home/preload.js): the Playpex mark lights dot by dot as the page's parts arrive, then the
+     gold dots uncover the page. Only with script, never when arriving from the other site (already covered) -->
+<script is:inline>(function (d) { if (d.classList.contains('switching')) return; d.classList.add('preloading'); setTimeout(function () { d.classList.remove('preloading'); }, 9000); })(document.documentElement);</script>
+<div class="preload" id="preload" aria-hidden="true">
+  <div class="preload-mark">
+    <svg viewBox="6.5 6.7 20.8 18.6"><defs><pattern id="pl-dots" x="6.5" y="6.7" width=".547" height=".547" patternUnits="userSpaceOnUse"><circle cx=".2735" cy=".2735" r=".197" style="fill:var(--unlit)"/></pattern><clipPath id="pl-clip"><polygon points="9.24,11.1 21.58,17.23 14.34,24.17 26.79,16.99 7,7.21 7,11.5 7,24.79"/></clipPath></defs><rect x="6.5" y="6.7" width="20.8" height="18.6" fill="url(#pl-dots)" clip-path="url(#pl-clip)"/></svg>
+    <canvas></canvas>
+  </div>
+  <span class="preload-n" id="preload-n">0</span>
+</div>
 <main id="main">
   <section class="intro" id="intro" aria-labelledby="hero-title">
     <!-- the held layout is chosen before the first paint (no shift when the script starts); home/intro.js takes it

@@ -23,7 +23,7 @@ function overlay() {
 }
 
 // covers (dir 1) or uncovers (dir -1) the screen: a gold front of dots with the ground behind it
-function curtain(dir, done) {
+export function curtain(dir, done) {
   const cv = overlay();
   const dpr = Math.min(2, window.devicePixelRatio || 1), W = window.innerWidth, H = window.innerHeight, S = 8;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);

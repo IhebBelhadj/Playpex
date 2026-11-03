@@ -2,6 +2,7 @@
 // layout (styles/desktop.css, styles/phone.css) and motion (home/desktop/, home/phone/); only the one for this screen
 // is loaded. Crossing the width between them switches site behind a curtain of gold dots (home/switch.js).
 // Shared by both: the remote, Who's watching, the download dialog, the dither shaders (home/gl.js, home/dither.js).
+import { need } from './home/preload.js';   // first: the loading screen starts drawing at once
 import { os } from './nav.js';
 import { PRODUCTS } from '../data/site';
 import { PHONE } from './home/util.js';
@@ -25,7 +26,9 @@ initDownload(os);
 // the site for this screen (its own code chunk); the scenes measure text, so they start once the font is in
 const site = PHONE ? import('./home/phone/index.js') : import('./home/desktop/index.js');
 const fonts = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+const fontsIn = need(), siteIn = need();
+fonts.then(fontsIn, fontsIn);
 Promise.all([site, fonts]).then(([{ start }]) => {
-  start(PRODUCTS);
+  start(PRODUCTS);   // the intro announces what it waits for (its wall's pictures) before this returns
   initSwitch();
-});
+}).finally(siteIn);
