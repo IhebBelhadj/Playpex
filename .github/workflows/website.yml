@@ -1,0 +1,57 @@
+# Publishes the website (apps/website, a static Astro site) to Cloudflare Pages.
+#
+# Runs on every push to main that touches the website (or the lockfile), and by hand (Actions › website › Run
+# workflow). It installs only the website's workspace (not the TV app's Electron or the server), builds it and
+# uploads apps/website/dist with Wrangler; public/_headers is in it (Cloudflare's cache rules for /_astro/*).
+#
+# Set up once, in the repository's Settings › Secrets and variables › Actions:
+#   secrets    CLOUDFLARE_API_TOKEN   a token with the "Cloudflare Pages: Edit" permission
+#              CLOUDFLARE_ACCOUNT_ID  the account's id (the dashboard's Workers & Pages overview shows it)
+#   variables  CF_PAGES_PROJECT       the Pages project's name (default: playpex)
+#              SITE_URL               where the site is served, for canonical links, the sitemap and Open Graph
+#                                     (default: https://<project>.pages.dev); the site is served at the root
+# and create the Pages project once (Direct Upload): `npx wrangler pages project create playpex
+# --production-branch main`, or Workers & Pages › Create › Pages › Upload assets.
+name: website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/website/**'
+      - 'package-lock.json'
+      - '.github/workflows/website.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# one deployment at a time; a newer push replaces a queued one
+concurrency:
+  group: website-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT: ${{ vars.CF_PAGES_PROJECT || 'playpex' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install the website's dependencies
+        run: npm ci -w apps/website --include-workspace-root=false
+      - name: Build
+        env:
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.pages.dev', vars.CF_PAGES_PROJECT || 'playpex') }}
+          BASE_PATH: /
+        run: npm run build -w apps/website
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/website/dist --project-name=${{ env.PROJECT }} --branch=main --commit-hash=${{ github.sha }}

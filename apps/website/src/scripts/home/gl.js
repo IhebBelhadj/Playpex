@@ -1,6 +1,7 @@
 // The WebGL ordered-dither (Bayer) shaders, the page's one motif.
 // Painter: the poster wall drifting in gold dots, and inside a rounded window a picture q (0 the wall, 1 the folder,
-//   2 the library, 3 Playpex TV, 4 the phone app, 5 Server Manager) that dissolves through gold dots into the next.
+//   2 the library, 3 Playpex TV, 4 the phone app, 5 Server Manager) that dissolves through gold dots into the next;
+//   clear (0…1) dissolves the wall around the window, dot by dot, into the plain ground.
 // Morph: a list of pictures; f between two whole numbers dissolves one into the next through gold dots.
 // The colours are the theme's (--ground, --dot, --unlit), passed in as uniforms.
 import { THEME, dpr, still, whenNear } from './util.js';
@@ -65,6 +66,7 @@ const PAINTER_FRAG = [
   'precision highp float;', COLOURS_GLSL, BAYER_GLSL,
   'uniform vec2 r; uniform float t; uniform sampler2D wall; uniform sampler2D a; uniform sampler2D b; uniform vec2 tw; uniform vec2 ta; uniform vec2 tb;',
   'uniform float aw; uniform float pp; uniform vec4 win; uniform float rad; uniform float outVis; uniform float px; uniform float dim; uniform float shade; uniform float shadeV; uniform float pan;',
+  'uniform float clear;',
   // the wall: posters in lanes drifting left and right, in gold dots
   'vec3 wallCol(vec2 fc){ float w=3.*px; vec2 cell=floor(fc/w)*w+w*.5;',
   ' float lanes=3.4; float ly=cell.y/r.y*lanes+.15; float lane=floor(ly); float fy=fract(ly); float gap=smoothstep(0.,.03,fy)*smoothstep(1.,.97,fy);',
@@ -83,6 +85,7 @@ const PAINTER_FRAG = [
   ' float dd=length(fract(lp/g)-.5); vec3 dotted=mix(cG,mix(cU,cD,on),smoothstep(.52,.36,dd));',
   ' col=mix(col,dotted,smoothstep(.04,.55,sin(3.14159*p)));',
   ' vec3 outside=mix(cG,mix(cG,w,dim),outVis);',
+  ' outside=mix(outside,cG,step(bayer(floor(pt/(7.*px)))+.001,clear));',
   ' float sf=shadeV>.5?smoothstep(.78,.36,pt.y/r.y):smoothstep(.6,.28,pt.x/r.x); outside=mix(outside,cG,shade*sf*.92);',
   ' gl_FragColor=vec4(mix(col,outside,smoothstep(-1.,1.,sd)),1.); }',
 ].join('\n');
@@ -92,8 +95,8 @@ export function Painter(canvas, wall, sources) {
   const P = glProgram(canvas, PAINTER_FRAG);
   if (!P) return null;
   const gl = P.gl;
-  const U = P.uniforms(['r', 't', 'wall', 'a', 'b', 'tw', 'ta', 'tb', 'aw', 'pp', 'win', 'rad', 'outVis', 'px', 'dim', 'shade', 'shadeV', 'pan']);
-  const self = { q: 0, win: [0, 0, 0, 0], rad: 0, outVis: 1, dim: 1, shade: 0, shadeV: 0, pan: .5, ready: false, onready: null };
+  const U = P.uniforms(['r', 't', 'wall', 'a', 'b', 'tw', 'ta', 'tb', 'aw', 'pp', 'win', 'rad', 'outVis', 'px', 'dim', 'shade', 'shadeV', 'pan', 'clear']);
+  const self = { clear: 0, q: 0, win: [0, 0, 0, 0], rad: 0, outVis: 1, dim: 1, shade: 0, shadeV: 0, pan: .5, ready: false, onready: null };
   let T = [], S = [];
   loadAll([wall].concat(sources), (ims) => {
     T = ims.map((im) => P.tex(im)); S = ims.map((im) => [im.width, im.height]);
@@ -111,7 +114,7 @@ export function Painter(canvas, wall, sources) {
     let ai, bi, aw = 0, pp;
     if (q < 1) { aw = 1; ai = 0; bi = 0; pp = q; } else { ai = Math.min(Math.floor(q) - 1, n - 2); bi = ai + 1; pp = q - 1 - ai; }
     P.bind(0, T[0]); P.bind(1, T[ai + 1]); P.bind(2, T[bi + 1]);
-    gl.uniform1i(U.wall, 0); gl.uniform1i(U.a, 1); gl.uniform1i(U.b, 2);
+    gl.uniform1i(U.wall, 0); gl.uniform1i(U.a, 1); gl.uniform1i(U.b, 2); gl.uniform1f(U.clear, self.clear);
     gl.uniform2f(U.r, canvas.width, canvas.height); gl.uniform1f(U.t, still ? 20 : (performance.now() - t0) / 1000 + 20);
     gl.uniform2fv(U.tw, S[0]); gl.uniform2fv(U.ta, S[ai + 1]); gl.uniform2fv(U.tb, S[bi + 1]);
     gl.uniform1f(U.aw, aw); gl.uniform1f(U.pp, pp);

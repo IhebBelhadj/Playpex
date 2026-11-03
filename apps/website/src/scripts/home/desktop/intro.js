@@ -1,5 +1,6 @@
 // The desktop site's intro, held while you scroll: the poster wall shrinks into a screen, becomes a folder of films
-// and then the library, and the window takes the shape of each of the four apps, snapping at each stop.
+// and then the library, and the window takes the shape of each of the four apps (around it, the wall's dots
+// clear away to the plain ground), snapping at each stop.
 import '../../stage.js';
 import { Painter } from '../gl.js';
 import { IMG } from '../assets.js';
@@ -63,7 +64,7 @@ export function initIntro(apps) {
     const u = p * END, k = R(u, T.k);
     P.win = mix4([0, 0, stage.clientWidth, stage.clientHeight], box(), k); P.rad = RAD[0] * k;
     P.outVis = Math.max(1 - k, R(u, T.out)); P.dim = u > 1 ? .5 : 1;
-    P.shade = R(u, T.out); P.shadeV = wide ? 0 : 1;
+    P.shade = R(u, T.out); P.shadeV = wide ? 0 : 1; P.clear = R(u, T.out);
     P.q = R(u, T.q1) + R(u, T.q2); P.pan = .5;
     scrim.style.opacity = 1 - k;
     show(hero, 1 - R(u, T.hero), -1);
