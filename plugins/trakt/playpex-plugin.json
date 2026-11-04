@@ -17,7 +17,7 @@
   "icon": "assets/trakt.svg",
   "listing": {
     "summary": "Scrobbles what you watch to Trakt, keeps your watch list, history and ratings in sync, and adds Trakt's ratings and rows.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "tracking",
       "metadata",

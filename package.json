@@ -2,7 +2,8 @@
   "name": "playpex",
   "version": "0.9.0",
   "private": true,
-  "author": "Iheb Belhaj",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "author": "Iheb Belhadj",
   "description": "Playpex: a media server and its TV client (npm workspaces, see docs/server-separation-plan.md)",
   "workspaces": [
     "apps/*",

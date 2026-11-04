@@ -51,12 +51,6 @@
   --ui-muted: #a1a1aa;
   --ui-on-light: #111111;
 
-  /* Who's watching: each profile's colour (the row) and face */
-  --who-sam: #2f6fe4;   --face-sam: #3b82f6;
-  --who-alex: #16803f;  --face-alex: #2bb673;
-  --who-noor: #0f7068;  --face-noor: #14b8a6;
-  --who-kids: #f2c31b;  --face-kids: #f5c518;
-  --who-all: #2b2618;
 
   /* type */
   --font: "Jost Variable", "Jost", "Futura", "Century Gothic", "Avenir Next", system-ui, sans-serif;

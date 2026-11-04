@@ -7,6 +7,7 @@ export const SITE = {
   description: 'Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.',
   repo: 'https://github.com/IhebBelhadj/Playpex',
   releases: 'https://github.com/IhebBelhadj/Playpex/releases',
+  author: { name: 'Iheb Belhadj', url: 'https://github.com/IhebBelhadj' },   // who made Playpex: the footer, the page's metadata
 };
 
 export const RELEASE = {
@@ -99,20 +100,6 @@ export const FILMS = [
   ['The Cabinet of Dr. Caligari', '1920, on this server'], ['The General', '1926, on this server'], ['Spring', '2019, on this server'],
   ['Sherlock Jr.', '1924, on this server'], ['Night of the Living Dead', '1968, on this server'], ['Nosferatu', '1922, on this server'],
 ] as const;
-
-// Who's watching: each profile of the demo house, its colours (fill behind the row, face) and the feature it switches on
-export const PEOPLE = [
-  { name: 'Sam', fill: 'var(--who-sam)', face: 'var(--face-sam)', line: 'Sam starts on the TV and finishes in bed.', toggle: 'Resume on any screen',
-    note: 'Sintel opens on Sam’s phone at 6:31, the minute the TV stopped.', shot: 's_mtitle', alt: 'Playpex Mobile: Sintel, Resume from 6:31', tall: true },
-  { name: 'Alex', fill: 'var(--who-alex)', face: 'var(--face-alex)', line: 'Alex keeps the film’s own sound.', toggle: 'Sound for every film',
-    note: 'Dolby and DTS tracks are turned into AAC by the server, so no film plays silent.', shot: 's_player', alt: 'Playpex TV playing Sintel', tall: false },
-  { name: 'Noor', fill: 'var(--who-noor)', face: 'var(--face-noor)', line: 'Noor watches with subtitles.', toggle: 'Subtitles in any language',
-    note: 'From the file or online, in Noor’s language, at Noor’s size.', shot: 's_subs', alt: 'Playpex TV: the subtitles for Sintel, in English, French, Spanish and German', tall: false },
-  { name: 'Kids', fill: 'var(--who-kids)', face: 'var(--face-kids)', line: 'The kids see what’s for them.', toggle: 'Kids profile', dark: true,
-    note: 'Only titles for children, and the grown-ups’ profiles locked with a PIN.', shot: 's_profiles', alt: 'Playpex TV: Who’s watching, with Sam, Alex, Noor and the Kids profile', tall: false },
-  { name: 'Everyone', fill: 'var(--who-all)', face: '', line: 'Everyone pauses the TV from the sofa.', toggle: 'Your phone as the remote',
-    note: 'Any phone in the house is a remote for any screen, with a touchpad and the keys.', shot: 's_remote', alt: 'The remote control on a phone: Sintel playing on the Living room TV', tall: true },
-];
 
 export const DOWNLOADS = {
   Windows: { file: `Playpex-Media-Server-Setup-${RELEASE.version}.exe`, how: 'Installs for your user only. Windows may ask you to confirm the first time.' },

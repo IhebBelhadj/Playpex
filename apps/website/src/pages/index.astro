@@ -8,7 +8,7 @@ import Rooms from '../components/Rooms.astro';
 import DownloadField from '../components/DownloadField.astro';
 import { IMG, LOOP_VIDEO, imageMap } from '../lib/images';
 import { ICON } from '../lib/icons';
-import { SITE, RELEASE, PRODUCTS, PEOPLE, DOWNLOADS } from '../data/site';
+import { SITE, RELEASE, PRODUCTS, DOWNLOADS } from '../data/site';
 import '../styles/desktop.css';
 import '../styles/phone.css';
 
@@ -17,7 +17,6 @@ const SHELF = ['a-srv', 'a-tv', 'a-and', 'a-man'];
 const BEATS = [
   ['It starts on the server.', 'The dashboard of the computer that keeps your films, in any browser.'],
   ['Then it’s on the TV.', 'Playpex TV shows what’s on the server, made for a remote and a sofa.'],
-  ['Every title has its page.', 'Sintel, on this server: its story, its cast, its ratings and a Play button.'],
   ['It knows where you stopped.', 'Resume at the same minute on any screen, or start again.'],
   ['And it plays.', 'Every audio track and subtitle in the file, on the biggest screen in the house.'],
 ];
@@ -27,13 +26,23 @@ const ROOMS = [
   { shot: 's_subs', alt: 'Playpex TV’s subtitle settings listing Sintel’s subtitles from online providers', title: 'Subtitles, found for you', text: 'The tracks in the file, plus OpenSubtitles and YIFY, with size and timing in the player.' },
   { shot: 's_profiles', alt: 'Playpex TV’s Who’s watching screen with four profiles, one for kids', title: 'A profile for everyone', text: 'Watch lists and resume points per person. Kids’ profiles only see what’s for them.' },
 ];
-const face = (fill: string) => `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="50" style="fill:${fill}"/><circle cx="35" cy="40" r="6" class="ink"/><circle cx="65" cy="40" r="6" class="ink"/><path d="M30 60 Q50 78 70 60" class="smile"/></svg>`;
 const SCREEN_SIZES = '(min-width: 900px) 60vw, 100vw';
+// the intro's stops, then what follows it (the "Up next" card)
+const TOUR = ['Start', 'Your folders', 'The library', ...PRODUCTS.map((p) => p.name), 'The rest of the page'];
 ---
 <Base>
 <!-- the loading screen (home/preload.js): the Playpex mark lights dot by dot as the page's parts arrive, then the
      gold dots uncover the page. Only with script, never when arriving from the other site (already covered) -->
-<script is:inline>(function (d) { if (d.classList.contains('switching')) return; d.classList.add('preloading'); setTimeout(function () { d.classList.remove('preloading'); }, 9000); })(document.documentElement);</script>
+<script is:inline>(function (d) {
+  // DRAFT: the options being compared (?try=…, scripts/home/try.js) as html.try-<name>, before the first paint
+  var t = (new URLSearchParams(location.search).get('try') || '').split(',').filter(Boolean);
+  t.forEach(function (n) { d.classList.add('try-' + n); });
+  if (d.classList.contains('switching')) return;
+  // load-b: the loading screen only on the session's first visit
+  if (t.indexOf('load-b') >= 0) { try { if (sessionStorage.getItem('playpex.seen')) return; sessionStorage.setItem('playpex.seen', '1'); } catch (e) {} }
+  d.classList.add('preloading');
+  setTimeout(function () { d.classList.remove('preloading'); }, 9000);
+})(document.documentElement);</script>
 <div class="preload" id="preload" aria-hidden="true">
   <div class="preload-mark">
     <svg viewBox="6.5 6.7 20.8 18.6"><defs><pattern id="pl-dots" x="6.5" y="6.7" width=".547" height=".547" patternUnits="userSpaceOnUse"><circle cx=".2735" cy=".2735" r=".197" style="fill:var(--unlit)"/></pattern><clipPath id="pl-clip"><polygon points="9.24,11.1 21.58,17.23 14.34,24.17 26.79,16.99 7,7.21 7,11.5 7,24.79"/></clipPath></defs><rect x="6.5" y="6.7" width="20.8" height="18.6" fill="url(#pl-dots)" clip-path="url(#pl-clip)"/></svg>
@@ -63,8 +72,20 @@ const SCREEN_SIZES = '(min-width: 900px) 60vw, 100vw';
         </div>
         <div class="slot" id="slot"><Image class="slot-still" src={IMG.s_dashlib} alt="The Playpex dashboard’s Library: posters of the films on the server, A to Z" widths={[640, 960, 1280, 1600]} sizes={SCREEN_SIZES} loading="eager" /></div>
       </div>
+      <!-- the scroll cue, centred at the foot of the hero, in a clearing the wall's dots make for it (the painter's hole,
+           home/*/intro.js); it fades with the hero's words -->
+      <div class="scroll-cue" id="scroll-cue" aria-hidden="true">Scroll<span class="cue-track"><i></i></span></div>
+      <!-- the phone's hero picture (phone.css; home/phone/intro.js): one row of the library under the words, drifting -->
+      <div class="prow" id="prow" aria-hidden="true"><ul>{[0, 1].map(() => ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].map((n) => <li><Image src={IMG[n]} alt="" widths={[192]} sizes="112px" loading="lazy" /></li>))}</ul></div>
     </div>
   </section>
+
+  <!-- "Up next" through the held intro (home/desktop/intro.js): shown by the script on the desktop site only -->
+  <nav class="upnext" id="upnext" aria-label="The tour" hidden>
+    <ol class="un-stops" hidden>{TOUR.map((t) => <li>{t}</li>)}</ol>
+    <button type="button" class="un-card"><span class="un-pic"><img alt="" decoding="async" /></span><span class="un-txt"><span class="un-up">Up next</span><span class="un-name"></span><span class="un-keys" aria-hidden="true"><kbd>↓</kbd> next <kbd>↑</kbd> back</span></span><span class="un-dots" aria-hidden="true"></span></button>
+    <button type="button" class="un-skip">Skip the tour</button>
+  </nav>
 
   <section class="apps2" id="products" aria-labelledby="apps-title">
     <div class="wrap">
@@ -102,25 +123,6 @@ const SCREEN_SIZES = '(min-width: 900px) 60vw, 100vw';
   <Remote title="Made for the remote on your couch" text="Playpex TV moves with arrows, OK and Back, and whatever you point at comes forward. Try it here with the pad or your arrow keys." />
 
   <Rooms id="server" title="The server does the rest" rooms={ROOMS} />
-
-  <section class="feats" id="features" aria-labelledby="feat-title">
-    <div class="wrap who-head"><h2 id="feat-title">Four people, one house</h2><p>Profiles keep each person’s list, place and settings. Switch on what each of them needs.</p></div>
-    <ul class="who">
-      {PEOPLE.map((p, i) => (
-        <li class:list={['person', { dark: p.dark }]} style={`--fill:${p.fill}`}>
-          <div class="wrap">
-            <div class="pwords">
-              <div class="face">{p.face ? <Fragment set:html={face(p.face)} /> : <span class="all"><Fragment set:html={PEOPLE.slice(0, 4).map((q) => face(q.face)).join('')} /></span>}</div>
-              <h3>{p.line}</h3>
-              <button type="button" class="sw2" role="switch" aria-checked="false" id={`pp${i}`}><i aria-hidden="true"></i><span>{p.toggle}</span></button>
-              <p>{p.note}</p>
-            </div>
-            <figure class:list={['pic', { tall: p.tall }]} data-shot={p.shot}><Image src={IMG[p.shot]} alt={p.alt} widths={p.tall ? [320, 640] : [640, 1200]} sizes={p.tall ? '330px' : '(min-width: 900px) 56vw, 100vw'} loading="lazy" /></figure>
-          </div>
-        </li>
-      ))}
-    </ul>
-  </section>
 
   <DownloadField
     title="Start with the server."

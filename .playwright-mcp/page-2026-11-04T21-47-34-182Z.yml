@@ -1,0 +1,207 @@
+- generic [active] [ref=f2e1]:
+  - link "Skip to the content" [ref=f2e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - link "Playpex" [ref=f2e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f2e9]:
+        - link "Download" [ref=f2e10] [cursor=pointer]:
+          - /url: "#download"
+        - button "Menu" [ref=f2e14] [cursor=pointer]
+  - generic [ref=f2e20]: 9%
+  - main [ref=f2e21]:
+    - region [ref=f2e22]:
+      - generic [ref=f2e27]:
+        - heading "Your library. Every screen." [level=1] [ref=f2e28]:
+          - text: Your library.
+          - generic [ref=f2e29]: Every screen.
+        - paragraph [ref=f2e30]: Playpex keeps your films and shows on a computer in your home and plays them on your TV, your phone and in any browser on your Wi-Fi.
+        - generic [ref=f2e31]:
+          - link "Download for Linux" [ref=f2e32] [cursor=pointer]:
+            - /url: "#download"
+          - link "See how it works" [ref=f2e35] [cursor=pointer]:
+            - /url: "#products"
+        - paragraph [ref=f2e36]: Free. Version 0.10.1-alpha.1 for Windows, macOS, Linux and phones
+    - region [ref=f2e37]:
+      - generic [ref=f2e39]:
+        - generic [ref=f2e40]:
+          - generic [ref=f2e41]:
+            - heading "It starts on the server." [level=2] [ref=f2e42]
+            - paragraph [ref=f2e43]: The dashboard of the computer that keeps your films, in any browser.
+          - generic [ref=f2e44]:
+            - heading "Then it’s on the TV." [level=2] [ref=f2e45]
+            - paragraph [ref=f2e46]: Playpex TV shows what’s on the server, made for a remote and a sofa.
+          - generic [ref=f2e47]:
+            - heading "Every title has its page." [level=2] [ref=f2e48]
+            - paragraph [ref=f2e49]: "Sintel, on this server: its story, its cast, its ratings and a Play button."
+          - generic [ref=f2e50]:
+            - heading "It knows where you stopped." [level=2] [ref=f2e51]
+            - paragraph [ref=f2e52]: Resume at the same minute on any screen, or start again.
+          - generic [ref=f2e53]:
+            - heading "And it plays." [level=2] [ref=f2e54]
+            - paragraph [ref=f2e55]: Every audio track and subtitle in the file, on the biggest screen in the house.
+        - img "Playpex TV playing Sintel at 5:18, with the player’s controls" [ref=f2e57]
+    - region [ref=f2e58]:
+      - generic [ref=f2e59]:
+        - generic [ref=f2e60]:
+          - heading "Made for the remote on your couch" [level=2] [ref=f2e61]
+          - paragraph [ref=f2e62]: Playpex TV moves with arrows, OK and Back, and whatever you point at comes forward. Try it here with the pad or your arrow keys.
+        - listbox "Films on this server, in Playpex TV" [ref=f2e63]:
+          - generic [ref=f2e64]:
+            - generic [ref=f2e65]: Sintel
+            - generic [ref=f2e66]: 2010, on this server, resume at 5:18
+          - generic [ref=f2e67]:
+            - option "Sintel" [selected] [ref=f2e68]
+            - option "The Kid" [ref=f2e70]
+            - option "Tears of Steel" [ref=f2e72]
+            - option "The Cabinet of Dr. Caligari" [ref=f2e74]
+            - option "The General" [ref=f2e76]
+            - option "Spring" [ref=f2e78]
+            - option "Sherlock Jr." [ref=f2e80]
+            - option "Night of the Living Dead" [ref=f2e82]
+            - option "Nosferatu" [ref=f2e84]
+        - generic [ref=f2e86]:
+          - generic [ref=f2e87]:
+            - button "Up" [ref=f2e88] [cursor=pointer]
+            - button "Left" [ref=f2e91] [cursor=pointer]
+            - button "OK" [ref=f2e94] [cursor=pointer]
+            - button "Right" [ref=f2e95] [cursor=pointer]
+            - button "Down" [ref=f2e98] [cursor=pointer]
+          - button "Back" [ref=f2e101] [cursor=pointer]
+          - paragraph [ref=f2e105]: OK on Sintel opens it, Back closes it.
+    - region [ref=f2e106]:
+      - generic [ref=f2e107]:
+        - heading "The server does the rest" [level=2] [ref=f2e109]
+        - generic [ref=f2e110]:
+          - article [ref=f2e111]:
+            - figure [ref=f2e112]:
+              - 'img "The dashboard’s Downloads: Sintel downloaded and seeding, with its details" [ref=f2e113]'
+            - generic [ref=f2e114]:
+              - heading "A torrent client that keeps what you get" [level=3] [ref=f2e115]
+              - paragraph [ref=f2e116]: Queue, pause, seed and set limits. Leaving the player pauses a download; nothing is deleted unless you remove it.
+          - article [ref=f2e117]:
+            - figure [ref=f2e118]:
+              - img "Sintel playing in the dashboard’s player in a browser" [ref=f2e119]
+            - generic [ref=f2e120]:
+              - heading "A player in your browser" [level=3] [ref=f2e121]
+              - paragraph [ref=f2e122]: Watch anything on the server from the dashboard, even while it’s still downloading.
+          - article [ref=f2e123]:
+            - figure [ref=f2e124]:
+              - img "Playpex TV’s subtitle settings listing Sintel’s subtitles from online providers" [ref=f2e125]
+            - generic [ref=f2e126]:
+              - heading "Subtitles, found for you" [level=3] [ref=f2e127]
+              - paragraph [ref=f2e128]: The tracks in the file, plus OpenSubtitles and YIFY, with size and timing in the player.
+          - article [ref=f2e129]:
+            - figure [ref=f2e130]:
+              - img "Playpex TV’s Who’s watching screen with four profiles, one for kids" [ref=f2e131]
+            - generic [ref=f2e132]:
+              - heading "A profile for everyone" [level=3] [ref=f2e133]
+              - paragraph [ref=f2e134]: Watch lists and resume points per person. Kids’ profiles only see what’s for them.
+    - region [ref=f2e135]:
+      - generic [ref=f2e136]:
+        - heading "Four people, one house" [level=2] [ref=f2e137]
+        - paragraph [ref=f2e138]: Profiles keep each person’s list, place and settings. Switch on what each of them needs.
+      - list [ref=f2e139]:
+        - listitem [ref=f2e140]:
+          - generic [ref=f2e141]:
+            - generic [ref=f2e142]:
+              - heading "Sam starts on the TV and finishes in bed." [level=3] [ref=f2e149]
+              - switch "Resume on any screen" [ref=f2e150] [cursor=pointer]
+              - paragraph [ref=f2e153]: Sintel opens on Sam’s phone at 6:31, the minute the TV stopped.
+            - figure [ref=f2e154]:
+              - 'img "Playpex Mobile: Sintel, Resume from 6:31"'
+        - listitem [ref=f2e156]:
+          - generic [ref=f2e157]:
+            - generic [ref=f2e158]:
+              - heading "Alex keeps the film’s own sound." [level=3] [ref=f2e165]
+              - switch "Sound for every film" [ref=f2e166] [cursor=pointer]
+              - paragraph [ref=f2e169]: Dolby and DTS tracks are turned into AAC by the server, so no film plays silent.
+            - figure [ref=f2e170]:
+              - img "Playpex TV playing Sintel"
+        - listitem [ref=f2e172]:
+          - generic [ref=f2e173]:
+            - generic [ref=f2e174]:
+              - heading "Noor watches with subtitles." [level=3] [ref=f2e181]
+              - switch "Subtitles in any language" [ref=f2e182] [cursor=pointer]
+              - paragraph [ref=f2e185]: From the file or online, in Noor’s language, at Noor’s size.
+            - figure [ref=f2e186]:
+              - 'img "Playpex TV: the subtitles for Sintel, in English, French, Spanish and German"'
+        - listitem [ref=f2e188]:
+          - generic [ref=f2e189]:
+            - generic [ref=f2e190]:
+              - heading "The kids see what’s for them." [level=3] [ref=f2e197]
+              - switch "Kids profile" [ref=f2e198] [cursor=pointer]
+              - paragraph [ref=f2e201]: Only titles for children, and the grown-ups’ profiles locked with a PIN.
+            - figure [ref=f2e202]:
+              - 'img "Playpex TV: Who’s watching, with Sam, Alex, Noor and the Kids profile"'
+        - listitem [ref=f2e204]:
+          - generic [ref=f2e205]:
+            - generic [ref=f2e206]:
+              - heading "Everyone pauses the TV from the sofa." [level=3] [ref=f2e229]
+              - switch "Your phone as the remote" [ref=f2e230] [cursor=pointer]
+              - paragraph [ref=f2e233]: Any phone in the house is a remote for any screen, with a touchpad and the keys.
+            - figure [ref=f2e234]:
+              - 'img "The remote control on a phone: Sintel playing on the Living room TV"'
+    - region [ref=f2e236]:
+      - generic [ref=f2e237]:
+        - generic [ref=f2e238]:
+          - heading "Start with the server." [level=2] [ref=f2e239]
+          - paragraph [ref=f2e240]: It’s free. Install it on the computer that keeps your films; Playpex TV and Playpex Mobile find it on your Wi-Fi after that.
+          - generic [ref=f2e241]:
+            - link "Playpex TV" [ref=f2e242] [cursor=pointer]:
+              - /url: /tv
+            - link "Playpex Mobile" [ref=f2e243] [cursor=pointer]:
+              - /url: /mobile
+            - link "All releases" [ref=f2e244] [cursor=pointer]:
+              - /url: /releases
+        - group "Download Playpex Media Server" [ref=f2e245]:
+          - paragraph [ref=f2e247]: Version 0.10.1-alpha.1, released 1 November 2026
+          - radiogroup "Your computer" [ref=f2e248]:
+            - radio "Windows" [ref=f2e249] [cursor=pointer]
+            - radio "macOS" [ref=f2e250] [cursor=pointer]
+            - radio "Linux" [checked] [ref=f2e251] [cursor=pointer]
+          - generic [ref=f2e252]:
+            - generic [ref=f2e253]: Playpex-Media-Server-0.10.1-alpha.1.AppImage
+            - generic [ref=f2e254]: Or the .deb package on the releases page.
+          - link "Download for Linux" [ref=f2e255] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=f2e258]:
+    - generic [ref=f2e259]:
+      - img "Playpex" [ref=f2e260]
+      - generic [ref=f2e264]:
+        - generic [ref=f2e265]:
+          - heading "Apps" [level=3] [ref=f2e266]
+          - link "Media Server" [ref=f2e267] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f2e268] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f2e269] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f2e270] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f2e271]:
+          - heading "Docs" [level=3] [ref=f2e272]
+          - link "First steps" [ref=f2e273] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f2e274] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f2e275] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f2e276] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f2e277]:
+          - heading "Project" [level=3] [ref=f2e278]
+          - link "Source code" [ref=f2e279] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f2e280] [cursor=pointer]:
+            - /url: /releases
+          - link "Licence" [ref=f2e281] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/licence.md
+        - paragraph [ref=f2e282]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f2e283]:
+        - generic [ref=f2e284]: Playpex 2026
+        - link "Download" [ref=f2e285] [cursor=pointer]:
+          - /url: "#download"
+  - group [ref=f2e286]:
+    - generic "Options" [ref=f2e287] [cursor=pointer]

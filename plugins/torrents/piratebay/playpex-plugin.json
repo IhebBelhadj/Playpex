@@ -14,7 +14,7 @@
   "listing": {
     "summary": "Movie and TV torrents from The Pirate Bay (its JSON API), matched to the title.",
     "disclaimer": "Streaming copyrighted content via torrents may be illegal where you live. Educational project.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "sources"
     ]

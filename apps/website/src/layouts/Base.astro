@@ -28,7 +28,7 @@ const jsonLd = {
       applicationCategory: 'MultimediaApplication', operatingSystem: 'Windows, macOS, Linux, Android',
       softwareVersion: RELEASE.version, datePublished: RELEASE.date, downloadUrl: SITE.releases, image: ogImage,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      codeRepository: SITE.repo,
+      codeRepository: SITE.repo, author: { '@type': 'Person', name: SITE.author.name, url: SITE.author.url }, copyrightHolder: { '@type': 'Person', name: SITE.author.name },
     },
   ],
 };

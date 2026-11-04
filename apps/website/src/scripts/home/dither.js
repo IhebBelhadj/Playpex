@@ -28,7 +28,8 @@ export function dots(img, canvas, cell) {
 }
 
 // Pic: a canvas in fig showing a picture as dots (off) or as itself (on); a new picture passes through the dots
-export function Pic(fig) {
+// ax: where the picture is anchored across (0 left, .5 centre, 1 right), as its CSS object-position
+export function Pic(fig, ax = .5) {
   const c = document.createElement('canvas'), x = c.getContext('2d'), cache = {};
   let cur = null, next = null, k = 0, target = 0, raf = 0;
   c.setAttribute('aria-hidden', 'true');
@@ -50,7 +51,7 @@ export function Pic(fig) {
     o.w = w; o.h = h;
     o.P = document.createElement('canvas'); o.P.width = w; o.P.height = h;
     const im = o.im, s = Math.max(w / im.width, h / im.height);
-    o.P.getContext('2d').drawImage(im, (w - im.width * s) / 2, 0, im.width * s, im.height * s);
+    o.P.getContext('2d').drawImage(im, (w - im.width * s) * ax, 0, im.width * s, im.height * s);
     o.cell = Math.round(6 * dpr);
     o.D = document.createElement('canvas'); o.D.width = w; o.D.height = h;
     dotted(o.D.getContext('2d'), o.P, w, h, o.cell, 1.2, .38);

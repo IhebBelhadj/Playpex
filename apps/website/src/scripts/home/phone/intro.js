@@ -1,4 +1,4 @@
-// The phone site's intro: the hero over the poster wall, then one move (a swipe runs it at once) straight to the
+// The phone site's intro: the hero's words over one row of the library drifting at the screen's foot, then one move (a swipe runs it at once) straight to the
 // four apps, the picture filling the screen and the words at its foot. The apps switch by a tap or a swipe, not by
 // scrolling; the snapping ends on them.
 import '../../stage.js';
@@ -12,27 +12,38 @@ const { gsap, ScrollTrigger, Stage } = window;
 // u, the intro's own time: 0 the hero, 1.4 the four apps (each app at + .4, moved by hand). The section is
 // 100 + 100 × END svh tall (phone.css): a short run, one move.
 const END = 1.4;
-// when each change happens, in u: k the wall filling the screen, q1 / q2 its pictures (the wall dissolves straight
-// into the library: no folder), hero / b3 the words, out the dim wall, sh / qa the apps' shapes and pictures
-const T = { k: [.04, .5], q1: [.12, .7], q2: [.7, .9], hero: [.02, .18], b3: [.85, 1.25], out: [.85, 1.3], sh: [.04, .36], qa: [.04, .36] };
+// when each change happens, in u: k the row opening to fill the screen (onto the library: no folder), q2 the library
+// into the server's screen, hero / b3 the words, out the dim wall, sh / qa the apps' shapes and pictures
+const T = { k: [.04, .5], q2: [.7, .9], hero: [.02, .18], b3: [.85, 1.25], out: [.85, 1.3], sh: [.04, .36], qa: [.04, .36] };
 const RAD = [0, 0, 0, 26, 26];   // the window's corners: the library, then each app
 
 export function initIntro(apps) {
   const intro = document.getElementById('intro'), stage = intro.querySelector('.istage');
   const hero = document.getElementById('heroblock'), b3 = document.getElementById('b3');
   const scrim = document.getElementById('iscrim'), list = document.getElementById('b3-list'), fact = document.getElementById('b3-fact');
+  const row = document.getElementById('prow');
   const P = Painter(document.getElementById('gl'), IMG.wall, [IMG.s_dashlib, IMG.s_dashlib, IMG.s_tvlib, IMG.s_mtitle, IMG.s_man]);
   const wallIn = need();   // the loading screen waits for the wall's pictures (none without WebGL)
   if (!P) wallIn();
-  // not held (no WebGL, no motion): the static layout, the wall (if any) behind the hero
+  // not held (no WebGL, no motion): the static layout, the row under the words
   if (!P || !Stage.live || Stage.reduced) {
     intro.classList.remove('is-held');
     document.documentElement.classList.remove('held');
-    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 1; P.q = 0; P.onready = wallIn; P.invalidate(); }
+    if (P) { P.win = [0, 0, 0, 0]; P.outVis = 0; P.q = 0; P.onready = wallIn; P.invalidate(); }
     return;
   }
 
   const mix4 = (A, B, k) => A.map((a, i) => lerp(a, B[i], k));
+  // the window starts on the row (the library sharp under it), the row fading as it opens
+  const lead = () => { const r = row.getBoundingClientRect(), g = stage.getBoundingClientRect(); return [r.left - g.left, r.top - g.top, r.width, r.height]; };
+  // the scroll cue at the hero's foot fades with the words; the wall's dots clear around it
+  const cue = document.getElementById('scroll-cue');
+  function cueAt(o) {
+    cue.style.opacity = o;
+    if (!cue.offsetWidth) { P.hole = [0, 0, 0]; return; }
+    const c = cue.getBoundingClientRect(), g = stage.getBoundingClientRect();
+    P.hole = [c.left - g.left + c.width / 2, c.top - g.top + c.height / 2, 64 * o];
+  }
   function show(el, k, dir) {
     el.style.opacity = k;
     el.style.visibility = k > .01 ? 'visible' : 'hidden';
@@ -65,12 +76,14 @@ export function initIntro(apps) {
     if (u >= 1.399) u = 1.4 + AV.v * .4;
     else if (AV.v) { gsap.killTweensOf(AV); AV.v = 0; }
     const k = R(u, T.k);
-    P.win = mix4([0, 0, stage.clientWidth, stage.clientHeight], box(), k); P.rad = RAD[0] * k;
-    P.outVis = Math.max(1 - k, R(u, T.out)); P.dim = u > 1 ? .5 : 1;
+    P.win = mix4(lead(), box(), k * k * (3 - 2 * k)); P.rad = lerp(6, RAD[0], k);
+    P.outVis = R(u, T.out); P.dim = u > 1 ? .5 : 1;
     P.shade = 0; P.shadeV = 1;
-    P.q = R(u, T.q1) + R(u, T.q2); P.pan = panAt(u);
+    P.q = 1 + R(u, T.q2); P.pan = panAt(u);
     scrim.style.opacity = 1 - k;
+    const o = 1 - R(u, [.02, .07]); row.style.opacity = o; row.style.visibility = o > .01 ? 'visible' : 'hidden';
     show(hero, 1 - R(u, T.hero), -1);
+    cueAt(1 - R(u, T.hero));
     show(b3, R(u, T.b3), 1);
     if (u > 1) {
       const S = shapes();

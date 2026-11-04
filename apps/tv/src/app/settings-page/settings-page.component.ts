@@ -10,7 +10,7 @@ import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
 import { TabModel } from '../ui/public-api';
 
-type Group = 'display' | 'playback';
+type Group = 'display' | 'playback' | 'about';
 
 const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
   { key: 'small', label: 'Small' }, { key: 'medium', label: 'Medium' }, { key: 'large', label: 'Large' }, { key: 'largest', label: 'Largest' },
@@ -37,6 +37,7 @@ const AUTOPLAY_KINDS = [
 ];
 
 import { desktop } from '../desktop';
+import { connection } from '../server-config';
 @Component({
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
@@ -58,6 +59,8 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
   // the Electron shell can inject the admin's input (remote/remote-control.service.ts); a browser can't
   readonly remoteCapable = !!desktop()?.remote;
+  // About: this app's version (the Electron shell's; none in a browser)
+  readonly version = connection?.version || '';
   readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
   readonly subtitleLanguages = [{ key: 'off', label: 'Off' }, ...LANGUAGES];
   readonly volumeText = (v:number) => v + ' %';
@@ -80,6 +83,7 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     this.groups = [
       { key: 'display', label: 'Display' },
       { key: 'playback', label: 'Playback' },
+      { key: 'about', label: 'About' },
     ];
     this.subs.push(subtitles.getProviders().subscribe({ next: list => this.subtitleProviders = list.filter(p => p.enabled), error: () => { } }));
   }

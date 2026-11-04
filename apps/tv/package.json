@@ -4,9 +4,9 @@
   "version": "0.9.0",
   "private": true,
   "description": "Playpex TV: a 10-foot client of Playpex Media Server",
-  "author": "Iheb Belhaj",
+  "author": "Iheb Belhadj",
   "homepage": "https://github.com/IhebBelhadj/Playpex",
-  "license": "SEE LICENSE IN licence.md",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": [
     "Playpex",
     "Streamer",
@@ -78,7 +78,7 @@
     "appId": "app.playpex.tv",
     "productName": "Playpex TV",
     "executableName": "playpex-tv",
-    "copyright": "Iheb Belhaj",
+    "copyright": "Copyright © 2026 Iheb Belhadj",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -93,8 +93,8 @@
     "asar": true,
     "extraResources": [
       {
-        "from": "../../licence.md",
-        "to": "licence.md"
+        "from": "../../LICENSE.md",
+        "to": "LICENSE.md"
       }
     ],
     "publish": [
@@ -119,7 +119,7 @@
       "shortcutName": "Playpex TV",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "license": "../../licence.md",
+      "license": "../../LICENSE.md",
       "artifactName": "Playpex-TV-Setup-${version}.${ext}"
     },
     "mac": {
@@ -147,7 +147,7 @@
       "category": "AudioVideo",
       "icon": "build/icon.png",
       "synopsis": "Playpex TV, a client of Playpex Media Server",
-      "maintainer": "Iheb Belhaj <noreply@playpex.app>",
+      "maintainer": "Iheb Belhadj <noreply@playpex.app>",
       "artifactName": "Playpex-TV-${version}-${arch}.${ext}",
       "desktop": {
         "entry": {

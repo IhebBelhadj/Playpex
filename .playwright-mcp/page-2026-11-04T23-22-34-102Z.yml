@@ -1,0 +1,140 @@
+- generic [active] [ref=f113e1]:
+  - link "Skip to the content" [ref=f113e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f113e4]:
+    - generic [ref=f113e5]:
+      - link "Playpex" [ref=f113e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f113e9]:
+        - listitem [ref=f113e10]:
+          - button "Products" [ref=f113e11] [cursor=pointer]
+        - listitem [ref=f113e14]:
+          - link "Plugins" [ref=f113e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f113e16]:
+          - button "Docs" [ref=f113e17] [cursor=pointer]
+        - listitem [ref=f113e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f113e21] [cursor=pointer]:
+            - /url: /releases
+            - text: Releases
+            - generic [ref=f113e22]: 0.10.1-alpha.1
+      - generic [ref=f113e23]:
+        - link "GitHub" [ref=f113e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f113e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=f113e31]:
+    - region [ref=f113e32]:
+      - generic [ref=f113e33]:
+        - generic [ref=f113e34]:
+          - heading "Stopped on the TV. Carry on in bed." [level=1] [ref=f113e35]:
+            - text: Stopped on the TV.
+            - generic [ref=f113e36]: Carry on in bed.
+          - paragraph [ref=f113e37]: Playpex Mobile plays the films and series on your Playpex server on your phone, from the minute you stopped on any other screen, every file as it is.
+          - link "Download the app" [ref=f113e39] [cursor=pointer]:
+            - /url: "#download"
+        - figure [ref=f113e42]:
+          - 'img "Playpex Mobile: You stopped at 7:46, Sintel.mp4, Resume or From the start" [ref=f113e43]'
+      - generic [ref=f113e44]:
+        - img "Sintel, 14:48 long, stopped at 7:46" [ref=f113e45]
+        - generic [ref=f113e194]:
+          - generic [ref=f113e195]: 0:00
+          - generic [ref=f113e196]: 7:46
+          - generic [ref=f113e197]: 14:48
+        - button "Resume" [ref=f113e198] [cursor=pointer]
+    - generic [ref=f113e199]:
+      - generic [ref=f113e201]:
+        - region [ref=f113e202]:
+          - heading "What’s new, what you started" [level=2] [ref=f113e203]
+          - paragraph [ref=f113e204]: Trending films and series, what you were watching with the minutes left, and rows picked from what you like.
+        - region [ref=f113e205]:
+          - heading "Every series, every episode" [level=2] [ref=f113e206]
+          - paragraph [ref=f113e207]: "Breaking Bad: five seasons, each episode with its story and rating, the cast and series like it."
+        - region [ref=f113e208]:
+          - heading "Back where you stopped" [level=2] [ref=f113e209]
+          - paragraph [ref=f113e210]: Sintel stopped at 7:46, on the TV or on this phone. Resume, start again, or pick another source.
+        - region [ref=f113e211]:
+          - heading "Turn it sideways" [level=2] [ref=f113e212]
+          - paragraph [ref=f113e213]: "The player fills the screen. Files play as they are: every container, codec and subtitle format is decoded on the phone."
+        - region [ref=f113e214]:
+          - heading "Every track in the file" [level=2] [ref=f113e215]
+          - paragraph [ref=f113e216]: Switch the audio and the subtitles in the film, or find more online, without stopping it.
+      - region [ref=f113e224]:
+        - heading "The whole library, pocket size" [level=2] [ref=f113e225]
+        - generic [ref=f113e226]:
+          - figure "Home" [ref=f113e227]:
+            - img "Home" [ref=f113e229]
+          - figure "Breaking Bad" [ref=f113e231]:
+            - img "Breaking Bad" [ref=f113e233]
+          - figure "Interstellar" [ref=f113e235]:
+            - img "Interstellar" [ref=f113e237]
+          - figure "My list" [ref=f113e239]:
+            - img "My list" [ref=f113e241]
+          - figure "Series" [ref=f113e243]:
+            - img "Series" [ref=f113e245]
+          - figure "Resume at 7:46" [ref=f113e247]:
+            - img "Resume at 7:46" [ref=f113e249]
+          - figure "Who’s watching" [ref=f113e251]:
+            - img "Who’s watching" [ref=f113e253]
+          - figure "Search" [ref=f113e255]:
+            - img "Search" [ref=f113e257]
+      - region [ref=f113e259]:
+        - generic [ref=f113e260]:
+          - generic [ref=f113e261]:
+            - heading "Put it on your phone." [level=2] [ref=f113e262]
+            - paragraph [ref=f113e263]: It’s free. Install it, and it finds your Playpex server on your Wi-Fi; approve the code it shows once on the dashboard.
+            - generic [ref=f113e264]:
+              - link "Get the server first" [ref=f113e265] [cursor=pointer]:
+                - /url: /server
+              - link "All releases" [ref=f113e266] [cursor=pointer]:
+                - /url: /releases?app=mobile
+          - group "Download Playpex Mobile" [ref=f113e267]:
+            - paragraph [ref=f113e269]: Version 0.10.1-alpha.1, released 1 November 2026
+            - radiogroup "Your computer" [ref=f113e270]:
+              - radio "Android" [checked] [ref=f113e271] [cursor=pointer]
+            - generic [ref=f113e272]:
+              - generic [ref=f113e273]: Playpex-0.1.0-alpha.1-arm64.apk
+              - generic [ref=f113e274]: Open it on your phone. Android asks once to allow installs from your browser.
+            - link "Download for Android" [ref=f113e275] [cursor=pointer]:
+              - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=f113e278]:
+    - generic [ref=f113e279]:
+      - img "Playpex" [ref=f113e280]
+      - generic [ref=f113e284]:
+        - generic [ref=f113e285]:
+          - heading "Apps" [level=3] [ref=f113e286]
+          - link "Media Server" [ref=f113e287] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f113e288] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f113e289] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f113e290] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f113e291]:
+          - heading "Docs" [level=3] [ref=f113e292]
+          - link "First steps" [ref=f113e293] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f113e294] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f113e295] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f113e296] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f113e297]:
+          - heading "Project" [level=3] [ref=f113e298]
+          - link "Source code" [ref=f113e299] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f113e300] [cursor=pointer]:
+            - /url: /releases
+          - link "Licence" [ref=f113e301] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/LICENSE.md
+        - paragraph [ref=f113e302]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f113e303]:
+        - generic [ref=f113e304]:
+          - text: Playpex, made by
+          - link "Iheb Belhadj" [ref=f113e305] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj
+          - text: . © 2026
+        - link "Download" [ref=f113e306] [cursor=pointer]:
+          - /url: "#download"

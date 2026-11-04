@@ -29,6 +29,17 @@ export function AboutPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
+            Made by{' '}
+            <a className="font-medium text-foreground underline-offset-4 hover:underline" href="https://github.com/IhebBelhadj" target="_blank" rel="noreferrer">
+              Iheb Belhadj
+            </a>
+            . Source code on{' '}
+            <a className="font-medium text-foreground underline-offset-4 hover:underline" href="https://github.com/IhebBelhadj/Playpex" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
+            , under the PolyForm Noncommercial License 1.0.0: free to use and change, not for sale or commercial use.
+          </p>
+          <p>
             Playpex is an <strong className="text-foreground">educational project</strong>. It streams torrents found by third-party
             providers; streaming copyrighted content may be illegal where you live. You are responsible for what you watch.
           </p>

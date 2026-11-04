@@ -1,0 +1,137 @@
+- generic [active] [ref=f116e1]:
+  - link "Skip to the content" [ref=f116e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=f116e4]:
+    - generic [ref=f116e5]:
+      - link "Playpex" [ref=f116e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=f116e9]:
+        - listitem [ref=f116e10]:
+          - button "Products" [ref=f116e11] [cursor=pointer]
+        - listitem [ref=f116e14]:
+          - link "Plugins" [ref=f116e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=f116e16]:
+          - button "Docs" [ref=f116e17] [cursor=pointer]
+        - listitem [ref=f116e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=f116e21] [cursor=pointer]:
+            - /url: /releases
+            - text: Releases
+            - generic [ref=f116e22]: 0.10.1-alpha.1
+      - generic [ref=f116e23]:
+        - link "GitHub" [ref=f116e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=f116e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=f116e31]:
+    - region [ref=f116e32]:
+      - generic [ref=f116e33]:
+        - heading "Server Manager. Nobody types an address." [level=1] [ref=f116e34]:
+          - text: Server Manager.
+          - generic [ref=f116e35]: Nobody types an address.
+        - paragraph [ref=f116e36]: "It finds the Playpex server on your Wi-Fi by itself and opens its dashboard on your phone: the library, the downloads, who’s watching, and the remote for your TV."
+        - link "Download Server Manager" [ref=f116e38] [cursor=pointer]:
+          - /url: "#download"
+      - generic [ref=f116e41]:
+        - generic [ref=f116e45]:
+          - paragraph [ref=f116e46]: On this network
+          - button "Living room playpex.local:28470, version 0.9.0" [ref=f116e47] [cursor=pointer]:
+            - generic [ref=f116e48]:
+              - generic [ref=f116e49]: Living room
+              - generic [ref=f116e50]: playpex.local:28470, version 0.9.0
+            - generic [aria-hidden] [ref=f116e51]: ›
+        - button "Look again" [ref=f116e52] [cursor=pointer]
+    - region [ref=f116e53]:
+      - heading "The whole dashboard, in your hand" [level=2] [ref=f116e54]
+      - list "Pages of the dashboard on a phone" [ref=f116e55]:
+        - listitem [ref=f116e56]:
+          - img "Everything in one menu" [ref=f116e58]
+          - generic [ref=f116e59]: Everything in one menu
+          - generic [ref=f116e60]: Library, downloads, activity, devices, plugins and settings.
+        - listitem [ref=f116e61]:
+          - img "The library" [ref=f116e63]
+          - generic [ref=f116e64]: The library
+          - generic [ref=f116e65]: Every title on the server, as posters.
+        - listitem [ref=f116e66]:
+          - img "Downloads" [ref=f116e68]
+          - generic [ref=f116e69]: Downloads
+          - generic [ref=f116e70]: What’s coming in, what’s seeding, pause all.
+        - listitem [ref=f116e71]:
+          - img "Search" [ref=f116e73]
+          - generic [ref=f116e74]: Search
+          - generic [ref=f116e75]: The server, the catalog and your sources.
+        - listitem [ref=f116e76]:
+          - img "Who’s watching" [ref=f116e78]
+          - generic [ref=f116e79]: Who’s watching
+          - generic [ref=f116e80]: What every screen plays, with Stop.
+        - listitem [ref=f116e81]:
+          - img "Profiles" [ref=f116e83]
+          - generic [ref=f116e84]: Profiles
+          - generic [ref=f116e85]: Who’s on the “Who’s watching?” screen.
+    - region [ref=f116e86]:
+      - generic [ref=f116e87]:
+        - heading "The remote for every screen" [level=2] [ref=f116e88]
+        - paragraph [ref=f116e89]: Pick a screen in the house and the phone becomes its remote. Drag to move the pointer, tap to click, long press to go back, two fingers to scroll. Or switch to the arrows and OK, with pause and skipping back or forward always at hand.
+      - generic [ref=f116e90]:
+        - 'img "Server Manager’s remote: Playpex TV connected, the touchpad with Click and Back, pause and skip" [ref=f116e92]'
+        - img "Server Manager’s remote with the arrows, OK and Back" [ref=f116e94]
+    - region [ref=f116e95]:
+      - generic [ref=f116e96]:
+        - generic [ref=f116e97]:
+          - heading "Put it on your phone." [level=2] [ref=f116e98]
+          - paragraph [ref=f116e99]: It’s free. Open it on the same Wi-Fi as your server, pick the server, and sign in as its admin.
+          - generic [ref=f116e100]:
+            - link "Get the server first" [ref=f116e101] [cursor=pointer]:
+              - /url: /server
+            - link "All releases" [ref=f116e102] [cursor=pointer]:
+              - /url: /releases?app=manager
+        - group "Download Server Manager" [ref=f116e103]:
+          - paragraph [ref=f116e105]: Version 0.10.1-alpha.1, released 1 November 2026
+          - radiogroup "Your computer" [ref=f116e106]:
+            - radio "Android" [checked] [ref=f116e107] [cursor=pointer]
+          - generic [ref=f116e108]:
+            - generic [ref=f116e109]: Playpex-Server-Manager-0.1.0.apk
+            - generic [ref=f116e110]: Open it on your phone. Android asks once to allow installs from your browser.
+          - link "Download for Android" [ref=f116e111] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/releases
+  - contentinfo [ref=f116e114]:
+    - generic [ref=f116e115]:
+      - img "Playpex" [ref=f116e116]
+      - generic [ref=f116e120]:
+        - generic [ref=f116e121]:
+          - heading "Apps" [level=3] [ref=f116e122]
+          - link "Media Server" [ref=f116e123] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=f116e124] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=f116e125] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=f116e126] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=f116e127]:
+          - heading "Docs" [level=3] [ref=f116e128]
+          - link "First steps" [ref=f116e129] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=f116e130] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=f116e131] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=f116e132] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=f116e133]:
+          - heading "Project" [level=3] [ref=f116e134]
+          - link "Source code" [ref=f116e135] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=f116e136] [cursor=pointer]:
+            - /url: /releases
+          - link "Licence" [ref=f116e137] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/LICENSE.md
+        - paragraph [ref=f116e138]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=f116e139]:
+        - generic [ref=f116e140]:
+          - text: Playpex, made by
+          - link "Iheb Belhadj" [ref=f116e141] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj
+          - text: . © 2026
+        - link "Download" [ref=f116e142] [cursor=pointer]:
+          - /url: "#download"

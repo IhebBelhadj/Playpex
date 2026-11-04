@@ -38,6 +38,22 @@ html.preloading .preload { position: fixed; inset: 0; z-index: 100; display: gri
 .preload.out .preload-mark { opacity: 0; transform: translateX(5.5%) scale(.94); }
 .preload.out .preload-n { opacity: 0; }
 
+/* DRAFT (scripts/home/try.js): the options being compared. load-c: no cover; the mark stands where the wall will
+   be, beside the headline, which is readable from the first frame */
+html.try-load-c.preloading { overflow: auto; }
+html.try-load-c.preloading .preload { inset: 0 0 0 50%; background: none; pointer-events: none; z-index: 5; }
+html.try-load-c .preload.out .preload-mark, html.try-load-c .preload.out .preload-n { transition-duration: .32s; }
+@media (max-width: 767px) { html.try-load-c.preloading .preload { inset: 55% 0 0 0; } }
+.try-panel { position: fixed; left: 16px; top: 76px; z-index: 200; padding: 10px 14px; border-radius: 14px;
+  background: var(--raised-2); color: var(--text); font-size: 13px; max-width: calc(100vw - 32px); }
+.try-panel[open] { display: grid; gap: 10px; }
+.try-panel summary { cursor: pointer; font-weight: 600; }
+.try-panel div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.try-panel b { width: 100%; font-weight: 600; }
+.try-panel a { color: var(--muted); }
+.try-panel a[aria-current] { color: var(--dot); font-weight: 600; }
+@media (max-width: 767px) { .try-panel { left: auto; right: 16px; } }
+
 /* pictures still on their way (scripts/images.js): unlit dots drift in their frame, the picture comes forward once
    decoded. --ph-dots is the dot drawn in the theme's unlit colour (set by the script) */
 /* important: a passing state over each frame's own background shorthand, whatever its specificity; the frame keeps its colour */
@@ -125,4 +141,17 @@ footer { padding: 120px 0 40px; }
 .fcols .note { grid-column: 1 / -1; color: var(--muted); max-width: 34em; line-height: 1.55; }
 .flast { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 48px; font-size: var(--t-small); color: var(--muted); }
 .flast .btn { height: 44px; padding: 0 18px; font-size: 15px; }
+.flast span a { color: var(--text); }
+.flast span a:hover { color: var(--gold); }
 @media (min-width: 900px) { .fcols { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 4fr); } .fcols .note { grid-column: auto; } }
+
+/* the hero's scroll cue (index.astro), centred at its foot on both sites (at the first screen's foot when the intro isn't
+   held), in a clearing of the wall’s dots (both sites’ intro.js): the word over a track of unlit dots, a gold dot sliding down it */
+.scroll-cue { position: absolute; left: 50%; top: calc(100svh - 118px); z-index: 3; width: 112px; height: 96px; transform: translateX(-50%); display: grid; place-content: center; justify-items: center; gap: 12px; pointer-events: none; color: var(--text); font-size: var(--t-small); line-height: 1; }
+.cue-track { position: relative; width: 8px; height: 44px; background-image: radial-gradient(circle, var(--dot-off) 2.6px, transparent 3.2px); background-size: 8px 9px; background-position: center top; }   /* taste-skill-ignore: a track of dots, the site's motif */
+.cue-track i { position: absolute; left: 0; top: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); animation: cue-slide 1.8s cubic-bezier(.5, 0, .5, 1) infinite; }
+@keyframes cue-slide { 0% { transform: none; opacity: 0; } 15% { opacity: 1; } 70% { transform: translateY(36px); opacity: 1; } 100% { transform: translateY(36px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cue-track i { animation: none; top: 36px; } }
+
+/* the phone hero's row of the library (index.astro): shown by phone.css only */
+.prow { display: none; }

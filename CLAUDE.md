@@ -122,7 +122,7 @@ With a server, the app opens on `/profiles` (Netflix-style picker, under the spl
 ├── docs/                         movement-system-plan.md, server-separation-plan.md (the split into server + clients, in progress),
 │                                 api/ (the client author guide: README + discovery, auth, playback, profiles, events, errors-and-versions)
 ├── electron.txt                  a pasted Electron console log — NOT config, ignore
-├── licence.md
+├── LICENSE.md                    PolyForm Noncommercial 1.0.0 (no commercial use; GPL / MPL parts keep their own), CONTRIBUTING.md
 ├── apps/
 │   ├── server/                   @playpex/server — local streaming server → its CLAUDE.md
 │   │   ├── index.js              core: start() / stop() (nothing listens on require); package.json lists only server deps

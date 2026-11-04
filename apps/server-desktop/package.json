@@ -4,9 +4,9 @@
   "version": "0.9.0",
   "private": true,
   "description": "Runs the Playpex media server in the background, with a tray icon and a web dashboard",
-  "author": "Iheb Belhaj",
+  "author": "Iheb Belhadj",
   "homepage": "https://github.com/IhebBelhadj/Playpex",
-  "license": "SEE LICENSE IN licence.md",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "main.js",
   "desktopName": "playpex-media-server.desktop",
   "scripts": {
@@ -34,7 +34,7 @@
     "appId": "app.playpex.mediaserver",
     "productName": "Playpex Media Server",
     "executableName": "playpex-media-server",
-    "copyright": "Iheb Belhaj",
+    "copyright": "Copyright © 2026 Iheb Belhadj",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -52,8 +52,8 @@
     "asar": true,
     "extraResources": [
       {
-        "from": "../../licence.md",
-        "to": "licence.md"
+        "from": "../../LICENSE.md",
+        "to": "LICENSE.md"
       }
     ],
     "publish": [
@@ -89,7 +89,7 @@
       "shortcutName": "Playpex Media Server",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "license": "../../licence.md",
+      "license": "../../LICENSE.md",
       "include": "build/installer.nsh",
       "artifactName": "Playpex-Media-Server-Setup-${version}.${ext}"
     },
@@ -128,7 +128,7 @@
       "category": "AudioVideo",
       "icon": "build/icon.png",
       "synopsis": "Playpex media server with a tray icon",
-      "maintainer": "Iheb Belhaj <noreply@playpex.app>",
+      "maintainer": "Iheb Belhadj <noreply@playpex.app>",
       "artifactName": "Playpex-Media-Server-${version}-${arch}.${ext}",
       "desktop": {
         "entry": {

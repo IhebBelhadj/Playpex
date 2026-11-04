@@ -77,7 +77,8 @@ info:
     Playpex is an educational project; streaming copyrighted content via torrents may be illegal
     where you live.
   license:
-    name: See licence.md
+    name: PolyForm Noncommercial License 1.0.0
+    identifier: PolyForm-Noncommercial-1.0.0
 servers:
   - url: http://localhost:28470/api/v1
 

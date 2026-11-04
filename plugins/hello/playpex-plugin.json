@@ -16,7 +16,7 @@
   "icon": "assets/hello.svg",
   "listing": {
     "summary": "The example plugin: a section, a title page, a release list, a menu and contributions to core screens, all made up.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "catalog",
       "tools"

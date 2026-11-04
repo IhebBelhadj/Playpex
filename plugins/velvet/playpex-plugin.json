@@ -17,7 +17,7 @@
   "listing": {
     "summary": "Adult films: a catalog from TMDB studios or ThePornDB, and torrent releases ranked by seeders.",
     "disclaimer": "Adult content. Hidden from kids profiles and never shared over DLNA. Streaming copyrighted content via torrents may be illegal where you live.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "catalog",
       "sources"

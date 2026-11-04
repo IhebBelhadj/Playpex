@@ -18,7 +18,7 @@
     "summary": "Watch the channels of an M3U playlist (your IPTV subscription, or a public list) with a programme guide.",
     "description": "Paste the address of an M3U playlist in its settings, and optionally of an XMLTV guide (else the one the playlist names). The channels show in a Live TV section with their programmes; the server plays HLS and MPEG-TS streams. The plugin carries no list of its own.",
     "disclaimer": "Only add playlists you are allowed to watch. Playpex is an educational project.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "live"
     ]

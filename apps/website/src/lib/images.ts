@@ -14,7 +14,7 @@ export { default as LOOP_VIDEO } from '../assets/img/loop.mp4?url';
 
 // the pictures the home page's scripts paint (home/*.js: the shader textures, the dissolves, the Who's watching pictures), at
 // the width they are needed (a texture or a dithered canvas never needs more)
-const SCRIPT_IMAGES = ['wall', 's_dashlib', 's_tvlib', 's_mtitle', 's_man', 's_sintel', 's_resume', 's_player', 'loopposter', 's_subs', 's_profiles', 's_remote'];
+const SCRIPT_IMAGES = ['wall', 's_dashlib', 's_tvlib', 's_mtitle', 's_man', 's_resume', 's_player', 'loopposter', 's_subs', 's_profiles', 's_remote'];
 
 export async function imageMap(keys: string[] = SCRIPT_IMAGES): Promise<Record<string, string>> {
   const entries = await Promise.all(keys.map(async (key) => {

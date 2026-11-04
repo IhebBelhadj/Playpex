@@ -4,6 +4,7 @@
 // front of dots (switch.js) uncovers the page. index.astro covers the page (html.preloading) before anything paints.
 import { THEME, still } from './util.js';
 import { curtain } from './switch.js';
+import { has } from './try.js';   // DRAFT: the options being compared
 
 const html = document.documentElement, root = document.getElementById('preload');
 const active = !!root && html.classList.contains('preloading');
@@ -70,11 +71,16 @@ function finish() {
     requestAnimationFrame(() => { html.classList.remove('preloading'); root.remove(); });
   };
   if (still) { html.classList.remove('preloading'); root.remove(); return; }
+  // DRAFT load-c: the mark sat beside the headline, where the wall goes: it fades there, no curtain
+  if (has('load-c')) { root.classList.add('out'); setTimeout(() => { html.classList.remove('preloading'); root.remove(); }, 320); return; }
   setTimeout(() => { root.classList.add('out'); setTimeout(clear, 260); }, 140);
 }
 
 if (active) {
-  const loaded = need();
-  if (document.readyState === 'complete') loaded(); else window.addEventListener('load', loaded, { once: true });
+  // DRAFT load-b / load-c: only what the first screen needs (the font, the site, the wall), not every eager image
+  if (!has('load-b') && !has('load-c')) {
+    const loaded = need();
+    if (document.readyState === 'complete') loaded(); else window.addEventListener('load', loaded, { once: true });
+  }
   run();
 }

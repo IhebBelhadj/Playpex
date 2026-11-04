@@ -103,6 +103,15 @@
         </section>
       </ng-container>
 
+      <ng-container *ngIf="group == 'about'">
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Playpex TV</h2><span class="scope" *ngIf="version">Version {{ version }}</span></header>
+          <p class="help">Made by Iheb Belhadj. Source code at github.com/IhebBelhadj/Playpex.</p>
+          <p class="help">Free to use and change under the PolyForm Noncommercial License 1.0.0, not for sale or commercial use.
+            An educational project: streaming copyrighted content may be illegal where you live.</p>
+        </section>
+      </ng-container>
+
     </div>
   </div>
 </px-rail-layout>

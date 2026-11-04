@@ -6,13 +6,15 @@ import { Morph } from '../gl.js';
 import { IMG, LOOP } from '../assets.js';
 import { still, pl, onSwipe } from '../util.js';
 import { ICON } from '../../../lib/icons';
+import { has } from '../try.js';   // DRAFT: the options being compared
+import { Pic } from '../dither.js';
 
 const { gsap, Stage, Scenes } = window;
 
 export function initScenes() {
   const box = document.getElementById('screens-screen'), video = box.querySelector('video'), scrim = box.querySelector('.scrim');
   box.dataset.grow = '1';
-  const morph = Morph(box, [IMG.s_dashlib, IMG.s_tvlib, IMG.s_sintel, IMG.s_resume, IMG.s_player], .08);
+  const morph = Morph(box, [IMG.s_dashlib, IMG.s_tvlib, IMG.s_resume, IMG.s_player], .08);
   let playing = false;
   function play(on) {
     if (on === playing) return;
@@ -31,10 +33,10 @@ export function initScenes() {
       return { x: (stage.clientWidth - w * s) / 2 - x0, y: (stage.clientHeight - h * s) / 2 - y0, s };
     }
     // the camera looks across each landscape picture
-    tl.to(st, { f: 4, duration: .76, onUpdate() { morph.pan = pl(st.f, [[0, .7], [1, .25], [2, .1], [3, .5], [4, .5]]); morph.set(st.f); } }, 0);
+    tl.to(st, { f: 3, duration: .76, onUpdate() { morph.pan = pl(st.f, [[0, .7], [1, .25], [2, .5], [3, .5]]); morph.set(st.f); } }, 0);
     // the words crossfade half-way between two pictures, nothing held back at the end
-    for (let i = 1; i < 5; i++) {
-      const t = (i - .5) / 4 * .76;
+    for (let i = 1; i < 4; i++) {
+      const t = (i - .5) / 3 * .76;
       tl.to(beats[i - 1], { autoAlpha: 0, y: -24, duration: .1 }, t - .08)
         .fromTo(beats[i], { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: .1 }, t - .02);
     }
@@ -45,13 +47,43 @@ export function initScenes() {
 
   // the screens move by hand where motion is allowed; otherwise the stage shows the finished composition
   Scenes.screens = (root) => {
-    if (Stage.live && !Stage.reduced) return manualScene(root, buildScreens, [0, .19, .38, .57, 1], 'Screens of Playpex');
-    return Stage.scene(root, { hold: 4, beats: 5, build: buildScreens });
+    if (Stage.live && !Stage.reduced) return manualScene(root, buildScreens, [0, .76 / 3, .76 * 2 / 3, 1], 'Screens of Playpex');   // each picture whole, then the film
+    return Stage.scene(root, { hold: 3, beats: 4, build: buildScreens });
   };
   // the rooms: the finished composition (no scene), made a carousel below
   Scenes.rooms = (root) => Stage.scene(root, { phone: 'rest', hold: 3, build() {} });
 
   carousel(document.getElementById('rooms'), 'What the server does');
+  if (has('rooms-a') || has('rooms-b')) roomsPeek(document.getElementById('rooms'), has('rooms-b'));
+}
+
+// DRAFT rooms-a / rooms-b: only the room in view shows its words; the next one peeks in with its picture alone
+// (b: in gold dots, turning into itself as it comes into view, like the product pages' carousel)
+function roomsPeek(track, dotted) {
+  const rooms = [...track.children];
+  track.classList.add(dotted ? 'peek-dots' : 'peek');
+  const pics = dotted ? rooms.map((r) => {
+    const f = r.querySelector('figure'), img = f.querySelector('img'), x = parseFloat(getComputedStyle(img).objectPosition), p = Pic(f, Number.isNaN(x) ? .5 : x / 100);
+    img.style.visibility = 'hidden';   // the canvas paints it: dots, or itself in view
+    return { p, img };
+  }) : null;
+  let cur = -1;
+  const step = () => (rooms.length > 1 ? rooms[1].offsetLeft - rooms[0].offsetLeft : 1);
+  function set() {
+    const k = Math.max(0, Math.min(rooms.length - 1, Math.round(track.scrollLeft / step())));
+    if (k === cur) return;
+    cur = k;
+    rooms.forEach((r, i) => {
+      r.classList.toggle('cur', i === k);
+      if (pics) {
+        const { p, img } = pics[i], show = () => p.show(img.currentSrc || img.src, i === k);
+        if (img.complete && img.naturalWidth) show(); else img.addEventListener('load', show, { once: true });
+      }
+    });
+  }
+  if (pics) rooms.forEach((r) => { const img = r.querySelector('img'); img.loading = 'eager'; });   // the dots need each picture
+  track.addEventListener('scroll', () => requestAnimationFrame(set), { passive: true });
+  set();
 }
 
 // the round buttons and the dot track, as one element

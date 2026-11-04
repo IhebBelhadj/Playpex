@@ -14,7 +14,7 @@
   "listing": {
     "summary": "Movie torrents from YTS: small x264 encodes with AAC sound, found by IMDb id.",
     "disclaimer": "Streaming copyrighted content via torrents may be illegal where you live. Educational project.",
-    "license": "See licence.md",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
       "sources"
     ]

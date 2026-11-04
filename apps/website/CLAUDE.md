@@ -63,7 +63,8 @@ src/
 ├── scripts/stage.js         the scroll-scene stage (design-taste-frontend skill) on npm's GSAP, ScrollTrigger, Lenis
 ├── scripts/home.js          the home page's entry: the shared parts, then the site for this screen (a chunk of its own)
 └── scripts/home/            shared: util.js (helpers, THEME, PHONE), assets.js (#img-map), gl.js (the dither shaders:
-                             Painter, Morph), dither.js (dotted canvases, Pic), remote.js, people.js (Who's watching),
+                             Painter, Morph; the Painter's mask draws the wall in a shape), mark.js (the hero's Playpex mark:
+                             its outline as that mask), dither.js (dotted canvases, Pic), remote.js,
                              download.js, switch.js (the gold-dot curtain between the two sites)
                              desktop/ and phone/: each site's intro.js (the held intro) and scenes.js (screens, rooms;
                              the phone's buttons and carousel), started by its index.js
@@ -75,6 +76,13 @@ each has its own stylesheet (`desktop.css`, `phone.css`, each inside its own med
 (`home/desktop/`, `home/phone/`, loaded as separate chunks). Change one without touching the other. Crossing 768px
 (rotation, resizing) switches site: gold dots cover the page, it reloads with the same section in view, the dots
 clear (`home/switch.js`; the head's script keeps the page covered meanwhile, `html.switching`).
+
+**The hero (agreed 2026-11-04):** the drifting poster wall inside the Playpex mark, 1.3 × the screen's height on desktop
+(its tip at the right margin, behind the words under the scrim). Scrolling shrinks the mark to the first screen's
+height (its shape kept), then it grows into the screen while the folder opens through its dots, inside the mark and
+around it. Reduced motion: the mark stands still behind the words. Phones (agreed 2026-11-05) have their own hero: the
+words at the top, one row of the library's posters drifting at the screen's foot (`#prow`), which opens into the
+library on the swipe. Picture frames never use the class `ph`: scripts/images.js adds and removes it while a picture loads. Dots only ever show while moving between stops: one wheel gesture is one stop.
 
 The home page is a port of the agreed design (claude.ai artifact "Playpex Home", Version 7), with phones' own
 composition (one move from the hero to the four apps, button-driven screens, a rooms carousel). **Don't change

@@ -37,4 +37,4 @@ Sources, subtitles, live TV and metadata come from plugins, installed from the s
 
 ## Disclaimer
 
-Playpex is an educational project, not for commercial use. Streaming copyrighted content you don't have the rights to may be illegal where you live. See [licence.md](licence.md).
+Playpex is an educational project, not for commercial use. Streaming copyrighted content you don't have the rights to may be illegal where you live. Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md): use it, change it and contribute ([CONTRIBUTING.md](CONTRIBUTING.md)), but don't sell it or use it commercially.
