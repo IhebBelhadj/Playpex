@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// the release key (the phone app's: PLAYPEX_ANDROID_SIGNING names its properties file: storeFile, storePassword,
+// keyAlias, keyPassword); without it a release build stops, unless -Pplaypex.debugSigning=true
+def playpexSigning = System.getenv('PLAYPEX_ANDROID_SIGNING')
+def playpexKey = new Properties()
+if (playpexSigning && file(playpexSigning).exists()) {
+    file(playpexSigning).withInputStream { playpexKey.load(it) }
+}
+
 android {
     namespace = "app.playpex.manager"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +16,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "0.10.1-alpha.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +24,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (playpexKey['storeFile']) {
+                storeFile file(playpexKey['storeFile'])
+                storePassword playpexKey['storePassword']
+                keyAlias playpexKey['keyAlias']
+                keyPassword playpexKey['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig playpexKey['storeFile'] ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -53,4 +72,11 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def releasing = graph.allTasks.any { it.project == project && it.name.startsWith('assemble') && it.name.toLowerCase().contains('release') }
+    if (releasing && !playpexKey['storeFile'] && findProperty('playpex.debugSigning') != 'true') {
+        throw new GradleException('No release key: set PLAYPEX_ANDROID_SIGNING to its properties file (or -Pplaypex.debugSigning=true)')
+    }
 }

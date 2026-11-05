@@ -12,8 +12,8 @@ export const SITE = {
 
 export const RELEASE = {
   version: '0.10.1-alpha.1',
-  date: '2026-11-01',
-  dateText: '1 November 2026',
+  date: '2026-11-05',
+  dateText: '5 November 2026',
 };
 
 export type DeviceKind = 'web' | 'tv' | 'phone';
@@ -103,6 +103,5 @@ export const FILMS = [
 
 export const DOWNLOADS = {
   Windows: { file: `Playpex-Media-Server-Setup-${RELEASE.version}.exe`, how: 'Installs for your user only. Windows may ask you to confirm the first time.' },
-  macOS: { file: `Playpex-Media-Server-${RELEASE.version}.dmg`, how: 'Drag Playpex Media Server to Applications.' },
-  Linux: { file: `Playpex-Media-Server-${RELEASE.version}.AppImage`, how: 'Or the .deb package on the releases page.' },
+  Linux: { file: `Playpex-Media-Server-${RELEASE.version}-x86_64.AppImage`, how: 'Or the .deb package on the releases page.' },
 };

@@ -1,7 +1,7 @@
 {
   "name": "@playpex/manager",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.10.1-alpha.1",
   "description": "Playpex Server Manager: an Android app (Capacitor) that finds Playpex servers on the network and opens their dashboard",
   "type": "module",
   "scripts": {

@@ -7,7 +7,7 @@
       "ios"
     ],
     "scheme": "playpex",
-    "version": "0.1.0-alpha.1",
+    "version": "0.10.1-alpha.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -41,7 +41,7 @@
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE"
       ],
-      "versionCode": 1
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",

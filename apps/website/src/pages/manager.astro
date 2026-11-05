@@ -7,7 +7,7 @@ import Base from '../layouts/Base.astro';
 import DownloadField from '../components/DownloadField.astro';
 import { IMG } from '../lib/images';
 import { ICON } from '../lib/icons';
-import { SITE } from '../data/site';
+import { SITE, RELEASE } from '../data/site';
 
 const splash = (await getImage({ src: IMG.m_splash, width: 540, format: 'webp' })).src;
 const over = (await getImage({ src: IMG.m_over, width: 540, format: 'webp' })).src;
@@ -19,7 +19,7 @@ const STRIP = [
   { shot: 'm_act', title: 'Who’s watching', text: 'What every screen plays, with Stop.' },
   { shot: 'm_prof', title: 'Profiles', text: 'Who’s on the “Who’s watching?” screen.' },
 ];
-const FILES = { Android: { file: 'Playpex-Server-Manager-0.1.0.apk', how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
+const FILES = { Android: { file: `Playpex-Server-Manager-${RELEASE.version}.apk`, how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
 ---
 <Base title="Playpex Server Manager: your server, from your phone" description="Server Manager finds the Playpex server on your Wi-Fi by itself and opens its dashboard on your phone, with the remote for your TV.">
 <main id="main" class="ma">

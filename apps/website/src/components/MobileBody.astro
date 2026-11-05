@@ -4,7 +4,7 @@
 import { Image, getImage } from 'astro:assets';
 import DownloadField from './DownloadField.astro';
 import { IMG } from '../lib/images';
-import { SITE } from '../data/site';
+import { SITE, RELEASE } from '../data/site';
 
 const STEPS = [
   { shot: 'a_home', land: false, title: 'What’s new, what you started', text: 'Trending films and series, what you were watching with the minutes left, and rows picked from what you like.' },
@@ -24,7 +24,7 @@ const MOSAIC = [
   { shot: 'a_profiles', title: 'Who’s watching', tall: true },
   { shot: 'a_search', title: 'Search', tall: false },
 ];
-const FILES = { Android: { file: 'Playpex-0.1.0-alpha.1-arm64.apk', how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
+const FILES = { Android: { file: `Playpex-${RELEASE.version}-arm64.apk`, how: 'Open it on your phone. Android asks once to allow installs from your browser.' } };
 ---
 <div class="mbody">
   <div class="cols">

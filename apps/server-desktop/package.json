@@ -1,7 +1,7 @@
 {
   "name": "@playpex/server-desktop",
   "productName": "Playpex Media Server",
-  "version": "0.9.0",
+  "version": "0.10.1-alpha.1",
   "private": true,
   "description": "Runs the Playpex media server in the background, with a tray icon and a web dashboard",
   "author": "Iheb Belhadj",

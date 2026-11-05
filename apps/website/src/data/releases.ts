@@ -15,24 +15,26 @@ export const OSES: Os[] = ['Windows', 'macOS', 'Linux', 'Android'];
 export interface AppRelease { version: string; files: Partial<Record<Os, string[]>>; notes: string[] }
 export interface Release { version: string; date: string; dateText: string; title: string; summary: string; apps: Partial<Record<AppId, AppRelease>> }
 
-const desktop = (name: string, v: string, mac = '') => ({
-  Windows: [`${name}-Setup-${v}.exe`], macOS: [`${name}-${v}${mac}.dmg`], Linux: [`${name}-${v}.AppImage`, `${name}_${v}_amd64.deb`],
+// a desktop app's files as electron-builder names them (macOS: none built yet)
+const desktop = (name: string, v: string) => ({
+  Windows: [`${name}-Setup-${v}.exe`], Linux: [`${name}-${v}-x86_64.AppImage`, `${name}-${v}-amd64.deb`],
 });
 
 export const RELEASES: Release[] = [
   {
-    version: '0.10.1-alpha.1', date: '2026-11-01', dateText: '1 November 2026', title: 'Remote control',
+    version: '0.10.1-alpha.1', date: '2026-11-05', dateText: '5 November 2026', title: 'Remote control',
     summary: 'The dashboard and your phone can now drive any screen in the house, and Server Manager arrives.',
     apps: {
       server: { version: '0.10.1-alpha.1', files: desktop('Playpex-Media-Server', '0.10.1-alpha.1'), notes: [
         'Remote control from the dashboard: play, pause, seek and stop on any screen, or take over its keyboard and pointer.',
         'Commands travel over a direct connection between the dashboard and the screen when the network allows it.',
       ] },
-      tv: { version: '0.10.1-alpha.1', files: desktop('Playpex-TV', '0.10.1-alpha.1', '-arm64'), notes: [
+      tv: { version: '0.10.1-alpha.1', files: desktop('Playpex-TV', '0.10.1-alpha.1'), notes: [
         'Can be controlled from the dashboard or a phone; a badge and a drawn pointer show while it is.',
         'Remote control can be switched off for this screen in Settings.',
+        'Settings has an About page with this app’s version and its licence.',
       ] },
-      mobile: { version: '0.10.1-alpha.1', files: { Android: ['Playpex-0.10.1-alpha.1-arm64.apk'] }, notes: [
+      mobile: { version: '0.10.1-alpha.1', files: { Android: ['Playpex-0.10.1-alpha.1-arm64.apk', 'Playpex-0.10.1-alpha.1-x86_64.apk'] }, notes: [
         'The phone is a remote for any screen: a touchpad, the arrows, OK and Back, and typing.',
       ] },
       manager: { version: '0.10.1-alpha.1', files: { Android: ['Playpex-Server-Manager-0.10.1-alpha.1.apk'] }, notes: [
