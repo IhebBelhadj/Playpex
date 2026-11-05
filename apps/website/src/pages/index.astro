@@ -75,8 +75,9 @@ const TOUR = ['Start', 'Your folders', 'The library', ...PRODUCTS.map((p) => p.n
       <!-- the scroll cue, centred at the foot of the hero, in a clearing the wall's dots make for it (the painter's hole,
            home/*/intro.js); it fades with the hero's words -->
       <div class="scroll-cue" id="scroll-cue" aria-hidden="true">Scroll<span class="cue-track"><i></i></span></div>
-      <!-- the phone's hero picture (phone.css; home/phone/intro.js): one row of the library under the words, drifting -->
-      <div class="prow" id="prow" aria-hidden="true"><ul>{[0, 1].map(() => ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].map((n) => <li><Image src={IMG[n]} alt="" widths={[192]} sizes="112px" loading="lazy" /></li>))}</ul></div>
+      <!-- the phone's hero picture (phone.css; home/phone/intro.js): two rows of the library above the words, drifting
+           in opposite directions -->
+      <div class="prow" id="prow" aria-hidden="true">{[['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'], ['p5', 'p6', 'p7', 'p8', 'p0', 'p1', 'p2', 'p3', 'p4']].map((r) => <ul>{[0, 1].map(() => r.map((n) => <li><Image src={IMG[n]} alt="" widths={[192, 384]} sizes="130px" loading="lazy" /></li>))}</ul>)}</div>
     </div>
   </section>
 

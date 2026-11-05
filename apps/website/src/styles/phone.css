@@ -215,7 +215,7 @@
   .is-phone .intro.is-held { height: 240svh; }   /* a short run, one move: 100 + 100 × END of home/intro.js (1.4) */
   .is-phone .intro.is-held .iwrap { grid-template-rows: minmax(0, 1fr); align-content: stretch; padding-bottom: 28px; }
   .is-phone .intro.is-held .words { grid-template-rows: minmax(0, 1fr); height: 100%; }
-  .is-phone .intro.is-held .heroblock { align-self: start; padding-top: 20px; }
+  .is-phone .intro.is-held .heroblock { align-self: end; }
   .is-phone .intro.is-held .words .beat { align-self: end; }
   .is-phone .intro.is-held .slot { display: none; }
   .is-phone .istage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64%; z-index: 1; pointer-events: none; opacity: var(--foot, 0);
@@ -277,15 +277,36 @@
   .rooms.peek-dots .room figure canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   @media (prefers-reduced-motion: reduce) { .rooms.peek .room .rtext, .rooms.peek-dots .room .rtext { transition: none; } }
 
-  /* ── the hero's picture (home/phone/intro.js): the words at the top under the bar, one row of the library at the
-     screen's foot drifting sideways; swiping opens it into the library ── */
-  .intro.is-held .heroblock { align-self: start; margin-top: 28px; }
-  .scroll-cue, .iscrim { display: none; }   /* the row, cut off at the foot, says there is more */
-  .prow { display: block; position: absolute; z-index: 1; left: 0; right: 0; bottom: 36px; overflow: hidden; }
-  .intro:not(.is-held) .prow { top: calc(100svh - 36px - 168px); bottom: auto; }
-  .prow ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; width: max-content; animation: prow-drift 48s linear infinite; }
-  .prow li { flex: none; width: 112px; aspect-ratio: 192 / 287; border-radius: 6px; overflow: hidden; background: var(--raised); }
+  /* ── the hero (home/phone/intro.js): two rows of the library fill the top of the phone, running under the bar and
+     drifting in opposite directions; the words and the download sit at the foot, under the thumb. Swiping opens the
+     rows into the library ── */
+  .scroll-cue { display: none; }
+  /* the veil: flat ground over the library until the swipe lifts it (home/phone/intro.js) */
+  .iscrim { background: var(--ground); }
+  .intro:not(.is-held) .iscrim { display: none; }
+  /* the posters' height: what the screen has left above the words, shared by two rows */
+  .intro { --ph: clamp(112px, calc((100svh - 530px) / 2), 210px); }
+  .prow { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; position: absolute; z-index: 1; left: 0; right: 0; top: 0;
+    height: calc(var(--bar-h) + 2 * var(--ph) + 10px + 40px); padding-bottom: 40px; overflow: hidden; background: var(--ground); transform-origin: 50% 58%; will-change: transform, opacity; }
+  .prow::before, .prow::after { content: ""; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none; }
+  .prow::before { top: 0; height: calc(var(--bar-h) + 24px); background: linear-gradient(180deg, color-mix(in srgb, var(--ground) 86%, transparent), transparent); } /* taste-skill-ignore: scrim under the bar */
+  .prow::after { bottom: 0; height: calc(40px + var(--ph) * .7); background: linear-gradient(0deg, var(--ground) 30%, transparent); } /* taste-skill-ignore: the posters fade into the ground above the words */
+  .prow ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; width: max-content; animation: prow-drift 64s linear infinite; }
+  .prow ul + ul { animation-direction: reverse; animation-duration: 76s; margin-left: calc(var(--ph) * -.33); }
+  .prow li { flex: none; height: var(--ph); aspect-ratio: 192 / 287; border-radius: 8px; overflow: hidden; background: var(--raised); }
   .prow img { width: 100%; height: 100%; object-fit: cover; display: block; }
   @keyframes prow-drift { to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .prow ul { animation: none; } }
+
+  /* the words: the headline, one sentence, one full-width download and a quiet way into the tour */
+  .heroblock .big { font-size: clamp(44px, 14.2vw, 62px); }
+  .heroblock .lede { margin: 16px 0 24px; font-size: 17px; line-height: 1.5; color: var(--text-2); text-wrap: pretty; hyphens: manual; }
+  .heroblock .ctas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .heroblock .btn { width: 100%; height: 56px; }
+  .heroblock .ghostbtn { justify-self: start; height: 48px; padding: 0; background: none; box-shadow: none; color: var(--text); font-weight: 500; transition: color .15s; }
+  .heroblock .ghostbtn:hover, .heroblock .ghostbtn:active { box-shadow: none; color: var(--dot); }
+  .heroblock .ghostbtn:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+  .heroblock .note { margin-top: 2px; font-size: 14px; color: var(--text-3); }
+  /* not held (reduced motion, no WebGL): the same screen, the words at its foot */
+  .intro:not(.is-held) .heroblock { justify-content: flex-end; padding-bottom: 32px; }
 }

@@ -1,4 +1,4 @@
-// The phone site's intro: the hero's words over one row of the library drifting at the screen's foot, then one move (a swipe runs it at once) straight to the
+// The phone site's intro: two rows of the library drifting above the hero's words (set at the foot), then one move (a swipe runs it at once) straight to the
 // four apps, the picture filling the screen and the words at its foot. The apps switch by a tap or a swipe, not by
 // scrolling; the snapping ends on them.
 import '../../stage.js';
@@ -12,9 +12,13 @@ const { gsap, ScrollTrigger, Stage } = window;
 // u, the intro's own time: 0 the hero, 1.4 the four apps (each app at + .4, moved by hand). The section is
 // 100 + 100 × END svh tall (phone.css): a short run, one move.
 const END = 1.4;
-// when each change happens, in u: k the row opening to fill the screen (onto the library: no folder), q2 the library
-// into the server's screen, hero / b3 the words, out the dim wall, sh / qa the apps' shapes and pictures
-const T = { k: [.04, .5], q2: [.7, .9], hero: [.02, .18], b3: [.85, 1.25], out: [.85, 1.3], sh: [.04, .36], qa: [.04, .36] };
+// when each change happens, in u. The hero → the apps is one push of the camera into the shelf: hero the words
+// leaving (down, the way the thumb pushes), rows the posters flying past (growing, fading: gone before the veil lifts,
+// so the cut passes through the ground, never two shelves at once), veil the ground lifting off
+// the server's library behind them, z that library settling from a slight zoom, foot / b3 the apps' scrim and words
+// rising once the hero's have gone. Then out the dim wall, sh / qa the apps' shapes and pictures
+const T = { hero: [0, .26], rows: [.02, .4], veil: [.36, .8], z: [.3, 1], foot: [.45, .85], b3: [.62, 1.1], out: [.85, 1.3], sh: [.04, .36], qa: [.04, .36] };
+const ZOOM = .14;   // how much larger than the screen the library starts
 const RAD = [0, 0, 0, 26, 26];   // the window's corners: the library, then each app
 
 export function initIntro(apps) {
@@ -34,8 +38,9 @@ export function initIntro(apps) {
   }
 
   const mix4 = (A, B, k) => A.map((a, i) => lerp(a, B[i], k));
-  // the window starts on the row (the library sharp under it), the row fading as it opens
-  const lead = () => { const r = row.getBoundingClientRect(), g = stage.getBoundingClientRect(); return [r.left - g.left, r.top - g.top, r.width, r.height]; };
+  const ease = (t) => t * t * (3 - 2 * t);
+  // the library behind the rows: the whole screen, z larger around its centre (0 at rest)
+  const zoomed = (z) => { const W = stage.clientWidth, H = stage.clientHeight; return [-W * z / 2, -H * z / 2, W * (1 + z), H * (1 + z)]; };
   // the scroll cue at the hero's foot fades with the words; the wall's dots clear around it
   const cue = document.getElementById('scroll-cue');
   function cueAt(o) {
@@ -57,7 +62,8 @@ export function initIntro(apps) {
     return [B, B, [0, 0, W, Math.round(H * .6)], [W / 2 - pa / 2, top, pa, ph], [W / 2 - pm / 2, top, pm, ph]];
   }
   // where the camera looks across a landscape picture (0 its left edge, 1 its right)
-  const panAt = (u) => pl(u, [[0, .2], [.5, .2], [1, .7], [1.4, .9], [1.8, .3], [2.2, .5]]);
+  // (still through the hero's move: the library is framed as the server app will show it)
+  const panAt = (u) => pl(u, [[0, .9], [1.4, .9], [1.8, .3], [2.2, .5]]);
 
   let cur = -1, st;
   function setApp(i) {
@@ -75,16 +81,18 @@ export function initIntro(apps) {
     let u = p * END;
     if (u >= 1.399) u = 1.4 + AV.v * .4;
     else if (AV.v) { gsap.killTweensOf(AV); AV.v = 0; }
-    const k = R(u, T.k);
-    P.win = mix4(lead(), box(), k * k * (3 - 2 * k)); P.rad = lerp(6, RAD[0], k);
+    P.win = zoomed(ZOOM * (1 - ease(R(u, T.z)))); P.rad = RAD[0];
     P.outVis = R(u, T.out); P.dim = u > 1 ? .5 : 1;
     P.shade = 0; P.shadeV = 1;
-    P.q = 1 + R(u, T.q2); P.pan = panAt(u);
-    scrim.style.opacity = 1 - k;
-    const o = 1 - R(u, [.02, .07]); row.style.opacity = o; row.style.visibility = o > .01 ? 'visible' : 'hidden';
-    show(hero, 1 - R(u, T.hero), -1);
+    P.q = 2; P.pan = panAt(u);
+    scrim.style.opacity = 1 - ease(R(u, T.veil));
+    // the rows grow towards the camera and fade: the push into the shelf
+    const rk = R(u, T.rows), o = 1 - ease(rk);
+    row.style.opacity = o; row.style.visibility = o > .01 ? 'visible' : 'hidden';
+    row.style.transform = rk > 0 ? 'scale(' + (1 + .45 * Math.sqrt(rk)) + ')' : '';
+    show(hero, 1 - ease(R(u, T.hero)), 1);
     cueAt(1 - R(u, T.hero));
-    show(b3, R(u, T.b3), 1);
+    show(b3, ease(R(u, T.b3)), 1);
     if (u > 1) {
       const S = shapes();
       let w = S[0], r = RAD[0];
@@ -92,7 +100,7 @@ export function initIntro(apps) {
       P.win = w; P.rad = r; P.q = 2 + R(u, T.qa, 1.4) + R(u, T.qa, 1.8) + R(u, T.qa, 2.2);
     }
     setApp(Math.max(0, Math.min(3, Math.round((u - 1.4) / .4))));
-    stage.style.setProperty('--foot', String(ramp(u, .08, .2)));
+    stage.style.setProperty('--foot', String(R(u, T.foot)));
     P.invalidate();
   }
 

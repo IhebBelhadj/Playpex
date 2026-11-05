@@ -80,9 +80,12 @@ clear (`home/switch.js`; the head's script keeps the page covered meanwhile, `ht
 **The hero (agreed 2026-11-04):** the drifting poster wall inside the Playpex mark, 1.3 × the screen's height on desktop
 (its tip at the right margin, behind the words under the scrim). Scrolling shrinks the mark to the first screen's
 height (its shape kept), then it grows into the screen while the folder opens through its dots, inside the mark and
-around it. Reduced motion: the mark stands still behind the words. Phones (agreed 2026-11-05) have their own hero: the
-words at the top, one row of the library's posters drifting at the screen's foot (`#prow`), which opens into the
-library on the swipe. Picture frames never use the class `ph`: scripts/images.js adds and removes it while a picture loads. Dots only ever show while moving between stops: one wheel gesture is one stop.
+around it. Reduced motion: the mark stands still behind the words. Phones have their own hero (reworked 2026-11-05): two
+rows of the library's posters fill the top of the screen under the bar, drifting in opposite directions (`#prow`), the
+words, one full-width Download and a text "See how it works" at the foot (thumb zone). The swipe is one camera push
+(`home/phone/intro.js` T): the words drop out, the rows grow and fade, gone before a flat ground veil (`#iscrim`)
+lifts off the server's library, which settles from a slight zoom; then "Four apps" rises. Never two shelves visible
+at once, no dots and no pan during this move. Picture frames never use the class `ph`: scripts/images.js adds and removes it while a picture loads. Dots only ever show while moving between stops: one wheel gesture is one stop.
 
 The home page is a port of the agreed design (claude.ai artifact "Playpex Home", Version 7), with phones' own
 composition (one move from the hero to the four apps, button-driven screens, a rooms carousel). **Don't change
