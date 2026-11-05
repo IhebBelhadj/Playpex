@@ -85,7 +85,13 @@ rows of the library's posters fill the top of the screen under the bar, drifting
 words, one full-width Download and a text "See how it works" at the foot (thumb zone). The swipe is one camera push
 (`home/phone/intro.js` T): the words drop out, the rows grow and fade, gone before a flat ground veil (`#iscrim`)
 lifts off the server's library, which settles from a slight zoom; then "Four apps" rises. Never two shelves visible
-at once, no dots and no pan during this move. Picture frames never use the class `ph`: scripts/images.js adds and removes it while a picture loads. Dots only ever show while moving between stops: one wheel gesture is one stop.
+at once, no dots and no pan during this move. Picture frames never use the class `ph`: scripts/images.js adds and removes it while a picture loads. Dots only ever show while moving between stops: one wheel gesture is one stop. On desktop the intro and the rooms step
+through `home/desktop/steps.js` (the move's curve cubic-bezier(.2, 0, 0, 1), a new swipe rising out of the last one's
+inertia chains into the next stop without stopping, a gesture coming in from outside lands on the first stop it meets).
+Phones: one curve too (`util.js` EASE, also the app switch and the Screens buttons); a hero swipe is spent until the
+finger lifts (else a long swipe scrolled on past the apps); the painter rests (`P.paused`) while its wall is out of
+sight. WebGL pictures are decoded before upload and uploaded one per frame, only while the page is still
+(`gl.js` loadAll / uploadAll): a texture upload inside a move was a quarter-second freeze on phones.
 
 The home page is a port of the agreed design (claude.ai artifact "Playpex Home", Version 7), with phones' own
 composition (one move from the hero to the four apps, button-driven screens, a rooms carousel). **Don't change

@@ -5,7 +5,7 @@ import '../../stage.js';
 import { Painter } from '../gl.js';
 import { need } from '../preload.js';
 import { IMG } from '../assets.js';
-import { still, lerp, ramp, pl } from '../util.js';
+import { still, lerp, ramp, pl, EASE } from '../util.js';
 
 const { gsap, ScrollTrigger, Stage } = window;
 
@@ -74,7 +74,8 @@ export function initIntro(apps) {
   }
   // which app the window shows (0…3), moved by a tap or a swipe
   const AV = { v: 0 };
-  const pick = (i) => gsap.to(AV, { v: Math.max(0, Math.min(3, i)), duration: still ? 0 : .9, ease: 'power2.inOut', overwrite: true, onUpdate: () => frame(st.progress) });
+  // (EASE: the new app starts coming at once, as the finger lifts)
+  const pick = (i) => gsap.to(AV, { v: Math.max(0, Math.min(3, i)), duration: still ? 0 : .6, ease: EASE, overwrite: true, onUpdate: () => frame(st.progress) });
 
   function frame(p) {
     const R = (u, ab, off = 0) => ramp(u, ab[0] + off, ab[1] + off);
@@ -83,6 +84,7 @@ export function initIntro(apps) {
     else if (AV.v) { gsap.killTweensOf(AV); AV.v = 0; }
     P.win = zoomed(ZOOM * (1 - ease(R(u, T.z)))); P.rad = RAD[0];
     P.outVis = R(u, T.out); P.dim = u > 1 ? .5 : 1;
+    P.paused = P.outVis < .001;   // the wall is out of sight until the apps: the painter draws only what changes
     P.shade = 0; P.shadeV = 1;
     P.q = 2; P.pan = panAt(u);
     scrim.style.opacity = 1 - ease(R(u, T.veil));
@@ -137,19 +139,25 @@ function gestures(stage, st, pick, AV) {
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) pick(Math.round(AV.v) + (dx < 0 ? 1 : -1));
   }, { passive: true });
   if (!Stage.touch) return;
+  // the move; the finger's gesture is spent with it until it lifts (else the rest of a long swipe scrolled the page on
+  // past the apps)
+  let lifted = true;
   function run(y) {
     mode = 'run';
     const o = { y: window.scrollY };
-    gsap.to(o, { y, duration: .42, ease: 'power3.out', onUpdate: () => window.scrollTo(0, o.y), onComplete: () => { mode = null; } });
+    gsap.to(o, { y, duration: .42, ease: 'power3.out', onUpdate: () => window.scrollTo(0, o.y), onComplete: () => { mode = lifted ? null : 'spent'; } });
   }
+  window.addEventListener('touchend', (e) => { if (!e.touches.length) { lifted = true; if (mode === 'spent') mode = null; } }, { passive: true });
+  window.addEventListener('touchcancel', () => { lifted = true; if (mode === 'spent') mode = null; }, { passive: true });
   window.addEventListener('touchstart', () => {
+    lifted = false;
     if (mode === 'run') return;
     const y = window.scrollY;
     mode = y <= st.start + 2 ? 'hero' : Math.abs(y - st.end) < 4 ? 'apps' : null;
   }, { passive: true });
   window.addEventListener('touchmove', (e) => {
     if (!mode) return;
-    if (mode === 'run') { e.preventDefault(); return; }
+    if (mode === 'run' || mode === 'spent') { if (e.cancelable) e.preventDefault(); return; }
     const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
     if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) return;
     if (mode === 'hero' && dy < 0) { e.preventDefault(); run(st.end); }

@@ -7,6 +7,7 @@ import { need } from '../preload.js';
 import { IMG } from '../assets.js';
 import { lerp, ramp } from '../util.js';
 import { MARK_ASPECT, markMask } from '../mark.js';
+import { stepper } from './steps.js';
 
 const { ScrollTrigger, Stage } = window;
 
@@ -91,42 +92,10 @@ export function initIntro(apps) {
     list.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
     fact.innerHTML = '<p>' + apps[i].blurb + '</p><span>' + apps[i].systems + '</span>';
   }
-  // to a stop in one eased move (its length grows with the way to go), so the dotted states between stops are only
-  // ever seen moving; without lenis, the browser's smooth scroll and the snap
-  const uNow = () => Math.max(0, Math.min(END, (window.scrollY - st.start) / (st.end - st.start) * END));
-  const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-  let moving = false;
-  function go(u, done) {
-    const y = st.start + (st.end - st.start) * u / END;
-    if (!Stage.lenis) { window.scrollTo({ top: y, behavior: 'smooth' }); return; }
-    moving = true;
-    Stage.lenis.scrollTo(y, { duration: Math.min(.8, .32 + .5 * Math.abs(u - uNow())), easing: ease, force: true, onComplete: () => { moving = false; if (done) done(); } });
-  }
-  // the wheel, while the intro holds the screen: one gesture is one stop, in its direction. The rest of the gesture
-  // (a trackpad's inertia, a wheel still turning) is spent while it moves and until it pauses; at either end of the
-  // intro the wheel scrolls the page as usual
-  function wheelSteps() {
-    if (!Stage.lenis) return;
-    let last = 0, spent = false;
-    const prev = Stage.lenis.options.virtualScroll;
-    Stage.lenis.options.virtualScroll = (data) => {
-      if (prev && prev(data) === false) return false;
-      const e = data.event, dir = Math.sign(data.deltaY);
-      if (!e.type.includes('wheel') || e.ctrlKey || !dir) return true;
-      const y = window.scrollY;
-      if (y < st.start - 2 || y > st.end + 2) return true;
-      const u = uNow(), now = performance.now(), pause = now - last > 220;
-      if (!moving && (dir > 0 ? u >= END - .005 : u <= .005)) { last = now; return true; }
-      e.preventDefault();
-      last = now;
-      if (moving || (spent && !pause)) return false;
-      const to = dir > 0 ? STOPS.find((s) => s > u + .005) : STOPS.filter((s) => s < u - .005).pop();
-      if (to === undefined) return true;
-      spent = true;
-      go(to);
-      return false;
-    };
-  }
+  // to a stop in one move (home/desktop/steps.js: the curve, the length, a wheel gesture = one stop); a move already
+  // under way carries on into the new stop
+  let S;
+  const go = (u, done) => S.go(u / END, done, S.moving);
 
   let frame = function (p) {
     const R = (u, ab, off = 0) => ramp(u, ab[0] + off, ab[1] + off);
@@ -164,7 +133,7 @@ export function initIntro(apps) {
     // the snap stays for what the wheel steps don't cover (the scrollbar, the keys, a scroll ending inside the intro)
     snap: { snapTo: STOPS.map((s) => s / END), inertia: false, delay: .1, duration: { min: .2, max: .5 }, ease: 'power2.inOut' },
   });
-  wheelSteps();
+  S = stepper(st, STOPS.map((x) => x / END));
   // "Up next": where the tour goes from here, and a way past it
   const next = upNext(go, st);
   if (next) {

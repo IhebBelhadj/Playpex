@@ -4,7 +4,7 @@
 import '../../stage.js';
 import { Morph } from '../gl.js';
 import { IMG, LOOP } from '../assets.js';
-import { still, pl, onSwipe } from '../util.js';
+import { still, pl, onSwipe, EASE } from '../util.js';
 import { ICON } from '../../../lib/icons';
 import { has } from '../try.js';   // DRAFT: the options being compared
 import { Pic } from '../dither.js';
@@ -144,7 +144,9 @@ export function manualScene(root, build, stops, label) {
     if (to === k) return;
     k = to;
     c.prev.disabled = k <= 0; c.next.disabled = k >= stops.length - 1;
-    gsap.to(tl, { progress: stops[k], duration: still ? 0 : .5 + Math.abs(stops[k] - tl.progress()) * 1.6, ease: 'power2.inOut', overwrite: true });
+    // EASE: the next screen starts coming as the button is pressed (an ease-in-out sat still for its first tenth of a
+    // second); a press while moving carries on from where the screens are
+    gsap.to(tl, { progress: stops[k], duration: still ? 0 : .45 + Math.abs(stops[k] - tl.progress()) * .8, ease: EASE, overwrite: true });
   }
   c.prev.addEventListener('click', () => go(-1));
   c.next.addEventListener('click', () => go(1));

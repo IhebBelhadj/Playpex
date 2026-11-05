@@ -51,16 +51,36 @@ function glProgram(canvas, frag) {
   };
 }
 
-// loads every source (a URL or a canvas) and calls back with the images in order
+// loads every source (a URL or a canvas) and calls back with the images in order, each decoded off the main thread
+// first (an image handed to texImage2D undecoded is decoded there and then, inside the frame: a quarter-second hitch
+// on a phone)
 function loadAll(sources, cb) {
   const out = [];
   let left = sources.length;
+  const done = (i, im) => { out[i] = im; if (--left === 0) cb(out); };
   sources.forEach((src, i) => {
-    if (typeof src !== 'string') { out[i] = src; if (--left === 0) cb(out); return; }
+    if (typeof src !== 'string') { done(i, src); return; }
     const im = new Image();
-    im.onload = () => { out[i] = im; if (--left === 0) cb(out); };
+    im.decoding = 'async';
     im.src = src;
+    if (im.decode) im.decode().then(() => done(i, im), () => { if (im.complete && im.naturalWidth) done(i, im); else im.onload = () => done(i, im); });
+    else im.onload = () => done(i, im);
   });
+}
+
+// turns images into textures one per frame (each upload copies a whole picture: all at once is a long frame), and
+// only while the page is still (a move is never what pays for them: the swipe that brings a scene near would), then
+// calls back with them
+let scrolledAt = 0;
+window.addEventListener('scroll', () => { scrolledAt = performance.now(); }, { passive: true });
+function uploadAll(P, ims, cb) {
+  const out = [];
+  (function next(i) {
+    if (i === ims.length) { cb(out); return; }
+    if (performance.now() - scrolledAt < 200) { requestAnimationFrame(() => next(i)); return; }
+    out[i] = P.tex(ims[i]);
+    requestAnimationFrame(() => next(i + 1));
+  })(0);
 }
 
 const PAINTER_FRAG = [
@@ -108,13 +128,13 @@ export function Painter(canvas, wall, sources) {
   const U = P.uniforms(['r', 't', 'wall', 'a', 'b', 'tw', 'ta', 'tb', 'aw', 'pp', 'win', 'rad', 'outVis', 'px', 'dim', 'shade', 'shadeV', 'pan', 'clear', 'mask', 'mk', 'hole']);
   const self = { clear: 0, mask: null, mk: 0, hole: [0, 0, 0], q: 0, win: [0, 0, 0, 0], rad: 0, outVis: 1, dim: 1, shade: 0, shadeV: 0, pan: .5, ready: false, onready: null };
   let T = [], S = [], maskTex = null;
-  loadAll([wall].concat(sources), (ims) => {
-    T = ims.map((im) => P.tex(im)); S = ims.map((im) => [im.width, im.height]);
+  loadAll([wall].concat(sources), (ims) => uploadAll(P, ims, (texs) => {
+    T = texs; S = ims.map((im) => [im.width, im.height]);
     self.ready = true;
     if (self.onready) self.onready();
     self.invalidate();
     self.drift();
-  });
+  }));
   const n = sources.length, t0 = performance.now();
   self.draw = () => {
     if (!self.ready) return;
@@ -138,18 +158,20 @@ export function Painter(canvas, wall, sources) {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
   // the wall drifts, so once its pictures are in, every frame is drawn while it is on screen; before that (and with
-  // reduced motion, where it stands still) a frame is drawn when something changes
+  // reduced motion, where it stands still) a frame is drawn when something changes. paused (set by the page while the
+  // wall can't be seen, the phone's hero): no drift, a frame only when something changes
   let vis = true, drifting = false, queued = false;
+  self.paused = false;
   new IntersectionObserver((es) => { vis = es[0].isIntersecting; }).observe(canvas);
   self.invalidate = () => {
-    if (drifting || queued) return;
+    if ((drifting && !self.paused) || queued) return;
     queued = true;
     requestAnimationFrame(() => { queued = false; self.draw(); });
   };
   self.drift = () => {
     if (drifting || still) return;
     drifting = true;
-    (function loop() { if (vis && !document.hidden) self.draw(); requestAnimationFrame(loop); })();
+    (function loop() { if (vis && !document.hidden && !self.paused) self.draw(); requestAnimationFrame(loop); })();
   };
   return self;
 }
@@ -176,10 +198,10 @@ export function Morph(box, sources, rest) {
   const gl = P.gl, U = P.uniforms(['r', 'p', 'px', 'pan', 'a', 'b', 'ta', 'tb']);
   let texs = [], sizes = [], bw = 0, bh = 0;
   // the pictures load when the box comes near (until then the still image shows)
-  whenNear(box, () => loadAll(sources, (ims) => {
-    texs = ims.map((im) => P.tex(im)); sizes = ims.map((im) => [im.width, im.height]);
+  whenNear(box, () => loadAll(sources, (ims) => uploadAll(P, ims, (t) => {
+    texs = t; sizes = ims.map((im) => [im.width, im.height]);
     self.ok = true; box.classList.add('has-gl'); draw();
-  }));
+  })));
   // the box may grow to fill the screen: render at the grown size
   function measure() {
     const w = box.offsetWidth, h = box.offsetHeight;

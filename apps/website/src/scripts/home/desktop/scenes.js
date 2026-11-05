@@ -3,6 +3,7 @@
 // rooms.
 import '../../stage.js';
 import { IMG, LOOP } from '../assets.js';
+import { stepper } from './steps.js';
 
 const { Stage, Scenes } = window;
 
@@ -11,8 +12,9 @@ export function initScenes() {
 
   Scenes.rooms = (root) => {
     const track = root.querySelector('.rooms'), count = root.querySelectorAll('.rooms-count i'), rooms = track.querySelectorAll('.room');
-    return Stage.scene(root, {
-      hold: 3, snap: [0, 1 / 3, 2 / 3, 1],
+    const STOPS = [0, 1 / 3, 2 / 3, 1];
+    const mm = Stage.scene(root, {
+      hold: 3, snap: STOPS,
       onUpdate(p) {
         const k = Math.round(p * 3);
         count.forEach((c, i) => c.classList.toggle('on', i === k));
@@ -25,6 +27,11 @@ export function initScenes() {
         tl.fromTo(track, { x: () => first() }, { x: () => first() - step() * (rooms.length - 1), duration: 1 }, 0);
       },
     });
+    // a wheel gesture moves one whole room (steps.js), as the intro moves one stop; the snap stays for the scrollbar
+    // and the keys
+    const st = window.ScrollTrigger.getAll().find((t) => t.trigger === root);
+    if (st) stepper(st, STOPS);
+    return mm;
   };
 }
 

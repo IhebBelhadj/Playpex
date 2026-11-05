@@ -18,6 +18,24 @@ export const PHONE = window.matchMedia('(max-width: 767px)').matches;
 
 export const lerp = (a, b, k) => a + (b - a) * k;
 export const clamp01 = (x) => Math.max(0, Math.min(1, x));
+// cubic-bezier(x1, y1, x2, y2) as an easing of t (0…1)
+export function bezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const X = (t) => ((ax * t + bx) * t + cx) * t, dX = (t) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x) => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 6; i++) { const d = dX(t); if (Math.abs(d) < 1e-6) break; t -= (X(t) - x) / d; }
+    t = Math.max(0, Math.min(1, t));
+    return ((ay * t + by) * t + cy) * t;
+  };
+}
+// the site's one move: starts at once, does most of the way early, lands softly (both sites' stops, the phone's
+// buttons and app switches)
+export const EASE = bezier(.2, 0, 0, 1);
+
 // smoothstep from a to b
 export function ramp(p, a, b) { const k = clamp01((p - a) / (b - a)); return k * k * (3 - 2 * k); }
 // piecewise linear through [x, y] points (x rising)
