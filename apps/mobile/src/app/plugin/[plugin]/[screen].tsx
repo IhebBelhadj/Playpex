@@ -5,7 +5,7 @@ import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useQueryClient } from '@tanstack/react-query'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import type { FilterGroup, PluginAction, PluginCall, PluginIntent, PluginRow, PluginTitleInfo, Release, ScreenMobile } from '@playpex/protocol/plugins'
+import type { DirectRelease, FilterGroup, PluginAction, PluginCall, PluginIntent, PluginRow, PluginTitleInfo, Release, ScreenMobile } from '@playpex/protocol/plugins'
 import { pluginImage, runCard, screenOf, usePluginPages, usePluginScreen, usePlugins } from '../../../lib/plugins'
 import { useApi, useProfile, useSession } from '../../../lib/session'
 import { Action, Loading, Message, type IconName } from '../../../ui/components'
@@ -29,7 +29,7 @@ import Animated from 'react-native-reanimated'
 
 type CatalogData = { title?: string; rows: PluginRow[]; search?: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile }
 type TitleData = { info: PluginTitleInfo; actions?: PluginAction[]; rows?: PluginRow[]; mobile?: ScreenMobile }
-type ReleasesData = { title?: string; releases: Release[]; last: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile }
+type ReleasesData = { title?: string; releases: (Release | DirectRelease)[]; last: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile }
 type ListData = { title?: string; items: { key: string; label: string; meta?: string; icon?: string; intent?: PluginIntent; call?: PluginCall }[]; empty?: string; mobile?: ScreenMobile }
 
 /** What every template gets: its plugin, data handler, title, params, and the manifest's choice of top */
@@ -216,9 +216,16 @@ function TitleTemplate({ plugin, data, params, mobile }: TemplateProps) {
 /**
  * A plugin's releases: its keywords (its `q` first), its filter groups as
  * chips, most seeded first, more as you scroll; a tap plays the release with
- * nothing saved (a plugin's list names no title of the catalog).
+ * nothing saved (a plugin's list names no title of the catalog). A direct link
+ * (a release with a `call`) asks the plugin, whose play effect plays it.
  */
 function ReleasesTemplate({ plugin, data, title, params, mobile }: TemplateProps) {
+  const api = useApi()
+  const profile = useProfile()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const playEffect = usePlayEffect()
+  const on = { toast: (t: string, tone?: string) => toast(t, { tone }), refresh: () => queryClient.invalidateQueries({ queryKey: ['plugins', profile.id] }), play: playEffect }
   const [query, setQuery] = useState(params.q != null ? String(params.q) : '')
   const keywords = useDebouncedValue(query.trim(), 450)
   const [filters, setFilters] = useState<Record<string, string[]>>({})
@@ -294,7 +301,7 @@ function ReleasesTemplate({ plugin, data, title, params, mobile }: TemplateProps
         }
         renderItem={({ item }) => (
           <View style={{ paddingHorizontal: space.l, marginBottom: space.s }}>
-            <ReleaseRow item={item} top={best} onPress={() => play(item, null)} />
+            <ReleaseRow item={item} top={best} onPress={() => (item.call ? runCard(api, profile.id, plugin, { call: item.call }, on) : play(item, null))} />
           </View>
         )}
       />
@@ -303,8 +310,29 @@ function ReleasesTemplate({ plugin, data, title, params, mobile }: TemplateProps
   )
 }
 
-/** A plugin's release as a row of Find releases (its name: the last note, else its title) */
-function foundOf(plugin: string, r: Release, i: number): Found {
+/** A plugin's release as a row of Find releases (its name: the last note, else its title); a direct link keeps its call */
+function foundOf(plugin: string, r: Release | DirectRelease, i: number): Found & { call?: PluginCall } {
+  if ('call' in r) {
+    return {
+      key: `call:${i}`,
+      finder: plugin,
+      kind: 'file',
+      title: r.title,
+      name: [r.via, ...(r.notes ?? [])].filter(Boolean).join(' · ') || r.title,
+      year: null,
+      season: null,
+      episode: null,
+      pack: false,
+      seeds: null,
+      peers: null,
+      size: r.size ?? null,
+      quality: r.quality ?? null,
+      codec: null,
+      audio: null,
+      matches: true,
+      call: r.call,
+    }
+  }
   const infoHash = r.infoHash ?? /btih:([a-z0-9]+)/i.exec(r.magnet ?? '')?.[1]?.toLowerCase()
   return {
     key: `${infoHash ?? i}:${i}`,

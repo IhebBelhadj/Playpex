@@ -43,9 +43,10 @@ src/
 ├── pages/releases.astro      the releases (data/releases.ts: each version, each app's files and notes, newest first): four app
 │                            tiles (their screens) as tabs, ?app=<id> opens one (product pages' "All releases" do); each
 │                            version with its notes and files, this visitor's system first in gold; a search by number or
-│                            change and pages of 5, both in the address (?v, ?page; plugins' pagination). Files are downloaded
-│                            from the GitHub releases page (SITE.releases). Add a release at the top of RELEASES and
-│                            bump RELEASE in site.ts
+│                            change and pages of 5, both in the address (?v, ?page; plugins' pagination). Every file links
+│                            straight to its GitHub release asset (`releases/download/<tag>/<file>`). A new release: add
+│                            it at the top of RELEASES (each app with its `tag`), bump RELEASE in site.ts (version, date,
+│                            `tags`: the download dialogs build their links from them, `dl()`)
 ├── content/docs/*.md         the docs (content.config.ts: title, description, group in GROUPS, order): features, plugin
 │                            writing, the client API, sanitized from the repo's docs/ (no 18+ / Velvet / `audience: adults`).
 │                            Link another page by its bare slug ("hooks", "install-the-server#…"), the site by "/plugins":

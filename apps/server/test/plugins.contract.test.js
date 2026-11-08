@@ -103,6 +103,18 @@ test('ids, versions and API ranges', function () {
   assert.notDeepEqual(problems(minimal({ api: { server: '^2' } })), [], 'a future host API');
   assert.notDeepEqual(problems(minimal({ api: { server: '~1.2' } })), [], 'an unknown range form');
   assert.deepEqual(problems(minimal({ api: { server: '>=1 <3' } })), []);
+  // minor versions (SERVER_PLUGIN_API 1.1): an addition, asked with ^1.1 / >=1.1
+  assert.equal(plugins.SERVER_PLUGIN_API, '1.1');
+  ['^1', '1', '1.x', '^1.1', '^1.0', '>=1.1', '>=1 <2', '*'].forEach(function (r) {
+    assert.deepEqual(problems(minimal({ api: { server: r } })), [], r);
+  });
+  assert.match(problems(minimal({ api: { server: '^1.2' } })).join('\n'), /api\/server/, 'a later minor: refused');
+  assert.notDeepEqual(problems(minimal({ api: { server: '>=1.0 <1.1' } })), [], 'below this minor');
+  assert.notDeepEqual(problems(minimal({ api: { server: '^1.1.0' } })), [], 'no patch numbers');
+  [['^1', 1, true], ['^1.1', 1, false], ['^1.1', '1.1', true], ['^1.1', '1.2', true], ['^1.1', '2.0', false],
+    ['>=1.1 <2', '1.5', true], ['>=1.1 <2', '2.0', false], ['~1.1', '1.1', false], ['^1', 'x', false]].forEach(function (c) {
+    assert.equal(plugins.satisfies(c[0], c[1]), c[2], c[0] + ' against ' + c[1]);
+  });
   assert.notDeepEqual(problems(minimal({ api: { server: '^1', ui: '^2' } }), { versions: { ui: 1 } }), []);
   assert.notDeepEqual(problems(minimal({ unknownField: true })), [], 'unknown top-level fields');
 });
@@ -184,7 +196,7 @@ test('screens, sections, slots and settings hold together', function () {
   adult.contributes.settings[0].default = 'grid';
   assert.match(problems(adult).join('\n'), /not one of the options/);
   adult = reference('velvet');
-  adult.contributes.settings[1].scope = 'profile';
+  adult.contributes.settings.filter(function (x) { return x.type === 'secret'; })[0].scope = 'profile';
   assert.match(problems(adult).join('\n'), /scope server/);
   adult = reference('velvet');
   adult.permissions.secrets = [];
@@ -259,6 +271,13 @@ test('run-time shapes: sources, effects, events, hook answers', function () {
   assert.ok(hook('player.markers', 'output')([{ kind: 'intro', start: 30, end: 95 }, { kind: 'credits', start: 2500 }]));
   assert.ok(!hook('player.markers', 'output')([{ kind: 'ad', start: 0 }]));
   assert.ok(hook('releases.providers', 'output')({ releases: [{ title: 'X 1080p', infoHash: 'c'.repeat(40), seeds: 3 }], last: true }));
+
+  // direct links: in a plugin's releases screen (with torrents), never in the core's lists
+  var direct = { title: 'A film (1999)', call: { data: 'play', args: { id: '7' } }, via: 'A site', quality: '720p', notes: ['80 min'] };
+  assert.ok(api('templates/properties/releases')({ releases: [direct, { title: 'X 1080p', infoHash: 'c'.repeat(40), seeds: 3 }], last: false }));
+  assert.ok(!api('templates/properties/releases')({ releases: [{ title: 'A film', via: 'A site' }], last: true }), 'a direct link needs its call');
+  assert.ok(!api('templates/properties/releases')({ releases: [Object.assign({ seeds: 3 }, direct)], last: true }), 'no seeders on a direct link');
+  assert.ok(!hook('releases.providers', 'output')({ releases: [direct], last: true }), 'the core\'s release lists take torrents only');
 });
 
 test('every hook has an input and an output schema', function () {
@@ -439,6 +458,13 @@ test('repository indexes and their signatures', function () {
   bad(function (i) { delete i.plugins[0].versions[1].reason; }, 'broken without a reason');
   bad(function (i) { i.plugins[0].versions[0].permissions = { network: ['x.example.com'], fs: true }; }, 'unknown permissions');
   bad(function (i) { i.format = 2; }, 'another format');
+  bad(function (i) { delete i.plugins[0].versions[0].api.server; }, 'api without server');
+
+  // a range from a later server's syntax: that version can't run here, the index stays valid
+  var later = JSON.parse(JSON.stringify(index));
+  later.plugins[0].versions[0].api = { server: '~1.4 || ^2', ui: '^3.2' };
+  assert.ok(validateIndex(later), JSON.stringify(validateIndex.errors));
+  assert.equal(plugins.satisfies(later.plugins[0].versions[0].api.server, plugins.SERVER_PLUGIN_API), false);
 
   var bytes = Buffer.from(JSON.stringify(index)),
     sig = signing.sign(bytes, keys.privateKey);

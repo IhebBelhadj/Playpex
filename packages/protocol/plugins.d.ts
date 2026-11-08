@@ -2,7 +2,8 @@
 // (plugin.schema.json) and what crosses the sandbox (plugin-api.schema.json).
 // docs/plugins-plan.md; author guide docs/plugins/.
 
-export declare const SERVER_PLUGIN_API: number;
+/** 'major.minor' (a breaking change bumps the major, an addition the minor) */
+export declare const SERVER_PLUGIN_API: string;
 export declare const ID: RegExp;
 
 // ── Manifest (playpex-plugin.json) ──────────────────────────────────────────
@@ -259,6 +260,18 @@ export interface Release {
   notes?: string[];
 }
 
+/** A direct link in a plugin's releases screen (never the core's lists): chosen → its `call`, whose handler answers a play effect */
+export interface DirectRelease {
+  title: string;
+  call: PluginCall;
+  /** Where it plays from, shown in place of the seeders */
+  via?: string;
+  size?: number;
+  quality?: Quality;
+  uploadedAt?: string;
+  notes?: string[];
+}
+
 export interface PluginSubtitle {
   id: string;
   language: string;
@@ -380,7 +393,7 @@ export interface DataAnswer<T = unknown> {
 export interface TemplateData {
   catalog: { title?: string; rows: PluginRow[]; search?: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile };
   title: { info: PluginTitleInfo; actions?: PluginAction[]; rows?: PluginRow[]; mobile?: ScreenMobile };
-  releases: { title?: string; releases: Release[]; last: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile };
+  releases: { title?: string; releases: (Release | DirectRelease)[]; last: boolean; filters?: FilterGroup[]; empty?: string; mobile?: ScreenMobile };
   list: { title?: string; items: { key: string; label: string; meta?: string; icon?: string; intent?: PluginIntent; call?: PluginCall }[]; empty?: string; mobile?: ScreenMobile };
   /** the core draws the channels and programmes; the handler (optional) only names the screen */
   guide: { title?: string; empty?: string };
@@ -570,7 +583,8 @@ export declare const LIMITS: {
 };
 export declare const FORBIDDEN_HEADERS: readonly string[];
 export declare function parseSize(value: string): number | null;
-export declare function satisfies(range: ApiRange, version: number): boolean;
+/** `*`, `N`, `^N`, `N.x`, `^N.M`, `>=N[.M]` (+ ` <N[.M]`); an unknown range → false */
+export declare function satisfies(range: ApiRange, version: number | string): boolean;
 export declare function satisfiesVersion(range: VersionRange, version: string): boolean;
 export declare function compareVersions(a: string, b: string): number;
 export declare function hostAllowed(patterns: readonly string[] | undefined, host: string): boolean;

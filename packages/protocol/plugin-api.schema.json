@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://playpex.dev/schemas/plugin-api.schema.json",
-  "title": "Playpex plugin API (SERVER_PLUGIN_API 1): what crosses the sandbox",
+  "title": "Playpex plugin API (SERVER_PLUGIN_API 1.1): what crosses the sandbox",
   "description": "Values the host hands to a plugin's handlers and what it accepts back (docs/plugins-plan.md §4–§5, author guide docs/plugins/). The host validates every answer of a plugin against these before using it; an answer that doesn't match counts as the handler failing. Hook i/o is under $defs/hooks/<name>/{input,output}.",
   "$defs": {
     "id": {
@@ -679,6 +679,43 @@
           ]
         }
       ]
+    },
+    "directRelease": {
+      "description": "A direct link in a plugin's releases screen (not the core's release lists): a site's film or file, played by calling the plugin when it is chosen (its handler answers a play effect: tokens stay fresh, and the list needn't resolve every link)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "call"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "call": {
+          "$ref": "#/$defs/call"
+        },
+        "via": {
+          "description": "Where it plays from (a site, a host), shown in place of the seeders",
+          "type": "string",
+          "maxLength": 40
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "quality": {
+          "$ref": "#/$defs/quality"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "notes": {
+          "$ref": "#/$defs/notes"
+        }
+      }
     },
     "subtitle": {
       "type": "object",
@@ -1501,7 +1538,14 @@
               "type": "array",
               "maxItems": 200,
               "items": {
-                "$ref": "#/$defs/release"
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/release"
+                  },
+                  {
+                    "$ref": "#/$defs/directRelease"
+                  }
+                ]
               }
             },
             "last": {

@@ -11,7 +11,7 @@ Status: all of this exists (plugins plan steps P1–P4): the sandbox and these r
 | Field | Use |
 |---|---|
 | `id`, `name`, `version`, `audience` | `audience: adults`: never listed for a kids profile; its screens may use the `adult` accent (`chrome`); `name` and menu labels come translated for the request's `Accept-Language` |
-| `play` | it may hand play requests to the core: its `releases` screens play the release selected (else say it can't) |
+| `play` | it may hand play requests to the core: its `releases` screens play the release selected (else say it can't); a release with a `call` instead of a magnet is a **direct link**: run the call (its answer's `play` effect plays it) and show its `via` where the seeders would be |
 | `sections` | menu entries: `{ screen, menu: { label, icon, order } }` opening one of its screens |
 | `screens` | `{ name, template, data, title?, params? }`: screen `plugin.<id>.<name>`; draw it with your `catalog` / `title` / `releases` / `list` template, filled by its `data` handler; `guide` is a live plugin's TV guide, drawn from `/live/{plugin}/*` ([Live TV](live.md); its `data`, optional, names it) |
 | `slots` | `{ slot, data, order? }`: contributions to your core screens (`core.movie.actions`, `core.movies.rows`, `core.search.filters`…) |

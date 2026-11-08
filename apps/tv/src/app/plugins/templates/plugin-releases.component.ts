@@ -23,7 +23,9 @@ interface ReleasesState {
 // plugin's filter groups as chips) beside the releases, most seeded first,
 // paged as the list scrolls. Its handler gets { params, query, filters, page }.
 // Enter plays the release with the core's player when the plugin may hand
-// play requests to the core (an adults plugin's: nothing remembered).
+// play requests to the core (an adults plugin's: nothing remembered); a direct
+// link (a release with a `call`) asks the plugin, whose answer plays it.
+// Torrents and direct links may share a list.
 @Component({
   selector: 'plugin-releases',
   templateUrl: './plugin-releases.component.html',
@@ -115,7 +117,16 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit {
   }
 
   play(release:PluginRelease) {
-    this.client.playRelease(this.scope, release, this.state.data?.title);
+    if (release.call) this.client.run(this.scope, release.call);
+    else this.client.playRelease(this.scope, release, this.state.data?.title);
+  }
+
+  /** "24 releases, most seeded first", "12 direct links", or both kinds: "30 releases" */
+  get countLabel():string {
+    let all = this.state.releases, direct = all.filter(r => r.call).length, more = this.state.last ? '' : '+';
+    if (!direct) return `${all.length}${more} releases, most seeded first`;
+    if (direct == all.length) return `${all.length}${more} direct link${all.length == 1 && !more ? '' : 's'}`;
+    return `${all.length}${more} releases`;
   }
 
   // ── rail ────────────────────────────────────────────────────────────────
@@ -169,7 +180,7 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit {
   // ── view helpers ────────────────────────────────────────────────────────
 
   seedShare(seeds:number):number {
-    let top = Math.max(1, ...this.state.releases.map(r => r.seeds || 0));
+    let top = Math.max(1, ...this.state.releases.map(r => r.call ? 0 : r.seeds || 0));
     return Math.sqrt(Math.max(0, seeds)) / Math.sqrt(top);
   }
 
@@ -187,7 +198,7 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit {
   }
 
   keyOf(r:PluginRelease):string {
-    return r.infoHash || r.magnet || r.title;
+    return r.infoHash || r.magnet || (r.call ? `call:${r.call.data}:${JSON.stringify(r.call.args || {})}` : r.title);
   }
 
   trackRelease = (index:number, r:PluginRelease) => this.keyOf(r);

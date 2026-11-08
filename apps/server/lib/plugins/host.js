@@ -1,6 +1,6 @@
 'use strict';
 
-// The host API (SERVER_PLUGIN_API 1, docs/plugins-plan.md §4.2): what a
+// The host API (SERVER_PLUGIN_API 1.1, docs/plugins-plan.md §4.2): what a
 // plugin's `playpex.*` calls do on the server. Every call is checked against
 // the plugin's granted permissions here, whatever the sandbox let through,
 // and counted per plugin (its activity, plan §6.5).

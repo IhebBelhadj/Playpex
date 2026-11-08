@@ -6,7 +6,7 @@ export function initDownload(os) {
   const opts = [...seg.querySelectorAll('button')];
   function set(b) {
     opts.forEach((o) => { const on = o === b; o.setAttribute('aria-checked', String(on)); o.tabIndex = on ? 0 : -1; });
-    name.textContent = b.dataset.file; how.textContent = b.dataset.how;
+    name.textContent = b.dataset.file; how.textContent = b.dataset.how; go.href = b.dataset.url;
     go.innerHTML = ICON.download + 'Download for ' + b.dataset.k;
   }
   seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(b); });

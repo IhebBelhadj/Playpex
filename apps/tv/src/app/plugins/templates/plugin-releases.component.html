@@ -28,9 +28,7 @@
   <section pxMain class="releases" pxSection="pluginReleasesList" [leaveFor]="{ left: '@pluginReleasesRail' }">
     <header class="listHeader">
       <h1 class="heading">{{ heading }}</h1>
-      <p class="count" *ngIf="state.releases.length">
-        {{ state.releases.length }}{{ state.last ? '' : '+' }} releases, most seeded first
-      </p>
+      <p class="count" *ngIf="state.releases.length">{{ countLabel }}</p>
     </header>
 
     <px-empty class="listNote" *ngIf="note" [text]="note" [action]="loadError ? 'Try again' : ''" actionKey="retry"
@@ -41,11 +39,16 @@
       [pxGrid]="listId" align="third" [loadAhead]="loadAhead" (nearEnd)="loadMore()">
       <ol class="releaseList">
         <li *ngFor="let r of state.releases; trackBy: trackRelease">
-          <button class="release focusable" pxItem [pxItemKey]="keyOf(r)" [class.quiet]="r.seeds < 5" (pxSelect)="play(r)">
-            <span class="seeds">
-              <span class="seedCount">{{ r.seeds | number }}</span>
+          <button class="release focusable" pxItem [pxItemKey]="keyOf(r)" [class.quiet]="!r.call && (r.seeds || 0) < 5" (pxSelect)="play(r)">
+            <!-- a direct link: where it plays from, no seeders -->
+            <span class="seeds" *ngIf="r.call">
+              <span class="seedCount via">{{ r.via || 'Direct' }}</span>
+              <span class="seedLabel">direct link</span>
+            </span>
+            <span class="seeds" *ngIf="!r.call">
+              <span class="seedCount">{{ (r.seeds || 0) | number }}</span>
               <span class="seedLabel">{{ r.seeds == 1 ? 'seeder' : 'seeders' }}</span>
-              <span class="seedMeter"><span [style.width.%]="seedShare(r.seeds) * 100"></span></span>
+              <span class="seedMeter"><span [style.width.%]="seedShare(r.seeds || 0) * 100"></span></span>
             </span>
 
             <span class="releaseInfo">

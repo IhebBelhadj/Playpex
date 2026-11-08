@@ -50,7 +50,8 @@ var TEST_HOST = '127.0.0.2',
   served = {},       // path → Buffer
   failing = {},      // repository → status to answer
   seen = [],         // [{ path, ifNoneMatch, status }]
-  keys = { official: signing.generate(), extra: signing.generate(), extra2: signing.generate(), other: signing.generate(), third: signing.generate() };
+  keys = { official: signing.generate(), extra: signing.generate(), extra2: signing.generate(), other: signing.generate(), third: signing.generate(),
+    minor: signing.generate() };
 
 // the answers of the new routes, against openapi.yaml
 var ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
@@ -106,7 +107,7 @@ var CODE = {
 
 function manifestOf(p) {
   var m = {
-    id: p.id, name: p.name || p.id, version: p.version, publisher: { name: 'Test' }, api: { server: '^1' },
+    id: p.id, name: p.name || p.id, version: p.version, publisher: { name: 'Test' }, api: { server: p.api || '^1' },
     audience: p.audience || 'everyone', permissions: p.permissions || {}
   };
   ['requires', 'exports', 'migratesFrom', 'contributes'].forEach(function (k) {
@@ -131,7 +132,7 @@ function publish(host, repo, pair, plugins, claims) {
         served['/' + file] = buffer;
         var entry = {
           version: v.version, url: url(host, file), sha256: crypto.createHash('sha256').update(buffer).digest('hex'),
-          size: buffer.length, releasedAt: '2026-10-20', api: { server: '^1' }, audience: v.audience || 'everyone',
+          size: buffer.length, releasedAt: '2026-10-20', api: { server: v.api || '^1' }, audience: v.audience || 'everyone',
           permissions: v.permissions || {}, lifecycle: v.lifecycle || 'stable', changelog: 'Version ' + v.version
         };
         ['requires', 'reason', 'replacedBy'].forEach(function (k) {
@@ -598,6 +599,34 @@ test('a repository package adds a repository; an older listed version installs',
     return call('POST', '/admin/plugins/packages/' + p.token + '/install', {});
   }).then(function (r) {
     assert.equal(ok(r).version, '1.0.0');
+  });
+});
+
+test('API minor versions: the newest version this server can run; later ones listed, refused; a later syntax leaves the index valid', { skip: skip() }, function () {
+  var versioned = { id: 'versioned', name: 'Versioned', versions: [
+    { version: '1.0.0' }, { version: '1.1.0', api: '^1.1' }, { version: '1.2.0', api: '^1.2' }, { version: '2.0.0', api: '~5 || ^9' }
+  ] };
+  return publish(HOSTS[2], { id: 'minor', name: 'Minor versions' }, keys.minor, [versioned]).then(function (u) {
+    return call('POST', '/admin/plugins/repositories', { url: u, key: keys.minor.publicKey });
+  }).then(function (r) {
+    assert.equal(ok(r).plugins, 1, 'the index is valid');
+    return call('GET', '/admin/plugins/catalog?q=versioned');
+  }).then(function (r) {
+    var item = ok(r).plugins.filter(function (x) { return x.id === 'versioned'; })[0];
+    assert.equal(item.latest.version, '1.1.0', 'the newest one plugin API 1.1 runs');
+    assert.equal(item.incompatible, null);
+    var compatible = {};
+    item.versions.forEach(function (v) { compatible[v.version] = v.compatible; });
+    assert.deepEqual(compatible, { '2.0.0': false, '1.2.0': false, '1.1.0': true, '1.0.0': true });
+    return Promise.all([
+      call('POST', '/admin/plugins/catalog/install', { repository: 'minor', id: 'versioned', version: '1.2.0' }),
+      call('POST', '/admin/plugins/catalog/install', { repository: 'minor', id: 'versioned', version: '2.0.0' }),
+      installFrom('minor', 'versioned')
+    ]);
+  }).then(function (r) {
+    assert.ok(r[0].status >= 400 && r[0].status < 500, 'a later minor: ' + r[0].status + ' ' + r[0].text);
+    assert.ok(r[1].status >= 400 && r[1].status < 500, 'a later syntax: ' + r[1].status + ' ' + r[1].text);
+    assert.equal(r[2].version, '1.1.0');
   });
 });
 

@@ -83,12 +83,16 @@ export interface PluginFilterGroup {
   options:{ value:string, label:string, on?:boolean }[];
 }
 
+/** A torrent (magnet / infoHash, seeds), or a direct link: `call` asks the plugin, which answers a play effect */
 export interface PluginRelease {
   title:string;
   magnet?:string;
   infoHash?:string;
+  call?:PluginCall;
+  /** a direct link: where it plays from, in place of the seeders */
+  via?:string;
   size?:number;
-  seeds:number;
+  seeds?:number;
   peers?:number;
   quality?:string;
   uploadedAt?:string;

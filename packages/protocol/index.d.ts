@@ -12,7 +12,7 @@ export declare const SETTINGS: { readonly [K in SettingKey]: SettingDefinition }
 export type Schema<Name extends keyof components['schemas']> = components['schemas'][Name];
 
 /** The plugin host API's version (plugins.js; the rest: '@playpex/protocol/plugins') */
-export declare const SERVER_PLUGIN_API: number;
+export declare const SERVER_PLUGIN_API: string;
 export declare const API_VERSION: number;
 export declare const MIN_API_VERSION: number;
 export declare const API_PREFIX: '/api/v1';

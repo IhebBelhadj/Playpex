@@ -109,7 +109,7 @@
       "items": { "$ref": "#/$defs/id" }
     },
     "api": {
-      "description": "Version ranges of the APIs the plugin is written against: SERVER_PLUGIN_API (the host API, hooks, events), NAV_API and UI_API (the TV's templates and effects). Ranges: N, ^N, N.x, >=N, >=N <M, *",
+      "description": "Version ranges of the APIs the plugin is written against: SERVER_PLUGIN_API (the host API, hooks, events; 'major.minor'), NAV_API and UI_API (the TV's templates and effects). Ranges: N, ^N, N.x, ^N.M (major N, minor at least M), >=N[.M], >=N[.M] <N[.M], *",
       "type": "object",
       "additionalProperties": false,
       "required": ["server"],
@@ -163,7 +163,7 @@
     },
     "range": {
       "type": "string",
-      "pattern": "^(\\*|\\^?[1-9]\\d*|[1-9]\\d*\\.x|>=[1-9]\\d*( <[1-9]\\d*)?)$"
+      "pattern": "^(\\*|\\^?[1-9]\\d*|\\^[1-9]\\d*\\.(0|[1-9]\\d*)|[1-9]\\d*\\.x|>=[1-9]\\d*(\\.(0|[1-9]\\d*))?( <[1-9]\\d*(\\.(0|[1-9]\\d*))?)?)$"
     },
     "name": {
       "description": "A name inside the plugin: a data handler, a screen, a job, a link, a secret",

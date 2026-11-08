@@ -172,6 +172,15 @@ $rowH: dp(92);
   letter-spacing: dp(-.5);
 }
 
+// a plugin's direct link: where it plays from, in the seeders' place
+.seedCount.via {
+  font-size: var(--px-text-heading);
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .seedLabel {
   margin-top: dp(4);
   font-family: var(--px-font-light);

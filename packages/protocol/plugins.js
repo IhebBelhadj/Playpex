@@ -15,7 +15,10 @@
 
 // Bumped only on breaking changes of the host API, hooks or events. A
 // manifest's api.server range must contain it.
-var SERVER_PLUGIN_API = 1;
+// "major.minor": a breaking change bumps the major; an addition a plugin may
+// need bumps the minor (1.1: direct links in releases screens), asked with
+// `^1.1` / `>=1.1` (servers before 1.1 refuse such a range: they can't run it)
+var SERVER_PLUGIN_API = '1.1';
 
 var ID = /^[a-z][a-z0-9-]{1,31}$/;
 
@@ -118,17 +121,41 @@ function parseSize(value) {
   return m ? parseInt(m[1], 10) * (m[2] === 'KB' ? 1024 : 1024 * 1024) : null;
 }
 
-/** Whether a version range of the manifest's api (N, ^N, N.x, >=N, >=N <M, *) contains the integer version */
+/** An API version (1, '1', '1.1') or a range's bound as [major, minor]; null when it isn't one */
+function apiVersion(v) {
+  var m = /^([1-9]\d*)(?:\.(0|[1-9]\d*))?$/.exec(String(v));
+  return m ? [parseInt(m[1], 10), m[2] ? parseInt(m[2], 10) : 0] : null;
+}
+
+function compareApi(a, b) {
+  return a[0] - b[0] || a[1] - b[1];
+}
+
+/**
+ * Whether a version range of the manifest's api contains the version (an
+ * integer, or 'major.minor'): `*`; `N`, `^N`, `N.x` (major N, any minor);
+ * `^N.M` (major N, minor ≥ M); `>=N[.M]` with an optional ` <N[.M]`. Anything
+ * else (a range from a later server) → false: a version it can't run
+ */
 function satisfies(range, version) {
-  var m;
+  var v = apiVersion(version), m, low, high;
+  if (!v) {
+    return false;
+  }
   if (range === '*') {
     return true;
   }
   if ((m = /^\^?([1-9]\d*)(?:\.x)?$/.exec(range))) {
-    return version === parseInt(m[1], 10);
+    return v[0] === parseInt(m[1], 10);
   }
-  if ((m = /^>=([1-9]\d*)(?: <([1-9]\d*))?$/.exec(range))) {
-    return version >= parseInt(m[1], 10) && (!m[2] || version < parseInt(m[2], 10));
+  if ((m = /^\^([1-9]\d*\.(?:0|[1-9]\d*))$/.exec(range))) {
+    low = apiVersion(m[1]);
+    return v[0] === low[0] && v[1] >= low[1];
+  }
+  if ((m = /^>=([1-9]\d*(?:\.(?:0|[1-9]\d*))?)(?: <([1-9]\d*(?:\.(?:0|[1-9]\d*))?))?$/.exec(range))) {
+    low = apiVersion(m[1]);
+    high = m[2] ? apiVersion(m[2]) : null;
+    return compareApi(v, low) >= 0 && (!high || compareApi(v, high) < 0);
   }
   return false;
 }

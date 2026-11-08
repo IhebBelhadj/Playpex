@@ -72,7 +72,13 @@
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "size": { "type": "integer", "minimum": 1, "maximum": 52428800 },
         "releasedAt": { "type": "string", "format": "date" },
-        "api": { "$ref": "plugin.schema.json#/properties/api" },
+        "api": {
+          "description": "The version's api ranges as its manifest has them; free text here (a range syntax from a later server makes that version one this server can't run, not the index invalid)",
+          "type": "object",
+          "required": ["server"],
+          "maxProperties": 8,
+          "additionalProperties": { "type": "string", "maxLength": 40 }
+        },
         "audience": { "$ref": "plugin.schema.json#/properties/audience" },
         "permissions": { "$ref": "plugin.schema.json#/$defs/permissions" },
         "requires": { "$ref": "plugin.schema.json#/properties/requires" },

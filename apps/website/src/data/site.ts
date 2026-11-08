@@ -14,7 +14,14 @@ export const RELEASE = {
   version: '0.10.1-alpha.1',
   date: '2026-11-05',
   dateText: '5 November 2026',
+  // each app's release on GitHub (one tag per app and version)
+  tags: { server: 'server-v0.10.1-alpha.1', tv: 'tv-v0.10.1-alpha.1', mobile: 'android-v0.10.1-alpha.1', manager: 'manager-v0.10.1-alpha.1' },
 };
+
+// a file of a GitHub release, downloaded directly
+export const assetUrl = (tag: string, file: string) => `${SITE.releases}/download/${tag}/${file}`;
+// the download dialog's choice: the file, how to install it, its link
+export const dl = (app: keyof typeof RELEASE.tags, file: string, how: string) => ({ file, how, url: assetUrl(RELEASE.tags[app], file) });
 
 export type DeviceKind = 'web' | 'tv' | 'phone';
 
@@ -102,6 +109,6 @@ export const FILMS = [
 ] as const;
 
 export const DOWNLOADS = {
-  Windows: { file: `Playpex-Media-Server-Setup-${RELEASE.version}.exe`, how: 'Installs for your user only. Windows may ask you to confirm the first time.' },
-  Linux: { file: `Playpex-Media-Server-${RELEASE.version}-x86_64.AppImage`, how: 'Or the .deb package on the releases page.' },
+  Windows: dl('server', `Playpex-Media-Server-Setup-${RELEASE.version}.exe`, 'Installs for your user only. Windows may ask you to confirm the first time.'),
+  Linux: dl('server', `Playpex-Media-Server-${RELEASE.version}-x86_64.AppImage`, 'Or the .deb package on the releases page.'),
 };

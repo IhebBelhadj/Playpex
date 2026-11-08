@@ -73,13 +73,19 @@ What it can't: read files, start processes, reach this machine or the LAN (not e
 | Repository index | `packages/protocol/repository.schema.json`; signatures `packages/protocol/signing.js` |
 | Constants (`SERVER_PLUGIN_API`, hooks, events, limits), `checkManifest`, `describePermissions`, `hostAllowed`, `satisfiesVersion` | `packages/protocol/plugins.js` (types `plugins.d.ts`) |
 | Tests | `apps/server/test/plugins.contract.test.js` |
-| Reference plugins | `plugins/hello` (every template, slot, effect and setting), `plugins/velvet` (the 18+ section: two catalogs, two torrent sources, Play; in its own repository), `plugins/trakt` (Trakt: scrobbling, sync, a metadata provider, account linking), `plugins/m3u` (live TV: an M3U playlist and XMLTV guide, `url` settings that grant hosts), `plugins/torrents/*` (torrent sites as source plugins) |
+| Reference plugins | `plugins/hello` (every template, slot, effect and setting), `plugins/velvet` (the 18+ section: two catalogs, two torrent sources, a streaming site's films with its video hosts read into `hls` / `http` sources, Play; in its own repository), `plugins/trakt` (Trakt: scrobbling, sync, a metadata provider, account linking), `plugins/m3u` (live TV: an M3U playlist and XMLTV guide, `url` settings that grant hosts), `plugins/torrents/*` (torrent sites as source plugins) |
 
 A manifest is valid when it passes the schema **and** `checkManifest` (the rules between fields: a hook needs its permission, an `http` source a declared host, a link its secrets…). The server runs both at install.
 
 ## Versions
 
-`api.server` is a range of `SERVER_PLUGIN_API` (1): the host API, hooks, events. `api.nav` / `api.ui` are ranges of the TV's `NAV_API_VERSION` / `UI_API_VERSION`: the templates and effects. A breaking change bumps a version; adding a hook, an event, an optional field or a template field doesn't. Ranges: `1`, `^1`, `1.x`, `>=1`, `>=1 <3`, `*`.
+`api.server` is a range of `SERVER_PLUGIN_API` (`1.1`: major.minor): the host API, hooks, events. `api.nav` / `api.ui` are ranges of the TV's `NAV_API_VERSION` / `UI_API_VERSION`: the templates and effects. A breaking change bumps the major; an addition a plugin may rely on bumps the minor; ask for the minor only when you use what it added. Ranges: `1`, `^1`, `1.x` (any 1.x), `^1.1` (1.1 or a later 1.x), `>=1`, `>=1.1`, `>=1 <3`, `*`.
+
+| `SERVER_PLUGIN_API` | Adds |
+|---|---|
+| 1.1 (2026-11-08) | direct links in a `releases` screen ([tv.md](tv.md): `{ title, call, via? … }`) |
+
+What happens elsewhere: a server whose API is outside your range refuses to install that version (the dashboard says it needs a newer server), and its repositories offer it the newest version it can run instead, so an older server keeps your last compatible version. Servers before 1.1 can't read `^1.1` at all: they refuse such a package, and an index listing one fails to refresh there (they keep their last good copy, so they stay on the older version); from 1.1 on, a range a server can't read only makes that version one it can't run.
 
 ## The core's own extension API
 

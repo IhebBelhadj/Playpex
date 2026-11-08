@@ -6,7 +6,7 @@ import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import { IMG } from '../lib/images';
 import { PRODUCTS, SITE } from '../data/site';
-import { RELEASES, APPS, OSES, releaseUrl } from '../data/releases';
+import { RELEASES, APPS, OSES, fileUrl } from '../data/releases';
 const PER = 5;
 const short = (v: string) => v.replace('-alpha.', ' alpha ');
 const shot = (id: string) => PRODUCTS.find((p) => p.id === id)!;
@@ -36,7 +36,7 @@ const history = (id: string) => RELEASES.filter((r) => r.apps[id as 'tv']).map((
           <div class="v"><h2>{short(ar.version)}</h2><p>{r.dateText}{k === 0 && <em>Latest</em>}</p></div>
           <ul class="notes">{ar.notes.map((n) => <li>{n}</li>)}</ul>
           <ul class="files">
-            {OSES.filter((o) => ar.files[o]).map((o) => <li data-os={o}><a href={releaseUrl(a.id, ar.version)}><b>{o}</b><span>{ar.files[o]!.join(', ')}</span></a></li>)}
+            {OSES.filter((o) => ar.files[o]).flatMap((o) => ar.files[o]!.map((f) => <li data-os={o}><a href={fileUrl(ar, f)} download><b>{o}</b><span>{f}</span></a></li>))}
           </ul>
         </article>
       ))}

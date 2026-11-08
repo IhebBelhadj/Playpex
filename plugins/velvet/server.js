@@ -7,7 +7,7 @@
 //   browse    catalog   { params, query, filters: { view, kind, studio, period } } the poster layout (films, scenes)
 //   rowPage   row page  { page, provider, row?, sort?, studio?, period?, q? }  a paged row
 //   title     title     { params: { provider, id } }                          one title
-//   play      call      { provider, id }                                     its torrents → the core's player
+//   play      call      { provider, id }                                     its streams and torrents → the core's player
 //   releases  releases  { params: { q? }, query, filters, page }             the list layout (screens releases, find)
 //   searchFilter        { slot, context: { query } }                         the search page's chip: films, scenes, and Releases (the find screen)
 //
@@ -18,6 +18,14 @@
 // its `/scenes` and `/sites`, with the studios the profile follows (setting
 // `sceneStudios`) as rows; releases from two torrent indexes' categories, most
 // seeded first, a scene's matched by its studio and date, performer or title.
+// Full films also stream from Sex-Empire (setting sexEmpire, on by default):
+// a row of its newest films and its search (provider `sexempire`, the site's
+// film number as the id), and a catalog film's Play adds its streams (VidHide
+// HLS, DoodStream MP4) before the torrents when the site has the same film.
+// Studios' videos (Ersties, Lustery, Playboy Plus) come from TheSexTube
+// (setting theSexTube): only posts tagged with those studios, never the site's
+// personal or leaked ones (see its section); in Find releases' Source and in
+// those studios' scenes' Play.
 // Plays never touch the profile's library (tracking 'none').
 
 var TMDB = 'https://api.themoviedb.org/3';
@@ -772,6 +780,420 @@ function followedStudios(ctx, s) {
   });
 }
 
+// ── Sex-Empire (streams) ────────────────────────────────────────────────────
+//
+// A free site of full films (sex-empere.org, checked Nov 2026: no account).
+// Its film pages embed players from video hosts; the ones read here give a
+// stream the server can proxy: VidHide (an HLS playlist in a packed script)
+// and DoodStream (an MP4 behind /pass_md5/). Other hosts are skipped. A film's
+// identity is its number on the site: /en/<id>-x.html redirects to its English
+// page. Its search is the form's POST to /en/ (a GET there ignores the words):
+// English titles, original ones matched too, 24 a page.
+
+var SE = 'https://sex-empere.org';
+var SE_HEADERS = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Safari/537.36' };
+// The hosts read (an embed elsewhere is skipped) and the CDNs their streams
+// come from (checked Nov 2026; permissions.network lists them all: the server
+// refuses any other). VidHide's hls3 links use throwaway domains: not taken
+var SE_EMBED_HOSTS = ['morencius.com', 'playmogo.com'];
+var SE_STREAM_HOSTS = ['morencius.com', 'acek-cdn.com', 'dramiyos-cdn.com', 'cloudatacdn.com'];
+var SE_QUALITY = { '2160P': '2160p', '4K': '2160p', '1080P': '1080p', 'FULLHD': '1080p', '720P': '720p', 'HD': '720p', '480P': '480p' };
+
+/** A page's text (a form's answer with `o.form`), cached an hour (embed pages aren't: their tokens expire) */
+function getText(url, o) {
+  o = o || {};
+  var key = o.form ? url + '\n' + qs(o.form) : url;
+  var hit = !o.fresh && cache[key];
+  if (hit && hit.expires > Date.now()) {
+    return hit.value;
+  }
+  var request = { url: url, headers: Object.assign({}, SE_HEADERS, o.headers || {}), timeoutMs: o.timeoutMs || 4000 };
+  if (o.form) {
+    request.method = 'POST';
+    request.body = qs(o.form);
+    request.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  }
+  var value = playpex.http.request(request).then(function (res) {
+    if (res.status !== 200) {
+      throw new Error(url.split('?')[0] + ' answered HTTP ' + res.status);
+    }
+    return String(res.body);
+  });
+  if (!o.fresh) {
+    cache[key] = { value: value, expires: Date.now() + CACHE_MS };
+    value.catch(function () { delete cache[key]; });
+  }
+  return value;
+}
+
+function stripTags(html) {
+  return unescapeHtml(String(html || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+
+/** A listing's (home, search, page N) films: [{ id, title, year, poster, quality }] */
+function seList(html) {
+  var out = [], seen = {}, re = /<a class="item item-poster[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g, m;
+  while ((m = re.exec(String(html)))) {
+    var id = (/\/(\d+)-[^/]*\.html$/.exec(m[1]) || [])[1];
+    if (!id || seen[id]) continue;
+    seen[id] = true;
+    var body = m[2],
+      title = stripTags((/item-poster__title[^>]*>([\s\S]*?)<\/div>/.exec(body) || [])[1]),
+      meta = stripTags((/item-poster__meta[^>]*>([\s\S]*?)<\/div>/.exec(body) || [])[1]),
+      poster = (/<img[^>]*src="(https:\/\/[^"]+)"/.exec(body) || [])[1] || null,
+      year = Number((/\b(19|20)\d\d\b/.exec(meta) || [])[0]) || null,
+      quality = (/\b(2160p|1080p|720p|480p)\b/i.exec(meta) || [])[1];
+    out.push({ id: id, title: title, year: year, poster: poster, quality: quality ? quality.toLowerCase() : null });
+  }
+  return out;
+}
+
+function seField(html, label) {
+  var m = new RegExp('<li><span>' + label + ':</span>([\\s\\S]*?)</li>').exec(html);
+  return m ? stripTags(m[1]).replace(/\s*,\s*/g, ', ').replace(/^, |, $/g, '') : '';
+}
+
+/** A film's English page → { id, title, year, runtime, director, performers, genres, country, languages, poster, quality, embeds } */
+function seFilm(html, id) {
+  html = String(html);
+  var duration = /(\d+):(\d\d):(\d\d)/.exec(seField(html, 'Duration')),
+    rating = stripTags((/<div class="item__rating">([\s\S]*?)<\/div>/.exec(html) || [])[1]).toUpperCase(),
+    embeds = [], re = /\.src\s*=\s*"(https:\/\/[^"]+)"/g, m;
+  while ((m = re.exec(html))) {
+    var url = m[1].replace(/\?.*$/, '');
+    // an empty slot ("…/embed/") has no film id
+    if (/\/(e|embed|d)\/[A-Za-z0-9]{6,}$/.test(url) && embeds.indexOf(url) === -1) embeds.push(url);
+  }
+  return {
+    id: String(id || (/doRate\('plus', '(\d+)'\)/.exec(html) || [])[1] || ''),
+    title: stripTags((/<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html) || [])[1]),
+    year: Number(seField(html, 'Release year')) || null,
+    runtime: duration ? Number(duration[1]) * 60 + Number(duration[2]) : null,
+    director: seField(html, 'Directed by') || null,
+    performers: seField(html, 'Casting').split(', ').filter(Boolean).map(function (n) { return { name: n }; }),
+    genres: seField(html, 'Genre'),
+    country: seField(html, 'Country'),
+    languages: seField(html, 'Language'),
+    poster: (/<meta property="og:image" content="(https:\/\/[^"]+)"/.exec(html) || [])[1] || null,
+    quality: SE_QUALITY[rating] || null,
+    embeds: embeds
+  };
+}
+
+function seFilmById(id) {
+  return getText(SE + '/en/' + encodeURIComponent(id) + '-x.html').then(function (html) { return seFilm(html, id); });
+}
+
+var SE_SEARCH_SIZE = 24;        // results per page of the site's search
+
+/** A page of the site's search: { list: [{ id, title, year, poster, quality }], total } */
+function seSearchPage(q, page) {
+  return getText(SE + '/en/', { form: { do: 'search', subaction: 'search', story: q, search_start: page > 1 ? page : null } }).then(function (html) {
+    // "Found 44 responses (Query results 1 - 24)"
+    var total = Number((/Found\s+(\d+)\s+respons/i.exec(html) || [])[1]);
+    var list = seList(html);
+    return { list: list, total: isFinite(total) && total > 0 ? total : list.length };
+  });
+}
+
+/** The site's search, its first page */
+function seSearch(q) {
+  return seSearchPage(q, 1).then(function (p) { return p.list; });
+}
+
+/** The newest films, with English titles */
+function seLatest(page) {
+  return getText(SE + '/en/' + (page > 1 ? 'page/' + page + '/' : '')).then(seList);
+}
+
+/** The site's film for a catalog title (TMDB / the second provider), or null: same title, year ±1 */
+function seFind(title, year) {
+  var wanted = compact(title);
+  if (!wanted) {
+    return Promise.resolve(null);
+  }
+  // the results' English titles compared: only the film's own page is read
+  return seSearch(title).then(function (list) {
+    var f = list.filter(function (x) { return compact(x.title) === wanted && (!year || !x.year || Math.abs(x.year - year) <= 1); })[0];
+    return f ? seFilmById(f.id).then(function (film) {
+      return compact(film.title) === wanted ? Object.assign(film, { quality: film.quality || SE_QUALITY[String(f.quality || '').toUpperCase()] || null }) : null;
+    }) : null;
+  });
+}
+
+// Dean Edwards' packer undone without running it: the payload's words are
+// base-N indexes into the dictionary
+function unpack(html) {
+  var m = /\}\('((?:[^'\\]|\\.)*)',\s*(\d+),\s*(\d+),\s*'((?:[^'\\]|\\.)*)'\.split\('\|'\)/.exec(String(html));
+  if (!m) return null;
+  var payload = m[1].replace(/\\'/g, '\'').replace(/\\\\/g, '\\'), radix = Number(m[2]), dict = m[4].split('|'),
+    digits = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if (radix < 2 || radix > 62) return null;
+  return payload.replace(/\b\w+\b/g, function (w) {
+    var n = 0;
+    for (var i = 0; i < w.length; i++) {
+      var d = digits.indexOf(w[i]);
+      if (d < 0 || d >= radix) return w;
+      n = n * radix + d;
+    }
+    return n < dict.length && dict[n] ? dict[n] : w;
+  });
+}
+
+/**
+ * A stream's headers: the player page's host as the Referer, and the User-Agent
+ * the page was read with (video hosts' tokens can hold for that one only)
+ */
+function streamHeaders(page) {
+  return { 'User-Agent': SE_HEADERS['User-Agent'], Referer: originOf(page) + '/' };
+}
+
+function originOf(url) {
+  return (/^https:\/\/[^/]+/.exec(url) || [''])[0];
+}
+
+/** Whether the URL's host is one of these domains or under one */
+function onHosts(url, domains) {
+  var host = originOf(url).slice(8).toLowerCase();
+  return !!host && domains.some(function (d) { return host === d || host.slice(-(d.length + 1)) === '.' + d; });
+}
+
+/** VidHide: the packed player's `links` (hls4 / hls3 may be relative to the embed's host) */
+function vidhideStream(html, embed) {
+  var code = unpack(html);
+  var links = code && /links\s*=\s*(\{[^}]*\})/.exec(code);
+  if (!links) return null;
+  try { links = JSON.parse(links[1]); } catch (e) { return null; }
+  var url = [links.hls2, links.hls4, links.hls3].map(function (u) {
+    return typeof u === 'string' && u[0] === '/' ? originOf(embed) + u : u;
+  }).filter(function (u) { return typeof u === 'string' && onHosts(u, SE_STREAM_HOSTS); })[0];
+  return url ? { kind: 'hls', url: url, headers: streamHeaders(embed), host: 'VidHide' } : null;
+}
+
+/** DoodStream: /pass_md5/… answers the file's base; the player adds 10 random characters, its token and the time */
+function doodStream(html, embed) {
+  // no pass_md5: the host asks for a captcha (it does after many plays from one address)
+  var pass = /\/pass_md5\/[^'"\s]+/.exec(html), token = /[?&]token=([A-Za-z0-9]+)/.exec(html);
+  if (!pass || !token) return null;
+  var origin = originOf(embed);
+  return getText(origin + pass[0], { fresh: true, headers: { Referer: embed }, timeoutMs: 3000 }).then(function (base) {
+    base = base.trim();
+    // "RELOAD": an expired page; another CDN: one the server would refuse
+    if (!/^https:\/\/\S+$/.test(base) || !onHosts(base, SE_STREAM_HOSTS)) return null;
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', tail = '';
+    for (var i = 0; i < 10; i++) tail += chars.charAt(Math.floor(Math.random() * chars.length));
+    return { kind: 'http', url: base + tail + '?token=' + token[1] + '&expiry=' + Date.now(), headers: streamHeaders(embed), host: 'DoodStream', container: 'mp4' };
+  });
+}
+
+/** An embed page → a stream { kind, url, headers, host } or null (a host it can't read, or it didn't answer) */
+function resolveEmbed(embed) {
+  return getText(embed, { fresh: true, headers: { Referer: SE + '/' }, timeoutMs: 3000 }).then(function (html) {
+    if (/\/pass_md5\//.test(html)) return doodStream(html, embed);
+    if (/eval\(function\(p,a,c,k,e,d\)/.test(html)) return vidhideStream(html, embed);
+    return null;
+  }).catch(function (err) {
+    playpex.log.info('Sex-Empire: an embed didn\'t play', { host: originOf(embed), error: err.message });
+    return null;
+  });
+}
+
+/** A film's streams as the core's sources (best first: HLS, then the MP4) */
+function seSources(film) {
+  var embeds = film.embeds.filter(function (e) { return onHosts(e, SE_EMBED_HOSTS); }).slice(0, 4);
+  return Promise.all(embeds.map(resolveEmbed)).then(function (streams) {
+    var notes = ['Sex-Empire'].concat(film.languages ? [clip('Audio: ' + film.languages, 80)] : []);
+    return streams.filter(Boolean).sort(function (a, b) { return (a.kind === 'hls' ? 0 : 1) - (b.kind === 'hls' ? 0 : 1); }).map(function (s) {
+      var source = { kind: s.kind, url: s.url, headers: s.headers, label: clip(film.title + (film.year ? ' (' + film.year + ')' : '') + ' · ' + s.host, 200), notes: notes };
+      if (film.quality) source.quality = film.quality;
+      if (s.container) source.container = s.container;
+      return source;
+    });
+  });
+}
+
+/** Whether the admin left the source on (setting sexEmpire) */
+function seOn(ctx) {
+  return playpex.settings.get('sexEmpire', ctx).then(function (v) { return v !== false; }, function () { return true; });
+}
+
+// A site film as a catalog item (cards, the title page)
+function seItem(f) {
+  var lines = [f.genres, f.country, f.languages ? 'Audio: ' + f.languages : ''].filter(Boolean);
+  return {
+    id: f.id, title: f.title, year: f.year, poster: f.poster, backdrop: null,
+    overview: lines.join(' · '), studio: { name: 'Sex-Empire' },
+    runtime: f.runtime, director: f.director, performers: f.performers || []
+  };
+}
+
+/**
+ * Find releases' Sex-Empire: a page of its search (24, in English), else of
+ * its newest films → { films, more }
+ */
+function seReleases(q, page) {
+  if (!q) {
+    return seLatest(page).then(function (list) { return { films: list, more: list.length > 0 && page < MAX_PAGE }; });
+  }
+  return seSearchPage(q, page).then(function (p) {
+    return { films: p.list, more: p.list.length > 0 && page * SE_SEARCH_SIZE < p.total };
+  });
+}
+
+/** A site film as a direct link of the releases template (played by the play handler) */
+function seRelease(f) {
+  var out = {
+    title: clip(f.title + (f.year ? ' (' + f.year + ')' : ''), 300),
+    call: { data: 'play', args: { provider: 'sexempire', id: f.id } },
+    via: 'Sex-Empire',
+    notes: [f.runtime ? f.runtime + ' min' : '', f.genres, f.languages ? 'Audio: ' + f.languages : '']
+      .filter(Boolean).map(function (n) { return clip(n, 80); }).slice(0, 6)
+  };
+  if (f.quality) out.quality = f.quality;
+  return out;
+}
+
+/** A row of the site: its search or its newest films, paged */
+function seRowPage(args, page) {
+  if (args.q) {
+    return seSearchPage(args.q, page).then(function (p) {
+      return { items: p.list, last: !p.list.length || page * SE_SEARCH_SIZE >= p.total };
+    });
+  }
+  return seLatest(page).then(function (list) {
+    return { items: list, last: !list.length || page >= MAX_PAGE };
+  });
+}
+
+// ── TheSexTube: studios only (streams) ──────────────────────────────────────
+//
+// thesextube.net (WordPress, its REST API open; checked Nov 2026) also posts
+// a lot of personal and leaked videos: those are never read. Only posts the
+// site tags with one of the studios below are asked for, every tag of
+// personal videos excluded in the query itself, and a title naming one is
+// dropped too; a post given back to Play (an id from a client) is checked the
+// same way before anything plays. Playboy TV's posts are left out: their
+// Streamtape links were all gone (2021 posts). The videos are on LuluStream:
+// a packed JW Player page → an HLS playlist (AES-128, keys on the same CDN),
+// H.264 + AAC.
+
+var TST_API = 'https://thesextube.net/wp-json/wp/v2/';
+var TST_STUDIOS = [
+  { id: 'ersties', name: 'Ersties', tag: 4599 },
+  { id: 'lustery', name: 'Lustery', tag: 15789 },
+  { id: 'playboyplus', name: 'Playboy Plus', tag: 4175 }
+];
+// the site's tags of personal / leaked videos (onlyfans, fansly, patreon, youtube, youtuber, instagram,
+// twitch, tiktok, snapchat, celebrity, sex-tape, leaked, leak, manyvids, amateur, homemade, private)
+var TST_PERSONAL = [5777, 23028, 16894, 17619, 17798, 3045, 17039, 18377, 3787, 25310, 5761, 3409, 30034, 18337, 3668, 29748, 5008];
+var TST_PERSONAL_WORDS = /leak|only ?fans|\bppv\b|sex ?tape|fansly|patreon|snapchat|manyvids|homemade|private (video|show)/i;
+var TST_HOSTS = ['luluvido.com', 'luluvdoo.com', 'luluvdo.com', 'lulustream.com'];
+var TST_STREAM_HOSTS = ['tnmr.org', 'cdn-tnmr.org'];
+var TST_PAGE = 24;
+
+/** A post of one of the studios and nothing personal, else false */
+function tstAllowed(post) {
+  var tags = post.tags || [], title = unescapeHtml(post.title && post.title.rendered || '');
+  return TST_STUDIOS.some(function (s) { return tags.indexOf(s.tag) !== -1; }) &&
+    !tags.some(function (t) { return TST_PERSONAL.indexOf(t) !== -1; }) && !TST_PERSONAL_WORDS.test(title);
+}
+
+/** A post → { id, title, studio, date, video (its LuluStream page), poster } or null (not allowed, no video) */
+function tstItem(post) {
+  if (!tstAllowed(post)) return null;
+  var links = (String(post.content && post.content.rendered || '').match(/href="(https:\/\/[^"]+)"/g) || [])
+    .map(function (h) { return unescapeHtml(h.slice(6, -1)); });
+  var video = links.filter(function (u) { return onHosts(u, TST_HOSTS); })[0];
+  if (!video) return null;
+  var studio = TST_STUDIOS.filter(function (s) { return post.tags.indexOf(s.tag) !== -1; })[0],
+    code = (/\/(?:e\/|d\/)?([a-z0-9]{8,})(?:[/?#]|$)/i.exec(video.replace(/^https:\/\/[^/]+/, '')) || [])[1];
+  return {
+    id: String(post.id),
+    title: unescapeHtml(post.title.rendered).replace(/\s+/g, ' ').trim(),
+    studio: studio.name,
+    date: post.date ? String(post.date).slice(0, 10) : null,
+    video: video,
+    // LuluStream's own still of the video
+    poster: code ? 'https://img.lulucdn.com/' + code + '_xt.jpg' : null
+  };
+}
+
+function tstGet(path, params) {
+  return getText(TST_API + path + '?' + qs(params), { timeoutMs: 5000 }).then(function (text) { return JSON.parse(text); });
+}
+
+/** A page of the studios' posts (the words searched, else the newest) → { items, more } */
+function tstPosts(q, page, studios) {
+  var tags = (studios || TST_STUDIOS).map(function (s) { return s.tag; });
+  return tstGet('posts', { tags: tags.join(','), tags_exclude: TST_PERSONAL.join(','), search: q || null, page: page,
+    per_page: TST_PAGE, _fields: 'id,date,title,content,tags' }).then(function (posts) {
+    var items = (Array.isArray(posts) ? posts : []).map(tstItem).filter(Boolean);
+    return { items: items, more: Array.isArray(posts) && posts.length === TST_PAGE };
+  }, function (err) {
+    // past the last page WordPress answers 400
+    if (/HTTP 400/.test(err.message)) return { items: [], more: false };
+    throw err;
+  });
+}
+
+/** One post by id, only when it's a studio's (a client gives the id) */
+function tstPost(id) {
+  if (!/^\d{1,9}$/.test(String(id))) return Promise.resolve(null);
+  return tstGet('posts/' + id, { _fields: 'id,date,title,content,tags' }).then(tstItem, function (err) {
+    if (/HTTP 404/.test(err.message)) return null;
+    throw err;
+  });
+}
+
+/** LuluStream's page → its HLS source, or null */
+function tstStream(item) {
+  return getText(item.video, { fresh: true, headers: { Referer: 'https://thesextube.net/' }, timeoutMs: 4000 }).then(function (html) {
+    var code = unpack(html), file = code && /file\s*:\s*"(https:\/\/[^"]+\.m3u8[^"]*)"/.exec(code);
+    if (!file || !onHosts(file[1], TST_STREAM_HOSTS)) return null;
+    // the CDN's token holds for the User-Agent the page was read with
+    return { kind: 'hls', url: file[1], headers: streamHeaders(item.video), label: clip(item.title, 200),
+      notes: [item.studio, 'TheSexTube'].concat(item.date ? [item.date] : []) };
+  }).catch(function (err) {
+    playpex.log.info('TheSexTube: a video didn\'t play', { host: originOf(item.video), error: err.message });
+    return null;
+  });
+}
+
+function tstOn(ctx) {
+  return playpex.settings.get('theSexTube', ctx).then(function (v) { return v !== false; }, function () { return true; });
+}
+
+/** A post as a direct link of the releases template */
+function tstRelease(it) {
+  var out = { title: clip(it.title, 300), call: { data: 'play', args: { provider: 'thesextube', id: it.id } }, via: it.studio,
+    notes: ['TheSexTube'] };
+  if (it.date) out.uploadedAt = it.date + 'T00:00:00Z';
+  return out;
+}
+
+/** A scene's TheSexTube stream as a list ([] when switched off, not one of the studios', not found) */
+function tstStreamsFor(ctx, scene) {
+  return tstOn(ctx).then(function (on) {
+    return on ? tstSceneStream(scene).then(function (s) { return s ? [s] : []; }) : [];
+  }).catch(function (err) {
+    playpex.log.info('TheSexTube didn\'t answer', { error: err.message });
+    return [];
+  });
+}
+
+/** A scene of one of the studios (the second provider's) → its post's stream, or null */
+function tstSceneStream(scene) {
+  var studio = scene.studio && TST_STUDIOS.filter(function (s) {
+    return compact(scene.studio.name) === compact(s.name) || compact(scene.studio.short) === s.id;
+  })[0];
+  var wanted = compact(scene.title);
+  if (!studio || wanted.length < 6) return Promise.resolve(null);
+  return tstPosts(scene.title, 1, [studio]).then(function (p) {
+    var it = p.items.filter(function (x) { return compact(x.title).indexOf(wanted) !== -1; })[0];
+    return it ? tstStream(it) : null;
+  });
+}
+
 // ── cards and rows ──────────────────────────────────────────────────────────
 
 function infoOf(it, details) {
@@ -812,6 +1234,12 @@ function cardOf(providerId, it) {
     intent: { screen: 'plugin.velvet.title', params: { provider: providerId, id: it.id } },
     info: infoOf(it)
   };
+}
+
+/** The site's row: its search for the words, else its newest films */
+function seRow(q) {
+  return q ? pagedRow('search-sexempire', 'Sex-Empire for “' + clip(q, 60) + '”', { provider: 'sexempire', q: q }) :
+    pagedRow('sexempire:latest', 'New on Sex-Empire', { provider: 'sexempire', row: 'latest' });
 }
 
 function pagedRow(key, title, args) {
@@ -857,10 +1285,13 @@ playpex.data('browse', function (args, ctx) {
     if (l.layout === 'list') {
       return { data: { rows: [] }, effects: switchTo('releases') };
     }
-    return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes')]).then(function (cs) {
-      var c = cs[0], s = cs[1];
+    return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes'), seOn(ctx)]).then(function (cs) {
+      var c = cs[0], s = cs[1], site = cs[2];
       if (!c && !s) {
-        return { data: { title: '18+', rows: [], search: false, filters: [viewGroup('posters')], empty: NO_KEY } };
+        // no catalog key: the site's films alone, when it's on
+        var q0 = String(args.query || '').trim();
+        return { data: { title: '18+', rows: site ? [seRow(q0)] : [], search: site, filters: [viewGroup('posters')],
+          empty: !site ? NO_KEY : q0 ? 'Nothing found for “' + clip(q0, 60) + '”.' : 'Nothing to show.' } };
       }
       return followedStudios(ctx, s).then(function (followed) {
         var f = args.filters || {}, kind = (f.kind || [])[0] || '', studio = (f.studio || [])[0] || null, period = (f.period || [])[0] || '',
@@ -891,6 +1322,10 @@ playpex.data('browse', function (args, ctx) {
               return pagedRow('scenes:' + r.row, r.title, r.studios ? { provider: 'scenes', row: r.row, studios: r.studios } : { provider: 'scenes', row: r.row });
             }));
           }
+        }
+        // the site's films: its search, else its newest (not under a studio, a period or scenes only)
+        if (site && (q || (!studio && !period && kind !== 'scenes'))) {
+          rows.push(seRow(q));
         }
         // the studios offered: the followed ones first, for scenes
         var studios = focus.id === 'scenes' ? followed.concat(TPDB_SITES.filter(function (x) {
@@ -925,6 +1360,11 @@ playpex.data('browse', function (args, ctx) {
 playpex.data('rowPage', function (args, ctx) {
   args = args || {};
   var page = Math.max(1, args.page || 1);
+  if (args.provider === 'sexempire') {
+    return seRowPage(args, page).then(function (p) {
+      return { data: { items: p.items.map(function (f) { return cardOf('sexempire', seItem(f)); }), last: p.last } };
+    });
+  }
   return catalogFor(ctx, args.provider).then(function (c) {
     if (!c) {
       return { data: { items: [], last: true } };
@@ -942,6 +1382,27 @@ playpex.data('rowPage', function (args, ctx) {
 // for them), More from its studio
 playpex.data('title', function (args, ctx) {
   var params = (args && args.params) || {};
+  if (params.provider === 'sexempire') {
+    return seFilmById(params.id).then(function (f) {
+      var t = seItem(f), rows = [];
+      if (t.performers.length) {
+        rows.push({ key: 'velvet:cast', title: 'Starring', variant: 'portrait', items: t.performers.slice(0, 30).map(function (p, i) {
+          return { key: 'velvet:performer:' + i, title: clip(p.name, 200), variant: 'portrait', image: null,
+            intent: { screen: 'plugin.velvet.find', params: { q: clip(p.name, 60) } } };
+        }) });
+      }
+      return {
+        data: {
+          info: infoOf(t, t),
+          actions: [
+            { key: 'velvet:play', label: 'Play', icon: 'play', call: { data: 'play', args: { provider: 'sexempire', id: t.id } } },
+            { key: 'velvet:releases', label: 'Find releases', icon: 'search', intent: { screen: 'plugin.velvet.find', params: { q: clip(t.title + (t.year ? ' ' + t.year : ''), 60) } } }
+          ],
+          rows: rows
+        }
+      };
+    });
+  }
   return catalogFor(ctx, params.provider).then(function (c) {
     if (!c) {
       return { data: { info: { title: '18+', notes: [NO_KEY] } } };
@@ -971,32 +1432,75 @@ playpex.data('title', function (args, ctx) {
   });
 });
 
-// Play: the film's torrents, best first, in the core's source picker; nothing is saved
+// Play: the film's streams from Sex-Empire (when it has the film) and its
+// torrents, best first, in the core's source picker; nothing is saved
+function playEffect(t, streams, torrents) {
+  return { type: 'play', request: {
+    title: clip(t.title, 200),
+    subtitle: t.studio ? clip(t.studio.name, 200) : undefined,
+    artwork: Object.assign({}, t.poster ? { poster: t.poster } : {}, t.backdrop ? { backdrop: t.backdrop } : {}),
+    tracking: 'none',
+    sources: streams.concat(torrents.slice(0, 50 - streams.length).map(function (x) {
+      return { kind: 'magnet', magnet: magnetOf(x.hash, x.name), label: clip(x.name, 200), quality: x.quality,
+        size: x.size, seeds: x.seeds, codec: x.codec, audio: x.audio, notes: notesOf(x).slice(0, 6) };
+    }))
+  } };
+}
+
+/** A film's Sex-Empire streams ([] when the source is off, the site doesn't have it or didn't answer) */
+function seStreamsFor(ctx, t) {
+  return seOn(ctx).then(function (on) {
+    return on ? seFind(t.title, t.year).then(function (f) { return f ? seSources(f) : []; }) : [];
+  }).catch(function (err) {
+    playpex.log.info('Sex-Empire didn\'t answer', { error: err.message });
+    return [];
+  });
+}
+
 playpex.data('play', function (args, ctx) {
   args = args || {};
+  if (args.provider === 'sexempire') {
+    return seFilmById(args.id).then(function (f) {
+      return seSources(f).then(function (streams) {
+        if (!streams.length) {
+          return { data: null, effects: [{ type: 'toast', tone: 'info', text: 'None of this film\'s players can be played here now' }] };
+        }
+        return { data: null, effects: [playEffect(seItem(f), streams, [])] };
+      });
+    });
+  }
+  if (args.provider === 'thesextube') {
+    return tstOn(ctx).then(function (on) {
+      return on ? tstPost(args.id) : null;
+    }).then(function (it) {
+      // switched off, not a studio's post, or no video
+      if (!it) {
+        return { data: null, effects: [{ type: 'toast', tone: 'info', text: 'This video isn\'t available' }] };
+      }
+      return tstStream(it).then(function (stream) {
+        if (!stream) {
+          return { data: null, effects: [{ type: 'toast', tone: 'info', text: 'This video can\'t be played now' }] };
+        }
+        return { data: null, effects: [playEffect({ title: it.title, studio: { name: it.studio }, backdrop: it.poster }, [stream], [])] };
+      });
+    });
+  }
   return catalogFor(ctx, args.provider).then(function (c) {
     if (!c) {
       return { data: null, effects: [{ type: 'toast', text: 'Enter a catalog key in the 18+ plugin\'s settings', tone: 'error' }] };
     }
     return c.provider.title(c.key, args.id).then(function (t) {
-      return (c.id === 'scenes' ? findSceneTorrents(t) : findTorrents(t.title, t.year)).then(function (found) {
-        if (!found.torrents.length) {
+      // films: Sex-Empire's streams; a studio's scene: its TheSexTube video
+      return Promise.all([
+        c.id === 'scenes' ? findSceneTorrents(t) : findTorrents(t.title, t.year),
+        c.id === 'scenes' ? tstStreamsFor(ctx, t) : seStreamsFor(ctx, t)
+      ]).then(function (r) {
+        var found = r[0], streams = r[1];
+        if (!found.torrents.length && !streams.length) {
           return { data: null, effects: [{ type: 'toast', tone: found.failed ? 'error' : 'info',
-            text: found.failed ? 'The torrent sites didn\'t answer' : 'No torrents found for this title' }] };
+            text: found.failed ? 'The torrent sites didn\'t answer' : 'Nothing found to play this title' }] };
         }
-        return {
-          data: null,
-          effects: [{ type: 'play', request: {
-            title: clip(t.title, 200),
-            subtitle: t.studio ? clip(t.studio.name, 200) : undefined,
-            artwork: Object.assign({}, t.poster ? { poster: t.poster } : {}, t.backdrop ? { backdrop: t.backdrop } : {}),
-            tracking: 'none',
-            sources: found.torrents.slice(0, 50).map(function (x) {
-              return { kind: 'magnet', magnet: magnetOf(x.hash, x.name), label: clip(x.name, 200), quality: x.quality,
-                size: x.size, seeds: x.seeds, codec: x.codec, audio: x.audio, notes: notesOf(x).slice(0, 6) };
-            })
-          } }]
-        };
+        return { data: null, effects: [playEffect(t, streams, found.torrents)] };
       });
     });
   });
@@ -1004,27 +1508,63 @@ playpex.data('play', function (args, ctx) {
 
 var QUALITY_LABELS = [['2160p', '4K'], ['1080p', '1080p'], ['720p', '720p'], ['SD', 'SD']];
 
+// Sex-Empire in the Source filter (while its switch is on): direct links, not torrents
+var SE_SOURCE = { id: 'sexempire', name: 'Sex-Empire (direct links)', direct: true };
+// TheSexTube's studios (while its switch is on): direct links too
+var TST_SOURCE = { id: 'thesextube', name: 'TheSexTube (studios)', direct: true };
+
 // The list layout (and Find releases: screen `find`, its params.q): one
 // source's releases, most seeded first; a filtered page reads on (up to 3)
-// until 20 are kept
+// until 20 are kept. Sex-Empire's are direct links (a `call` each: the play
+// handler resolves its players when one is chosen), in the site's order
 playpex.data('releases', function (args, ctx) {
   args = args || {};
   var params = args.params || {}, f = args.filters || {}, page = Math.max(1, args.page || 1),
     section = !params.q;
-  var go = section ? layoutOf(args, ctx, 'list') : Promise.resolve({ layout: 'list' });
-  return go.then(function (l) {
+  var go = Promise.all([section ? layoutOf(args, ctx, 'list') : Promise.resolve({ layout: 'list' }), seOn(ctx), tstOn(ctx)]);
+  return go.then(function (r) {
+    var l = r[0], sources = SOURCES.concat(r[1] ? [SE_SOURCE] : [], r[2] ? [TST_SOURCE] : []);
     if (l.layout === 'posters') {
       return { data: { releases: [], last: true }, effects: switchTo('browse') };
     }
-    var source = SOURCES.filter(function (s) { return s.id === (f.source || [])[0]; })[0] || SOURCES[0],
+    var source = sources.filter(function (s) { return s.id === (f.source || [])[0]; })[0] || sources[0],
       quality = (f.quality || [])[0] || '',
       playableOnly = (f.plays || [])[0] === 'yes',
       q = String(args.query || params.q || '').trim(),
       filters = (section ? [viewGroup('list')] : []).concat([
-        { key: 'source', label: 'Source', options: SOURCES.map(function (s) { return { value: s.id, label: s.name, on: s === source }; }) },
+        { key: 'source', label: 'Source', options: sources.map(function (s) { return { value: s.id, label: s.name, on: s === source }; }) },
         { key: 'quality', label: 'Quality', options: QUALITY_LABELS.map(function (x) { return { value: x[0], label: x[1], on: x[0] === quality }; }) },
         { key: 'plays', label: 'Plays here', options: [{ value: 'yes', label: 'Only those that play', on: playableOnly }] }
       ]);
+    if (source === TST_SOURCE) {
+      // its studios' videos, newest first (quality unknown until one plays: the Quality filter keeps them all)
+      return tstPosts(q, page).then(function (found) {
+        return {
+          data: {
+            title: q ? 'Studio videos for “' + clip(q, 60) + '”' : 'New from the studios',
+            releases: found.items.slice(0, 200).map(tstRelease),
+            last: !found.more,
+            filters: filters,
+            empty: q ? 'No studio video for “' + clip(q, 60) + '”.' : 'No studio videos.'
+          }
+        };
+      });
+    }
+    if (source.direct) {
+      return seReleases(q, page).then(function (found) {
+        // every link plays here (H.264 / AAC streams): "Plays here" keeps them all
+        var films = found.films.filter(function (x) { return !quality || x.quality === quality || (quality === 'SD' && x.quality === '480p'); });
+        return {
+          data: {
+            title: q ? 'Direct links for “' + clip(q, 60) + '”' : 'New on Sex-Empire',
+            releases: films.slice(0, 200).map(seRelease),
+            last: !found.more,
+            filters: filters,
+            empty: q ? 'Sex-Empire has nothing for “' + clip(q, 60) + '”.' : 'Nothing on Sex-Empire.'
+          }
+        };
+      });
+    }
     if (page > 1 && !source.paged) {
       return { data: { releases: [], last: true, filters: filters } };
     }
@@ -1088,15 +1628,26 @@ playpex.data('searchFilter', function (args, ctx) {
         items: p.items.slice(0, 100).map(function (it) { return cardOf(c.id, it); }) }] : [];
     }, function () { return []; });
   }
-  return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes')]).then(function (cs) {
-    return Promise.all([results(cs[0], 'Films', 'search-results'), results(cs[1], 'Scenes', 'search-scenes')]);
+  function site(on) {
+    if (!on) {
+      return Promise.resolve([]);
+    }
+    return seRowPage({ q: q }, 1).then(function (p) {
+      return p.items.length ? [{ key: 'velvet:search-sexempire', title: 'Sex-Empire', variant: 'poster',
+        items: p.items.map(function (f) { return cardOf('sexempire', seItem(f)); }) }] : [];
+    }, function () { return []; });
+  }
+  return Promise.all([catalogFor(ctx), catalogFor(ctx, 'scenes'), seOn(ctx)]).then(function (cs) {
+    return Promise.all([results(cs[0], 'Films', 'search-results'), results(cs[1], 'Scenes', 'search-scenes'), site(cs[2])]);
   }).then(function (r) {
-    return { data: { chip: chip, rows: r[0].concat(r[1], [releases]) } };
+    return { data: { chip: chip, rows: r[0].concat(r[1], r[2], [releases]) } };
   });
 });
 
 // tests (Node, not the sandbox): the pure parts
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { present: present, describe: describe, match: match, compare: compare, notesOf: notesOf,
-    sceneMatch: sceneMatch, sceneSearches: sceneSearches, releaseQuery: releaseQuery };
+    sceneMatch: sceneMatch, sceneSearches: sceneSearches, releaseQuery: releaseQuery,
+    unpack: unpack, seList: seList, seFilm: seFilm, seFind: seFind, onHosts: onHosts, vidhideStream: vidhideStream,
+    tstAllowed: tstAllowed, tstItem: tstItem };
 }
