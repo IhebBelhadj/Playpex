@@ -103,7 +103,70 @@ function answer(url, o) {
   if (/^(thesextube\.net|luluvido\.com|luluvdoo\.com)$/.test(u.hostname)) {
     return tube(u);
   }
+  if (u.hostname === 'xhamster.com') {
+    return xhamster(u);
+  }
   return null;
+}
+
+// ── xHamster's pages, canned ────────────────────────────────────────────────
+
+// its ciphered source URLs: one per generator (made with a separate Python
+// transcription of yt-dlp's generators), all decoding to XH_PLAYLIST
+var XH_PLAYLIST = 'https://video-nss-h.xhcdn.com/abc==,1794186000/media=hls4/031/265/823/_TPL_.h264.mp4.m3u8';
+var XH_CIPHERED = ["0115cd5b07187b5669d78959726efe6e84a396b0d6b3329a878cab25890689b91e71e4cf577312ff1575e42f49898f9c315ceb51a8055bfba8a98b8a7e3ce84aa28dc47c6385605a6bd7dce9c9089b150f64c928d12e3242dd1a6eb55890", "024f9721c5a327c4ee5c71f290276ac696ac558e9333eb6e5f7c74dd783aa48c6209e0f85adf02625cd389ff4927457cd2e693e8ddfc60226f58e86c71ddb3984f55c3297fe1aee7a88a00b956476651974a5f47b32b6b13f9bc7e002e7d", "032a00000078514da0a79d17c4e9074cad6bd272ebea2df9a81d3725a448c34d7177ce6bde48e803472c7f6affd255bdf30cdfd7b25afa2ec6f012402b82fea00b5f54e0f47b12ef44445ee83996b7b5f7a6e15913aebe22c74a40d184b4", "04ffffffff651b89a369b5d61b1f63fa73f7fdad3d8c44dc378f3d1071598b2d4d819b1d08d1be855cc4f980e305abc7b2fd587fb22b32cdd541963e7e8f52ffde823e86afde2d9faa437d454261803665ce15a3e79bf789bf3272ad4335", "05ffffff7f4c50d229561ba37bc26cba7fdb47db0ad64f79b4915af72db9c71afe7ac5d12ab203caa0d245779be433089a7a8c52f8a78793b50ff309f5db5df5e4605d9cf73aefda5993f34d9b6a223fb30bd14fe5fd2deb2c48d1ae1286", "060000008068b369a17031473543026798171209830ae6cbd41c8487d042352c9b6a03cea11eb4d6465c363a2f3fde9b7403fd2ea976e0582440bd74041d175b32851a31feb4770d7d96e75ea1b3425e7ca5616253a65771e04ab665f05e", "07f1ad7600170902cee773acbd6c8f6394a18e9eb9236039d5d2814715836ec3799b08df38af94b0f1378bc07ab1f51436fbbdea91d0c15e04b2671ae4d894ec9389c7816c8f9bd0640bea3160b9e2eafc60343c782ae26327e8e93b7498"];
+
+function xhPageOf(initials) {
+  return '<html><head></head><body><script>window.initials=' + JSON.stringify(initials) + ';</script></body></html>';
+}
+
+// a listing's video; its id says which page listed it
+function xhThumb(page, n) {
+  var id = (page.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home') + '-' + n + '-xh' + n;
+  return { id: n, duration: 600 + n, created: 1790000000, title: 'Video ' + n + ' of ' + page, pageURL: 'https://xhamster.com/videos/' + id,
+    thumbURL: 'https://ic-vt-nss.xhcdn.com/t/' + n + '.webp', imageURL: 'https://ic-vt-nss.xhcdn.com/i/' + n + '.webp', views: 1500000 + n };
+}
+
+var XH_TAGS = [
+  { name: 'Siri Dahl', url: 'https://xhamster.com/pornstars/siri-dahl', isPornstar: true },
+  { name: 'Brazzers', url: 'https://xhamster.com/channels/brazzers', isChannel: true },
+  { name: 'MILF', url: 'https://xhamster.com/categories/milf', isCategory: true },
+  { name: 'HD Videos', url: 'https://xhamster.com/hd', isCategory: true },
+  { name: 'Oil', url: 'https://xhamster.com/tags/oil', isTag: true }
+];
+
+function xhamster(u) {
+  var page = u.pathname + u.search;
+  if (u.pathname === '/categories') {
+    // the site has no picture for some (lesbian)
+    return xhPageOf({ layoutPage: { store: { popular: { assignable: [{ name: 'Actions', items: [
+      { name: 'Anal', url: 'https://xhamster.com/categories/anal', thumb: 'https://ic-tt-nss.xhcdn.com/c/anal.jpg' },
+      { name: 'Lesbian', url: 'https://xhamster.com/categories/lesbian', thumb: null },
+      { name: 'Elsewhere', url: 'https://xhamster.com/categories/milf', thumb: 'https://evil.example/milf.jpg' }
+    ] }] } } } });
+  }
+  var video = /^\/videos\/([A-Za-z0-9-]+)$/.exec(u.pathname);
+  if (video) {
+    if (/nosource/.test(video[1])) {
+      return xhPageOf({ videoModel: { title: 'No source' }, xplayerSettings: { sources: { hls: {} } } });
+    }
+    var algo = Number((/-a([1-7])-/.exec(video[1]) || [0, 3])[1]);
+    return xhPageOf({
+      videoModel: { id: 1, title: 'Oily Massage', duration: 1834, views: 8800000, created: 1758700000, rating: { value: 97 },
+        thumbURL: 'https://ic-vt-nss.xhcdn.com/i/big.webp', description: 'A massage.' },
+      videoTagsComponent: { tags: XH_TAGS },
+      relatedVideosComponent: { videoTabInitialData: { videoListProps: { videoThumbProps: [xhThumb('related', 1), xhThumb('related', 2)] } } },
+      xplayerSettings: { sources: {
+        hls: { av1: { url: '01aa' }, h264: { url: XH_CIPHERED[algo - 1], fallback: XH_CIPHERED[0] } },
+        standard: { h264: [{ quality: '720p', url: 'https://video-h.xhcdn.com/key=x/720p.h264.mp4' }] }
+      } }
+    });
+  }
+  // a listing: a short list of something else, then the page's own (the longest)
+  var thumbs = [];
+  for (var n = 1; n <= 12; n++) thumbs.push(xhThumb(page, n));
+  thumbs.push({ id: 99, title: 'Elsewhere', pageURL: 'https://xhamster.com/videos/elsewhere-xh99', thumbURL: 'https://evil.example/t.webp' });
+  return xhPageOf({ layoutPage: { sidebar: { videoThumbProps: [xhThumb('sidebar', 1)] }, videoListProps: { videoThumbProps: thumbs } } });
 }
 
 // ── Sex-Empire's pages, canned ──────────────────────────────────────────────
@@ -252,7 +315,7 @@ function tube(u) {
 
 function load() {
   // the site off unless a test switches it on: the tests above it are about the catalog and the torrents
-  var handlers = {}, secrets = {}, settings = { sexEmpire: false, theSexTube: false }, store = {}, requests = [];
+  var handlers = {}, secrets = {}, settings = { sexEmpire: false, theSexTube: false, xhamster: true }, store = {}, requests = [];
   var playpex = {
     // answers out of the vm's realm, comparable with deepEqual
     data: function (name, fn) {
@@ -662,6 +725,168 @@ test('a studio\'s scene (the second provider\'s): its TheSexTube video first, th
 
 var base = null;
 
+// ── the Sites view (xHamster) ───────────────────────────────────────────────
+
+function xhPaths(p) {
+  return p.requests.filter(function (o) { return /^https:\/\/xhamster\.com\//.test(o.url); }).map(function (o) { return o.url.slice('https://xhamster.com'.length); });
+}
+
+test('Sites: a third View; the section, the list and the sites switch to one another, kept per profile', function () {
+  var p = load();
+  p.secrets.tmdbApiKey = 'k';
+  return p.handlers.browse({ filters: { view: ['sites'] } }, CTX).then(function (r) {
+    valid('effect', r.effects[0]);
+    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.velvet.sites', replace: true });
+    assert.equal(p.store['layout:p1'], 'sites');
+    return Promise.all([p.handlers.browse({}, CTX), p.handlers.releases({ params: {}, filters: {}, page: 1 }, CTX), p.handlers.sites({}, CTX)]);
+  }).then(function (r) {
+    assert.equal(r[0].effects[0].intent.screen, 'plugin.velvet.sites', 'the section opens the sites now');
+    assert.equal(r[1].effects[0].intent.screen, 'plugin.velvet.sites');
+    assert.equal(r[2].effects, undefined);
+    valid('templates/properties/catalog', r[2].data);
+    assert.deepEqual(r[2].data.filters[0].options.map(function (o) { return o.value + (o.on ? '*' : ''); }), ['posters', 'list', 'sites*']);
+    return p.handlers.sites({ filters: { view: ['posters'] } }, CTX);
+  }).then(function (r) {
+    assert.deepEqual(r.effects[0].intent, { screen: 'plugin.velvet.browse', replace: true });
+    assert.equal(p.store['layout:p1'], 'posters');
+  });
+});
+
+test('Sites: its own rows, its categories as cards (a missing picture from its first video), a row per popular category', function () {
+  var p = load();
+  return p.handlers.sites({}, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    var titles = r.data.rows.map(function (x) { return x.title; });
+    assert.deepEqual(titles.slice(0, 6), ['Trending', 'Newest', 'Best this week', '4K', 'Categories', 'Amateur']);
+    assert.equal(titles.length, 17);
+    assert.deepEqual(r.data.filters.map(function (f) { return f.key; }), ['view', 'site', 'category', 'quality', 'duration']);
+    var cats = r.data.rows[4].items, anal = cats.filter(function (c) { return c.title === 'Anal'; })[0],
+      lesbian = cats.filter(function (c) { return c.title === 'Lesbian'; })[0], milf = cats.filter(function (c) { return c.title === 'MILF'; })[0];
+    assert.equal(cats.length, 40);
+    assert.equal(anal.image, 'https://ic-tt-nss.xhcdn.com/c/anal.jpg');
+    assert.equal(lesbian.image, 'https://ic-vt-nss.xhcdn.com/t/1.webp', 'no picture on the site: its first video\'s');
+    assert.ok(!/evil/.test(milf.image || ''), 'a picture on another host is never used');
+    assert.deepEqual(anal.intent, { screen: 'plugin.velvet.siteList', params: { site: 'xhamster', list: 'categories.anal', name: 'Anal' } });
+    assert.deepEqual(r.data.rows[0].page, { data: 'rowPage', args: { provider: 'site', site: 'xhamster', base: '', sort: 'trending', quality: '', duration: '' } });
+    return p.handlers.rowPage(r.data.rows[0].page.args, CTX);
+  }).then(function (r) {
+    valid('rowPage', r.data);
+    assert.equal(r.data.items.length, 12, 'the page\'s listing (the longest), its video on another host left out');
+    var c = r.data.items[0];
+    valid('card', c);
+    assert.equal(c.title, 'Video 1 of /');
+    assert.equal(c.variant, 'still');
+    assert.equal(c.subtitle, '10:01 · 1.5M views');
+    assert.deepEqual(c.intent, { screen: 'plugin.velvet.siteVideo', params: { site: 'xhamster', id: 'home-1-xh1' } });
+    assert.equal(c.info.backdrop, 'https://ic-vt-nss.xhcdn.com/i/1.webp');
+  });
+});
+
+test('Sites: listing paths for sorts, qualities, lengths, categories, performers, searches and pages', function () {
+  var p = load(), rows = [
+    { sort: 'newest', page: 2 }, { sort: 'weekly' }, { quality: '2160p' }, { sort: 'monthly', quality: '720p' },
+    { base: '/categories/lesbian', sort: 'weekly', quality: '1080p', duration: '30', page: 3 },
+    { base: '/pornstars/siri-dahl', quality: '2160p', duration: '10' },
+    { q: 'oil massage', quality: '1080p' }, { q: 'oil massage', sort: 'newest', page: 2 }
+  ];
+  return rows.reduce(function (chain, a) {
+    return chain.then(function () { return p.handlers.rowPage(Object.assign({ provider: 'site', site: 'xhamster', page: 1 }, a), CTX); });
+  }, Promise.resolve()).then(function () {
+    assert.deepEqual(xhPaths(p), [
+      '/newest/2', '/best/weekly', '/4k', '/hd/best/monthly',
+      '/categories/lesbian/hd/best/weekly/3?quality=1080p&min-duration=30',
+      '/pornstars/siri-dahl?min-duration=10',
+      '/search/oil%20massage?quality=1080p', '/search/oil%20massage?sort=newest&page=2'
+    ]);
+  });
+});
+
+test('Sites: a category, quality or length → that listing\'s sorts; a search → its two rows', function () {
+  var p = load();
+  return p.handlers.sites({ filters: { view: ['sites'], category: ['lesbian'], quality: ['1080p'] } }, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.deepEqual(r.data.rows.map(function (x) { return x.title; }), ['Lesbian: Trending', 'Lesbian: Newest', 'Lesbian: Best this week', 'Lesbian: Best this month']);
+    assert.equal(r.data.rows[2].page.args.base, '/categories/lesbian');
+    assert.equal(r.data.rows[2].page.args.quality, '1080p');
+    return p.handlers.sites({ query: 'oil', filters: { duration: ['30'] } }, CTX);
+  }).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.deepEqual(r.data.rows.map(function (x) { return x.page.args.q + '/' + (x.page.args.sort || '') + '/' + x.page.args.duration; }), ['oil//30', 'oil/newest/30']);
+    assert.deepEqual(xhPaths(p), [], 'rows are read when they show, not before');
+  });
+});
+
+test('Sites: a category, performer or channel page; a bad list refused', function () {
+  var p = load();
+  return Promise.all([
+    p.handlers.siteList({ params: { site: 'xhamster', list: 'categories.lesbian', name: 'Lesbian' } }, CTX),
+    p.handlers.siteList({ params: { site: 'xhamster', list: 'pornstars.siri-dahl', name: 'Siri Dahl' }, filters: { duration: ['60'] } }, CTX),
+    p.handlers.siteList({ params: { site: 'xhamster', list: 'users.someone', name: 'x' } }, CTX),
+    p.handlers.siteList({ params: { site: 'xhamster', list: 'categories.../x' } }, CTX)
+  ]).then(function (r) {
+    r.forEach(function (x) { valid('templates/properties/catalog', x.data); });
+    assert.equal(r[0].data.title, 'Lesbian');
+    assert.deepEqual(r[0].data.filters.map(function (f) { return f.key; }), ['quality', 'duration']);
+    assert.deepEqual(r[1].data.filters.map(function (f) { return f.key; }), ['duration'], 'performers have no quality pages');
+    assert.equal(r[1].data.rows[1].page.args.base, '/pornstars/siri-dahl');
+    assert.equal(r[1].data.rows[1].page.args.duration, '60');
+    assert.deepEqual(r[2].data.rows, []);
+    assert.deepEqual(r[3].data.rows, []);
+  });
+});
+
+test('Sites: a video page: what it is, Play, its people and channel, related and more', function () {
+  var p = load();
+  return p.handlers.siteVideo({ params: { site: 'xhamster', id: 'oily-massage-xhAbc1' } }, CTX).then(function (r) {
+    valid('templates/properties/title', r.data);
+    var info = r.data.info;
+    assert.equal(info.title, 'Oily Massage');
+    assert.deepEqual(info.meta.map(function (m) { return m.text || m.label; }), ['30:34', '8.8M views', 'Liked 97%', '2025-09-24']);
+    assert.deepEqual(info.genres, ['MILF'], 'categories only, not tags or quality pages');
+    assert.deepEqual(info.credits, [{ label: 'With', names: ['Siri Dahl'] }, { label: 'Channel', names: ['Brazzers'] }]);
+    assert.deepEqual(r.data.actions.map(function (a) { return a.label; }), ['Play', 'Siri Dahl', 'Brazzers']);
+    assert.deepEqual(r.data.actions[0].call, { data: 'play', args: { provider: 'site', site: 'xhamster', id: 'oily-massage-xhAbc1' } });
+    assert.deepEqual(r.data.actions[2].intent.params, { site: 'xhamster', list: 'channels.brazzers', name: 'Brazzers' });
+    assert.deepEqual(r.data.rows.map(function (x) { return x.title; }), ['Related', 'More with Siri Dahl', 'More from Brazzers']);
+    assert.equal(r.data.rows[0].items.length, 2);
+    return p.handlers.siteVideo({ params: { site: 'xhamster', id: '../etc' } }, CTX);
+  }).then(function (r) {
+    valid('templates/properties/title', r.data);
+    assert.match(r.data.info.title, /isn't available/);
+  });
+});
+
+test('Sites Play: the H.264 HLS playlist deciphered (every generator), its headers, nothing saved; no source, switched off', function () {
+  var p = load(), ids = [1, 2, 3, 4, 5, 6, 7].map(function (a) { return 'video-a' + a + '-xh' + a; });
+  return Promise.all(ids.map(function (id) { return p.handlers.play({ provider: 'site', site: 'xhamster', id: id }, CTX); })).then(function (r) {
+    var manifest = JSON.parse(fs.readFileSync(path.join(DIR, 'playpex-plugin.json'), 'utf8'));
+    r.forEach(function (x, i) {
+      valid('effect', x.effects[0]);
+      var req = x.effects[0].request;
+      assert.equal(req.tracking, 'none');
+      assert.equal(req.sources.length, 1);
+      assert.equal(req.sources[0].kind, 'hls');
+      assert.equal(req.sources[0].url, XH_PLAYLIST, 'generator ' + (i + 1));
+      assert.deepEqual(req.sources[0].headers, { 'User-Agent': BROWSER, Referer: 'https://xhamster.com/' });
+    });
+    // its playlist's host is declared
+    var host = new URL(XH_PLAYLIST).hostname;
+    assert.ok(manifest.permissions.network.some(function (n) { return n === host || (n.slice(0, 2) === '*.' && host.endsWith(n.slice(1))); }));
+    assert.equal(xhPaths(p).length, 7, 'each video page read once, fresh');
+    return p.handlers.play({ provider: 'site', site: 'xhamster', id: 'nosource-xh0' }, CTX);
+  }).then(function (r) {
+    assert.equal(r.effects[0].type, 'toast');
+    p.settings.xhamster = false;
+    p.requests.length = 0;
+    return Promise.all([p.handlers.play({ provider: 'site', site: 'xhamster', id: 'video-a3-xh3' }, CTX), p.handlers.sites({}, CTX)]);
+  }).then(function (r) {
+    assert.equal(r[0].effects[0].type, 'toast');
+    valid('templates/properties/catalog', r[1].data);
+    assert.match(r[1].data.empty, /switched off/);
+    assert.deepEqual(p.requests, [], 'nothing fetched while it\'s off');
+  });
+});
+
 function call(method, apiPath, body) {
   return new Promise(function (resolve, reject) {
     var payload = body === undefined ? null : Buffer.from(JSON.stringify(body));
@@ -709,7 +934,7 @@ test('on a real server: for adult profiles only; without a key, the site\'s film
     var mine = r[0].json.plugins.filter(function (p) { return p.id === 'velvet'; })[0];
     assert.ok(mine, 'listed for an adult profile');
     assert.equal(mine.audience, 'adults');
-    assert.deepEqual(mine.screens.map(function (s) { return s.name; }), ['browse', 'title', 'releases', 'find']);
+    assert.deepEqual(mine.screens.map(function (s) { return s.name; }), ['browse', 'title', 'releases', 'sites', 'find', 'siteList', 'siteVideo']);
     assert.equal(mine.sections[0].menu.label, '18+');
     assert.ok(!r[1].json.plugins.some(function (p) { return p.id === 'velvet'; }), 'never for a kids profile');
     assert.equal(r[2].status, 200, r[2].text);

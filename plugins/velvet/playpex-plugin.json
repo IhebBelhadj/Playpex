@@ -2,7 +2,7 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "velvet",
   "name": "Velvet",
-  "description": "Adult films (18+): films from TMDB studios or ThePornDB, studios' scenes from ThePornDB, torrent releases ranked by seeders, full films streamed from Sex-Empire, and studios' videos (Ersties, Lustery, Playboy Plus) from TheSexTube. Never in the official repository.",
+  "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of tube sites (xHamster). Never in the official repository.",
   "version": "1.4.0",
   "publisher": {
     "name": "Playpex"
@@ -43,7 +43,9 @@
       "luluvdo.com",
       "lulustream.com",
       "*.tnmr.org",
-      "*.cdn-tnmr.org"
+      "*.cdn-tnmr.org",
+      "xhamster.com",
+      "*.xhcdn.com"
     ],
     "storage": "1MB",
     "secrets": [
@@ -91,11 +93,36 @@
         "title": "18+"
       },
       {
+        "name": "sites",
+        "template": "catalog",
+        "data": "sites",
+        "title": "18+"
+      },
+      {
         "name": "find",
         "template": "releases",
         "data": "releases",
         "params": [
           "q"
+        ]
+      },
+      {
+        "name": "siteList",
+        "template": "catalog",
+        "data": "siteList",
+        "params": [
+          "site",
+          "list",
+          "name"
+        ]
+      },
+      {
+        "name": "siteVideo",
+        "template": "title",
+        "data": "siteVideo",
+        "params": [
+          "site",
+          "id"
         ]
       }
     ],
@@ -168,6 +195,15 @@
         "label": "Studio videos from TheSexTube",
         "group": "Sources",
         "description": "Ersties, Lustery and Playboy Plus videos from thesextube.net (only those studios: never its personal or leaked posts), as direct links and in their scenes' Play.",
+        "default": true
+      },
+      {
+        "key": "xhamster",
+        "scope": "server",
+        "type": "switch",
+        "label": "xHamster in the Sites view",
+        "group": "Sources",
+        "description": "The Sites view (View › Sites): xHamster's trending, newest and best videos, its categories, performers and channels and its search, played from its HLS streams.",
         "default": true
       }
     ],
