@@ -210,6 +210,9 @@ var collector = {
           if (src.kind === 'live') {
             return errors.push({ handler: 'plugin:' + res.plugin, message: 'live sources are channels\' (live.stream) and play effects\', not a title\'s: ' + src.label });
           }
+          if (src.kind === 'embed') {
+            return errors.push({ handler: 'plugin:' + res.plugin, message: 'embed sources are play effects\', not a title\'s: ' + src.label });
+          }
           var found = plugin && effects.sourceAllowed(plugin, src) ? fromPlugin(plugin, src, context) : null;
           if (found) {
             found.handler = 'plugin:' + plugin.id;

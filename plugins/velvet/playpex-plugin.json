@@ -2,13 +2,13 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "velvet",
   "name": "Velvet",
-  "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of tube sites (xHamster). Never in the official repository.",
-  "version": "1.4.0",
+  "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of the sites (xHamster, Sex-Empire, TheSexTube). Never in the official repository.",
+  "version": "1.6.1",
   "publisher": {
     "name": "Playpex"
   },
   "api": {
-    "server": "^1.1",
+    "server": "^1.2",
     "nav": "^1",
     "ui": "^1"
   },
@@ -185,7 +185,7 @@
         "type": "switch",
         "label": "Streams from Sex-Empire",
         "group": "Sources",
-        "description": "Full films from sex-empere.org (no account): in the section, Search and Find releases (direct links), and its streams offered with the torrents when a film is played.",
+        "description": "Full films from sex-empere.org (no account): in the section, Search, Find releases (direct links), the Sites view, and its streams offered with the torrents when a film is played.",
         "default": true
       },
       {
@@ -194,7 +194,7 @@
         "type": "switch",
         "label": "Studio videos from TheSexTube",
         "group": "Sources",
-        "description": "Ersties, Lustery and Playboy Plus videos from thesextube.net (only those studios: never its personal or leaked posts), as direct links and in their scenes' Play.",
+        "description": "Ersties, Lustery and Playboy Plus videos from thesextube.net (only those studios, never its personal or leaked posts): direct links, the Sites view and their scenes' Play.",
         "default": true
       },
       {

@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { Dot, Empty, Loading, PageHeader, QueryError } from '@/components/common'
+import { RemoteFieldBar } from '@/components/remote-field'
 import { Touchpad, type TouchpadHandle } from '@/components/remote-touchpad'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -250,7 +251,7 @@ function Controller({ deviceId }: { deviceId: string }) {
   const target = targets.data?.find((t) => t.deviceId === deviceId)
   const pad = useRef<TouchpadHandle>(null)
   const onCursor = useCallback((x: number, y: number) => pad.current?.cursor(x, y), [])
-  const { phase, state, send, connect, live, direct } = useRemote(deviceId, onCursor)
+  const { phase, state, send, connect, live, direct, field } = useRemote(deviceId, onCursor)
   const wide = useWide()
   const name = state?.device?.name ?? target?.name ?? 'This device'
   const caps = state?.capabilities ?? target?.capabilities ?? null
@@ -264,6 +265,8 @@ function Controller({ deviceId }: { deviceId: string }) {
 
   const keys = live && !!caps?.keyboard
   const k = { send, disabled: !keys }
+  // a text field open on the device: typed from here (this phone's keyboard)
+  const typing = live && field ? <RemoteFieldBar key={field.id} field={field} send={send} name={name} /> : null
 
   const dpad = (big: boolean) => {
     const size = big ? 'size-20 [&_svg:not([class*=size-])]:size-8' : undefined
@@ -348,6 +351,7 @@ function Controller({ deviceId }: { deviceId: string }) {
     return (
       <div className="space-y-6">
         {header}
+        {typing}
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           {pointer ? (
             <Touchpad ref={pad} send={send} enabled={live && !!caps?.pointer} screen={screen} name={name} />
@@ -368,6 +372,7 @@ function Controller({ deviceId }: { deviceId: string }) {
   return (
     <div className="flex h-[calc(100svh-6.5rem)] min-h-[28rem] flex-col gap-3">
       {header}
+      {typing}
       {showArrows ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8">
           {dpad(true)}

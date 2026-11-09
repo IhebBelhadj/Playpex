@@ -103,13 +103,13 @@ test('ids, versions and API ranges', function () {
   assert.notDeepEqual(problems(minimal({ api: { server: '^2' } })), [], 'a future host API');
   assert.notDeepEqual(problems(minimal({ api: { server: '~1.2' } })), [], 'an unknown range form');
   assert.deepEqual(problems(minimal({ api: { server: '>=1 <3' } })), []);
-  // minor versions (SERVER_PLUGIN_API 1.1): an addition, asked with ^1.1 / >=1.1
-  assert.equal(plugins.SERVER_PLUGIN_API, '1.1');
-  ['^1', '1', '1.x', '^1.1', '^1.0', '>=1.1', '>=1 <2', '*'].forEach(function (r) {
+  // minor versions (SERVER_PLUGIN_API 1.3): an addition, asked with ^1.3 / >=1.3
+  assert.equal(plugins.SERVER_PLUGIN_API, '1.3');
+  ['^1', '1', '1.x', '^1.1', '^1.2', '^1.3', '^1.0', '>=1.1', '>=1.2', '>=1.3', '>=1 <2', '*'].forEach(function (r) {
     assert.deepEqual(problems(minimal({ api: { server: r } })), [], r);
   });
-  assert.match(problems(minimal({ api: { server: '^1.2' } })).join('\n'), /api\/server/, 'a later minor: refused');
-  assert.notDeepEqual(problems(minimal({ api: { server: '>=1.0 <1.1' } })), [], 'below this minor');
+  assert.match(problems(minimal({ api: { server: '^1.4' } })).join('\n'), /api\/server/, 'a later minor: refused');
+  assert.notDeepEqual(problems(minimal({ api: { server: '>=1.0 <1.3' } })), [], 'below this minor');
   assert.notDeepEqual(problems(minimal({ api: { server: '^1.1.0' } })), [], 'no patch numbers');
   [['^1', 1, true], ['^1.1', 1, false], ['^1.1', '1.1', true], ['^1.1', '1.2', true], ['^1.1', '2.0', false],
     ['>=1.1 <2', '1.5', true], ['>=1.1 <2', '2.0', false], ['~1.1', '1.1', false], ['^1', 'x', false]].forEach(function (c) {
@@ -150,6 +150,14 @@ test('sources need a use (collect, resolve, play, downloads), and http sources a
   assert.notDeepEqual(problems(minimal({ permissions: { play: true, sources: ['hls'] } })), [], 'hls needs its hosts');
   assert.notDeepEqual(problems(minimal({ permissions: { play: true, sources: ['live'] } })), [], 'live needs its hosts');
   assert.deepEqual(problems(minimal({ permissions: { play: true, sources: ['hls', 'live'], network: ['*.cdn.example.com'] } })), []);
+  // embed (API 1.3): a video id played by its site's player in the client: play effects only, no host of its own
+  assert.deepEqual(problems(minimal({ permissions: { play: true, sources: ['embed'] } })), []);
+  assert.notDeepEqual(problems(minimal({ permissions: { hooks: ['play.collect'], sources: ['embed'] } })), [], 'embed needs play');
+  var api = require('../lib/plugins/schemas');
+  assert.equal(api.apiProblem('source', { kind: 'embed', provider: 'youtube', id: 'dQw4w9WgXcQ', label: 'A video' }), null);
+  assert.notEqual(api.apiProblem('source', { kind: 'embed', provider: 'youtube', id: '../x', label: 'A video' }), null, 'an id, not a path');
+  assert.notEqual(api.apiProblem('source', { kind: 'embed', provider: 'vimeo', id: 'dQw4w9WgXcQ', label: 'A video' }), null, 'YouTube only');
+  assert.notEqual(api.apiProblem('source', { kind: 'embed', provider: 'youtube', id: 'dQw4w9WgXcQ', label: 'A', url: 'https://x' }), null, 'no URL');
 });
 
 test('limits can only be stricter', function () {

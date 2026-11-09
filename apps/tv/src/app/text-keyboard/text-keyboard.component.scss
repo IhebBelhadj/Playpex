@@ -37,6 +37,15 @@
   }
 }
 
+// a controller is connected (remote control): its own keyboard fills this field
+.remoteHint {
+  margin: dp(-14) 0 dp(22);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-muted);
+}
+
+
 .keyGrid {
   display: grid;
   grid-template-columns: repeat(9, dp(62));

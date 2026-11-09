@@ -1,5 +1,11 @@
 <div class="player" [class.ready]="playerReady" [class.controlsShown]="controlsVisible" [class.scrubbing]="!!scrub">
-  <video crossorigin="anonymous" class="moviePlayer" [style.object-fit]="pictureFit" [style.transform]="zoom != 100 ? 'scale(' + zoom / 100 + ')' : null"
+  <!-- A plugin's embed source: YouTube's player in the server's page (embed.ts); never focused, no pointer
+       events (keys and clicks stay the player's: the empty <video> above it takes the clicks) -->
+  <iframe *ngIf="embedUrl" class="embedPlayer" [src]="embedUrl" tabindex="-1" title="YouTube"
+    allow="autoplay; encrypted-media" sandbox="allow-scripts allow-same-origin" referrerpolicy="strict-origin-when-cross-origin"
+    [style.transform]="zoom != 100 ? 'scale(' + zoom / 100 + ')' : null"
+    [style.filter]="brightness != 100 ? 'brightness(' + brightness / 100 + ')' : null"></iframe>
+  <video crossorigin="anonymous" class="moviePlayer" [class.overEmbed]="embedUrl" [style.object-fit]="pictureFit" [style.transform]="zoom != 100 ? 'scale(' + zoom / 100 + ')' : null"
     [style.filter]="brightness != 100 ? 'brightness(' + brightness / 100 + ')' : null" (click)="onVideoClick()"></video>
 
   <!-- Before the first frame: what the torrent is doing, as the steps it goes
@@ -100,7 +106,8 @@
 
       <div class="buttons" pxGrid>
         <div class="group">
-          <px-button variant="icon" key="tracks" icon="caption" label="Audio & subtitles" (pxSelect)="openTracks()"></px-button>
+          <px-button variant="icon" *ngIf="format != 'embed'" key="tracks" icon="caption" label="Audio & subtitles" (pxSelect)="openTracks()"></px-button>
+          <px-button variant="icon" *ngIf="playback?.channel && lineupChannels.length" key="channels" icon="list" label="Channels" (pxSelect)="openChannels()"></px-button>
         </div>
         <div class="group center">
           <px-button variant="icon" *ngIf="!live" key="back10" icon="leftSeek" label="10 s back" (pxSelect)="jump(-10)"></px-button>
@@ -241,9 +248,20 @@
 
       <!-- Video: speed, then the picture -->
       <ng-container *ngIf="tab == 'video'">
+        <!-- a stream with several qualities (a plugin's HLS stream) -->
+        <div class="setting" *ngIf="qualities.length">
+          <p class="settingName">Quality</p>
+          <div class="chips" pxGrid="quality" enter="selected">
+            <px-chip key="quality:auto" [label]="autoQualityLabel" [selected]="quality == 'auto'" (pxSelect)="setQuality('auto')"></px-chip>
+            <px-chip *ngFor="let q of qualities" [key]="'quality:' + q.key" [label]="q.label" [selected]="q.key == quality"
+              (pxSelect)="setQuality(q.key)"></px-chip>
+          </div>
+          <p class="settingHelp">{{ qualityHelp }}</p>
+        </div>
         <px-slider key="speed" label="Speed" [min]="0.5" [max]="2" [step]="0.25" [origin]="1"
           [value]="speed" [format]="speedText" (valueChange)="setSpeed($event)"></px-slider>
-        <div class="setting">
+        <p class="settingHelp" *ngIf="format == 'embed'">YouTube chooses the quality as it plays.</p>
+        <div class="setting" *ngIf="format != 'embed'">
           <p class="settingName">Picture</p>
           <div class="chips" pxGrid="picture" enter="selected">
             <px-chip *ngFor="let mode of pictureModes" [key]="'picture:' + mode.key" [label]="mode.label"
@@ -279,12 +297,13 @@
   </px-panel>
 </div>
 
-<!-- A TV channel's mini guide (OK with the controls hidden): the lineup with what's on -->
+<!-- A TV channel's list (OK with the controls hidden, or Channels in the controls): the lineup with what's on;
+     OK on another channel switches to it and the list stays open, on the one playing closes it -->
 <px-panel *ngIf="channelsOpen" id="playerChannels" edge="end" [width]="620" [title]="'Channels'"
   focus=".channelRow.current" (closed)="channelsOpen = false">
   <div class="channelList" pxGrid="player-channels" align="third" enter="selected">
     <button class="channelRow focusable" *ngFor="let c of lineupChannels" pxItem [pxItemKey]="c.id"
-      [class.current]="c.id == playback.channel?.id" [class.selected]="c.id == playback.channel?.id" (pxSelect)="tune(c)">
+      [class.current]="c.id == playback.channel?.id" [class.selected]="c.id == playback.channel?.id" (pxSelect)="chooseChannel(c)">
       <span class="channelNumber">{{ c.number }}</span>
       <img class="channelLogo" *ngIf="channelLogo(c) as logo; else noLogo" [src]="logo" alt="">
       <ng-template #noLogo><span class="channelLogo"></span></ng-template>

@@ -64,7 +64,7 @@ Each is shown to the admin in words at install (`describePermissions`); a new ve
 | `storage: "<n>KB\|MB"` | its own key / value store (≤ 100 MB) | "Keeps up to 5 MB of its own data" |
 | `secrets: [names]` | values the admin enters, for this plugin only | "Asks for: traktClientId" |
 | `play: true` | the `play` effect | "Can start playback" |
-| `sources: ["magnet", "http", "hls", "live"]` | the kinds of `Source` it may give (`play.collect`, `play.resolve`, `live.stream`, `play` and `download` effects); needs one of those uses, `http` / `hls` / `live` need `network` (every host a playlist names) or a `url` setting with `grantsHost` | "Adds torrents to Play" |
+| `sources: ["magnet", "http", "hls", "live", "embed"]` | the kinds of `Source` it may give (`play.collect`, `play.resolve`, `live.stream`, `play` and `download` effects); needs one of those uses, `http` / `hls` / `live` need `network` (every host a playlist names) or a `url` setting with `grantsHost`; `embed` (a YouTube video id, API 1.3) needs `play` and no host | "Adds torrents to Play" |
 | `hooks: [names]` | middleware stages ([server.md](server.md#hooks)) | per hook ("Reorders or hides the sources of Play") |
 | `events: [families]` | `playback`, `downloads`, `library`, `watchlist` | "Sees what you watch", … |
 | `schedule: true` | background jobs | "Runs in the background" |
@@ -85,6 +85,7 @@ Each is shown to the admin in words at install (`describePermissions`); a new ve
     "codeUrl": "https://api.trakt.tv/oauth/device/code",
     "tokenUrl": "https://api.trakt.tv/oauth/device/token",
     "refreshUrl": "https://api.trakt.tv/oauth/token",          // optional
+    "revokeUrl": "https://…/revoke",                            // optional: RFC 7009, unlinking revokes the tokens there
     "clientIdSecret": "traktClientId",                          // names in permissions.secrets
     "clientSecretSecret": "traktClientSecret"
   }
@@ -127,7 +128,7 @@ Rendered by the dashboard from the manifest (a plugin's page: its **Settings** t
 | `number` | `default`, `min?`, `max?`, `step?`, `integer?`, `unit?` | a typed number: a port, an interval, a limit |
 | `text` | `maxLength?`, `placeholder?`, `pattern?` (a regular expression the whole value matches; the default too), `default?` | |
 | `url` | `maxLength?` (≤ 2048), `placeholder?`, `schemes?` (`["https", "http"]` by default), `grantsHost?`, `streamHosts?`, `default?` | a web address (no user name or password in it). **`grantsHost`** (scope `server`, no default): saving it lets you reach that host, on that port, over https **or plain http**, and even a (public) IP address: an IPTV subscription, a self-hosted service; the admin sees "Talks to <host>" in your permissions. **`streamHosts`** (with `grantsHost`): the hosts of the streams, logos and guide the document at that address lists (`iptv.m3u`) may be **streamed** from too (your sources, never your own `http.request`). Addresses must still be public: a LAN server can't be reached |
-| `secret` | `maxLength?`, `placeholder?` | **scope `server`**, its key listed in `permissions.secrets`: the admin enters it (never shown again, only "set"), you read it with `secrets.get` |
+| `secret` | `maxLength?`, `placeholder?` | **scope `server`**, its key listed in `permissions.secrets`: the admin enters it (never shown again, only "set"), you read it with `secrets.get`. While the admin entered none, the server's environment may provide it: `PLAYPEX_PLUGIN_<ID>_<NAME>` (upper case, camelCase and `-` → `_`: youtube `apiKey` → `PLAYPEX_PLUGIN_YOUTUBE_API_KEY`), so a server can ship credentials nobody else has to make (a link's client id and secret too) |
 | `action` | `data` (a handler), `confirm?` | a button ("Sync now", "Test connection"): the dashboard calls the handler and shows its answer's toast |
 
 All have `key`, `scope` (`profile` · `server`), `label`, `description?`, and, from Kodi's settings: `group` (shown together under that title), `level` (`basic` · `advanced`: behind "Show advanced"), `visibleIf` / `enabledIf: { key, equals }` (another setting with a value, of the same scope or `server`).

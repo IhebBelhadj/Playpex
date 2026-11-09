@@ -1,4 +1,4 @@
-import type { RemoteMessage, RemoteRtcMessage, RemoteSignal } from '@playpex/protocol'
+import type { RemoteField, RemoteMessage, RemoteRtcMessage, RemoteSignal } from '@playpex/protocol'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, API_PREFIX, unwrap } from './api'
@@ -8,7 +8,10 @@ import { api, API_PREFIX, unwrap } from './api'
 
 export type RemoteState = Extract<RemoteMessage, { type: 'state' }>
 /** What the controller sends (the target's input) */
-export type RemoteInput = Extract<RemoteMessage, { type: 'key' | 'text' | 'pointer' | 'bye' }>
+export type RemoteInput =
+  | Extract<RemoteMessage, { type: 'key' | 'text' | 'pointer' | 'bye' }>
+  | { type: 'field'; id: string; value: string; submit?: boolean }
+export type { RemoteField }
 
 /** connecting: opening · open: the server answers (state.connected says whether the device is there) ·
  *  retrying: the socket dropped, opening again · taken / refused / ended: stopped, no retry */
@@ -140,6 +143,8 @@ class DirectPointer {
 export function useRemote(deviceId: string, onCursor: (x: number, y: number) => void) {
   const [phase, setPhase] = useState<RemotePhase>('connecting')
   const [state, setState] = useState<RemoteState | null>(null)
+  /** the text field open on the device now (its on-screen keyboard), null when none */
+  const [field, setField] = useState<RemoteField | null>(null)
   const socket = useRef<WebSocket | null>(null)
   const direct = useRef<DirectPointer | null>(null)
   /** the pointer goes straight to the device (WebRTC), not through the server */
@@ -184,11 +189,19 @@ export function useRemote(deviceId: string, onCursor: (x: number, y: number) => 
         }
         if (msg.type === 'cursor') {
           cursor.current(msg.x, msg.y)
+        } else if (msg.type === 'field') {
+          if ('open' in msg) {
+            if (msg.open) {
+              const { type: _t, open: _o, ...f } = msg
+              setField(f)
+            } else setField((f) => (!msg.id || f?.id === msg.id ? null : f))
+          }
         } else if (msg.type === 'signal') {
           if (msg.data && typeof msg.data === 'object') direct.current?.handle(msg.data)
         } else if (msg.type === 'state') {
           setState(msg)
           if (!msg.connected) {
+            setField(null)
             stopDirect()
           } else if (msg.capabilities?.rtc && !tried && typeof RTCPeerConnection !== 'undefined') {
             tried = true
@@ -219,6 +232,7 @@ export function useRemote(deviceId: string, onCursor: (x: number, y: number) => 
       ws.onclose = (event) => {
         if (socket.current === own) {
           socket.current = null
+          setField(null)
           stopDirect()
         }
         if (done) return
@@ -255,7 +269,7 @@ export function useRemote(deviceId: string, onCursor: (x: number, y: number) => 
     setAttempt((n) => n + 1)
   }, [])
 
-  return { phase, state, send, connect, live: phase === 'open' && !!state?.connected, direct: isDirect }
+  return { phase, state, send, connect, live: phase === 'open' && !!state?.connected, direct: isDirect, field }
 }
 
 const MODIFIERS = [

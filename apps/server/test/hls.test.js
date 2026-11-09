@@ -428,7 +428,7 @@ test('rewrite: renditions are playlists, keys files, data: URIs kept, relative a
     return Buffer.from(payload, 'base64url').toString('utf8');
   }
   assert.equal(target(/URI="([^"]+)"/.exec(lines[1])[1]), 'phttps://a.example/x/audio/en.m3u8');
-  assert.equal(target(/URI="([^"]+)"/.exec(lines[2])[1]), 'phttps://b.example/subs.m3u8');
+  assert.equal(target(/URI="([^"]+)"/.exec(lines[2])[1]), 'vhttps://b.example/subs.m3u8', 'a subtitles rendition');
   assert.equal(target(/URI="([^"]+)"/.exec(lines[3])[1]), 'phttps://a.example/x/iframes.m3u8');
   assert.match(lines[4], /URI="data:text\/plain;base64,AAAA"/);
   assert.equal(target(lines[6]), 'phttps://a.example/v1/index.m3u8');
@@ -436,4 +436,27 @@ test('rewrite: renditions are playlists, keys files, data: URIs kept, relative a
   assert.equal(media.live, true, 'no #EXT-X-ENDLIST');
   assert.equal(target(/URI="([^"]+)"/.exec(media.text)[1]), 'shttps://a.example/x/init.mp4');
   assert.equal(target(media.text.split('\n')[3]), 'shttps://a.example/x/seg1.m4s');
+  assert.match(media.text.split('\n')[3], /\/seg1\.m4s$/, 'a name with an extension kept');
+});
+
+test('rewrite: parts without an extension (a proxy\'s /p/<base64>) are named for ffmpeg', function () {
+  var entry = hls.register({ id: 'unit' }, { kind: 'hls', url: 'https://a.example/v/tok/stream', label: 'Unit' });
+  function name(line) {
+    return line.split('/').pop();
+  }
+  var master = hls.rewrite(entry, [
+    '#EXTM3U',
+    '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="English",URI="/p/tok/YXVkaW8"',
+    '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="s",NAME="English",URI="/p/tok/c3Vicw"',
+    '#EXT-X-STREAM-INF:BANDWIDTH=1,AUDIO="a",SUBTITLES="s"',
+    '/p/tok/djEwODA',
+    ''
+  ].join('\n'), 'https://a.example/v/tok/stream', 'r/').text.split('\n');
+  assert.equal(name(/URI="([^"]+)"/.exec(master[1])[1]), 'YXVkaW8.m3u8');
+  assert.equal(name(/URI="([^"]+)"/.exec(master[2])[1]), 'c3Vicw.m3u8');
+  assert.equal(name(master[4]), 'djEwODA.m3u8');
+  var media = '#EXTM3U\n#EXTINF:6,\n/p/tok/c2VnMA\n#EXT-X-ENDLIST\n';
+  assert.equal(name(hls.rewrite(entry, media, 'https://a.example/p/tok/djEwODA', '../').text.split('\n')[2]), 'c2VnMA.ts');
+  assert.equal(name(hls.rewrite(entry, media, 'https://a.example/p/tok/c3Vicw', '../', '', true).text.split('\n')[2]), 'c2VnMA.vtt',
+    'a subtitles rendition\'s segments are WebVTT');
 });

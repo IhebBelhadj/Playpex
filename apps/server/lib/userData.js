@@ -21,7 +21,7 @@ function getState() {
     ready = database.open().then(function (connection) {
       return {
         connection: connection,
-        services: services.createServices(data.createRepositories(connection.db), { catalog: tmdb, publish: events.publish })
+        services: services.createServices(data.createRepositories(connection.db), { catalog: tmdb, publish: events.publish, box: require('./secretBox') })
       };
     });
     ready.catch(function (err) {

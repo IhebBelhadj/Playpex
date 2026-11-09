@@ -11,7 +11,7 @@ const onHome = Astro.url.pathname.replace(/\/$/, '') === home.replace(/\/$/, '')
     <div class="fcols">
       <div><h3>Apps</h3>{PRODUCTS.map((p) => <a href={productHref(p, home, onHome)}>{p.name}</a>)}</div>
       <div><h3>Docs</h3><a href={home + 'docs/install-the-server'}>First steps</a><a href={home + 'docs/connect-a-screen'}>Connect a screen</a><a href={home + 'docs/plugins-overview'}>Write a plugin</a><a href={home + 'docs/client-api'}>Build a client</a></div>
-      <div><h3>Project</h3><a href={SITE.repo}>Source code</a><a href={home + 'releases'}>Releases</a><a href={`${SITE.repo}/blob/main/LICENSE.md`}>Licence</a></div>
+      <div><h3>Project</h3><a href={SITE.repo}>Source code</a><a href={home + 'releases'}>Releases</a><a href={`${SITE.repo}/blob/main/LICENSE.md`}>Licence</a><a href={home + 'privacy'}>Privacy</a></div>
       <p class="note">Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.</p>
     </div>
     <div class="flast"><span>Playpex, made by <a href={SITE.author.url}>{SITE.author.name}</a>. © 2026</span><a class="btn" href={downloadHref(Astro.url.pathname, home)}>Download</a></div>

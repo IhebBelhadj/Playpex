@@ -70,6 +70,9 @@ v1.get('/openapi.yaml', function (req, res) {
 v1.get('/docs', function (req, res) {
   res.redirect(302, '/docs');
 });
+// Open to everyone: the static page clients frame to play an embedded video
+// (a plugin's embed source: YouTube's IFrame player); no data, no token
+v1.use('/embed', require('./routes/embed'));
 // The dashboard's routes: the admin's session (first-run setup excepted)
 v1.use('/admin', require('./routes/admin'));
 // Recovery mode (the port belonged to another program, index.js#startOrRecover):

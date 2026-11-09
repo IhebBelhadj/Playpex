@@ -38,7 +38,7 @@ function createServices(repositories, options) {
     downloads: downloadsService(repositories, shared),
     directDownloads: directDownloadsService(repositories, shared),
     library: libraryService(repositories, shared),
-    plugins: pluginsService(repositories, shared)
+    plugins: pluginsService(repositories, Object.assign({ box: options.box }, shared))
   };
 }
 

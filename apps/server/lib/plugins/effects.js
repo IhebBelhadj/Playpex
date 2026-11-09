@@ -6,7 +6,9 @@
 //             (an http source on a declared host, or one the admin gave it); audience adults → tracking 'none';
 //             an http source leaves as { kind: 'media', ref: 'r_…', label, … }:
 //             the server proxies it (./remote.js), the client never sees its URL;
-//             hls / live ones as { kind: 'media', ref: 'h_…' | 'l_…', format, … } (lib/media/hls.js)
+//             hls / live ones as { kind: 'media', ref: 'h_…' | 'l_…', format, … } (lib/media/hls.js);
+//             an embed one (a YouTube video id: the client plays it in YouTube's own
+//             player, from the server's page /embed/youtube) as it is
 //   download  needs write: ['downloads'], the same source rules; torrents only
 //   open      its own screens (plugin.<id>.*) or core.movie / show / episode / search
 //   confirm   its `then` checked the same way
@@ -20,6 +22,15 @@ var remote = require('./remote'),
 function forClient(plugin, source) {
   if (source.kind === 'magnet') {
     return source;
+  }
+  if (source.kind === 'embed') {
+    var embed = { kind: 'embed', provider: source.provider, id: source.id, label: source.label };
+    ['duration', 'notes'].forEach(function (k) {
+      if (source[k] !== undefined) {
+        embed[k] = source[k];
+      }
+    });
+    return embed;
   }
   var entry = source.kind === 'http' ? remote.register(plugin, source) : hls.register(plugin, source),
     out = { kind: 'media', ref: entry.ref, label: source.label };
@@ -40,6 +51,10 @@ function sourceAllowed(plugin, source) {
   var p = plugin.manifest.permissions;
   if ((p.sources || []).indexOf(source.kind) === -1) {
     return false;
+  }
+  if (source.kind === 'embed') {
+    // a public video id, no URL: nothing reaches the network through the server
+    return source.provider === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(source.id || '');
   }
   if (source.kind !== 'magnet') {
     try {

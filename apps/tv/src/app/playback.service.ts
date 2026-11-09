@@ -48,6 +48,13 @@ export interface PlaybackRequest {
   // A TV channel of a live plugin (LiveService.play, docs/providers-plan.md §8):
   // the player shows its banner, ↑ / ↓ flip through the lineup it came from
   channel?: { plugin: string, id: string, number: number, name: string, logo?: string | null };
+  // A channel chosen in the player's channel list: the new player opens with that list still open
+  // (a TV's channel list: you keep browsing while the picture changes)
+  channelList?: boolean;
+  // A video in its site's own player (a plugin's embed source): YouTube's
+  // IFrame player, framed from the server's /embed/youtube page and driven by
+  // the player's own controls (player-page/embed.ts)
+  embed?: { provider: 'youtube', id: string };
   // Development builds only: a video URL played directly, no torrent (the
   // player's screenshots and scenarios: window.playpexDev.player())
   devSrc?: string;

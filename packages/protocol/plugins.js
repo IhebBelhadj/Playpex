@@ -16,9 +16,10 @@
 // Bumped only on breaking changes of the host API, hooks or events. A
 // manifest's api.server range must contain it.
 // "major.minor": a breaking change bumps the major; an addition a plugin may
-// need bumps the minor (1.1: direct links in releases screens), asked with
+// need bumps the minor (1.1: direct links in releases screens; 1.2: their
+// pictures, `image` / `imageVariant`; 1.3: `embed` sources), asked with
 // `^1.1` / `>=1.1` (servers before 1.1 refuse such a range: they can't run it)
-var SERVER_PLUGIN_API = '1.1';
+var SERVER_PLUGIN_API = '1.3';
 
 var ID = /^[a-z][a-z0-9-]{1,31}$/;
 
@@ -57,7 +58,7 @@ var EVENTS = {
 };
 
 var WRITE_SCOPES = ['watchlist', 'watched', 'ratings', 'downloads'];
-var SOURCE_KINDS = ['magnet', 'http', 'hls', 'live'];
+var SOURCE_KINDS = ['magnet', 'http', 'hls', 'live', 'embed'];
 var MARKER_KINDS = ['intro', 'recap', 'credits', 'chapter'];
 var EFFECTS = ['open', 'play', 'toast', 'refresh', 'confirm', 'download'];
 // No settings template: setup is the dashboard's, clients only show content (§1 goal 7)
@@ -322,7 +323,11 @@ function checkManifest(manifest, options) {
     }
   });
   // the hosts may also be the admin's: a url setting with grantsHost (an IPTV subscription, a self-hosted service)
-  if ((p.sources || []).some(function (k) { return k !== 'magnet'; }) && !network.length && !grantingSettings(m).length) {
+  // an embed source is a video id, played by its site's player in the client: only play effects carry one
+  if ((p.sources || []).indexOf('embed') !== -1 && !p.play) {
+    problem('/permissions/sources', 'embed sources are for play effects: they need permissions.play');
+  }
+  if ((p.sources || []).some(function (k) { return k !== 'magnet' && k !== 'embed'; }) && !network.length && !grantingSettings(m).length) {
     problem('/permissions/sources', 'http, hls and live sources need the stream hosts in permissions.network (or a url setting with grantsHost)');
   }
   if ((hooks.indexOf('live.channels') !== -1) !== (hooks.indexOf('live.stream') !== -1)) {
@@ -386,7 +391,7 @@ function checkManifest(manifest, options) {
         problem('/link/' + i + '/deviceCode/' + k, flow[k] + ' isn\'t in permissions.secrets');
       }
     });
-    ['codeUrl', 'tokenUrl', 'refreshUrl'].forEach(function (k) {
+    ['codeUrl', 'tokenUrl', 'refreshUrl', 'revokeUrl'].forEach(function (k) {
       if (flow[k] && !hostAllowed(network, hostOf(flow[k]))) {
         problem('/link/' + i + '/deviceCode/' + k, 'its host isn\'t in permissions.network');
       }
@@ -613,7 +618,7 @@ function describePermissions(manifest) {
   if (p.sources && (p.play || hooks.indexOf('play.collect') !== -1 || hooks.indexOf('play.resolve') !== -1 || (p.write || []).indexOf('downloads') !== -1)) {
     var kinds = [];
     p.sources.forEach(function (k) {
-      var text = k === 'magnet' ? 'torrents' : 'streams from the web';
+      var text = k === 'magnet' ? 'torrents' : k === 'embed' ? 'videos in their site\'s own player (YouTube)' : 'streams from the web';
       if (kinds.indexOf(text) === -1) {
         kinds.push(text);
       }

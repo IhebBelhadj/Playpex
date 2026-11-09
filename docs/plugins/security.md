@@ -22,4 +22,6 @@ A plugin is code the server's owner didn't write. The rules below hold **by cons
 | Updates with more permissions wait for the admin's consent, whatever the update policy | an update can't grow its power silently |
 | Plugins call each other only through declared `exports`, in the callee's sandbox with the callee's permissions | nobody borrows another plugin's permissions |
 | Setup, grants and linking only on the dashboard (admin) | a client, or anyone holding one, can't change what plugins may do |
+| Secrets and linked accounts' tokens are encrypted in the database (AES-256-GCM, the key in `<config>/secrets.key`, 0600); unlinking revokes tokens at the service when the link has a `revokeUrl` | a copy of `playpex.db` (a backup, a file sent for help) holds no usable key or account |
+| An `embed` source is a video id, never a URL; the client frames the server's static page, and Playpex TV's shell sends its token only from the app's own top frame | YouTube's code in the frame can't call the server as the device |
 | Assets served with fixed types, `nosniff`, SVG with a script-blocking CSP | an asset is never a page |

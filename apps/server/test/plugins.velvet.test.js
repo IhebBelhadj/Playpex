@@ -237,6 +237,10 @@ function site(u, o) {
     if (u.pathname === '/en/' || u.pathname === '/en/page/2/') {
       return u.pathname === '/en/' ? card('11855') + card('20001') + card('11855') : '';
     }
+    // its other listings (films, scenes, top, studios, countries): a page, then nothing
+    if (/^\/en\/(movies\/|porno-video\/|top\.html|watch\/country\/)/.test(u.pathname)) {
+      return /\/page\/\d+\/$/.test(u.pathname) ? '' : card('20001') + card('11855');
+    }
     if ((id = (/^\/en\/(\d+)-x\.html$/.exec(u.pathname) || [])[1]) && SE_FILMS[id]) {
       return filmPage(id);
     }
@@ -264,9 +268,17 @@ function site(u, o) {
 
 var STUDIO_TAGS = [4599, 15789, 4175], PERSONAL_TAGS = [5777, 23028, 16894, 17619, 17798, 3045, 17039, 18377, 3787, 25310, 5761, 3409, 30034, 18337, 3668, 29748, 5008];
 
+// its featured image (embedded with _embed=wp:featuredmedia): the site's sizes
+function featured(id, host) {
+  var base = 'https://' + (host || 'thesextube.net') + '/wp-content/uploads/2026/11/' + id;
+  return { 'wp:featuredmedia': [{ source_url: base + '.webp', media_details: { sizes: {
+    videoclub_post_thumb: { source_url: base + '-480x270.webp' }, large: { source_url: base + '-840x473.webp' } } } }] };
+}
+
 function post(id, title, tags, link, date) {
   return { id: id, date: date || '2026-11-0' + (id % 9 + 1) + 'T04:51:51', title: { rendered: title }, tags: tags,
-    content: { rendered: '<p>A scene.</p>' + (link ? '<a id="music" href="' + link + '" target="_blank">Streaming Video From LuLustream</a>' : '') } };
+    content: { rendered: '<p>A scene.</p>' + (link ? '<a id="music" href="' + link + '" target="_blank">Streaming Video From LuLustream</a>' : '') },
+    _embedded: featured(id, id === 106 ? 'evil.example' : null) };
 }
 
 var TUBE_POSTS = [
@@ -296,6 +308,7 @@ function tube(u) {
     if (u.pathname === '/wp-json/wp/v2/posts') {
       assert.equal(q.get('tags'), q.get('tags').split(',').filter(function (t) { return STUDIO_TAGS.indexOf(Number(t)) !== -1; }).join(','), 'studio tags only');
       assert.equal(q.get('tags_exclude'), PERSONAL_TAGS.join(','), 'every personal tag excluded');
+      assert.equal(q.get('_embed'), 'wp:featuredmedia', 'its picture with it');
       var tags = q.get('tags').split(',').map(Number), words = (q.get('search') || '').toLowerCase();
       var list = TUBE_POSTS.filter(function (x) {
         return x.tags.some(function (t) { return tags.indexOf(t) !== -1; }) && (!words || x.title.rendered.toLowerCase().indexOf(words) !== -1);
@@ -626,7 +639,7 @@ test('Find releases: Sex-Empire as a source of direct links, paged; a link playe
     assert.equal(source.options[2].on, true);
     assert.equal(r.data.title, 'Direct links for “harem”');
     assert.deepEqual(r.data.releases, [{ title: 'Harem (1999)', call: { data: 'play', args: { provider: 'sexempire', id: '11855' } }, via: 'Sex-Empire',
-      notes: [], quality: '720p' }]);
+      notes: [], quality: '720p', image: 'https://sex-empire.org/uploads/11855.webp', imageVariant: 'poster' }], 'its poster in the list');
     assert.equal(r.data.last, true);
     // the link's call is the play handler: its players resolved now
     return p.handlers[r.data.releases[0].call.data](r.data.releases[0].call.args, CTX);
@@ -671,7 +684,9 @@ test('TheSexTube: its studios\' videos only, as direct links; a personal post ne
       ['Ersties – Hood Up, Panties Down', 'Easy Like Sunday Morning – Ceci & Hans – Lustery', 'Ersties – Marie in the Garden'],
       'no photo set, no personal post (by tag or by title) even when the site answers one');
     assert.deepEqual(r.data.releases[0], { title: 'Ersties – Hood Up, Panties Down', call: { data: 'play', args: { provider: 'thesextube', id: '101' } },
-      via: 'Ersties', notes: ['TheSexTube'], uploadedAt: '2026-11-03T00:00:00Z' });
+      via: 'Ersties', notes: ['TheSexTube'], image: 'https://thesextube.net/wp-content/uploads/2026/11/101-480x270.webp', uploadedAt: '2026-11-03T00:00:00Z' },
+      'its still in the list');
+    assert.equal(r.data.releases[2].image, undefined, 'a picture on another host is never used');
     return Promise.all(['101', '102', '104', '105', '720618', '999', '../users'].map(function (id) {
       return p.handlers.play({ provider: 'thesextube', id: id }, CTX);
     }));
@@ -680,7 +695,7 @@ test('TheSexTube: its studios\' videos only, as direct links; a personal post ne
     var req = r[0].effects[0].request;
     assert.equal(req.tracking, 'none');
     assert.equal(req.subtitle, 'Ersties');
-    assert.deepEqual(req.artwork, { backdrop: 'https://img.lulucdn.com/bot2836bqoj0_xt.jpg' });
+    assert.deepEqual(req.artwork, { backdrop: 'https://thesextube.net/wp-content/uploads/2026/11/101-840x473.webp' });
     assert.deepEqual(req.sources.map(function (x) { return [x.kind, x.url, x.headers.Referer]; }), [['hls', LULU.bot2836bqoj0, 'https://luluvido.com/']]);
     assert.equal(req.sources[0].headers['User-Agent'], BROWSER, 'its CDN\'s token holds for that User-Agent only');
     assert.equal(r[1].effects[0].text, 'This video can\'t be played now', 'a CDN it doesn\'t know');
@@ -883,6 +898,163 @@ test('Sites Play: the H.264 HLS playlist deciphered (every generator), its heade
     assert.equal(r[0].effects[0].type, 'toast');
     valid('templates/properties/catalog', r[1].data);
     assert.match(r[1].data.empty, /switched off/);
+    assert.deepEqual(p.requests, [], 'nothing fetched while it\'s off');
+  });
+});
+
+test('Sites: the Site filter offers the sites switched on, the chosen one kept per profile', function () {
+  var p = load();
+  p.settings.sexEmpire = true;
+  p.settings.theSexTube = true;
+  return p.handlers.sites({}, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    var site = r.data.filters.filter(function (g) { return g.key === 'site'; })[0];
+    assert.deepEqual(site.options.map(function (o) { return o.value + (o.on ? '*' : ''); }), ['xhamster*', 'sexempire', 'thesextube']);
+    return p.handlers.sites({ filters: { site: ['sexempire'] } }, CTX);
+  }).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.equal(p.store['site:p1'], 'sexempire');
+    return p.handlers.sites({}, CTX);
+  }).then(function (r) {
+    var site = r.data.filters.filter(function (g) { return g.key === 'site'; })[0];
+    assert.deepEqual(site.options.filter(function (o) { return o.on; }).map(function (o) { return o.value; }), ['sexempire'], 'the profile\'s last site');
+    p.settings.sexEmpire = false;
+    return p.handlers.sites({}, CTX);
+  }).then(function (r) {
+    var site = r.data.filters.filter(function (g) { return g.key === 'site'; })[0];
+    assert.deepEqual(site.options.map(function (o) { return o.value + (o.on ? '*' : ''); }), ['xhamster*', 'thesextube'], 'switched off: not offered');
+    p.settings.xhamster = false;
+    p.settings.theSexTube = false;
+    return p.handlers.sites({}, CTX);
+  }).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.match(r.data.empty, /switched off/);
+  });
+});
+
+test('Sites: the filters panel\'s preview answers the groups of its choices: nothing stored, read or switched', function () {
+  var p = load();
+  p.settings.sexEmpire = true;
+  p.settings.theSexTube = true;
+  p.store['layout:p1'] = 'sites';
+  function keys(r) { return r.data.filters.map(function (g) { return g.key; }); }
+  return Promise.all([
+    p.handlers.sites({ preview: true, filters: { view: ['sites'], site: ['sexempire'] } }, CTX),
+    p.handlers.sites({ preview: true, filters: { site: ['thesextube'], category: ['lesbian'] } }, CTX),
+    p.handlers.sites({ preview: true, filters: { site: ['xhamster'] } }, CTX),
+    p.handlers.sites({ preview: true, filters: { view: ['posters'], site: ['sexempire'] } }, CTX),
+    p.handlers.browse({ preview: true, filters: { view: ['sites'] } }, CTX)
+  ]).then(function (r) {
+    r.forEach(function (x) { valid('templates/properties/catalog', x.data); assert.equal(x.effects, undefined, 'no switch'); });
+    assert.deepEqual(keys(r[0]), ['view', 'site', 'category'], 'Sex-Empire\'s groups');
+    assert.equal(r[0].data.filters[2].options[0].value, 'lists.top');
+    assert.deepEqual(keys(r[1]), ['view', 'site', 'studio'], 'TheSexTube\'s groups');
+    assert.deepEqual(keys(r[2]), ['view', 'site', 'category', 'quality', 'duration'], 'xHamster\'s');
+    r.slice(0, 3).forEach(function (x) { assert.deepEqual(x.data.rows, []); });
+    assert.deepEqual(keys(r[3]), ['view'], 'another view: its View group, applied with Show');
+    assert.deepEqual(r[3].data.filters[0].options.filter(function (o) { return o.on; }).map(function (o) { return o.value; }), ['posters']);
+    assert.deepEqual(keys(r[4]), ['view']);
+    assert.equal(p.store['layout:p1'], 'sites', 'the view isn\'t kept');
+    assert.equal(p.store['site:p1'], undefined, 'the site isn\'t kept');
+    assert.deepEqual(p.requests, [], 'nothing read');
+  });
+});
+
+test('Sites: Sex-Empire\'s listings as poster rows, its studios, a listing chosen, its search; films open their page', function () {
+  var p = load();
+  p.settings.sexEmpire = true;
+  return p.handlers.sites({ filters: { site: ['sexempire'] } }, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.deepEqual(r.data.filters.map(function (f) { return f.key; }), ['view', 'site', 'category']);
+    var titles = r.data.rows.map(function (x) { return x.title; });
+    assert.deepEqual(titles.slice(0, 6), ['Newest', 'Top', 'Films', 'Scenes', 'Studios', 'Full HD']);
+    assert.ok(r.data.rows.every(function (x) { return x.variant === 'poster'; }));
+    var studios = r.data.rows[4];
+    assert.equal(studios.items.length, 11);
+    assert.equal(studios.items[0].image, 'https://sex-empire.org/uploads/20001.webp', 'a studio\'s newest film\'s poster');
+    assert.deepEqual(studios.items[0].intent, { screen: 'plugin.velvet.siteList', params: { site: 'sexempire', list: 'studios.marc_dorcel', name: 'Marc Dorcel' } });
+    return Promise.all([
+      p.handlers.rowPage(Object.assign({ page: 1 }, r.data.rows[2].page.args), CTX),
+      p.handlers.rowPage({ provider: 'site', site: 'sexempire', list: 'studios.private', page: 2 }, CTX),
+      p.handlers.rowPage({ provider: 'site', site: 'sexempire', list: 'lists.top', page: 2 }, CTX),
+      p.handlers.rowPage({ provider: 'site', site: 'sexempire', list: 'lists.../../x', page: 1 }, CTX)
+    ]);
+  }).then(function (r) {
+    valid('rowPage', r[0].data);
+    assert.deepEqual(r[0].data.items.map(function (c) { return c.title; }), ['Heatwave', 'Harem']);
+    assert.equal(r[0].data.items[0].variant, 'poster');
+    assert.deepEqual(r[0].data.items[0].intent, { screen: 'plugin.velvet.title', params: { provider: 'sexempire', id: '20001' } });
+    assert.deepEqual([r[1].data.items, r[1].data.last], [[], true], 'past its last page');
+    assert.deepEqual([r[2].data.items, r[2].data.last], [[], true], 'the top is one page');
+    assert.deepEqual(r[3].data.items, [], 'a listing it doesn\'t know');
+    var paths = p.requests.map(function (o) { return o.url.replace('https://sex-empere.org', ''); });
+    ['/en/movies/', '/en/movies/studios/private/page/2/'].forEach(function (x) { assert.ok(paths.indexOf(x) !== -1, x); });
+    assert.ok(!paths.some(function (x) { return /\.\./.test(x) || /top\.html.*page/.test(x); }));
+    return Promise.all([
+      p.handlers.sites({ filters: { site: ['sexempire'], category: ['countries.france'] } }, CTX),
+      p.handlers.sites({ query: 'harem', filters: { site: ['sexempire'] } }, CTX),
+      p.handlers.siteList({ params: { site: 'sexempire', list: 'studios.hustler', name: 'Hustler' } }, CTX),
+      p.handlers.siteList({ params: { site: 'sexempire', list: 'studios.nobody' } }, CTX)
+    ]);
+  }).then(function (r) {
+    r.forEach(function (x) { valid('templates/properties/catalog', x.data); });
+    assert.deepEqual(r[0].data.rows.map(function (x) { return [x.title, x.page.args.list]; }), [['France', 'countries.france']]);
+    assert.equal(r[0].data.filters[2].options.filter(function (o) { return o.on; })[0].value, 'countries.france');
+    assert.deepEqual(r[1].data.rows.map(function (x) { return x.page.args; }), [{ provider: 'sexempire', q: 'harem' }], 'the site\'s search');
+    assert.equal(r[2].data.title, 'Hustler');
+    assert.deepEqual(r[2].data.rows.map(function (x) { return x.page.args.list; }), ['studios.hustler']);
+    assert.deepEqual(r[3].data.rows, []);
+  });
+});
+
+test('Sites: TheSexTube\'s studios as rows of stills, a video page with Play; never a personal post', function () {
+  var p = load();
+  p.settings.theSexTube = true;
+  p.settings.xhamster = false;
+  return p.handlers.sites({}, CTX).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.deepEqual(r.data.filters.map(function (f) { return f.key; }), ['view', 'site', 'studio']);
+    assert.deepEqual(r.data.rows.map(function (x) { return x.title; }), ['New from the studios', 'Ersties', 'Lustery', 'Playboy Plus']);
+    return Promise.all([
+      p.handlers.rowPage(Object.assign({ page: 1 }, r.data.rows[0].page.args), CTX),
+      p.handlers.rowPage(Object.assign({ page: 1 }, r.data.rows[1].page.args), CTX),
+      p.handlers.rowPage({ provider: 'site', site: 'thesextube', studio: 'someone', page: 1 }, CTX)
+    ]);
+  }).then(function (r) {
+    valid('rowPage', r[0].data);
+    var c = r[0].data.items[0];
+    valid('card', c);
+    assert.deepEqual(r[0].data.items.map(function (x) { return x.key.split(':').pop(); }), ['101', '102', '106'], 'no photo set, no personal post');
+    assert.equal(c.variant, 'still');
+    assert.equal(c.image, 'https://thesextube.net/wp-content/uploads/2026/11/101-480x270.webp');
+    assert.equal(c.info.backdrop, 'https://thesextube.net/wp-content/uploads/2026/11/101-840x473.webp');
+    assert.equal(c.info.overview, 'A scene.', 'its text without the link');
+    assert.deepEqual(c.intent, { screen: 'plugin.velvet.siteVideo', params: { site: 'thesextube', id: '101' } });
+    assert.equal(r[0].data.items[2].image, undefined, 'a picture on another host');
+    assert.deepEqual(r[1].data.items.map(function (x) { return x.title; }), ['Ersties – Hood Up, Panties Down', 'Ersties – Marie in the Garden']);
+    assert.deepEqual(r[2].data.items, [], 'a studio it doesn\'t know');
+    return Promise.all(['101', '720618', '104', '../x'].map(function (id) {
+      return p.handlers.siteVideo({ params: { site: 'thesextube', id: id } }, CTX);
+    }).concat([p.handlers.sites({ query: 'hood', filters: { site: ['thesextube'], studio: ['ersties'] } }, CTX)]));
+  }).then(function (r) {
+    r.slice(0, 4).forEach(function (x) { valid('templates/properties/title', x.data); });
+    var page = r[0].data;
+    assert.equal(page.info.title, 'Ersties – Hood Up, Panties Down');
+    assert.equal(page.info.eyebrow, 'Ersties');
+    assert.deepEqual(page.actions[0].call, { data: 'play', args: { provider: 'thesextube', id: '101' } });
+    assert.deepEqual(page.rows.map(function (x) { return [x.title, x.page.args.studio]; }), [['More from Ersties', 'ersties']]);
+    r.slice(1, 4).forEach(function (x) { assert.match(x.data.info.title, /isn't available/); });
+    assert.ok(!p.requests.some(function (o) { return /leak/.test(o.url); }), 'a personal post\'s video is never fetched');
+    assert.deepEqual(r[4].data.rows.map(function (x) { return [x.title, x.page.args.q, x.page.args.studio]; }), [['Ersties for “hood”', 'hood', 'ersties']]);
+    p.settings.theSexTube = false;
+    p.requests.length = 0;
+    return Promise.all([
+      p.handlers.rowPage({ provider: 'site', site: 'thesextube', page: 1 }, CTX),
+      p.handlers.siteVideo({ params: { site: 'thesextube', id: '101' } }, CTX)
+    ]);
+  }).then(function (r) {
+    assert.deepEqual(r[0].data.items, []);
+    assert.match(r[1].data.info.title, /isn't available/);
     assert.deepEqual(p.requests, [], 'nothing fetched while it\'s off');
   });
 });

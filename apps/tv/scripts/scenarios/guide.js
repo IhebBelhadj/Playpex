@@ -102,13 +102,79 @@ module.exports = async function (t) {
     t.check('… which plays', await t.until(`${video}?.currentTime > 1`, 25000), await t.js(`${video}?.currentTime`));
     await t.until(`${player}.playerReady`, 5000);
     await t.key('Return');
-    t.check('OK: the mini guide', await t.until("document.querySelector('#playerChannels .channelRow.focused.current')", 3000), await t.focused());
+  t.check('OK: the mini guide', await t.until("document.querySelector('#playerChannels .channelRow.focused.current')", 3000), await t.focused());
     await t.shot('guide-channels');
+    // another channel from the list: it plays, and the list stays open on it (a TV's list)
+    const before = await t.js(`${player}.playback.channel.id`);
+    await t.key('Down');
+    const picked = await t.js("document.activeElement?.querySelector('.channelNumber')?.textContent.trim()");
+    await t.key('Return');
+    t.check('OK on another channel: it tunes', await t.until(`${player}?.playback?.channel?.id != ${JSON.stringify(before)} && ${player}.playback.channel.number == ${picked}`, 8000),
+      await t.js(`${player}?.playback?.channel`));
+    t.check('… the list still open, on it', await t.until(`document.querySelector('#playerChannels .channelRow.focused.current .channelNumber')?.textContent.trim() == '${picked}'`, 3000), await t.focused());
+    t.check('… and it plays', await t.until(`${video}?.currentTime > 1`, 25000), await t.js(`${video}?.currentTime`));
+    t.check('… no banner over the list', !(await t.js("!!document.querySelector('.channelBanner')")));
+    await t.shot('guide-channels-switched');
+    await t.key('Return');
+    t.check('OK on the one playing closes it', await t.until("!document.querySelector('#playerChannels')", 3000));
+    t.check('… still that channel', await t.js(`${player}.playback.channel.number == ${picked}`));
+    // the controls' Channels button opens it too
+    await t.until(`${player}.playerReady`, 5000);
+    await t.key('Left');   // live: an arrow brings the controls
+    t.check('a Channels button in the controls', await t.until("document.querySelector('[data-px-key=\"channels\"]')", 3000));
+    await t.js("window.SpatialNavigation.focus(document.querySelector('[data-px-key=\"channels\"]'))");
+    await t.key('Return');
+    t.check('… opens the list', await t.until("document.querySelector('#playerChannels .channelRow.focused.current')", 3000), await t.focused());
     await t.key('Escape');
     t.check('Back closes it', await t.until("!document.querySelector('#playerChannels')", 3000));
   }
-  await t.key('Escape');
-  await t.key('Escape');
-  await t.key('Escape');
-  t.check('Back leaves to the guide', await t.until("!document.querySelector('app-player-page') && !!document.querySelector('plugin-guide')", 6000));
+  // Back, one press at a time, until the guide is there (the player's Back ladder: the banner, then out)
+  const backs = [];
+  for (let i = 0; i < 3 && !(await t.js("!document.querySelector('app-player-page') && !!document.querySelector('plugin-guide')")); i++) {
+    await t.key('Escape');
+    await t.wait(700);
+    backs.push(await t.js("({ player: !!document.querySelector('app-player-page'), guide: !!document.querySelector('plugin-guide'), profiles: !!document.querySelector('app-profile-picker') })"));
+  }
+  t.check('Back leaves to the guide', await t.until("!document.querySelector('app-player-page') && !!document.querySelector('plugin-guide')", 6000), backs);
+
+  // ── the search: the start of a word of the name, number or group ─────────
+  const keyboard = "ng.getComponent(document.querySelector('text-keyboard'))";
+  const searchFor = async text => {
+    await t.js("window.SpatialNavigation.focus(document.querySelector('.pluginGuide [data-px-key=\"search\"]'))");
+    await t.key('Return');
+    await t.until("document.querySelector('text-keyboard')", 3000);
+    // typed into the keyboard, then its Done
+    await t.js(`(${keyboard}).value = ${JSON.stringify(text)}`);
+    await t.js("window.SpatialNavigation.focus(document.querySelector('text-keyboard [data-key=\"done\"]'))");
+    await t.key('Return');
+    await t.until("!document.querySelector('text-keyboard')", 3000);
+  };
+  t.check('a search field in the toolbar', await t.until("document.querySelector('.pluginGuide [data-px-key=\"search\"]')", 3000));
+  // still in Sport (n % 5 == 1); Channel 300 (and number 300, Channel 200) are News
+  await searchFor('chan 300');
+  t.check('nothing in Sport: says so, and offers every group', await t.until("/No channel matches/.test(document.querySelector('.pluginGuide px-empty')?.textContent) && /Search every group/.test(document.querySelector('.pluginGuide px-empty')?.textContent)", 3000),
+    await t.js(`({ state: ${guide}.state, found: ${guide}.filtered.length })`));
+  await t.shot('guide-search-empty');
+  await t.js("window.SpatialNavigation.focus(document.querySelector('.pluginGuide px-empty [data-px-key=\"clear\"]'))");
+  await t.key('Return');
+  const found = await t.until(`${guide}.state.group == null && ${guide}.filtered.length`, 3000);
+  const names = await t.js(`${guide}.filtered.map(c => c.name + ' ' + c.number)`);
+  t.check('every group: the channels with a name or number word starting 300', !!found && names.some(n => n.startsWith('Channel 300 ')) &&
+    names.every(n => n.split(' ').slice(1).some(w => w.startsWith('300'))), names);
+  t.check('… only those (a word\'s start, never its middle: not "1300")', names.length < 5, names);
+  t.check('the guide draws them, with their programmes', await t.until(`document.querySelectorAll('.pluginGuide .line').length == ${names.length} && document.querySelectorAll('.pluginGuide .cell:not(.unknown)').length >= ${names.length}`, 8000));
+  t.check('the search field shows it', await t.js("/chan 300/.test(document.querySelector('.pluginGuide [data-px-key=\"search\"]')?.closest('px-search-field')?.textContent)"));
+  await t.shot('guide-search');
+  // case and accents don't matter, words in any order
+  await searchFor('300 CHÂN');
+  t.check('"300 CHÂN" finds the same', JSON.stringify(await t.js(`${guide}.filtered.map(c => c.name + ' ' + c.number)`)) == JSON.stringify(names));
+  // Enter plays a result; the player's lineup is the results
+  await t.until("document.activeElement?.closest('.pluginGuide .lines')", 3000);
+  t.check('a result has the focus', await t.js("!!document.activeElement?.closest('.pluginGuide .lines')"), await t.focused());
+  // Clear: every channel again
+  await t.js("window.SpatialNavigation.focus(document.querySelector('.pluginGuide [data-px-key=\"clear\"]'))");
+  await t.key('Return');
+  t.check('Clear: every channel again', await t.until(`${guide}.state.query == '' && ${guide}.filtered.length == 300`, 3000),
+    await t.js(`${guide}.filtered.length`));
+  t.check('… and the Clear button goes', await t.until("!document.querySelector('.pluginGuide .toolbar [data-px-key=\"clear\"]')", 3000));
 };

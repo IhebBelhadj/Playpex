@@ -260,7 +260,7 @@ test('the remote socket relays a controller\'s input to its target', function ()
     assert.equal(res.status, 200);
     var t = res.body.filter(function (x) { return x.deviceId === 'tv-6'; })[0];
     conforms('RemoteTarget', t);
-    assert.deepEqual(t.capabilities, { keyboard: true, pointer: true, text: false, rtc: false });
+    assert.deepEqual(t.capabilities, { keyboard: true, pointer: true, text: false, rtc: false, field: false });
     assert.equal(t.controller, null);
     // a client without the admin's session can't control
     intruder = socket('/remote?role=controller&device=tv-6');
@@ -360,6 +360,80 @@ test('the remote socket relays WebRTC set-up between a controller and an rtc tar
     controller.json({ type: 'signal', data: 'offer' });
     controller.json({ type: 'signal', data: { candidate: { candidate: 42 } } });
     return nothing(target, 'signal');
+  }).then(function () {
+    controller.close();
+    target.close();
+    return target.closed;
+  });
+});
+
+test('the remote socket: the target\'s open text field reaches the controller, whose text fills it', function () {
+  var target = socket('/remote?device=tv-8'), controller = null, late = null;
+  return target.ready.then(function () {
+    target.json({ type: 'hello', role: 'target', capabilities: { keyboard: true, pointer: true, text: true, field: true } });
+    // a field opens before any controller: kept for the one that comes
+    target.json({ type: 'field', open: true, id: 'f1', value: 'du', title: 'Search', placeholder: 'Titles, people', maxLength: 30, kind: 'search', extra: 1 });
+    return target.next('state');
+  }).then(function () {
+    controller = socket('/remote?role=controller&device=tv-8', { Cookie: cookie });
+    return controller.ready;
+  }).then(function () {
+    return Promise.all([controller.next('state', function (s) { return s.connected; }), controller.next('field')]);
+  }).then(function (r) {
+    assert.equal(r[0].capabilities.field, true);
+    assert.deepEqual(r[1], { type: 'field', open: true, id: 'f1', value: 'du', title: 'Search', placeholder: 'Titles, people', maxLength: 30, kind: 'search' });
+    // the whole text, cut to the field's length; another field's and malformed ones dropped
+    controller.json({ type: 'field', id: 'f0', value: 'old field' });
+    controller.json({ type: 'field', id: 'f1', value: 42 });
+    controller.json({ type: 'field', id: 'f1', value: 'Dune: Part Two and a title far too long for it' });
+    return target.next('field');
+  }).then(function (m) {
+    assert.deepEqual(m, { type: 'field', id: 'f1', value: 'Dune: Part Two and a title far' });
+    // emptied (allowed), then Done
+    controller.json({ type: 'field', id: 'f1', value: '' });
+    controller.json({ type: 'field', id: 'f1', value: 'dune', submit: true });
+    return target.next('field', function (x) { return x.value === ''; });
+  }).then(function () {
+    return target.next('field', function (x) { return x.submit; });
+  }).then(function (m) {
+    assert.deepEqual(m, { type: 'field', id: 'f1', value: 'dune', submit: true });
+    // its text changed on the TV, then it closed
+    target.json({ type: 'field', open: true, id: 'f1', value: 'dune' });
+    return controller.next('field', function (x) { return x.open && x.value === 'dune'; });
+  }).then(function () {
+    target.json({ type: 'field', open: false, id: 'f1' });
+    return controller.next('field', function (x) { return x.open === false; });
+  }).then(function (m) {
+    assert.deepEqual(m, { type: 'field', open: false, id: 'f1' });
+    controller.json({ type: 'field', id: 'f1', value: 'too late' });   // no field open: dropped
+    return nothing(target, 'field');
+  }).then(function () {
+    // nothing open any more: a new controller gets no field
+    controller.json({ type: 'bye' });
+    late = socket('/remote?role=controller&device=tv-8', { Cookie: cookie });
+    return late.ready.then(function () { return late.next('state', function (s) { return s.connected; }); });
+  }).then(function () {
+    return nothing(late, 'field');
+  }).then(function () {
+    late.close();
+    target.close();
+    return target.closed;
+  });
+});
+
+test('the remote socket: field messages of a target that didn\'t declare them go nowhere', function () {
+  var target = socket('/remote?device=tv-9'), controller = null;
+  return target.ready.then(function () {
+    target.json({ type: 'hello', role: 'target', capabilities: { keyboard: true, pointer: false, text: true } });
+    target.json({ type: 'field', open: true, id: 'f1', value: '' });
+    controller = socket('/remote?role=controller&device=tv-9', { Cookie: cookie });
+    return controller.ready;
+  }).then(function () {
+    return controller.next('state', function (s) { return s.connected; });
+  }).then(function (state) {
+    assert.equal(state.capabilities.field, false);
+    controller.json({ type: 'field', id: 'f1', value: 'x' });
+    return Promise.all([nothing(controller, 'field'), nothing(target, 'field')]);
   }).then(function () {
     controller.close();
     target.close();

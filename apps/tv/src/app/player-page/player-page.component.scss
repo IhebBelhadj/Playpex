@@ -27,12 +27,27 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
   color: var(--px-color-text);
 }
 
+.embedPlayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--px-black);
+  pointer-events: none;
+}
+
 .moviePlayer {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   background: var(--px-black);
+
+  // over an embedded player: empty and see-through, it only takes the clicks
+  &.overEmbed {
+    background: transparent;
+  }
 
   &::cue {
     font-family: var(--px-font-book);

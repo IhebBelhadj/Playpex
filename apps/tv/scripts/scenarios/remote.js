@@ -118,7 +118,31 @@ module.exports = async function (t) {
   ws.json({ type: 'text', text: 'dune' });
   t.check('typed text arrives in the search keyboard', await t.until("document.querySelector('text-keyboard')?.textContent.toLowerCase().includes('dune')", 3000),
     await t.js("document.querySelector('text-keyboard')?.textContent.slice(0, 120)"));
-  await key(ws, 'Escape');
+
+  // the keyboard is the device's open field: the controller heard it open, and its text changes
+  const opened = ws.got.find(m => m.type == 'field' && m.open);
+  t.check('the open keyboard reaches the controller as a field', !!opened && opened.kind == 'search' && !!opened.id, ws.got.filter(m => m.type == 'field'));
+  t.check('and its text typed on the TV follows', !!await until(() => ws.got.find(m => m.type == 'field' && m.open && /dune/i.test(m.value))),
+    ws.got.filter(m => m.type == 'field'));
+  // the controller's own keyboard: the whole text replaces the TV's, never echoed back
+  const fieldsBefore = ws.got.filter(m => m.type == 'field').length;
+  ws.json({ type: 'field', id: opened && opened.id, value: 'blade runner' });
+  t.check('the controller\'s text replaces the keyboard\'s', await t.until("document.querySelector('text-keyboard .textDisplay')?.textContent.trim() == 'blade runner'", 3000),
+    await t.js("document.querySelector('text-keyboard .textDisplay')?.textContent"));
+  t.check('the TV shows a remote is connected', await t.js("!!document.querySelector('text-keyboard .remoteHint')"));
+  await t.shot('remote-field');
+  await t.wait(400);
+  t.check('not echoed back', ws.got.filter(m => m.type == 'field').length == fieldsBefore, ws.got.filter(m => m.type == 'field').slice(fieldsBefore));
+  // another field's text is dropped
+  ws.json({ type: 'field', id: 'f-old', value: 'wrong' });
+  await t.wait(400);
+  t.check('a closed field\'s text is dropped', await t.js("document.querySelector('text-keyboard .textDisplay')?.textContent.trim() == 'blade runner'"));
+  // Enter on the phone: the keyboard's Done (the search runs), and the controller hears it closed
+  ws.json({ type: 'field', id: opened && opened.id, value: 'blade runner', submit: true });
+  t.check('submit is the keyboard\'s Done', await t.until("!document.querySelector('text-keyboard')", 3000));
+  t.check('the controller hears the field closed', !!await until(() => ws.got.find(m => m.type == 'field' && m.open === false && m.id == (opened && opened.id))));
+  t.check('the search ran with it', await t.until("document.querySelector('px-search-field')?.textContent.toLowerCase().includes('blade runner')", 3000),
+    await t.js("document.querySelector('px-search-field')?.textContent"));
   await t.wait(400);
 
   // the controller leaves: the badge goes

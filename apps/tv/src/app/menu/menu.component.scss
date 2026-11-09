@@ -18,8 +18,13 @@
   box-sizing: border-box;
 }
 
+// Centered while it fits; past that it shrinks to what's left between the logo
+// and the account items and scrolls (pxStack: overflow-y, hidden scrollbar)
 .sections {
   margin: auto 0;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
 }
 
 .account {

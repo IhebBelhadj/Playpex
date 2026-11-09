@@ -48,11 +48,16 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   loadError = '';
   panel:null | 'keyboard' | 'filters' = null;
   draft:Record<string, string[]> = {};
+  // the panel's groups: the plugin's for the draft (null = the screen's own)
+  draftGroups:PluginFilterGroup[] | null = null;
+  previewing = false;
   spot:CardModel | null = null;
 
   readonly loadAhead = LOAD_AHEAD;
   readonly stackId = `plugin:${this.scope.id}:${this.decl.name}`;
   private loadSub:Subscription;
+  private previewSub:Subscription;
+  private previewTimer:any;
   private focusListener;
 
   constructor(
@@ -73,17 +78,33 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     return this.state.data?.filters || [];
   }
 
+  /** The groups the panel shows: the plugin's for the draft, else the screen's; never the toolbar's */
+  get panelGroups():PluginFilterGroup[] {
+    return (this.draftGroups || this.groups).filter(g => !g.toolbar);
+  }
+
+  /** The screen's groups in the filters panel */
+  get filterGroups():PluginFilterGroup[] {
+    return this.groups.filter(g => !g.toolbar);
+  }
+
+  /** The screen's groups in the toolbar (a view): chips applied at once */
+  get toolbarGroups():PluginFilterGroup[] {
+    return this.groups.filter(g => g.toolbar);
+  }
+
   get toolbar():boolean {
     return !!(this.state.data?.search || this.groups.length || this.heading);
   }
 
   get filtered():boolean {
-    return !!this.state.query || Object.values(this.chosen()).some(v => v.length);
+    let chosen = this.chosen();
+    return !!this.state.query || this.filterGroups.some(g => (chosen[g.key] || []).length);
   }
 
   get filterLabel():string {
     let chosen = this.chosen();
-    let labels = this.groups.flatMap(g => g.options.filter(o => (chosen[g.key] || []).includes(o.value)).map(o => o.label));
+    let labels = this.filterGroups.flatMap(g => g.options.filter(o => (chosen[g.key] || []).includes(o.value)).map(o => o.label));
     return labels.length ? labels.join(', ') : 'Filters';
   }
 
@@ -127,6 +148,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   override ngOnDestroy(): void {
     super.ngOnDestroy();
     this.loadSub?.unsubscribe();
+    this.stopPreview();
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -224,7 +246,14 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
 
   openFilters() {
     this.draft = JSON.parse(JSON.stringify(this.chosen()));
+    this.draftGroups = null;
     this.panel = 'filters';
+  }
+
+  closeFilters() {
+    this.panel = null;
+    this.draftGroups = null;
+    this.stopPreview();
   }
 
   isOn(group:PluginFilterGroup, value:string | null):boolean {
@@ -238,21 +267,103 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     else if (group.multiple) chosen = chosen.includes(value) ? chosen.filter(v => v != value) : [...chosen, value];
     else chosen = [value];
     this.draft = { ...this.draft, [group.key]: chosen };
+    this.preview();
+  }
+
+  isChosen(group:PluginFilterGroup, value:string):boolean {
+    return (this.chosen()[group.key] || []).includes(value);
+  }
+
+  // a toolbar group's chip: applied at once (the panel's choices kept)
+  pickToolbar(group:PluginFilterGroup, value:string) {
+    let chosen = this.chosen()[group.key] || [];
+    let next = group.multiple ? (chosen.includes(value) ? chosen.filter(v => v != value) : [...chosen, value]) : [value];
+    if (!group.multiple && chosen.length == 1 && chosen[0] == value) return;
+    this.change({ filters: { ...this.chosen(), [group.key]: next } });
   }
 
   applyFilters() {
-    let filters = this.draft;
-    this.panel = null;
+    let filters = { ...this.toolbarChoices(), ...this.prune(this.draft, this.panelGroups) };
+    this.closeFilters();
     this.change({ filters });
     this.focusSelector('.pluginCatalog [data-px-key="filters"]');
   }
 
   resetFilters() {
     this.draft = {};
+    this.preview();
   }
 
+  // The groups that go with the draft (filters depend on one another: a site
+  // has its own categories): the handler asked with `preview: true`, its
+  // answer's `filters` only (rows and effects ignored); choices the new groups
+  // don't offer are dropped. Debounced: a few presses in a row ask once.
+  private preview() {
+    clearTimeout(this.previewTimer);
+    this.previewTimer = setTimeout(() => {
+      this.previewSub?.unsubscribe();
+      this.previewing = true;
+      let draft = this.draft;
+      this.previewSub = this.client.data<CatalogData>(this.scope.id, this.decl.data, {
+        params: this.params, query: this.state.query, filters: draft, preview: true,
+      }).subscribe({
+        next: answer => {
+          this.previewing = false;
+          if (this.panel != 'filters' || draft != this.draft) return;
+          // no groups in the answer (a plugin that doesn't know previews may answer a screen switch): the panel stays as it is
+          let groups = answer.data?.filters;
+          if (!Array.isArray(groups) || !groups.some(g => !g.toolbar) || answer.effects?.length) return;
+          let active = document.activeElement as HTMLElement;
+          let key = active?.closest('[data-px-key]')?.getAttribute('data-px-key');
+          this.draftGroups = groups;
+          this.draft = this.prune(draft, groups);
+          // the focused chip may be gone (a group the new site hasn't): the chosen ones
+          setTimeout(() => {
+            if (this.panel != 'filters') return;
+            let panel = document.querySelector('#pluginFilterPanel');
+            let focused = document.activeElement;
+            if (panel && (!focused || !panel.contains(focused))) {
+              let same = key && panel.querySelector(`[data-px-key="${CSS.escape(key)}"]`) as HTMLElement;
+              (same || panel.querySelector('.panelBody .selected') as HTMLElement)?.focus({ preventScroll: true });
+            }
+          }, 0);
+        },
+        // the panel keeps the groups it has
+        error: () => { this.previewing = false; },
+      });
+    }, 150);
+  }
+
+  private stopPreview() {
+    clearTimeout(this.previewTimer);
+    this.previewSub?.unsubscribe();
+    this.previewing = false;
+  }
+
+  /** The choices the groups offer (a group or a value they no longer have dropped) */
+  private prune(filters:Record<string, string[]>, groups:PluginFilterGroup[]):Record<string, string[]> {
+    let out:Record<string, string[]> = {};
+    groups.forEach(g => {
+      let values = (filters[g.key] || []).filter(v => g.options.some(o => o.value == v));
+      if (values.length) out[g.key] = values;
+    });
+    return out;
+  }
+
+  /** The choices of the toolbar's groups */
+  private toolbarChoices():Record<string, string[]> {
+    let chosen = this.chosen(), out:Record<string, string[]> = {};
+    this.toolbarGroups.forEach(g => { if (chosen[g.key]?.length) out[g.key] = chosen[g.key]; });
+    return out;
+  }
+
+  trackGroup(index:number, group:PluginFilterGroup) { return group.key; }
+
+  trackOption(index:number, option:{ value:string }) { return option.value; }
+
   clearAll() {
-    this.change({ query: '', filters: {} });
+    // the toolbar's choices (a view) stay
+    this.change({ query: '', filters: this.toolbarChoices() });
     this.focusSelector('.pluginCatalog [data-px-key="search"], .pluginCatalog [data-px-key="filters"]');
   }
 

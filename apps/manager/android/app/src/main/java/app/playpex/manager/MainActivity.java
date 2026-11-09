@@ -41,6 +41,8 @@ public class MainActivity extends BridgeActivity implements PullToReload.BridgeA
         registerPlugin(PlaypexDiscovery.class);
         // the phone's connection, and a "can't reach" screen instead of Chromium's error page (PlaypexConnection.java)
         registerPlugin(PlaypexConnection.class);
+        // the phone's keyboard for a field the page focused (the remote control's text box, PlaypexKeyboard.java)
+        registerPlugin(PlaypexKeyboard.class);
         super.onCreate(savedInstanceState);
         // swipe down from the top to reload, on every page (PullToReload.java)
         PullToReload.attach(this);

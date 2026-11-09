@@ -1,0 +1,118 @@
+- generic [active] [ref=e1]:
+  - link "Skip to the content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - navigation "Main" [ref=e4]:
+    - generic [ref=e5]:
+      - link "Playpex" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - list [ref=e9]:
+        - listitem [ref=e10]:
+          - button "Products" [ref=e11] [cursor=pointer]
+        - listitem [ref=e14]:
+          - link "Plugins" [ref=e15] [cursor=pointer]:
+            - /url: /plugins
+        - listitem [ref=e16]:
+          - button "Docs" [ref=e17] [cursor=pointer]
+        - listitem [ref=e20]:
+          - link "Releases 0.10.1-alpha.1" [ref=e21] [cursor=pointer]:
+            - /url: /releases
+            - text: Releases
+            - generic [ref=e22]: 0.10.1-alpha.1
+      - generic [ref=e23]:
+        - link "GitHub" [ref=e24] [cursor=pointer]:
+          - /url: https://github.com/IhebBelhadj/Playpex
+        - link "Download for Linux" [ref=e27] [cursor=pointer]:
+          - /url: "#download"
+  - main [ref=e31]:
+    - heading "Privacy" [level=1] [ref=e32]
+    - paragraph [ref=e33]: "Playpex is software you run yourself. Your data stays on your own Playpex Media Server: the Playpex project runs no service that receives it."
+    - paragraph [ref=e34]: Last updated 9 November 2026.
+    - heading "What Playpex keeps, and where" [level=2] [ref=e35]
+    - paragraph [ref=e36]: "A Playpex Media Server keeps its data on the computer it runs on: profiles, watch lists, what was watched and where you stopped, ratings, settings, the devices paired with it, and the accounts linked by its plugins. Playpex TV, Playpex for phones and Server Manager talk only to the server you connect them to. Nothing is sent to the Playpex project, and Playpex has no analytics, advertising or tracking."
+    - heading "The YouTube plugin and your Google account" [level=2] [ref=e37]
+    - paragraph [ref=e38]:
+      - text: "The YouTube plugin shows YouTube on your TV through the YouTube Data API. If you link a Google account to a Playpex profile (the server's administrator presses Link, you enter the code shown at google.com/device), Playpex asks Google for one permission only:"
+      - strong [ref=e39]: “View your YouTube account”
+      - text: (
+      - code [ref=e40]: youtube.readonly
+      - text: ), read-only.
+    - list [ref=e41]:
+      - listitem [ref=e42]:
+        - strong [ref=e43]: "What it reads:"
+        - text: "your subscriptions, your subscribed channels' latest videos, your liked videos and your playlists, to show them as rows in that profile's YouTube section. It never changes anything in your account: it can't subscribe, like, comment, upload or delete."
+      - listitem [ref=e44]:
+        - strong [ref=e45]: "Where it goes:"
+        - text: the access tokens Google issues are kept on your Playpex Media Server only, encrypted, and sent only to Google's YouTube API. Your YouTube data is fetched by your server when you open the YouTube section, held in its memory for at most an hour, and shown only on that profile's screens. It isn't stored, shared, sold, used for advertising, or sent to the Playpex project or anyone else.
+      - listitem [ref=e46]:
+        - strong [ref=e47]: "Unlinking:"
+        - text: the administrator can unlink the account on the server's dashboard (Plugins › YouTube › Accounts), which deletes the tokens from the server and revokes them at Google. You can also remove Playpex's access at any time from your Google account's permissions page,
+        - link "myaccount.google.com/permissions" [ref=e48] [cursor=pointer]:
+          - /url: https://myaccount.google.com/permissions
+        - text: .
+    - paragraph [ref=e49]:
+      - text: "Videos play in YouTube's own embedded player (from youtube-nocookie.com). YouTube's use of what you watch there is YouTube's: by using the YouTube plugin you agree to the"
+      - link "YouTube Terms of Service" [ref=e50] [cursor=pointer]:
+        - /url: https://www.youtube.com/t/terms
+      - text: ", and Google's handling of your data is described in the"
+      - link "Google Privacy Policy" [ref=e51] [cursor=pointer]:
+        - /url: https://policies.google.com/privacy
+      - text: .
+    - paragraph [ref=e52]:
+      - text: Playpex's use and transfer of information received from Google APIs follows the
+      - link "Google API Services User Data Policy" [ref=e53] [cursor=pointer]:
+        - /url: https://developers.google.com/terms/api-services-user-data-policy
+      - text: ", including its Limited Use requirements."
+    - heading "Other plugins" [level=2] [ref=e54]
+    - paragraph [ref=e55]: Plugins the server's administrator installs may talk to other services (each plugin lists the sites it reaches before it is installed). Those services' own privacy policies apply to what you do with them.
+    - heading "Questions" [level=2] [ref=e56]
+    - paragraph [ref=e57]:
+      - text: Playpex is made by
+      - link "Iheb Belhadj" [ref=e58] [cursor=pointer]:
+        - /url: https://github.com/IhebBelhadj
+      - text: . For anything about privacy, open an issue on
+      - link "GitHub" [ref=e59] [cursor=pointer]:
+        - /url: https://github.com/IhebBelhadj/Playpex/issues
+      - text: .
+  - contentinfo [ref=e60]:
+    - generic [ref=e61]:
+      - img "Playpex" [ref=e62]
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - heading "Apps" [level=3] [ref=e68]
+          - link "Media Server" [ref=e69] [cursor=pointer]:
+            - /url: /server
+          - link "Playpex TV" [ref=e70] [cursor=pointer]:
+            - /url: /tv
+          - link "Playpex Mobile" [ref=e71] [cursor=pointer]:
+            - /url: /mobile
+          - link "Server Manager" [ref=e72] [cursor=pointer]:
+            - /url: /manager
+        - generic [ref=e73]:
+          - heading "Docs" [level=3] [ref=e74]
+          - link "First steps" [ref=e75] [cursor=pointer]:
+            - /url: /docs/install-the-server
+          - link "Connect a screen" [ref=e76] [cursor=pointer]:
+            - /url: /docs/connect-a-screen
+          - link "Write a plugin" [ref=e77] [cursor=pointer]:
+            - /url: /docs/plugins-overview
+          - link "Build a client" [ref=e78] [cursor=pointer]:
+            - /url: /docs/client-api
+        - generic [ref=e79]:
+          - heading "Project" [level=3] [ref=e80]
+          - link "Source code" [ref=e81] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex
+          - link "Releases" [ref=e82] [cursor=pointer]:
+            - /url: /releases
+          - link "Licence" [ref=e83] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj/Playpex/blob/main/LICENSE.md
+          - link "Privacy" [ref=e84] [cursor=pointer]:
+            - /url: /privacy
+        - paragraph [ref=e85]: Playpex is an educational project, not for commercial use. You are responsible for the media you add to your server and play. Sintel © Blender Foundation, durian.blender.org, CC BY 3.0. Posters and details from TMDB; the other films shown are Blender open films and public-domain classics.
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - text: Playpex, made by
+          - link "Iheb Belhadj" [ref=e88] [cursor=pointer]:
+            - /url: https://github.com/IhebBelhadj
+          - text: . © 2026
+        - link "Download" [ref=e89] [cursor=pointer]:
+          - /url: "#download"

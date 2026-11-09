@@ -196,7 +196,7 @@
       ]
     },
     "source": {
-      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: a file (HTTPS; plain HTTP from a host the admin granted) proxied by the server as a media ref r_…; hls: an HLS playlist (VOD or live), proxied as h_… (every URI in it rewritten to the server); live: a continuous stream (MPEG-TS, or an HLS live playlist with format hls), proxied as l_… / h_…. The client never sees a URL or a header",
+      "description": "What a plugin's play.collect (or a play effect) offers. magnet: played as the core's torrents; http: a file (HTTPS; plain HTTP from a host the admin granted) proxied by the server as a media ref r_…; hls: an HLS playlist (VOD or live), proxied as h_… (every URI in it rewritten to the server); live: a continuous stream (MPEG-TS, or an HLS live playlist with format hls), proxied as l_… / h_…. The client never sees a URL or a header; embed: a video played in its site's own embedded player (provider youtube: YouTube's IFrame player, from a page the server serves), driven by the client's controls; for play effects only, not a title's Play",
       "oneOf": [
         {
           "type": "object",
@@ -422,6 +422,43 @@
                 "hls"
               ],
               "description": "ts (default; hls when the URL's path ends in .m3u8 / .m3u)"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "provider",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "const": "embed"
+            },
+            "provider": {
+              "enum": [
+                "youtube"
+              ],
+              "description": "Whose player: youtube (the IFrame player, youtube-nocookie.com)"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{11}$",
+              "description": "The video's id on that site (YouTube: 11 characters)"
+            },
+            "label": {
+              "$ref": "#/$defs/text"
+            },
+            "duration": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Its length in seconds when known (the player learns it from the site's player anyway)"
+            },
+            "notes": {
+              "$ref": "#/$defs/notes"
             }
           }
         }
@@ -700,6 +737,17 @@
           "description": "Where it plays from (a site, a host), shown in place of the seeders",
           "type": "string",
           "maxLength": 40
+        },
+        "image": {
+          "description": "A picture of it (a site's poster or a frame of the video), shown in place of `via`",
+          "$ref": "#/$defs/httpsUrl"
+        },
+        "imageVariant": {
+          "description": "The picture's shape: a portrait poster, or a landscape still (the default)",
+          "enum": [
+            "poster",
+            "still"
+          ]
         },
         "size": {
           "type": "integer",
@@ -1653,6 +1701,10 @@
             "maxLength": 30
           },
           "multiple": {
+            "type": "boolean"
+          },
+          "toolbar": {
+            "description": "Shown in the screen's toolbar (a catalog's), each option a chip applied at once, not in the filters panel: a view or a mode the other groups depend on",
             "type": "boolean"
           },
           "options": {

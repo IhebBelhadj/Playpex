@@ -13,7 +13,7 @@ export type HookName = 'play.collect' | 'play.rank' | 'play.before' | 'play.reso
   | 'live.channels' | 'live.guide' | 'live.stream';
 export type EventFamily = 'playback' | 'downloads' | 'library' | 'watchlist';
 export type WriteScope = 'watchlist' | 'watched' | 'ratings' | 'downloads';
-export type SourceKind = 'magnet' | 'http' | 'hls' | 'live';
+export type SourceKind = 'magnet' | 'http' | 'hls' | 'live' | 'embed';
 export type TemplateName = 'catalog' | 'title' | 'releases' | 'list' | 'guide';
 export type ListingCategory = 'catalog' | 'sources' | 'streams' | 'live' | 'resolvers' | 'subtitles' | 'metadata' | 'library'
   | 'tracking' | 'notifications' | 'tools';
@@ -57,6 +57,8 @@ export interface PluginLink {
     codeUrl: string;
     tokenUrl: string;
     refreshUrl?: string;
+    /** RFC 7009: unlinking revokes the tokens there */
+    revokeUrl?: string;
     scope?: string;
     /** form (RFC 8628, default) or json (Trakt) */
     body?: 'form' | 'json';
@@ -201,7 +203,9 @@ export type PluginSource =
   /** an HLS playlist, VOD or live (unset: read from the playlist) */
   | SourceBase & { kind: 'hls'; url: string; headers?: Record<string, string>; live?: boolean }
   /** a continuous stream: MPEG-TS (default), or a live HLS playlist */
-  | SourceBase & { kind: 'live'; url: string; headers?: Record<string, string>; format?: 'ts' | 'hls' };
+  | SourceBase & { kind: 'live'; url: string; headers?: Record<string, string>; format?: 'ts' | 'hls' }
+  /** a video played in its site's own embedded player (provider youtube: YouTube's IFrame player), driven by the client's controls; play effects only */
+  | SourceBase & { kind: 'embed'; provider: 'youtube'; id: string; duration?: number };
 
 /** A TV channel of a live plugin (live.channels) */
 export interface Channel {
@@ -266,6 +270,10 @@ export interface DirectRelease {
   call: PluginCall;
   /** Where it plays from, shown in place of the seeders */
   via?: string;
+  /** A picture of it (a site's poster, a frame of the video), shown in place of `via` */
+  image?: string;
+  /** The picture's shape (default `still`) */
+  imageVariant?: 'poster' | 'still';
   size?: number;
   quality?: Quality;
   uploadedAt?: string;
@@ -362,6 +370,8 @@ export interface FilterGroup {
   key: string;
   label: string;
   multiple?: boolean;
+  /** in the catalog's toolbar, applied at once (a view, a mode), not in the filters panel */
+  toolbar?: boolean;
   options: { value: string; label: string; on?: boolean }[];
 }
 

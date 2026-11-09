@@ -162,7 +162,8 @@ function view(id, locale) {
           });
         })).then(function (profiles) {
           var secrets = {};
-          secretKeys.forEach(function (k, i) { secrets[k] = !!r[1][i]; });
+          // set by the admin, or provided by the server's environment (./envSecrets.js)
+          secretKeys.forEach(function (k, i) { secrets[k] = !!r[1][i] || !!require('./envSecrets').get(id, k); });
           return {
             plugin: id,
             state: src.state,

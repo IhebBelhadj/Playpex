@@ -39,7 +39,7 @@ var AUTH = {
 var REMOTE = {
   PATH: API_PREFIX + '/remote',
   SESSION_COMMANDS: ['pause', 'resume', 'toggle', 'seek', 'seekBy', 'stop'],
-  MESSAGES: ['hello', 'state', 'key', 'text', 'pointer', 'cursor', 'signal', 'bye'],
+  MESSAGES: ['hello', 'state', 'key', 'text', 'pointer', 'cursor', 'signal', 'field', 'bye'],
   POINTER_PHASES: ['move', 'down', 'up', 'wheel'],
   POINTER_BUTTONS: ['left', 'right', 'middle', 'back'],
   KEY_MODIFIERS: ['shift', 'control', 'alt', 'meta'],
@@ -49,7 +49,12 @@ var REMOTE = {
   // server relays (docs/api/remote.md): MOVES is unordered and never resent
   // (running totals, so a lost one costs nothing), INPUT ordered and reliable
   // (buttons, wheel). Keys and text stay on the socket.
-  RTC: { MOVES: 'moves', INPUT: 'input', SIGNAL_MAX: 6000 }
+  RTC: { MOVES: 'moves', INPUT: 'input', SIGNAL_MAX: 6000 },
+  // A target that says capabilities.field tells the controller when one of its
+  // text fields is open (`field` messages: open with its text, closed); the
+  // controller answers with the field's whole text, so a phone's own keyboard
+  // fills a TV's search. FIELD_KINDS: what the field is for.
+  FIELD_KINDS: ['text', 'search', 'address']
 };
 
 // Fixed ports (plan §5.9); the HTTP one can be changed in the server settings

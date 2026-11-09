@@ -25,6 +25,8 @@ import { Marker, PlaySourcesService } from '../play-sources.service';
 import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.service';
 import { environment } from '../../environments/environment';
 import { HlsPlayer, loadHls } from './hls';
+import { EmbedVideo, embedErrorText } from './embed';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { LiveChannel, LiveService, NowNext } from '../live/live.service';
 
 const SAVE_EVERY_MS = 15000;
@@ -103,6 +105,11 @@ const PICTURE_MODES:{ key:PictureMode, label:string, fit:string, help:string }[]
 // guide (a px-panel of the lineup with what's on), media next / previous flip.
 const PLAY_BUTTON = '.buttons [data-px-key="play"]';
 
+/** a stream's quality by its height: 4K from 2160 lines, else 1080p, 720p… */
+function qualityLabel(height:number):string {
+  return height >= 2160 ? '4K' : height + 'p';
+}
+
 @Component({
   selector: 'app-player-page',
   templateUrl: './player-page.component.html',
@@ -119,9 +126,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   moviePlayer:HTMLVideoElement;
   link:string;                // the file's stream path: /media/{ref} (TorrentFile.ref); URLs: server.media()
   ref:string | null = null;   // its media ref (null: a server without refs, the torrent routes)
-  format:'file' | 'hls' | 'live' = 'file';   // how it plays (a plugin's stream: hls / live)
+  format:'file' | 'hls' | 'live' | 'embed' = 'file';   // how it plays (a plugin's stream: hls / live; its embed: YouTube's player)
+  embedUrl:SafeResourceUrl | null = null;     // embed: the server's page holding YouTube's player (/embed/youtube)
+  private embed:EmbedVideo | null = null;
   live = false;               // no end: a live playlist or a continuous stream
   private hls:HlsPlayer | null = null;
+  // a stream's qualities (its playlist's variants: Settings › Video › Quality), highest first, one per height;
+  // none for a stream with one quality
+  qualities:{ key:string, label:string, level:number }[] = [];
+  quality = 'auto';                              // 'auto' or the chosen one's key ('720p')
+  private playingLevel = -1;                     // the variant playing now (Auto says which)
   paused = false;
   playerSub:Subscription;
   audioWarning = false;
@@ -145,7 +159,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // the settings panel (a layer: subtitles, their size and timing, audio,
   // video, stats); moving onto a tab shows it
   settingsOpen = false;
-  readonly tabs = TABS;
+  tabs = TABS;   // an embedded video: Audio and Video only (YouTube draws its own captions)
   tab:SettingsTab = 'subtitles';
 
   // audio / video
@@ -196,7 +210,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   private audioIndex = 0;                 // /transcode ?audio=
   private audioRef:string | null = null;  // /transcode ?audioRef= (a separate audio file)
   private probedDuration = 0;
-  private seekAfterLoad:number | null = null;   // a switch back to direct play: where to continue
+  private seekAfterLoad:number | null = null;
+  private letGo = false;                        // this player released its session itself (leaving, a channel flip)   // a switch back to direct play: where to continue
   // the tracks saved with the resume point (this release), and what the user chose here
   private savedTracks:{ audio:string | null, subtitle:string | null, fileId?:string | null, infoHash:string | null, filePath:string | null } | null = null;
   private chosenAudio:string | null = null;
@@ -270,6 +285,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   constructor(
     private host:ElementRef<HTMLElement>,
+    private sanitizer:DomSanitizer,
     private zone:NgZone,
     private server:ServerService,
     private torrentService:TorrentService,
@@ -359,6 +375,14 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       return;
     }
 
+    // a plugin's embed source: YouTube's player in the server's page; nothing
+    // on the server to hold (no lease, keepalive or stats), nothing remembered
+    // but what the request asks (a YouTube video has no TMDB title)
+    if (this.playback.embed) {
+      this.startEmbed(this.playback.embed);
+      return;
+    }
+
     // a file on the server (library, a download's file): its media ref at
     // once, no torrent to add or wait for
     if (this.playback.source) {
@@ -374,6 +398,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.format = source.format;
         this.live = source.format == 'live' || !!this.playback.channel;
         this.stages = [this.playback.channel ? `Tuning to ${this.playback.channel.number} ${this.playback.channel.name}` : 'Opening the stream'];
+        // chosen in the channel list: it stays open while this channel tunes
+        if (this.playback.channel && this.playback.channelList) this.openChannels();
         setTimeout(() => this.setupPlayer());
         return;
       }
@@ -586,6 +612,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     return PICTURE_MODES.find(m => m.key == this.pictureMode)?.help || '';
   }
 
+  // ── a stream's quality (HLS variants) ───────────────────────────────────
+
+  get autoQualityLabel():string {
+    let playing = this.hls?.levels[this.playingLevel];
+    return playing?.height ? 'Auto · ' + qualityLabel(playing.height) : 'Auto';
+  }
+
+  get qualityHelp():string {
+    return this.quality == 'auto' ? 'Chosen by the connection, and changed while it plays.' :
+      'Kept for the next streams on this TV (or the nearest one below it).';
+  }
+
+  // The playlist's variants as qualities, and the one this TV starts at (player.streamQuality)
+  private hlsQualities() {
+    let hls = this.hls;
+    if (!hls) return;
+    let best = new Map<number, number>();   // height → the level with the highest bitrate
+    hls.levels.forEach((l, i) => {
+      if (!l.height) return;
+      let kept = best.get(l.height);
+      if (kept === undefined || hls.levels[kept].bitrate < l.bitrate) best.set(l.height, i);
+    });
+    this.qualities = best.size < 2 ? [] : Array.from(best.entries()).sort((a, b) => b[0] - a[0])
+      .map(([height, level]) => ({ key: height + 'p', label: qualityLabel(height), level }));
+    let wanted = this.settings.value('player.streamQuality');
+    if (!this.qualities.length || wanted == 'auto') return;
+    let height = parseInt(wanted, 10);
+    let start = this.qualities.find(q => parseInt(q.key, 10) <= height) || this.qualities[this.qualities.length - 1];
+    this.quality = start.key;
+    hls.currentLevel = start.level;
+  }
+
+  setQuality(key:string) {
+    let hls = this.hls, chosen = this.qualities.find(q => q.key == key);
+    if (!hls || (key != 'auto' && !chosen)) return;
+    this.quality = key;
+    // a chosen one plays from the next segment on (what's buffered is dropped); auto chooses again
+    hls.currentLevel = chosen ? chosen.level : -1;
+    this.settings.set('player.streamQuality', key);
+  }
+
   // ── the file ──────────────────────────────────────────────────────────────
 
   // Largest file with a container Chromium can play; mp4 wins over mkv/webm
@@ -752,8 +819,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     ).subscribe(({ command, ended }) => {
       if (this.destroyed || !this.screen.active) return;
       if (command && this.ownsSession(command.sessionId, command.infoHash, command.ref)) this.obey(command);
-      // a session.ended for this player's own session: it was cut
-      else if (ended && this.sessionId && ended.id == this.sessionId) {
+      // a session.ended for this player's own session: it was cut (not one it let go itself: a
+      // channel flip releases its stream first, and leaving then would pop the screen it came from)
+      else if (ended && this.sessionId && ended.id == this.sessionId && !this.letGo) {
         this.released = true;
         this.leavePlayer();
         this.toasts.show({ text: 'Playback was stopped from the server', key: 'remote-stop' });
@@ -805,6 +873,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // Lets go of the torrent: the server pauses it 30 s after the last device
   // let go (its data stays, a later Play resumes it)
   private releaseTorrent() {
+    this.letGo = true;
     // a file played by its ref: the lease is the ref's (a download's: its torrent's)
     if (this.playback?.source && !this.released) {
       this.released = true;
@@ -923,12 +992,19 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   setupPlayer(){
     // left while the file was being probed / the torrent opened
     if (this.destroyed) return;
-    this.moviePlayer = this.host.nativeElement.querySelector('.moviePlayer');
+    if (this.format == 'embed') {
+      let frame = this.host.nativeElement.querySelector<HTMLIFrameElement>('.embedPlayer');
+      if (!frame) return this.cantPlay("YouTube's player couldn't start");
+      this.embed = new EmbedVideo(frame, code => this.zone.run(() => this.cantPlay(embedErrorText(code))));
+      this.moviePlayer = this.embed as unknown as HTMLVideoElement;
+    }
+    else this.moviePlayer = this.host.nativeElement.querySelector('.moviePlayer');
     let player = this.moviePlayer;
     let on = (name:string, fn:() => void) => player.addEventListener(name, fn, { signal: this.videoListeners.signal });
 
     this.applyVolume();
-    if (this.format == 'hls') this.attachHls();
+    if (this.format == 'embed') this.moviePlayer.play()?.catch(() => {});
+    else if (this.format == 'hls') this.attachHls();
     else {
       this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
         : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
@@ -952,7 +1028,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         this.updateClock();
         this.startMediaSession();
         // a channel: its banner once the picture is there
-        if (this.playback.channel) this.showBanner(this.playback.channel);
+        if (this.playback.channel && !this.channelsOpen) this.showBanner(this.playback.channel);
       } , 1500)
     });
 
@@ -997,8 +1073,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // and frees the decoder; `src = ""` alone would load the page's own URL
   private stopVideo() {
     this.videoListeners.abort();
+    this.embed?.stop();
     this.hls?.destroy();
     this.hls = null;
+    this.qualities = [];
     let player = this.moviePlayer || this.host.nativeElement.querySelector<HTMLVideoElement>('.moviePlayer');
     if (!player) return;
     player.pause();
@@ -1209,7 +1287,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.controlsIdle);
     if (!this.controlsVisible) return;
     this.controlsIdle = setTimeout(() => this.zone.run(() => {
-      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.tracksOpen || this.pointer.visible) return;
+      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.tracksOpen || this.channelsOpen || this.pointer.visible) return;
       this.hideControls();
     }), CONTROLS_IDLE_MS);
   }
@@ -1547,19 +1625,36 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.showBanner(this.playback.channel);
   }
 
-  /** Another channel, in place of this player (Back still returns where the channel was opened from) */
-  tune(channel:LiveChannel | null) {
+  /**
+   * Another channel, in place of this player (Back still returns where the channel was opened from).
+   * `fromList`: chosen in the channel list, which stays open in the new player (a TV's list: browse on
+   * while the picture changes); OK on the channel already playing closes it
+   */
+  tune(channel:LiveChannel | null, fromList = false) {
     this.flipTo = null;
-    this.channelsOpen = false;
     if (!channel || channel.id == this.playback.channel.id || this.destroyed) {
+      this.channelsOpen = false;
       this.showBanner(this.playback.channel);
       return;
     }
+    if (!fromList) this.channelsOpen = false;
+    let plugin = this.playback.channel.plugin;
+    let was = this.lineupChannels.find(c => c.id == this.playback.channel.id) || null;
     // the stream's slot is let go first: the server counts live viewers (streaming.maxLive)
     this.releaseTorrent();
-    this.liveTv.play(this.playback.channel.plugin, channel, { replace: true }).subscribe(ok => {
-      if (!ok && !this.destroyed) this.leavePlayer();
+    this.liveTv.play(plugin, channel, { replace: true, list: fromList }).subscribe(ok => {
+      if (ok || this.destroyed) return;
+      // it can't play (a toast says why): back to the channel that was on, else out
+      if (was) this.liveTv.play(plugin, was, { replace: true, list: fromList }).subscribe(back => {
+        if (!back && !this.destroyed) this.leavePlayer();
+      });
+      else this.leavePlayer();
     });
+  }
+
+  /** OK in the channel list */
+  chooseChannel(channel:LiveChannel) {
+    this.tune(channel, true);
   }
 
   /** OK with the controls hidden: the lineup with what's on, the current channel focused */
@@ -1570,7 +1665,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.channelsOpen = true;
     if (lineup.guide) {
       this.channelGuideSub?.unsubscribe();
-      this.channelGuideSub = this.liveTv.nowNext(lineup.plugin, lineup.channels.slice(0, 200).map(c => c.id))
+      // what's on for the channels around this one (a long lineup: the 200 nearest)
+      let at = Math.max(0, lineup.channels.findIndex(c => c.id == this.playback.channel.id));
+      let from = Math.max(0, Math.min(at - 100, lineup.channels.length - 200));
+      this.channelGuideSub = this.liveTv.nowNext(lineup.plugin, lineup.channels.slice(from, from + 200).map(c => c.id))
         .subscribe(found => this.channelGuide = found);
     }
   }
@@ -1591,7 +1689,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     loadHls().then(HlsPlayer => {
       if (this.destroyed) return;
       if (!HlsPlayer.isSupported()) return this.cantPlay("This stream can't be played here (no Media Source support)");
-      let hls = this.hls = new HlsPlayer({ backBufferLength: 60, enableWorker: true });
+      // startLevel -1: Auto starts at the quality the first segment's download speed allows, not the
+      // playlist's first (often its lowest)
+      let hls = this.hls = new HlsPlayer({ backBufferLength: 60, enableWorker: true, startLevel: -1 });
       let recovered = false;
       hls.on(HlsPlayer.Events.LEVEL_LOADED, (_e, data) => this.zone.run(() => {
         if (data.details.live && !this.live) {
@@ -1599,6 +1699,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
           this.updateTimeline();
         }
       }));
+      hls.on(HlsPlayer.Events.MANIFEST_PARSED, () => this.zone.run(() => this.hlsQualities()));
+      hls.on(HlsPlayer.Events.LEVEL_SWITCHED, (_e, data) => this.zone.run(() => this.playingLevel = data.level));
       hls.on(HlsPlayer.Events.AUDIO_TRACKS_UPDATED, () => this.zone.run(() => this.hlsTracks()));
       hls.on(HlsPlayer.Events.SUBTITLE_TRACKS_UPDATED, () => this.zone.run(() => this.hlsTracks()));
       hls.on(HlsPlayer.Events.AUDIO_TRACK_SWITCHED, () => this.zone.run(() => this.hlsTracks()));
@@ -1617,6 +1719,27 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       hls.attachMedia(this.moviePlayer);
       this.moviePlayer.play()?.catch(() => {});
     }, () => this.cantPlay("The stream player couldn't be loaded"));
+  }
+
+  // A plugin's embed source: the server's page with YouTube's player, framed
+  // under the player's own controls (embed.ts); captions in the profile's
+  // subtitle language when it has one (YouTube draws them)
+  private startEmbed(embed:{ provider:'youtube', id:string }) {
+    if (embed.provider != 'youtube' || !/^[A-Za-z0-9_-]{11}$/.test(embed.id || '')) return this.cantPlay("This video's address isn't right");
+    this.format = 'embed';
+    this.tabs = TABS.filter(t => t.key == 'audio' || t.key == 'video');
+    this.tab = 'audio';
+    let params = new URLSearchParams({ v: embed.id });
+    let start = Math.floor(this.playback.startAt || 0);
+    if (start > 0) params.set('start', String(start));
+    let cc = this.settings.value('player.subtitleLanguage');
+    if (typeof cc == 'string' && /^[a-z]{2}$/.test(cc)) params.set('cc', cc);
+    let hl = (navigator.language || 'en').split('-')[0];
+    if (/^[a-z]{2}$/.test(hl)) params.set('hl', hl);
+    // the server's page, built from the server's own address: no other page is framed
+    this.embedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(`${this.server.api}/embed/youtube?${params}`);
+    this.stages = ['Opening YouTube'];
+    setTimeout(() => this.setupPlayer());
   }
 
   private cantPlay(message:string) {
@@ -1664,10 +1787,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   // the CC button: on Subtitles; "•••": the tab used last
   openSettings(tab?:SettingsTab) {
-    if (tab) this.tab = tab;
+    if (tab && this.tabs.some(t => t.key == tab)) this.tab = tab;
     this.settingsOpen = true;
     this.videoInfo = this.readVideoInfo();
-    if (!this.subtitleProviders.length && this.subtitles === undefined) this.fetchSubs();
+    if (this.format != 'embed' && !this.subtitleProviders.length && this.subtitles === undefined) this.fetchSubs();
   }
 
   setVolume(percent:number) {

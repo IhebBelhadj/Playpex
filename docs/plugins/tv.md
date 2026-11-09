@@ -8,7 +8,7 @@ A plugin never runs code in the TV. It names **screens** (a core template + a da
 
 `contributes.screens: [{ name, template, data, title?, params? }]` → screen `plugin.<id>.<name>` at `p/<id>/<name>[/:param…]`. A screen a section opens has no params; the others are detail screens (Back returns to where they were opened from) that keep your section's menu entry highlighted. The handler answers `{ data: <the template's model>, effects? }` and gets:
 
-- `catalog`: `{ params, query, filters: { <group key>: [values] } }`, asked again when the user searches or applies filters (`filters` is what you marked `on` until the user chooses);
+- `catalog`: `{ params, query, filters: { <group key>: [values] } }`, asked again when the user searches or applies filters (`filters` is what you marked `on` until the user chooses). While the filters panel is open, each choice asks with `preview: true` and the choices so far: answer the `filters` that go with them (one group's choice may change another's options: a site's categories); the TV redraws the panel from them, drops choices they no longer offer, and ignores your rows and effects, so keep a preview cheap (no rows read, nothing stored, no screen switch);
 - `title`, `list`: `{ params }`;
 - `releases`: `{ params, query, filters, page }`, `page` 1, 2… as the list scrolls, until you answer `last: true`.
 
@@ -18,7 +18,7 @@ The server checks `data` against the template (out of shape: the screen shows it
 |---|---|---|
 | `catalog` | the Movies section: title info of the focused card on top, rows below, a toolbar with search and filters | `{ title?, rows: Row[], search?, filters?: FilterGroup[], empty? }` |
 | `title` | a movie page: title info, action tiles, rows; it scrolls | `{ info: TitleInfo, actions?: Action[], rows?: Row[] }` |
-| `releases` | Find releases: a rail with search and filter chips, the release list by seeders | `{ title?, releases: (Release \| DirectRelease)[], last, filters?, empty? }`; selecting a release asks the core to play it (needs `play`). A **direct link** `{ title, call, via?, size?, quality?, uploadedAt?, notes? }` (a site's film or file, no seeders: `via` shows where it plays from in their place) calls your handler when chosen, which answers a `play` effect: resolve its tokens then, not for the whole list. Torrents and direct links may share a list; the core's own release lists (`releases.providers`) take torrents only. Direct links came with `SERVER_PLUGIN_API` 1.1: ask `"api": { "server": "^1.1" }` (older servers refuse the answer) |
+| `releases` | Find releases: a rail with search and filter chips, the release list by seeders | `{ title?, releases: (Release \| DirectRelease)[], last, filters?, empty? }`; selecting a release asks the core to play it (needs `play`). A **direct link** `{ title, call, via?, image?, imageVariant?, size?, quality?, uploadedAt?, notes? }` (a site's film or file, no seeders: `via` shows where it plays from in their place, or `image` (https) a picture of it: `imageVariant` `poster` (portrait) or `still` (landscape, the default)) calls your handler when chosen, which answers a `play` effect: resolve its tokens then, not for the whole list. Torrents and direct links may share a list; the core's own release lists (`releases.providers`) take torrents only. Direct links came with `SERVER_PLUGIN_API` 1.1: ask `"api": { "server": "^1.1" }` (older servers refuse the answer); their `image` / `imageVariant` with 1.2 (`^1.2`) |
 | `list` | a list of rows like the library's folders (menus, folders) | `{ title?, items: [{ key, label, meta?, icon?, intent?, call? }], empty? }` |
 | `guide` | a TV guide: channels as lines, their programmes over 3 h from now, an amber now line, groups, Later / Earlier; Enter on what's on plays the channel (↑/↓ flip channels in the player) | drawn from your `live.channels` / `live.guide` by the core (playing needs no `play` permission: `live.stream` is the core's way in); your handler (optional) answers `{ title?, empty? (shown when there's no channel: say what the admin should set) }` |
 
@@ -39,6 +39,7 @@ The TV ignores it.
 
 ## Models
 
+- **FilterGroup** `{ key, label, multiple?, toolbar?, options: [{ value, label, on? }] }` (≤ 6 groups, ≤ 40 options): a catalog draws its groups in a Filters panel, applied together (each choice previews, see above); `toolbar: true` puts the group in the toolbar instead, its options as chips applied at once (a view, a mode; plugin API 1.2); a releases screen draws every group as chips on its rail.
 - **Card** `{ key, title, variant?, image?, subtitle?, badges?, progress?, rating?, intent?, call?, info? }`: `image` is a full HTTPS URL (on a declared host) or `assets/…`; `info` is the title info shown while it has the focus (catalog); Enter opens `intent` or calls `call`.
 - **Row** `{ key, title, variant?, items }` or `{ key, title, variant?, page: { data, args? } }`: a paged row calls `data` with `args.page` = 1, 2… as the user nears the end, expecting `{ items, last }`. Keys start with `<id>:`.
 - **Action** `{ key, label, icon, on?, progress?, disabled?, intent?, call? }`: an action tile; `icon` is a core icon name or `assets/…`.

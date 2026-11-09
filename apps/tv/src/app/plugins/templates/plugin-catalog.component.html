@@ -6,7 +6,12 @@
     <h1 class="heading">{{ heading }}</h1>
     <px-search-field *ngIf="state.data?.search" key="search" [query]="state.query" placeholder="Search"
       (pxSelect)="openKeyboard()"></px-search-field>
-    <px-button *ngIf="groups.length" key="filters" variant="toolbar" icon="opts" [label]="filterLabel"
+    <!-- groups the plugin puts in the toolbar (a view): applied at once -->
+    <div class="toolbarGroup" *ngFor="let g of toolbarGroups; trackBy: trackGroup" role="group" [attr.aria-label]="g.label">
+      <px-chip *ngFor="let o of g.options; trackBy: trackOption" [key]="g.key + ':' + o.value" [label]="o.label"
+        [selected]="isChosen(g, o.value)" (pxSelect)="pickToolbar(g, o.value)"></px-chip>
+    </div>
+    <px-button *ngIf="filterGroups.length" key="filters" variant="toolbar" icon="opts" [label]="filterLabel"
       [active]="filterLabel != 'Filters'" (pxSelect)="openFilters()"></px-button>
     <px-button *ngIf="filtered" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearAll()"></px-button>
   </div>
@@ -36,15 +41,15 @@
   </div>
 </px-section-layout>
 
-<!-- Its filter groups, applied together -->
+<!-- Its filter groups, applied together; each choice asks the plugin for the groups that go with it (a site's categories) -->
 <px-panel *ngIf="panel == 'filters'" class="filterPanel" id="pluginFilterPanel" title="Filter" align="start" [width]="1040"
-  focus=".panelBody .selected" (closed)="panel = null">
+  focus=".panelBody .selected" (closed)="closeFilters()">
   <div class="panelBody" pxStack>
-    <ng-container *ngFor="let g of groups">
+    <ng-container *ngFor="let g of panelGroups; trackBy: trackGroup">
       <h3 class="groupTitle">{{ g.label }}</h3>
       <div class="chipLine" pxGrid enter="nearest">
         <px-chip [key]="g.key + ':any'" [label]="g.multiple ? 'Any' : 'All'" [selected]="isOn(g, null)" (pxSelect)="toggle(g, null)"></px-chip>
-        <px-chip *ngFor="let o of g.options" [key]="g.key + ':' + o.value" [label]="o.label" [selected]="isOn(g, o.value)"
+        <px-chip *ngFor="let o of g.options; trackBy: trackOption" [key]="g.key + ':' + o.value" [label]="o.label" [selected]="isOn(g, o.value)"
           (pxSelect)="toggle(g, o.value)"></px-chip>
       </div>
     </ng-container>

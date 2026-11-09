@@ -1,0 +1,46 @@
+---
+// Privacy policy: what Playpex does with personal data, the YouTube plugin's Google account access in particular
+// (Google's OAuth consent screen links here; the YouTube API Services policies ask for it).
+import Base from '../layouts/Base.astro';
+import { SITE } from '../data/site';
+const updated = '9 November 2026';
+---
+<Base title="Privacy · Playpex" description="What Playpex does with your data: it stays on your own Playpex Media Server. How the YouTube plugin uses a linked Google account.">
+<main class="doc">
+  <h1>Privacy</h1>
+  <p class="lede">Playpex is software you run yourself. Your data stays on your own Playpex Media Server: the Playpex project runs no service that receives it.</p>
+  <p class="when">Last updated {updated}.</p>
+
+  <h2>What Playpex keeps, and where</h2>
+  <p>A Playpex Media Server keeps its data on the computer it runs on: profiles, watch lists, what was watched and where you stopped, ratings, settings, the devices paired with it, and the accounts linked by its plugins. Playpex TV, Playpex for phones and Server Manager talk only to the server you connect them to. Nothing is sent to the Playpex project, and Playpex has no analytics, advertising or tracking.</p>
+
+  <h2>The YouTube plugin and your Google account</h2>
+  <p>The YouTube plugin shows YouTube on your TV through the YouTube Data API. If you link a Google account to a Playpex profile (the server's administrator presses Link, you enter the code shown at google.com/device), Playpex asks Google for one permission only: <strong>“View your YouTube account”</strong> (<code>youtube.readonly</code>), read-only.</p>
+  <ul>
+    <li><strong>What it reads:</strong> your subscriptions, your subscribed channels' latest videos, your liked videos and your playlists, to show them as rows in that profile's YouTube section. It never changes anything in your account: it can't subscribe, like, comment, upload or delete.</li>
+    <li><strong>Where it goes:</strong> the access tokens Google issues are kept on your Playpex Media Server only, encrypted, and sent only to Google's YouTube API. Your YouTube data is fetched by your server when you open the YouTube section, held in its memory for at most an hour, and shown only on that profile's screens. It isn't stored, shared, sold, used for advertising, or sent to the Playpex project or anyone else.</li>
+    <li><strong>Unlinking:</strong> the administrator can unlink the account on the server's dashboard (Plugins › YouTube › Accounts), which deletes the tokens from the server and revokes them at Google. You can also remove Playpex's access at any time from your Google account's permissions page, <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+  </ul>
+  <p>Videos play in YouTube's own embedded player (from youtube-nocookie.com). YouTube's use of what you watch there is YouTube's: by using the YouTube plugin you agree to the <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a>, and Google's handling of your data is described in the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p>
+  <p>Playpex's use and transfer of information received from Google APIs follows the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including its Limited Use requirements.</p>
+
+  <h2>Other plugins</h2>
+  <p>Plugins the server's administrator installs may talk to other services (each plugin lists the sites it reaches before it is installed). Those services' own privacy policies apply to what you do with them.</p>
+
+  <h2>Questions</h2>
+  <p>Playpex is made by <a href={SITE.author.url}>{SITE.author.name}</a>. For anything about privacy, open an issue on <a href={SITE.repo + '/issues'}>GitHub</a>.</p>
+</main>
+</Base>
+<style>
+  .doc { max-width: 760px; margin: 0 auto; padding: 96px var(--m) 120px; }
+  h1 { font-size: clamp(36px, 4.4vw, 60px); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 20px; }
+  h2 { font-size: 24px; font-weight: 700; letter-spacing: -.01em; margin: 44px 0 12px; }
+  p, li { font-size: 17px; line-height: 1.6; color: var(--text-2); }
+  p + p { margin-top: 14px; }
+  .lede { font-size: 20px; color: var(--text); }
+  .when { font-size: 14px; margin-top: 10px; }
+  ul { margin: 14px 0; padding-left: 1.2em; display: grid; gap: 10px; }
+  strong { color: var(--text); }
+  a { text-decoration: underline; text-underline-offset: 3px; }
+  code { font-size: .9em; }
+</style>

@@ -4,15 +4,22 @@
 // › <name> › Accounts; never on a client). A manifest's `link` entries:
 //
 //   deviceCode   an RFC 8628 device flow the host runs: "Link" asks codeUrl for
-//                a code (client id from the plugin's secret `clientIdSecret`),
+//                a code (the client: the admin's, from the plugin's secrets
+//                `clientIdSecret` / `clientSecretSecret`, else the server's
+//                environment's: lib/plugins/envSecrets.js, so a server can
+//                provide one and nobody else has to make one),
 //                the dashboard shows it with its URL, the host polls tokenUrl
 //                (at the interval it says, slowing down when told) until the
 //                person entered it, then keeps the tokens with the plugin's
 //                secrets (`link:<name>`, per profile for scope profile) and
 //                refreshes them when they near expiry. Requests go out as the
 //                plugin (its hosts, the address rules); `body: 'json'` for
-//                services that don't take forms (Trakt), and both `device_code`
-//                and `code` are sent to the token URL.
+//                services that don't take forms (Trakt: the token URL then gets
+//                the code as both `device_code` and `code`; form ones only the
+//                RFC's `device_code`). `revokeUrl` (RFC 7009): unlinking revokes
+//                the tokens there too, so the account forgets this server. The
+//                tokens are encrypted at rest with the plugin's secrets
+//                (lib/secretBox.js) and never reach a client.
 //   custom       a data handler of the plugin answering a code to show and a
 //                poll handler (asked every 5 s by the dashboard), or a form to
 //                fill and a submit handler; `done` marks the account linked.
@@ -104,8 +111,11 @@ function writeTokens(pluginId, name, profileId, tokens) {
   });
 }
 
+// the admin's secret, else the server's environment's (./envSecrets.js)
 function secretOf(pluginId, name) {
-  return name ? services().then(function (s) { return s.plugins.secrets.get(pluginId, name, ''); }) : Promise.resolve(null);
+  return name ? services().then(function (s) { return s.plugins.secrets.get(pluginId, name, ''); }).then(function (value) {
+    return require('./envSecrets').orDefault(pluginId, name, value);
+  }) : Promise.resolve(null);
 }
 
 // ── device code ─────────────────────────────────────────────────────────────
@@ -163,11 +173,38 @@ function tokenOutcome(r) {
   return { state: 'failed', message: 'The service answered ' + (error || 'HTTP ' + r.status) };
 }
 
+// The client to use: the admin's (the plugin's secrets clientIdSecret /
+// clientSecretSecret), else the server's environment's (./envSecrets.js);
+// [id, secret]. `tokens`: a link's, which refreshes and revokes with the client
+// that made it (its `clientId`, kept with them), whichever is the default now
+function clientOf(plugin, flow, tokens) {
+  var env = require('./envSecrets');
+  var fromEnv = [env.get(plugin.id, flow.clientIdSecret), flow.clientSecretSecret ? env.get(plugin.id, flow.clientSecretSecret) : null];
+  return services().then(function (s) {
+    return Promise.all([s.plugins.secrets.get(plugin.id, flow.clientIdSecret, ''),
+      flow.clientSecretSecret ? s.plugins.secrets.get(plugin.id, flow.clientSecretSecret, '') : null]);
+  }).then(function (own) {
+    if (tokens && tokens.clientId && fromEnv[0] && tokens.clientId === fromEnv[0] && tokens.clientId !== own[0]) {
+      return fromEnv;
+    }
+    return own[0] ? own : fromEnv;
+  });
+}
+
+// A secret's name as the dashboard shows it (its setting's label, untranslated "@key"s aside)
+function settingLabel(plugin, key) {
+  var d = ((plugin.manifest.contributes || {}).settings || []).filter(function (s) { return s.key === key; })[0];
+  return d && d.label && d.label.charAt(0) !== '@' ? '"' + d.label + '"' : key;
+}
+
 function startDeviceCode(plugin, link, profile) {
   var flow = link.deviceCode, key = keyOf(plugin.id, link.name, profile && profile.id);
-  return Promise.all([secretOf(plugin.id, flow.clientIdSecret), secretOf(plugin.id, flow.clientSecretSecret)]).then(function (ids) {
+  return clientOf(plugin, flow).then(function (ids) {
     if (!ids[0]) {
-      throw failure('INVALID', 'Enter its ' + flow.clientIdSecret + ' in Settings first');
+      throw failure('INVALID', 'Enter its ' + settingLabel(plugin, flow.clientIdSecret) + ' in the plugin\'s Settings first');
+    }
+    if (flow.clientSecretSecret && !ids[1]) {
+      throw failure('INVALID', 'Enter its ' + settingLabel(plugin, flow.clientSecretSecret) + ' in the plugin\'s Settings first');
     }
     return post(plugin, flow, flow.codeUrl, { client_id: ids[0], scope: flow.scope || null }).then(function (r) {
       var b = r.body || {},
@@ -197,11 +234,12 @@ function startDeviceCode(plugin, link, profile) {
           return;
         }
         post(plugin, flow, flow.tokenUrl, {
-          grant_type: GRANT, device_code: b.device_code, code: b.device_code, client_id: ids[0], client_secret: ids[1] || null
+          grant_type: GRANT, device_code: b.device_code, code: flow.body === 'json' ? b.device_code : null,
+          client_id: ids[0], client_secret: ids[1] || null
         }).then(function (t) {
           var outcome = tokenOutcome(t);
           if (outcome.state === 'done') {
-            return writeTokens(plugin.id, link.name, profile && profile.id, tokensFrom(t.body)).then(function () {
+            return writeTokens(plugin.id, link.name, profile && profile.id, Object.assign(tokensFrom(t.body), { clientId: ids[0] })).then(function () {
               job.state = 'done';
               log.info('plugin ' + plugin.id + ' linked ' + link.name + (profile ? ' for a profile' : ''), { plugin: plugin.id });
               plugins.publish({ id: plugin.id, state: plugin.state, reason: 'link' });
@@ -236,7 +274,7 @@ function fresh(plugin, link, profileId) {
       return tokens;
     }
     var flow = link.deviceCode;
-    return Promise.all([secretOf(plugin.id, flow.clientIdSecret), secretOf(plugin.id, flow.clientSecretSecret)]).then(function (ids) {
+    return clientOf(plugin, flow, tokens).then(function (ids) {
       return post(plugin, flow, flow.refreshUrl || flow.tokenUrl, {
         grant_type: 'refresh_token', refresh_token: tokens.refreshToken, client_id: ids[0], client_secret: ids[1] || null
       });
@@ -245,7 +283,7 @@ function fresh(plugin, link, profileId) {
         log.warn('plugin ' + plugin.id + ': refreshing ' + link.name + ' failed (HTTP ' + r.status + ')', { plugin: plugin.id });
         return tokens;
       }
-      var next = Object.assign(tokensFrom(r.body), { linkedAt: tokens.linkedAt });
+      var next = Object.assign(tokensFrom(r.body), { linkedAt: tokens.linkedAt, clientId: tokens.clientId || null });
       next.refreshToken = next.refreshToken || tokens.refreshToken;
       return writeTokens(plugin.id, link.name, profileId, next).then(function () { return next; });
     }, function (err) {
@@ -348,6 +386,32 @@ function submit(pluginId, name, profileId, values) {
   });
 }
 
+// RFC 7009: the refresh token (which revokes its access tokens with it), else
+// the access token; best effort: the tokens are forgotten here either way
+function revoke(plugin, link, profileId) {
+  var flow = link && link.deviceCode;
+  if (!flow || !flow.revokeUrl) {
+    return Promise.resolve();
+  }
+  return readTokens(plugin.id, link.name, profileId).then(function (tokens) {
+    var token = tokens && (tokens.refreshToken || tokens.accessToken);
+    if (!token) {
+      return null;
+    }
+    return clientOf(plugin, flow, tokens).then(function (ids) {
+      return post(plugin, flow, flow.revokeUrl, {
+        token: token, token_type_hint: tokens.refreshToken ? 'refresh_token' : 'access_token', client_id: ids[0], client_secret: ids[1] || null
+      });
+    }).then(function (r) {
+      if (r.status >= 300) {
+        log.warn('plugin ' + plugin.id + ': revoking ' + link.name + ' answered HTTP ' + r.status + ' (forgotten here anyway)', { plugin: plugin.id });
+      }
+    });
+  }).catch(function (err) {
+    log.warn('plugin ' + plugin.id + ': revoking ' + link.name + ' failed: ' + err.message + ' (forgotten here anyway)', { plugin: plugin.id });
+  });
+}
+
 function unlink(pluginId, name, profileId) {
   return Promise.resolve().then(function () {
     var plugin = plugins.get(pluginId);
@@ -359,7 +423,10 @@ function unlink(pluginId, name, profileId) {
       clearTimeout(job.timer);
       pending.delete(keyOf(pluginId, name, profileId));
     }
-    return writeTokens(pluginId, name, profileId, null).then(function () {
+    var link = (plugin.manifest.link || []).filter(function (l) { return l.name === name; })[0];
+    return revoke(plugin, link, profileId).then(function () {
+      return writeTokens(pluginId, name, profileId, null);
+    }).then(function () {
       plugins.publish({ id: plugin.id, state: plugin.state, reason: 'link' });
       return { ok: true };
     });

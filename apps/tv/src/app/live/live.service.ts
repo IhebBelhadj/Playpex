@@ -38,6 +38,24 @@ const GUIDE_BATCH = 200;
 // media ref the player plays like any plugin stream (hls / live), with
 // nothing remembered (tracking none). It also adds a chip per live plugin to
 // the search page (slot core.search.filters): its channels whose name matches.
+/** Words of a name or a query: lower case, accents off, split at anything but letters and digits */
+function wordsOf(text:string):string[] {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
+/**
+ * The channels a search finds (the guide's search, the search page's chip; as the server's ?q=): every
+ * word typed starts a word of the channel's name, number or group, accents aside ("tele 2" → "Télé 2")
+ */
+export function searchChannels(channels:LiveChannel[], query:string):LiveChannel[] {
+  let words = wordsOf(query);
+  if (!words.length) return channels;
+  return channels.filter(c => {
+    let hay = wordsOf(`${c.name} ${c.number} ${c.group || ''}`);
+    return words.every(w => hay.some(h => h.startsWith(w)));
+  });
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -160,9 +178,10 @@ export class LiveService {
 
   /**
    * Plays a channel in the player (over the current screen, or `replace`:
-   * in place of the player, a channel flip). `lineup`: the list ↑ / ↓ flip through
+   * in place of the player, a channel flip). `lineup`: the list ↑ / ↓ flip through;
+   * `list`: chosen in the player's channel list, which the new player keeps open
    */
-  play(plugin:string, channel:LiveChannel, options:{ lineup?:Lineup, replace?:boolean } = {}):Observable<boolean> {
+  play(plugin:string, channel:LiveChannel, options:{ lineup?:Lineup, replace?:boolean, list?:boolean } = {}):Observable<boolean> {
     if (options.lineup) this.lineup = options.lineup;
     return this.http.post<{ channel:LiveChannel, source:{ ref:string, format:'hls' | 'live', label:string } }>(
       `${this.server.api}/live/${plugin}/channels/${encodeURIComponent(channel.id)}/play`, {}, { params: this.params() },
@@ -173,6 +192,7 @@ export class LiveService {
         source: { ref: answer.source.ref, format: answer.source.format },
         tracking: 'none',
         channel: { plugin, id: answer.channel.id, number: answer.channel.number, name: answer.channel.name, logo: this.logo(answer.channel) },
+        channelList: options.list || undefined,
       }, { replace: options.replace })),
       map(() => true),
       catchError(err => {
@@ -205,12 +225,7 @@ export class LiveService {
         order: 200 + i,
         searchFilter: ctx => this.channels(p.plugin).pipe(
           map(answer => {
-            let query = (ctx?.query || '').trim().toLowerCase();
-            let words = query.split(/\s+/).filter(Boolean);
-            let found = !words.length ? [] : answer.channels.filter(c => {
-              let hay = `${c.name} ${c.number} ${c.group || ''}`.toLowerCase().split(/[^\p{L}\p{N}]+/u);
-              return words.every(w => hay.some(h => h.startsWith(w)));
-            }).slice(0, 100);
+            let found = (ctx?.query || '').trim() ? searchChannels(answer.channels, ctx.query).slice(0, 100) : [];
             let lineup:Lineup = { plugin: p.plugin, name: p.name, guide: p.guide, channels: found };
             return [{
               key: `live:${p.plugin}`,

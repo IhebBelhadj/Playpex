@@ -50,7 +50,18 @@ Send `{type: 'cursor', x, y}` (0–1, at most ~30 a second) when your pointer mo
 
 Let the user turn it off on the device (Playpex TV: Settings › Display › Remote control, the device setting `remote.allowed`): then don't open the socket. The server relays only what you declared, drops pointer moves while your socket is behind, keeps one controller per device and stores nothing; the admin sees the targets with `GET /remote/targets`.
 
-The controller side (the dashboard): `?role=controller&device=<id>` with the admin's session; it sends `key`, `text`, `pointer`, `bye` and gets `state` and `cursor`. A device token can never be a controller.
+The controller side (the dashboard): `?role=controller&device=<id>` with the admin's session; it sends `key`, `text`, `pointer`, `field`, `bye` and gets `state`, `cursor` and `field`. A device token can never be a controller.
+
+### Text fields (optional): the controller's own keyboard
+
+A target with on-screen keyboards says `"field": true` in its `hello` capabilities, and tells the controller when one opens, so a phone's own keyboard can fill it (the dashboard's remote shows a text box and brings the phone's keyboard up):
+
+| You send | When |
+|---|---|
+| `{type: 'field', open: true, id, value, title?, placeholder?, maxLength?, kind?}` | a text field opens (a new `id` each time), and again when its text changes on your side (keys on your own remote; at most a few times a second). `kind`: `search`, `address` or `text`, for the controller's keyboard |
+| `{type: 'field', open: false, id}` | it closes (done, cancelled, gone) |
+
+The server keeps the open field while your socket is open and sends it to a controller that connects later; send it again after a reconnect. You get `{type: 'field', id, value, submit?}`: the field's **whole text** (not keystrokes: autocorrect and swipe typing replace words), for the field open now (the server drops another id's; check it too). Replace your text with it, cut to your length, and don't send it back. `submit`: then do what your Done does. The controller's Cancel is a plain `Escape` key.
 
 ### Over WebRTC (optional, the pointer only)
 

@@ -79,11 +79,13 @@ A manifest is valid when it passes the schema **and** `checkManifest` (the rules
 
 ## Versions
 
-`api.server` is a range of `SERVER_PLUGIN_API` (`1.1`: major.minor): the host API, hooks, events. `api.nav` / `api.ui` are ranges of the TV's `NAV_API_VERSION` / `UI_API_VERSION`: the templates and effects. A breaking change bumps the major; an addition a plugin may rely on bumps the minor; ask for the minor only when you use what it added. Ranges: `1`, `^1`, `1.x` (any 1.x), `^1.1` (1.1 or a later 1.x), `>=1`, `>=1.1`, `>=1 <3`, `*`.
+`api.server` is a range of `SERVER_PLUGIN_API` (`1.3`: major.minor): the host API, hooks, events. `api.nav` / `api.ui` are ranges of the TV's `NAV_API_VERSION` / `UI_API_VERSION`: the templates and effects. A breaking change bumps the major; an addition a plugin may rely on bumps the minor; ask for the minor only when you use what it added. Ranges: `1`, `^1`, `1.x` (any 1.x), `^1.1` (1.1 or a later 1.x), `>=1`, `>=1.1`, `>=1 <3`, `*`.
 
 | `SERVER_PLUGIN_API` | Adds |
 |---|---|
 | 1.1 (2026-11-08) | direct links in a `releases` screen ([tv.md](tv.md): `{ title, call, via? … }`) |
+| 1.2 (2026-11-09) | a direct link's picture (`image`, `imageVariant`: shown in place of `via`); a filter group's `toolbar` (a catalog's toolbar chips, applied at once); catalogs asked with `preview: true` while the filters panel is open ([tv.md](tv.md)) |
+| 1.3 (2026-11-09) | `embed` sources (a YouTube video played in YouTube's own player, [server.md](server.md#sources)); a link's `revokeUrl` |
 
 What happens elsewhere: a server whose API is outside your range refuses to install that version (the dashboard says it needs a newer server), and its repositories offer it the newest version it can run instead, so an older server keeps your last compatible version. Servers before 1.1 can't read `^1.1` at all: they refuse such a package, and an index listing one fails to refresh there (they keep their last good copy, so they stay on the older version); from 1.1 on, a range a server can't read only makes that version one it can't run.
 

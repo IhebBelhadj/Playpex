@@ -35,6 +35,7 @@ export declare const REMOTE: {
   readonly KEY_MODIFIERS: ReadonlyArray<RemoteKeyModifier>;
   readonly TEXT_MAX: number;
   readonly RTC: { readonly MOVES: 'moves'; readonly INPUT: 'input'; readonly SIGNAL_MAX: number };
+  readonly FIELD_KINDS: ReadonlyArray<'text' | 'search' | 'address'>;
 };
 /** session.command (events socket, to one device) */
 export interface SessionCommandEvent {
@@ -50,7 +51,20 @@ export type RemotePointerButton = 'left' | 'right' | 'middle' | 'back';
 export type RemoteKeyModifier = 'shift' | 'control' | 'alt' | 'meta';
 export interface RemoteCapabilities { keyboard: boolean; pointer: boolean; text: boolean;
   /** the pointer may come over WebRTC data channels (REMOTE.RTC) */
-  rtc?: boolean }
+  rtc?: boolean;
+  /** says when one of its text fields is open (`field` messages): the controller's own keyboard can fill it */
+  field?: boolean }
+/** A text field open on the target (its on-screen keyboard), as the controller sees it */
+export interface RemoteField {
+  /** changes with every field opened: a controller's value for another one is dropped */
+  id: string;
+  value: string;
+  title?: string;
+  placeholder?: string;
+  maxLength?: number;
+  /** what it's for: the controller picks its keyboard (search: a search key; address: a URL keyboard) */
+  kind?: 'text' | 'search' | 'address';
+}
 /** WebRTC set-up, relayed by the server between the controller (offers) and the target (answers) */
 export type RemoteSignal =
   | { description: { type: 'offer' | 'answer'; sdp: string } }
@@ -77,6 +91,12 @@ export type RemoteMessage =
   | { type: 'pointer'; phase: 'wheel'; dx: number; dy: number }
   | { type: 'cursor'; x: number; y: number }
   | { type: 'signal'; data: RemoteSignal }
+  /** target → controller (relayed, and sent to a controller that connects while one is open): a field opened, its text
+   *  changed on the target, or (open false) it closed */
+  | ({ type: 'field'; open: true } & RemoteField)
+  | { type: 'field'; open: false; id?: string }
+  /** controller → target: the field's whole text (not keystrokes); submit: then its Done */
+  | { type: 'field'; id: string; value: string; submit?: boolean }
   | { type: 'bye' };
 export declare const DEFAULT_PORT: number;
 export declare const DISCOVERY_PORT: number;

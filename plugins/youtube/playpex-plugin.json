@@ -1,0 +1,167 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "youtube",
+  "name": "YouTube",
+  "description": "YouTube on the big screen: trending and category rows, search, channels and playlists, and with a linked Google account your subscriptions, liked videos and playlists. Videos play in YouTube's own player under Playpex's controls.",
+  "version": "1.0.2",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "homepage": "https://www.youtube.com",
+  "api": {
+    "server": "^1.3",
+    "nav": "^1",
+    "ui": "^1"
+  },
+  "audience": "everyone",
+  "icon": "assets/play.svg",
+  "listing": {
+    "summary": "YouTube on the big screen: trending, categories, search, channels, playlists, and your subscriptions with a linked Google account.",
+    "description": "Browses YouTube with the YouTube Data API (v3), with an API key the server's admin creates in the Google Cloud console, and plays videos in YouTube's own IFrame player (youtube-nocookie.com) driven by Playpex's controls and remote. Adverts YouTube shows play as they would on YouTube; YouTube chooses the quality.\n\nSet up on the dashboard (Plugins › YouTube › Settings): the API key, the region of the trending rows, and what kids profiles get. To see subscriptions, liked videos and playlists, create an OAuth client of type \"TVs and Limited Input devices\" in the same Google Cloud project, enter its client id and secret, then link each profile's Google account on the Accounts tab: the person enters the code shown at google.com/device on their phone. Playpex asks for read-only access (youtube.readonly); the tokens stay on the server, encrypted, and unlinking revokes them at Google.",
+    "license": "PolyForm-Noncommercial-1.0.0",
+    "categories": [
+      "catalog",
+      "streams"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "www.googleapis.com",
+      "oauth2.googleapis.com",
+      "i.ytimg.com",
+      "yt3.ggpht.com",
+      "yt3.googleusercontent.com"
+    ],
+    "rateLimit": {
+      "perSecond": 2,
+      "burst": 10,
+      "inFlight": 4
+    },
+    "storage": "2MB",
+    "secrets": [
+      "apiKey",
+      "clientId",
+      "clientSecret"
+    ],
+    "play": true,
+    "sources": [
+      "embed"
+    ],
+    "link": [
+      "google"
+    ]
+  },
+  "link": [
+    {
+      "name": "google",
+      "label": "Google",
+      "scope": "profile",
+      "deviceCode": {
+        "codeUrl": "https://oauth2.googleapis.com/device/code",
+        "tokenUrl": "https://oauth2.googleapis.com/token",
+        "refreshUrl": "https://oauth2.googleapis.com/token",
+        "revokeUrl": "https://oauth2.googleapis.com/revoke",
+        "scope": "https://www.googleapis.com/auth/youtube.readonly",
+        "clientIdSecret": "clientId",
+        "clientSecretSecret": "clientSecret"
+      }
+    }
+  ],
+  "contributes": {
+    "sections": [
+      {
+        "screen": "home",
+        "menu": {
+          "label": "YouTube",
+          "icon": "assets/play.svg",
+          "order": 65
+        }
+      }
+    ],
+    "screens": [
+      {
+        "name": "home",
+        "template": "catalog",
+        "data": "home",
+        "title": "YouTube"
+      },
+      {
+        "name": "channel",
+        "template": "catalog",
+        "data": "channel",
+        "params": [
+          "id"
+        ]
+      },
+      {
+        "name": "playlist",
+        "template": "catalog",
+        "data": "playlist",
+        "params": [
+          "id"
+        ]
+      }
+    ],
+    "slots": [
+      {
+        "slot": "core.search.filters",
+        "data": "searchFilter",
+        "order": 60
+      }
+    ],
+    "settings": [
+      {
+        "key": "apiKey",
+        "scope": "server",
+        "type": "secret",
+        "label": "YouTube Data API key",
+        "description": "Leave it empty to use the server's own (PLAYPEX_PLUGIN_YOUTUBE_API_KEY). Your own: a Google Cloud API key for the YouTube Data API v3 (10,000 units a day; a search costs 100).",
+        "group": "YouTube"
+      },
+      {
+        "key": "region",
+        "scope": "server",
+        "type": "choice",
+        "label": "Trending in",
+        "description": "The country of the Trending and category rows.",
+        "group": "YouTube",
+        "options": [
+          ["US", "United States"], ["GB", "United Kingdom"], ["CA", "Canada"], ["AU", "Australia"], ["IE", "Ireland"],
+          ["FR", "France"], ["DE", "Germany"], ["ES", "Spain"], ["IT", "Italy"], ["NL", "Netherlands"],
+          ["BE", "Belgium"], ["CH", "Switzerland"], ["SE", "Sweden"], ["BR", "Brazil"], ["MX", "Mexico"],
+          ["IN", "India"], ["JP", "Japan"], ["TN", "Tunisia"], ["MA", "Morocco"], ["EG", "Egypt"]
+        ],
+        "default": "US"
+      },
+      {
+        "key": "kids",
+        "scope": "server",
+        "type": "choice",
+        "label": "Kids profiles",
+        "description": "YouTube's trending rows aren't filtered for children. Off: kids profiles see an empty YouTube. Search only: they can search, with YouTube's SafeSearch on strict, and see their linked account's rows.",
+        "group": "YouTube",
+        "options": [
+          ["off", "Off"],
+          ["search", "Search only (SafeSearch strict)"]
+        ],
+        "default": "off"
+      },
+      {
+        "key": "clientId",
+        "scope": "server",
+        "type": "secret",
+        "label": "OAuth client id",
+        "description": "Leave it empty to use the server's own (PLAYPEX_PLUGIN_YOUTUBE_CLIENT_ID). Your own: a Google OAuth client of type \"TVs and Limited Input devices\".",
+        "group": "Google accounts"
+      },
+      {
+        "key": "clientSecret",
+        "scope": "server",
+        "type": "secret",
+        "label": "OAuth client secret",
+        "description": "Leave it empty with the server's own client (PLAYPEX_PLUGIN_YOUTUBE_CLIENT_SECRET); else your client's secret.",
+        "group": "Google accounts"
+      }
+    ]
+  }
+}

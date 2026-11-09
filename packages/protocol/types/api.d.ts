@@ -38,6 +38,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/embed/youtube": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The page clients frame to play an `embed` source (provider youtube) in YouTube's IFrame player (no auth)
+         * @description A static page (nothing from the request is written into it) holding YouTube's IFrame player from
+         *     youtube-nocookie.com without YouTube's controls. The client frames it (YouTube's embeds need a referring
+         *     page, which a `file://` app doesn't send), draws its own controls and drives it with `postMessage`:
+         *     `{playpex: 'embed', cmd: 'play' | 'pause' | 'seek' (t) | 'volume' (volume, muted) | 'rate' (rate)}`; the
+         *     page answers `{playpex: 'embed', type: 'ready' | 'state' | 'error', …}` (`docs/api/plugins.md`). Messages
+         *     are taken from the framing window only. Sends no token anywhere; a client must not send its token from
+         *     the frame either.
+         */
+        get: operations["getYoutubeEmbed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/docs": {
         parameters: {
             query?: never;
@@ -2625,7 +2651,10 @@ export interface paths {
          *     target and `cursor` back, sends `state` to both, keeps one controller per device (a new one takes
          *     over) and stores nothing. Pointer moves are dropped while the target is behind. A target that declares
          *     `rtc` also gets `signal` messages relayed both ways (WebRTC set-up): the pointer then goes straight to it
-         *     over data channels (`REMOTE.RTC`), the socket staying the fallback. Same Host / Origin / auth checks as
+         *     over data channels (`REMOTE.RTC`), the socket staying the fallback. A target that declares `field` sends
+         *     `field` messages when one of its text fields opens, changes or closes (relayed to the controller, and the
+         *     open one sent to a controller that connects later); the controller answers `field` with the field's whole
+         *     text (`id`, `value`, `submit?`), checked against the open field's id. Same Host / Origin / auth checks as
          *     `/events`.
          */
         get: operations["remote"];
@@ -3769,7 +3798,7 @@ export interface paths {
         head?: never;
         /**
          * Change some of the calling device's settings
-         * @description Device-scoped keys only (`display.*`, `player.volume`, `subtitles.size`, or
+         * @description Device-scoped keys only (`display.*`, `player.volume`, `player.streamQuality`, `subtitles.size`, `remote.allowed`, or
          *     `client.<clientId>.<name>`). `null` resets a key. All or nothing. Publishes `settings.changed`.
          */
         patch: operations["updateDeviceSettings"];
@@ -4118,6 +4147,8 @@ export interface components {
                 text: boolean;
                 /** @description The pointer may come over WebRTC data channels */
                 rtc?: boolean;
+                /** @description Says when one of its text fields is open (`field` messages): the controller's keyboard can fill it */
+                field?: boolean;
             };
             screen: {
                 width?: number;
@@ -6957,6 +6988,35 @@ export interface operations {
                 };
                 content: {
                     "application/yaml": string;
+                };
+            };
+        };
+    };
+    getYoutubeEmbed: {
+        parameters: {
+            query: {
+                /** @description The video's id (11 characters) */
+                v: string;
+                /** @description Where to start */
+                start?: number;
+                /** @description Captions on, in this language (ISO 639-1) when the video has them */
+                cc?: string;
+                /** @description The player's language */
+                hl?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The page (a strict Content-Security-Policy, Referrer-Policy strict-origin-when-cross-origin) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
                 };
             };
         };

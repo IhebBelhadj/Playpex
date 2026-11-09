@@ -8,6 +8,8 @@ export interface SettingValues {
   'display.safeArea': number;
   'player.volume': number;
   'subtitles.size': 'small' | 'medium' | 'large' | 'largest';
+  /** 'auto' or a height ('1080p'): what a stream with several qualities starts at */
+  'player.streamQuality': string;
   'subtitles.provider': string | null;
   'player.autoplayNext': boolean;
   'player.preferLocalFiles': boolean;

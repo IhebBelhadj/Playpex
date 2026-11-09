@@ -20,6 +20,9 @@ var SETTINGS = {
   'display.safeArea': { scope: 'device', type: 'number', min: 0, max: 0.06, step: 0.005, default: 0 },
   'player.volume': { scope: 'device', type: 'number', min: 0, max: 100, step: 5, default: 100 },
   'subtitles.size': { scope: 'device', type: 'string', enum: ['small', 'medium', 'large', 'largest'], default: 'medium' },
+  // A stream with several qualities (a plugin's HLS): the player's choice (auto) or the
+  // highest it starts at, e.g. '720p' (the nearest one below it when the stream lacks it)
+  'player.streamQuality': { scope: 'device', type: 'string', pattern: '^(auto|[1-9][0-9]{2,3}p)$', default: 'auto' },
   'subtitles.provider': { scope: 'profile', type: 'string', nullable: true, default: null },
   'player.autoplayNext': { scope: 'profile', type: 'boolean', default: true },
   'player.preferLocalFiles': { scope: 'profile', type: 'boolean', default: true },

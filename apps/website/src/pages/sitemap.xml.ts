@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { RELEASE } from '../data/site';
 
-const PAGES = ['', 'server', 'tv', 'mobile', 'manager', 'plugins', 'releases'];
+const PAGES = ['', 'server', 'tv', 'mobile', 'manager', 'plugins', 'releases', 'privacy'];
 
 export const GET: APIRoute = async ({ site }) => {
   const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');

@@ -27,6 +27,8 @@ export interface PlaypexDev {
   releases(kind:ReleasesKind, query:string, label:string, imdb?:string):void;
   // the screen on top of the history
   screen():string | null;
+  // the history's screens, bottom to top
+  stack():string[];
   // opens one of the shell's overlays with fixture data (over the screen shown)
   overlay(kind:DevOverlay):void;
   // select / back / leave, as the keys would send them
@@ -84,6 +86,7 @@ export class DevHook {
       overlay: kind => run(() => this.overlay(kind)),
       input: action => run(() => this.dispatcher.dispatch(action)),
       layers: () => this.layerStack.layers.map(layer => layer.def.id),
+      stack: () => this.navigator.stack$.value.map(entry => entry.screen.id),
       // a media ref (f_… / t_…): that file on the server, played as a source;
       // a plugin's stream (h_… / l_…: development only, clients never read refs)
       player: (src, kind = 'movie') => run(() => /^[hl]_/.test(src)

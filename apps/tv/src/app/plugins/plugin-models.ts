@@ -80,6 +80,8 @@ export interface PluginFilterGroup {
   key:string;
   label:string;
   multiple?:boolean;
+  /** in the toolbar, applied at once (a view, a mode), not in the filters panel */
+  toolbar?:boolean;
   options:{ value:string, label:string, on?:boolean }[];
 }
 
@@ -91,6 +93,9 @@ export interface PluginRelease {
   call?:PluginCall;
   /** a direct link: where it plays from, in place of the seeders */
   via?:string;
+  /** a direct link's picture (https), shown in place of `via`; its shape: portrait poster or landscape still */
+  image?:string;
+  imageVariant?:'poster' | 'still';
   size?:number;
   seeds?:number;
   peers?:number;
@@ -151,7 +156,9 @@ export interface PluginTitleRef {
 // already turned into a media ref (`media`, with its `format`), never its URL
 export type PluginSource =
   | { kind:'magnet', magnet?:string, infoHash?:string, fileIndex?:number, fileName?:string, label:string, quality?:string, size?:number, seeds?:number, peers?:number, codec?:string, notes?:string[] }
-  | { kind:'media', ref:string, format?:'file' | 'hls' | 'live', label:string, quality?:string, size?:number, codec?:string, notes?:string[] };
+  | { kind:'media', ref:string, format?:'file' | 'hls' | 'live', label:string, quality?:string, size?:number, codec?:string, notes?:string[] }
+  // a video in its site's own player (YouTube's IFrame player, from the server's /embed/youtube page)
+  | { kind:'embed', provider:'youtube', id:string, label:string, duration?:number, quality?:string, size?:number, codec?:string, notes?:string[] };
 
 export interface PluginPlayRequest {
   title:string;

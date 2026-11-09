@@ -54,11 +54,17 @@ function answer(res, work) {
   });
 }
 
-// Every word of `q` starts a word of the channel's name, number or group ("42" isn't "142")
+// Words of a name or a query: lower case, accents off, split at anything but letters and digits
+function wordsOf(text) {
+  return String(text || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
+// Every word of `q` starts a word of the channel's name, number or group ("42" isn't "142"), accents
+// aside ("tele 2" finds "Télé 2"); the TV's guide and search chip match the same way (live.service.ts)
 function matches(q) {
-  var words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  var words = wordsOf(q);
   return function (c) {
-    var hay = (c.name + ' ' + c.number + ' ' + (c.group || '')).toLowerCase().split(/[^\p{L}\p{N}]+/u);
+    var hay = wordsOf(c.name + ' ' + c.number + ' ' + (c.group || ''));
     return words.every(function (w) { return hay.some(function (h) { return h.indexOf(w) === 0; }); });
   };
 }

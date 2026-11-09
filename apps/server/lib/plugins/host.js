@@ -1,6 +1,6 @@
 'use strict';
 
-// The host API (SERVER_PLUGIN_API 1.1, docs/plugins-plan.md §4.2): what a
+// The host API (SERVER_PLUGIN_API 1.3, docs/plugins-plan.md §4.2): what a
 // plugin's `playpex.*` calls do on the server. Every call is checked against
 // the plugin's granted permissions here, whatever the sandbox let through,
 // and counted per plugin (its activity, plan §6.5).
@@ -18,6 +18,7 @@
 // files (names.*, html.select, torrent.info) ./utilities.js; IPTV playlists and
 // guides (iptv.m3u, iptv.xmltv) ./iptv.js.
 
+var envSecrets = require('./envSecrets');
 var http = require('./http'),
   health = require('../health'),
   protocol = require('@playpex/protocol/plugins'),
@@ -120,8 +121,9 @@ function createHost(plugin, services) {
         return denied(String(args.name) + ' isn\'t in permissions.secrets');
       }
       count(plugin.stats, 'secrets');
+      // the admin's, else the server's environment's (./envSecrets.js)
       return services().then(function (s) { return s.plugins.secrets.get(plugin.id, args.name, ''); })
-        .then(function (value) { return { value: value }; });
+        .then(function (value) { return { value: envSecrets.orDefault(plugin.id, args.name, value) }; });
     },
 
     'settings.get': function (args) {

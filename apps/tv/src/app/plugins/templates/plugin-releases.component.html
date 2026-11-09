@@ -40,8 +40,11 @@
       <ol class="releaseList">
         <li *ngFor="let r of state.releases; trackBy: trackRelease">
           <button class="release focusable" pxItem [pxItemKey]="keyOf(r)" [class.quiet]="!r.call && (r.seeds || 0) < 5" (pxSelect)="play(r)">
-            <!-- a direct link: where it plays from, no seeders -->
-            <span class="seeds" *ngIf="r.call">
+            <!-- a direct link: its picture, else where it plays from; no seeders -->
+            <span class="releaseThumb" *ngIf="r.call && r.image" [class.poster]="r.imageVariant === 'poster'">
+              <img [src]="r.image" alt="" loading="lazy" decoding="async">
+            </span>
+            <span class="seeds" *ngIf="r.call && !r.image">
               <span class="seedCount via">{{ r.via || 'Direct' }}</span>
               <span class="seedLabel">direct link</span>
             </span>

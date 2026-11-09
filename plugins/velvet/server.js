@@ -4,7 +4,9 @@
 // illegal where you live.
 //
 // Data handlers and what the core sends them:
-//   browse    catalog   { params, query, filters: { view, kind, studio, period } } the poster layout (films, scenes)
+//   browse    catalog   { params, query, filters: { view, kind, studio, period }, preview? } the poster layout (films, scenes)
+//   sites     catalog   { params, query, filters: { view, site, <the site's> }, preview? } the Sites view
+//             (preview: the filters panel's question, answered with its groups only: nothing kept, read or switched)
 //   rowPage   row page  { page, provider, row?, sort?, studio?, period?, q? }  a paged row
 //   title     title     { params: { provider, id } }                          one title
 //   play      call      { provider, id }                                     its streams and torrents → the core's player
@@ -25,7 +27,8 @@
 // Studios' videos (Ersties, Lustery, Playboy Plus) come from TheSexTube
 // (setting theSexTube): only posts tagged with those studios, never the site's
 // personal or leaked ones (see its section); in Find releases' Source and in
-// those studios' scenes' Play.
+// those studios' scenes' Play. Both sites' videos carry their picture in the
+// list layout (a poster, a still), and both are sites of the Sites view too.
 // Plays never touch the profile's library (tracking 'none').
 
 var TMDB = 'https://api.themoviedb.org/3';
@@ -1092,6 +1095,10 @@ function seRelease(f) {
       .filter(Boolean).map(function (n) { return clip(n, 80); }).slice(0, 6)
   };
   if (f.quality) out.quality = f.quality;
+  if (f.poster) {
+    out.image = f.poster;
+    out.imageVariant = 'poster';
+  }
   return out;
 }
 
@@ -1132,6 +1139,9 @@ var TST_PERSONAL_WORDS = /leak|only ?fans|\bppv\b|sex ?tape|fansly|patreon|snapc
 var TST_HOSTS = ['luluvido.com', 'luluvdoo.com', 'luluvdo.com', 'lulustream.com'];
 var TST_STREAM_HOSTS = ['tnmr.org', 'cdn-tnmr.org'];
 var TST_PAGE = 24;
+// a post's fields read, its featured image embedded (the video's still, on the site)
+var TST_FIELDS = 'id,date,title,content,tags,_links,_embedded';
+var TST_EMBED = 'wp:featuredmedia';
 
 /** A post of one of the studios and nothing personal, else false */
 function tstAllowed(post) {
@@ -1140,7 +1150,18 @@ function tstAllowed(post) {
     !tags.some(function (t) { return TST_PERSONAL.indexOf(t) !== -1; }) && !TST_PERSONAL_WORDS.test(title);
 }
 
-/** A post → { id, title, studio, date, video (its LuluStream page), poster } or null (not allowed, no video) */
+/** A post's featured image: { thumb, image } (the site's own sizes), or nulls */
+function tstPicture(post) {
+  var media = post._embedded && post._embedded[TST_EMBED], m = Array.isArray(media) ? media[0] : null,
+    sizes = (m && m.media_details && m.media_details.sizes) || {};
+  function url(names) {
+    return names.map(function (n) { return n === 'source' ? m && m.source_url : sizes[n] && sizes[n].source_url; })
+      .filter(function (u) { return typeof u === 'string' && onHosts(u, ['thesextube.net']); })[0] || null;
+  }
+  return { thumb: url(['videoclub_post_thumb', 'medium', 'medium_large', 'source']), image: url(['large', 'medium_large', 'source', 'medium']) };
+}
+
+/** A post → { id, title, studio, date, video (its LuluStream page), poster, image, description } or null (not allowed, no video) */
 function tstItem(post) {
   if (!tstAllowed(post)) return null;
   var links = (String(post.content && post.content.rendered || '').match(/href="(https:\/\/[^"]+)"/g) || [])
@@ -1148,15 +1169,18 @@ function tstItem(post) {
   var video = links.filter(function (u) { return onHosts(u, TST_HOSTS); })[0];
   if (!video) return null;
   var studio = TST_STUDIOS.filter(function (s) { return post.tags.indexOf(s.tag) !== -1; })[0],
-    code = (/\/(?:e\/|d\/)?([a-z0-9]{8,})(?:[/?#]|$)/i.exec(video.replace(/^https:\/\/[^/]+/, '')) || [])[1];
+    picture = tstPicture(post),
+    // its text, without the link to the video
+    text = stripTags(String(post.content && post.content.rendered || '').replace(/<a\b[^>]*>[\s\S]*?<\/a>/g, ' '));
   return {
     id: String(post.id),
     title: unescapeHtml(post.title.rendered).replace(/\s+/g, ' ').trim(),
     studio: studio.name,
     date: post.date ? String(post.date).slice(0, 10) : null,
     video: video,
-    // LuluStream's own still of the video
-    poster: code ? 'https://img.lulucdn.com/' + code + '_xt.jpg' : null
+    poster: picture.thumb,
+    image: picture.image || picture.thumb,
+    description: clip(text, 2000)
   };
 }
 
@@ -1168,7 +1192,7 @@ function tstGet(path, params) {
 function tstPosts(q, page, studios) {
   var tags = (studios || TST_STUDIOS).map(function (s) { return s.tag; });
   return tstGet('posts', { tags: tags.join(','), tags_exclude: TST_PERSONAL.join(','), search: q || null, page: page,
-    per_page: TST_PAGE, _fields: 'id,date,title,content,tags' }).then(function (posts) {
+    per_page: TST_PAGE, _embed: TST_EMBED, _fields: TST_FIELDS }).then(function (posts) {
     var items = (Array.isArray(posts) ? posts : []).map(tstItem).filter(Boolean);
     return { items: items, more: Array.isArray(posts) && posts.length === TST_PAGE };
   }, function (err) {
@@ -1181,7 +1205,7 @@ function tstPosts(q, page, studios) {
 /** One post by id, only when it's a studio's (a client gives the id) */
 function tstPost(id) {
   if (!/^\d{1,9}$/.test(String(id))) return Promise.resolve(null);
-  return tstGet('posts/' + id, { _fields: 'id,date,title,content,tags' }).then(tstItem, function (err) {
+  return tstGet('posts/' + id, { _embed: TST_EMBED, _fields: TST_FIELDS }).then(tstItem, function (err) {
     if (/HTTP 404/.test(err.message)) return null;
     throw err;
   });
@@ -1209,6 +1233,8 @@ function tstOn(ctx) {
 function tstRelease(it) {
   var out = { title: clip(it.title, 300), call: { data: 'play', args: { provider: 'thesextube', id: it.id } }, via: it.studio,
     notes: ['TheSexTube'] };
+  // a frame of the video: landscape
+  if (it.poster) out.image = it.poster;
   if (it.date) out.uploadedAt = it.date + 'T00:00:00Z';
   return out;
 }
@@ -1240,8 +1266,11 @@ function tstSceneStream(scene) {
 //
 // The third View of the section (Posters, List, Sites): a site's own rows
 // (trending, newest, best), its categories, performers and channels, its
-// search, its videos played from its HLS streams. One site for now
-// (xHamster); SITES is the list the Site filter offers.
+// search, its videos played from its HLS streams. SITES is what the Site
+// filter offers (each while its switch is on): xHamster, Sex-Empire (its
+// listings: newest, top, films, scenes, collections, studios, countries; its
+// films open their title page) and TheSexTube (its studios' videos only, a
+// row each; a video opens siteVideo). The profile's last site is kept.
 //
 // xHamster (checked Nov 2026): every page carries its data as JSON
 // (`window.initials`): a listing's videos are its `videoThumbProps` (46 a
@@ -1482,7 +1511,123 @@ function xhStream(id) {
   });
 }
 
-var SITES = [{ id: 'xhamster', name: 'xHamster' }];
+// the Site filter: each site while its switch is on
+var SITES = [
+  { id: 'xhamster', name: 'xHamster', on: function (ctx) { return xhOn(ctx); } },
+  { id: 'sexempire', name: 'Sex-Empire', on: function (ctx) { return seOn(ctx); } },
+  { id: 'thesextube', name: 'TheSexTube', on: function (ctx) { return tstOn(ctx); } }
+];
+
+/** The sites switched on, in order */
+function sitesOn(ctx) {
+  return Promise.all(SITES.map(function (x) { return x.on(ctx); })).then(function (on) {
+    return SITES.filter(function (x, i) { return on[i]; });
+  });
+}
+
+function siteKey(ctx) {
+  return 'site:' + (ctx && ctx.profile ? ctx.profile.id : 'none');
+}
+
+/** The site shown: the one just chosen (kept), else the profile's last one, else the first on; null when none is on */
+function siteOf(args, ctx, on) {
+  var chosen = args.filters && args.filters.site && args.filters.site[0];
+  function known(id) { return on.filter(function (x) { return x.id === id; })[0] || null; }
+  if (known(chosen) && args.preview) {
+    return Promise.resolve(known(chosen));
+  }
+  if (known(chosen)) {
+    return playpex.store.set(siteKey(ctx), chosen).then(function () { return known(chosen); });
+  }
+  return playpex.store.get(siteKey(ctx)).then(function (v) { return known(v) || on[0] || null; });
+}
+
+// ── Sex-Empire as a site: its listings (24 films a page, /page/<n>/ after the first)
+var SE_LISTS = [
+  ['new', 'Newest', '/en/'], ['top', 'Top', '/en/top.html'], ['movies', 'Films', '/en/movies/'], ['scenes', 'Scenes', '/en/porno-video/'],
+  ['fullhd', 'Full HD', '/en/movies/fullhd-porn-movie/'], ['hd', 'HD', '/en/movies/hd-porno-movies/'],
+  ['parodies', 'Parodies', '/en/movies/porno-parodies/'], ['vintage', 'Vintage', '/en/movies/vintage/'],
+  ['russian', 'Russian studios', '/en/movies/russian-pornostudii/']
+];
+var SE_STUDIOS = [
+  ['marc_dorcel', 'Marc Dorcel'], ['private', 'Private'], ['wicked-pictures', 'Wicked Pictures'], ['hustler', 'Hustler'],
+  ['daring', 'Daring'], ['pure-taboo', 'Pure Taboo'], ['digital-playground', 'Digital Playground'], ['mario-salieri', 'Mario Salieri'],
+  ['new-sensations', 'New Sensations'], ['brasileirinhas', 'Brasileirinhas'], ['jacquie-et-michel-elite', 'Jacquie et Michel Elite']
+];
+var SE_COUNTRIES = [['usa', 'USA'], ['france', 'France'], ['germany', 'Germany'], ['italy', 'Italy'], ['spain', 'Spain'],
+  ['russia', 'Russia'], ['sweden', 'Sweden'], ['brazil', 'Brazil'], ['europe', 'Europe']];
+// pages a listing reads at most (the site has some 350 of its newest)
+var SE_MAX_PAGES = 100;
+
+/** A listing by its key (lists.<id>, studios.<slug>, countries.<slug>) → { key, name, path, single } or null */
+function seListing(key) {
+  var m = /^(lists|studios|countries)\.([a-z_-]{1,40})$/.exec(String(key || '')), found;
+  if (!m) return null;
+  if (m[1] === 'lists') {
+    found = SE_LISTS.filter(function (x) { return x[0] === m[2]; })[0];
+    return found ? { key: key, name: found[1], path: found[2], single: /\.html$/.test(found[2]) } : null;
+  }
+  found = (m[1] === 'studios' ? SE_STUDIOS : SE_COUNTRIES).filter(function (x) { return x[0] === m[2]; })[0];
+  return found ? { key: key, name: found[1], path: m[1] === 'studios' ? '/en/movies/studios/' + found[0] + '/' : '/en/watch/country/' + found[0] + '/' } : null;
+}
+
+/** Every listing the Category filter offers: the lists (not the newest: the home's first row), studios, countries */
+function seListings() {
+  return SE_LISTS.slice(1).map(function (x) { return 'lists.' + x[0]; })
+    .concat(SE_STUDIOS.map(function (x) { return 'studios.' + x[0]; }), SE_COUNTRIES.map(function (x) { return 'countries.' + x[0]; }))
+    .map(seListing);
+}
+
+/** A page of a listing: { items, last } */
+function seListPage(listing, page) {
+  if (listing.single && page > 1) return Promise.resolve({ items: [], last: true });
+  return getText(SE + listing.path + (page > 1 ? 'page/' + page + '/' : ''), { ttlMs: XH_PAGE_MS }).then(seList).then(function (list) {
+    return { items: list, last: listing.single || list.length < 10 || page >= SE_MAX_PAGES };
+  }, function (err) {
+    // past its last page the site answers 404
+    if (page > 1 && /HTTP 404/.test(err.message)) return { items: [], last: true };
+    throw err;
+  });
+}
+
+/** The studios as a row of posters (each its newest film's), opening their listing */
+function seStudiosRow() {
+  return Promise.all(SE_STUDIOS.map(function (x) {
+    return seListPage(seListing('studios.' + x[0]), 1).then(function (p) { return p.items[0] ? p.items[0].poster : null; }, function () { return null; });
+  })).then(function (posters) {
+    return {
+      key: 'velvet:site:sexempire:studios', title: 'Studios', variant: 'poster',
+      items: SE_STUDIOS.map(function (x, i) {
+        return Object.assign({ key: 'velvet:site:sexempire:studio:' + x[0], title: x[1], variant: 'poster',
+          intent: { screen: 'plugin.velvet.siteList', params: { site: 'sexempire', list: 'studios.' + x[0], name: x[1] } } },
+        posters[i] ? { image: posters[i] } : {});
+      })
+    };
+  });
+}
+
+// ── TheSexTube as a site: its studios' videos
+
+/** A studio by id, or null */
+function tstStudio(id) {
+  return TST_STUDIOS.filter(function (s) { return s.id === id; })[0] || null;
+}
+
+function tstCard(it) {
+  var meta = [{ kind: 'text', text: it.studio }];
+  if (it.date) meta.push({ kind: 'text', text: it.date });
+  var card = {
+    key: 'velvet:site:thesextube:' + it.id,
+    title: clip(it.title, 200),
+    variant: 'still',
+    subtitle: clip([it.studio, it.date].filter(Boolean).join(' · '), 200),
+    intent: { screen: 'plugin.velvet.siteVideo', params: { site: 'thesextube', id: it.id } },
+    info: { title: clip(it.title, 200), eyebrow: clip(it.studio, 200), meta: meta,
+      overview: it.description ? clip(it.description, 4000) : undefined, backdrop: it.image || undefined }
+  };
+  if (it.poster) card.image = it.poster;
+  return card;
+}
 
 // cards and rows of the Sites view
 function siteCard(site, it) {
@@ -1499,8 +1644,8 @@ function siteCard(site, it) {
   };
 }
 
-function siteRow(key, title, args) {
-  return { key: 'velvet:site:' + clip(key, 80), title: clip(title, 200), variant: 'still', page: { data: 'rowPage', args: Object.assign({ provider: 'site' }, args) } };
+function siteRow(key, title, args, variant) {
+  return { key: 'velvet:site:' + clip(key, 80), title: clip(title, 200), variant: variant || 'still', page: { data: 'rowPage', args: Object.assign({ provider: 'site' }, args) } };
 }
 
 /** The rows of a listing base: its sorts, with the quality and duration chosen */
@@ -1511,10 +1656,32 @@ function siteSortRows(site, base, label, f) {
   });
 }
 
-/** A paged row of the Sites view (rowPage with provider 'site') */
-function siteRowPage(args, page) {
+/** A paged row of the Sites view (rowPage with provider 'site'), its site switched on */
+function siteRowPage(args, page, ctx) {
+  var site = SITES.filter(function (x) { return x.id === (args.site || 'xhamster'); })[0];
+  if (!site) return Promise.resolve({ items: [], last: true });
+  return site.on(ctx).then(function (on) {
+    if (!on) return { items: [], last: true };
+    if (site.id === 'sexempire') {
+      var listing = seListing(args.list);
+      return listing ? seListPage(listing, page).then(function (p) {
+        return { items: p.items.map(function (f) { return cardOf('sexempire', seItem(f)); }), last: p.last };
+      }) : { items: [], last: true };
+    }
+    if (site.id === 'thesextube') {
+      var studio = args.studio ? tstStudio(args.studio) : null;
+      if (args.studio && !studio) return { items: [], last: true };
+      return tstPosts(args.q ? String(args.q).slice(0, 100) : '', page, studio ? [studio] : null).then(function (p) {
+        return { items: p.items.map(tstCard), last: !p.more };
+      });
+    }
+    return xhRowPage(args, page);
+  });
+}
+
+function xhRowPage(args, page) {
   return xhList({ base: args.base, q: args.q, sort: args.sort, quality: args.quality, duration: args.duration, page: page }).then(function (p) {
-    return { items: p.items.slice(0, 100).map(function (it) { return siteCard(args.site || 'xhamster', it); }), last: p.last };
+    return { items: p.items.slice(0, 100).map(function (it) { return siteCard('xhamster', it); }), last: p.last };
   });
 }
 
@@ -1597,22 +1764,34 @@ function layoutKey(ctx) {
 }
 
 function viewGroup(current) {
-  return { key: 'view', label: 'View', options: [
+  // in the toolbar: the other groups depend on it, and it switches screens
+  return { key: 'view', label: 'View', toolbar: true, options: [
     { value: 'posters', label: 'Posters', on: current === 'posters' },
     { value: 'list', label: 'List', on: current === 'list' },
     { value: 'sites', label: 'Sites', on: current === 'sites' }
   ] };
 }
 
-/** The view the user just chose (a filter), kept; else the profile's last one */
+/**
+ * The view the user just chose (a filter), kept; else the profile's last one.
+ * A preview (the filters panel asking which groups go with its choices) keeps nothing
+ */
 function layoutOf(args, ctx, screen) {
   var chosen = args.filters && args.filters.view && args.filters.view[0];
+  if (args.preview && (chosen === 'posters' || chosen === 'list' || chosen === 'sites')) {
+    return Promise.resolve({ layout: chosen, chosen: true });
+  }
   if (chosen === 'posters' || chosen === 'list' || chosen === 'sites') {
     return playpex.store.set(layoutKey(ctx), chosen).then(function () { return { layout: chosen, chosen: true }; });
   }
   return playpex.store.get(layoutKey(ctx)).then(function (v) {
     return { layout: v === 'list' || v === 'posters' || v === 'sites' ? v : screen, chosen: false };
   });
+}
+
+/** A preview's answer for another view: its View group only (the screen switches when the filters are applied) */
+function previewOtherView(layout) {
+  return { data: { rows: [], filters: [viewGroup(layout)] } };
 }
 
 function switchTo(screen) {
@@ -1627,6 +1806,7 @@ function switchTo(screen) {
 playpex.data('browse', function (args, ctx) {
   args = args || {};
   return layoutOf(args, ctx, 'posters').then(function (l) {
+    if (args.preview && l.layout !== 'posters') return previewOtherView(l.layout);
     if (l.layout === 'list' || l.layout === 'sites') {
       return { data: { rows: [] }, effects: switchTo(l.layout === 'list' ? 'releases' : 'sites') };
     }
@@ -1706,7 +1886,7 @@ playpex.data('rowPage', function (args, ctx) {
   args = args || {};
   var page = Math.max(1, args.page || 1);
   if (args.provider === 'site') {
-    return siteRowPage(args, page).then(function (p) { return { data: p }; });
+    return siteRowPage(args, page, ctx).then(function (p) { return { data: p }; });
   }
   if (args.provider === 'sexempire') {
     return seRowPage(args, page).then(function (p) {
@@ -1841,7 +2021,7 @@ playpex.data('play', function (args, ctx) {
         if (!stream) {
           return { data: null, effects: [{ type: 'toast', tone: 'info', text: 'This video can\'t be played now' }] };
         }
-        return { data: null, effects: [playEffect({ title: it.title, studio: { name: it.studio }, backdrop: it.poster }, [stream], [])] };
+        return { data: null, effects: [playEffect({ title: it.title, studio: { name: it.studio }, backdrop: it.image }, [stream], [])] };
       });
     });
   }
@@ -2012,64 +2192,138 @@ if (typeof module !== 'undefined' && module.exports) {
     tstAllowed: tstAllowed, tstItem: tstItem };
 }
 
-// The Sites view: a site's rows (trending, newest, best), its categories, a
-// row per popular category; a category / quality / length → that listing's
-// sorts; a search → its results, most relevant and newest
+// The Sites view: the Site filter (the sites switched on; the profile's last
+// one), then that site's rows and filters (xhSites, seSites, tstSites); a
+// search → that site's results
 playpex.data('sites', function (args, ctx) {
   args = args || {};
   return layoutOf(args, ctx, 'sites').then(function (l) {
+    if (args.preview && l.layout !== 'sites') return previewOtherView(l.layout);
     if (l.layout !== 'sites') {
       return { data: { rows: [] }, effects: switchTo(l.layout === 'list' ? 'releases' : 'browse') };
     }
-    return xhOn(ctx).then(function (on) {
-      var f = args.filters || {}, site = 'xhamster', q = String(args.query || '').trim(),
-        category = XH_CATEGORIES.filter(function (c) { return c.slug === (f.category || [])[0]; })[0] || null,
-        chosen = { quality: (f.quality || [])[0] || '', duration: (f.duration || [])[0] || '' },
-        filters = [
-          viewGroup('sites'),
-          { key: 'site', label: 'Site', options: SITES.map(function (s) { return { value: s.id, label: s.name, on: s.id === site }; }) },
-          { key: 'category', label: 'Category', options: XH_CATEGORIES.map(function (c) { return { value: c.slug, label: c.name, on: c === category }; }) },
-          { key: 'quality', label: 'Quality', options: XH_QUALITIES.map(function (x) { return { value: x[0], label: x[1], on: x[0] === chosen.quality }; }) },
-          { key: 'duration', label: 'Length', options: XH_DURATIONS.map(function (x) { return { value: x[0], label: x[1], on: x[0] === chosen.duration }; }) }
-        ];
-      if (!on) {
+    return sitesOn(ctx).then(function (on) {
+      if (!on.length) {
         return { data: { title: '18+', rows: [], filters: [viewGroup('sites')],
           empty: 'The sites are switched off in the 18+ plugin\'s settings on the server\'s dashboard.' } };
       }
-      if (q) {
-        return { data: { title: '18+', search: true, filters: filters, rows: [
-          siteRow(site + ':search:' + q, 'xHamster for “' + clip(q, 60) + '”', { site: site, q: q, quality: chosen.quality, duration: chosen.duration }),
-          siteRow(site + ':search-new:' + q, 'Newest for “' + clip(q, 60) + '”', { site: site, q: q, sort: 'newest', quality: chosen.quality, duration: chosen.duration })
-        ], empty: 'Nothing found for “' + clip(q, 60) + '”.' } };
-      }
-      if (category || chosen.quality || chosen.duration) {
-        return { data: { title: '18+', search: true, filters: filters,
-          rows: siteSortRows(site, category ? '/categories/' + category.slug : '', category ? category.name : '', chosen) } };
-      }
-      return siteCategoriesRow(site).then(function (categories) {
-        var rows = siteSortRows(site, '', '', chosen).slice(0, 3)
-          .concat([siteRow(site + ':4k', '4K', { site: site, quality: '2160p' }), categories])
-          .concat(XH_HOME_CATEGORIES.map(function (slug) {
-            var c = XH_CATEGORIES.filter(function (x) { return x.slug === slug; })[0];
-            return siteRow(site + ':home:' + slug, c.name, { site: site, base: '/categories/' + slug });
-          }));
-        return { data: { title: '18+', search: true, filters: filters, rows: rows } };
+      return siteOf(args, ctx, on).then(function (site) {
+        var base = [viewGroup('sites'),
+          { key: 'site', label: 'Site', options: on.map(function (s) { return { value: s.id, label: s.name, on: s === site }; }) }];
+        var q = String(args.query || '').trim(), f = args.filters || {};
+        // a preview: the filters only (no rows: nothing is read)
+        var preview = !!args.preview,
+          page = site.id === 'sexempire' ? seSites(q, f, preview) : site.id === 'thesextube' ? tstSites(q, f, preview) : xhSites(q, f, preview);
+        return Promise.resolve(page).then(function (d) {
+          return { data: Object.assign({ title: '18+', search: true }, d, { filters: base.concat(d.filters || []) }) };
+        });
       });
     });
   });
 });
 
-// A category, performer or channel of a site: its sorts, a quality / length chosen
+// xHamster: its own rows (trending, newest, best), its categories, a row per
+// popular category; a category / quality / length → that listing's sorts; a
+// search → its results, most relevant and newest
+function xhSites(q, f, preview) {
+  var site = 'xhamster',
+    category = XH_CATEGORIES.filter(function (c) { return c.slug === (f.category || [])[0]; })[0] || null,
+    chosen = { quality: (f.quality || [])[0] || '', duration: (f.duration || [])[0] || '' },
+    filters = [
+      { key: 'category', label: 'Category', options: XH_CATEGORIES.map(function (c) { return { value: c.slug, label: c.name, on: c === category }; }) },
+      { key: 'quality', label: 'Quality', options: XH_QUALITIES.map(function (x) { return { value: x[0], label: x[1], on: x[0] === chosen.quality }; }) },
+      { key: 'duration', label: 'Length', options: XH_DURATIONS.map(function (x) { return { value: x[0], label: x[1], on: x[0] === chosen.duration }; }) }
+    ];
+  if (preview) return { filters: filters, rows: [] };
+  if (q) {
+    return { filters: filters, rows: [
+      siteRow(site + ':search:' + q, 'xHamster for “' + clip(q, 60) + '”', { site: site, q: q, quality: chosen.quality, duration: chosen.duration }),
+      siteRow(site + ':search-new:' + q, 'Newest for “' + clip(q, 60) + '”', { site: site, q: q, sort: 'newest', quality: chosen.quality, duration: chosen.duration })
+    ], empty: 'Nothing found for “' + clip(q, 60) + '”.' };
+  }
+  if (category || chosen.quality || chosen.duration) {
+    return { filters: filters, rows: siteSortRows(site, category ? '/categories/' + category.slug : '', category ? category.name : '', chosen) };
+  }
+  return siteCategoriesRow(site).then(function (categories) {
+    var rows = siteSortRows(site, '', '', chosen).slice(0, 3)
+      .concat([siteRow(site + ':4k', '4K', { site: site, quality: '2160p' }), categories])
+      .concat(XH_HOME_CATEGORIES.map(function (slug) {
+        var c = XH_CATEGORIES.filter(function (x) { return x.slug === slug; })[0];
+        return siteRow(site + ':home:' + slug, c.name, { site: site, base: '/categories/' + slug });
+      }));
+    return { filters: filters, rows: rows };
+  });
+}
+
+function seListingRow(listing) {
+  return siteRow('sexempire:' + listing.key, listing.name, { site: 'sexempire', list: listing.key }, 'poster');
+}
+
+// Sex-Empire: its newest, top, films, scenes and collections, its studios as
+// posters and a row each for the first ones; a listing chosen → it alone; a
+// search → the site's search
+function seSites(q, f, preview) {
+  var all = seListings(), chosen = (f.category || [])[0] || '',
+    listing = all.filter(function (x) { return x.key === chosen; })[0] || null,
+    filters = [{ key: 'category', label: 'Category', options: all.map(function (x) {
+      return { value: x.key, label: clip(x.name, 40), on: x === listing };
+    }) }];
+  if (preview) return { filters: filters, rows: [] };
+  if (q) {
+    return { filters: filters, rows: [seRow(q)], empty: 'Sex-Empire has nothing for “' + clip(q, 60) + '”.' };
+  }
+  if (listing) {
+    return { filters: filters, rows: [seListingRow(listing)], empty: 'Nothing to show.' };
+  }
+  return seStudiosRow().then(function (studios) {
+    var rows = SE_LISTS.map(function (x) { return seListingRow(seListing('lists.' + x[0])); });
+    rows.splice(4, 0, studios);
+    return { filters: filters, rows: rows.concat(SE_STUDIOS.slice(0, 4).map(function (x) { return seListingRow(seListing('studios.' + x[0])); })) };
+  });
+}
+
+// TheSexTube: its studios' newest videos, then a row per studio; a studio
+// chosen → its videos; a search → the studios' videos for the words
+function tstSites(q, f, preview) {
+  var studio = tstStudio((f.studio || [])[0]),
+    filters = [{ key: 'studio', label: 'Studio', options: TST_STUDIOS.map(function (x) { return { value: x.id, label: x.name, on: x === studio }; }) }];
+  if (preview) return { filters: filters, rows: [] };
+  function row(key, title, extra) {
+    return siteRow('thesextube:' + key, title, Object.assign({ site: 'thesextube' }, extra));
+  }
+  if (q) {
+    return { filters: filters, rows: [row('search:' + (studio ? studio.id : '') + ':' + q, (studio ? studio.name : 'Studio videos') + ' for “' + clip(q, 60) + '”',
+      { q: q, studio: studio ? studio.id : undefined })], empty: 'No studio video for “' + clip(q, 60) + '”.' };
+  }
+  if (studio) {
+    return { filters: filters, rows: [row('studio:' + studio.id, 'New from ' + studio.name, { studio: studio.id })], empty: 'No studio videos.' };
+  }
+  return { filters: filters, rows: [row('new', 'New from the studios', {})].concat(TST_STUDIOS.map(function (x) {
+    return row('studio:' + x.id, x.name, { studio: x.id });
+  })) };
+}
+
+// A category, performer or channel of xHamster, a listing of Sex-Empire: its rows, a quality / length chosen
 playpex.data('siteList', function (args, ctx) {
   args = args || {};
+  var p = args.params || {}, f = args.filters || {};
+  if (p.site === 'sexempire') {
+    var listing = seListing(p.list);
+    return seOn(ctx).then(function (on) {
+      var name = clip(p.name || (listing && listing.name) || '', 80);
+      if (!on || !listing) {
+        return { data: { title: name || '18+', rows: [], empty: on ? 'Nothing to show.' : 'The sites are switched off in the 18+ plugin\'s settings.' } };
+      }
+      return { data: { title: name || listing.name, rows: [seListingRow(listing)], empty: 'Nothing to show.' } };
+    });
+  }
   // params.list: <kind>.<slug> (categories.lesbian, pornstars.<name>, channels.<name>, creators.<name>)
-  var p = args.params || {}, f = args.filters || {},
-    list = /^(categories|pornstars|channels|creators)\.([A-Za-z0-9_-]{1,80})$/.exec(p.list || ''),
+  var list = /^(categories|pornstars|channels|creators)\.([A-Za-z0-9_-]{1,80})$/.exec(p.list || ''),
     kind = list ? list[1] : null, slug = list ? list[2] : null,
     chosen = { quality: (f.quality || [])[0] || '', duration: (f.duration || [])[0] || '' },
     name = clip(p.name || slug || '', 80);
   return xhOn(ctx).then(function (on) {
-    if (!on || !slug) {
+    if (!on || !slug || (p.site && p.site !== 'xhamster')) {
       return { data: { title: name, rows: [], empty: on ? 'Nothing to show.' : 'The sites are switched off in the 18+ plugin\'s settings.' } };
     }
     var filters = [
@@ -2082,10 +2336,32 @@ playpex.data('siteList', function (args, ctx) {
   });
 });
 
+// A TheSexTube video: what it is, Play, more from its studio (only a studio's post: tstPost checks)
+function tstVideoPage(ctx, id) {
+  return tstOn(ctx).then(function (on) {
+    return on ? tstPost(id) : null;
+  }).then(function (it) {
+    if (!it) {
+      return { data: { info: { title: 'This video isn\'t available' } } };
+    }
+    var studio = TST_STUDIOS.filter(function (s) { return s.name === it.studio; })[0], meta = [{ kind: 'seal', text: '18+' }];
+    if (it.date) meta.unshift({ kind: 'text', text: it.date });
+    return { data: {
+      info: { title: clip(it.title, 200), eyebrow: clip(it.studio, 200), meta: meta,
+        overview: it.description ? clip(it.description, 4000) : undefined, overviewFallback: 'No description.', backdrop: it.image || undefined },
+      actions: [{ key: 'velvet:play', label: 'Play', icon: 'play', call: { data: 'play', args: { provider: 'thesextube', id: it.id } } }],
+      rows: studio ? [siteRow('thesextube:more:' + studio.id, 'More from ' + studio.name, { site: 'thesextube', studio: studio.id })] : []
+    } };
+  });
+}
+
 // A site's video: what it is, Play, related videos, more with its performers and from its channel
 playpex.data('siteVideo', function (args, ctx) {
   args = args || {};
-  var id = String((args.params || {}).id || '');
+  var params = args.params || {}, id = String(params.id || '');
+  if (params.site === 'thesextube') {
+    return tstVideoPage(ctx, id);
+  }
   return xhOn(ctx).then(function (on) {
     if (!on || !/^[A-Za-z0-9-]{1,300}$/.test(id)) {
       return { data: { info: { title: 'This video isn\'t available' } } };

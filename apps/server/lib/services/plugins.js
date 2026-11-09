@@ -24,7 +24,10 @@ function checkKey(key) {
 
 module.exports = function pluginsService(repositories, options) {
   var repo = repositories.plugins,
-    now = (options && options.now) || function () { return new Date(); };
+    now = (options && options.now) || function () { return new Date(); },
+    // secrets and linked accounts' tokens are kept encrypted (lib/secretBox.js);
+    // without a box (unit tests of the services) as they are
+    box = (options && options.box) || { seal: function (v) { return v; }, open: function (v) { return v; }, sealed: function () { return true; } };
 
   // Settings of one scope: { key: value } from the rows, the manifest's defaults for the rest
   function settingsOf(pluginId, definitions, scope, ownerId) {
@@ -151,14 +154,24 @@ module.exports = function pluginsService(repositories, options) {
 
     secrets: {
       get: function (pluginId, name, profileId) {
-        return repo.secretGet(pluginId, name, profileId || '');
+        return repo.secretGet(pluginId, name, profileId || '').then(function (stored) {
+          if (stored === null || stored === undefined) {
+            return null;
+          }
+          var value = box.open(stored);
+          // written before secrets were encrypted: sealed now
+          if (value !== null && !box.sealed(stored)) {
+            return repo.secretSet(pluginId, name, profileId || '', box.seal(value), now()).then(function () { return value; }, function () { return value; });
+          }
+          return value;
+        });
       },
       /** null removes */
       set: function (pluginId, name, value, profileId) {
         if (value !== null && typeof value !== 'string') {
           return Promise.reject(errors.invalid('a secret is a string'));
         }
-        return repo.secretSet(pluginId, name, profileId || '', value, now());
+        return repo.secretSet(pluginId, name, profileId || '', value === null ? null : box.seal(value), now());
       }
     },
 

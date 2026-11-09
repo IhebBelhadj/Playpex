@@ -21,6 +21,13 @@
   padding: dp(26) dp(170) 0 0;     // the shell's clock on the right
 }
 
+// a plugin's toolbar group (a view): its chips side by side, applied at once
+.toolbarGroup {
+  display: flex;
+  flex: none;
+  gap: dp(6);
+}
+
 .seal {
   display: grid;
   place-items: center;

@@ -181,6 +181,26 @@ $rowH: dp(92);
   text-overflow: ellipsis;
 }
 
+// a plugin's direct link with a picture: it, in the seeders' place
+.releaseThumb {
+  display: block;
+  width: 100%;
+  height: dp(76);
+  overflow: hidden;
+  border-radius: var(--px-radius-m);
+  background: var(--px-surface-card);
+
+  // a portrait poster: as tall as a still, at the column's start
+  &.poster { width: dp(52); }
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
 .seedLabel {
   margin-top: dp(4);
   font-family: var(--px-font-light);

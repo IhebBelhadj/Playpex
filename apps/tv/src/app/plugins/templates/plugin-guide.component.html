@@ -1,10 +1,13 @@
 <px-section-layout class="pluginGuide">
 
-  <!-- Its name, groups and the time window -->
+  <!-- Its name, a search, groups and the time window -->
   <div class="toolbar" pxSection="guideToolbar" [leaveFor]="{ left: '@menu', down: ['grid:' + gridId, '@pluginGuide'] }">
     <h1 class="heading">{{ heading }}</h1>
     <span class="now">{{ windowText || nowText }}</span>
     <span class="spacer"></span>
+    <px-search-field *ngIf="answer?.channels?.length" key="search" [query]="state.query" placeholder="Search channels"
+      (pxSelect)="openKeyboard()"></px-search-field>
+    <px-button *ngIf="state.query" key="clear" variant="toolbar" label="Clear" (pxSelect)="search('')"></px-button>
     <px-button *ngIf="answer?.groups?.length" key="groups" variant="toolbar" icon="opts" [label]="groupLabel"
       [active]="!!state.group" (pxSelect)="openGroups()"></px-button>
     <ng-container *ngIf="guide">
@@ -42,8 +45,12 @@
     <px-empty class="note" *ngIf="loadError" size="hero" [title]="scope.name + ' unavailable'" [text]="loadError"
       action="Try again" actionKey="retry" (act)="load()"></px-empty>
     <px-empty class="note" *ngIf="loading && !answer" size="hero" [busy]="true" [text]="'Loading the channels…'"></px-empty>
-    <px-empty class="note" *ngIf="answer && !loadError && !filtered.length" size="hero" title="No channels"
+    <px-empty class="note" *ngIf="answer && !loadError && !filtered.length && !state.query" size="hero" title="No channels"
       [text]="emptyText || 'Nothing to watch here yet.'"></px-empty>
+    <px-empty class="note" *ngIf="answer && !loadError && !filtered.length && state.query" size="hero"
+      [title]="'No channel matches “' + state.query + '”'"
+      [text]="state.group ? 'In ' + state.group + '. Search every group, or try other words.' : 'Try other words, or part of a name or its number.'"
+      [action]="state.group ? 'Search every group' : 'Clear search'" actionKey="clear" (act)="state.group ? chooseGroup(null) : search('')"></px-empty>
 
     <!-- The time ruler over the programmes -->
     <div class="ruler" *ngIf="guide && lines.length">
@@ -85,3 +92,15 @@
     </div>
   </div>
 </px-panel>
+
+<!-- The search (name, number or group: the start of their words) -->
+<text-keyboard *ngIf="panel == 'keyboard'"
+  [title]="'Search ' + heading"
+  placeholder="Channel name or number"
+  [value]="state.query"
+  [maxLength]="40"
+  [capitalizeWords]="false"
+  doneLabel="Search"
+  (done)="search($event)"
+  (cancelled)="closeKeyboard()">
+</text-keyboard>

@@ -1,6 +1,7 @@
 <px-panel id="textKeyboard" [title]="title" (back)="cancelled.emit()">
   <div class="keyboard" pxStack (pxSelect)="select($event)">
     <div class="textDisplay" [class.empty]="!value">{{ value || placeholder }}<span class="caret"></span></div>
+    <p class="remoteHint" *ngIf="remote.controller$ | async">Remote connected: you can type on its keyboard too</p>
     <div class="keyGrid" pxGrid enter="nearest">
       <button *ngFor="let k of letters" class="key" pxItem [attr.data-key]="k">{{ k }}</button>
       <button *ngFor="let k of digits" class="key" pxItem [attr.data-key]="k">{{ k }}</button>

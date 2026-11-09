@@ -180,7 +180,8 @@ function sign(entry, payload) {
   return b64(crypto.createHmac('sha256', SECRET).update(entry.id + '\n' + payload).digest().subarray(0, 16));
 }
 
-// `type` p (a playlist) or s (anything else) + the URL
+// `type` p (a playlist), v (a subtitles playlist: its segments are WebVTT) or s
+// (anything else) + the URL
 function tokenOf(entry, type, url) {
   var payload = type + url;
   return b64(Buffer.from(payload, 'utf8')) + '.' + sign(entry, payload);
@@ -195,7 +196,7 @@ function untoken(entry, token) {
   var payload = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
     expected = Buffer.from(sign(entry, payload)),
     given = Buffer.from(m[2]);
-  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given) || !/^[ps]https?:\/\//.test(payload)) {
+  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given) || !/^[psv]https?:\/\//.test(payload)) {
     return null;
   }
   return { type: payload[0], url: payload.slice(1) };
@@ -207,14 +208,16 @@ function untoken(entry, token) {
  * A playlist with every URI rewritten to `prefix + token` (absolute or
  * relative to `base`, the URL it was fetched from after redirects), then
  * `suffix` (the server's own ffmpeg: its query, which relative URIs lose).
+ * `subtitles`: a subtitles rendition's playlist (its segments are WebVTT).
  * Answers { text, master, live }.
  */
-function rewrite(entry, text, base, prefix, suffix) {
+function rewrite(entry, text, base, prefix, suffix, subtitles) {
   var lines = text.replace(/^﻿/, '').split(/\r?\n/),
     master = lines.some(function (l) { return /^#EXT-X-STREAM-INF/.test(l); }),
     ended = lines.some(function (l) { return /^#EXT-X-ENDLIST/.test(l.trim()); });
 
-  function target(uri, type) {
+  // segment: a media segment line (named for ffmpeg below); keys, maps and parts keep their names
+  function target(uri, type, segment) {
     var url;
     try {
       url = new URL(uri, base);
@@ -225,13 +228,20 @@ function rewrite(entry, text, base, prefix, suffix) {
       return null;
     }
     url.hash = '';
-    return prefix + tokenOf(entry, type, url.toString()) + '/' + named(url) + (suffix || '');
+    return prefix + tokenOf(entry, type, url.toString()) + '/' + named(url, type, segment) + (suffix || '');
   }
 
-  // the target's file name after its token: r/<token>/seg1.ts
-  function named(url) {
+  // the target's file name after its token: r/<token>/seg1.ts. A playlist or a
+  // segment without an extension (a proxy's /p/<base64>) gets one by what it is:
+  // ffmpeg's HLS demuxer (libmpv, direct downloads) refuses a segment without a
+  // known extension or whose content doesn't match it; the token carries the URL
+  function named(url, type, segment) {
     var last = url.pathname.split('/').pop().replace(/[^A-Za-z0-9._-]/g, '').slice(-64);
-    return last && last !== '.' && last !== '..' ? last : 'part';
+    last = last && last !== '.' && last !== '..' ? last : 'part';
+    if (/\.[A-Za-z0-9]{2,5}$/.test(last) || (type === 's' && !segment)) {
+      return last;
+    }
+    return last.slice(-58) + (type !== 's' ? '.m3u8' : subtitles ? '.vtt' : '.ts');
   }
 
   var out = lines.map(function (raw) {
@@ -243,13 +253,14 @@ function rewrite(entry, text, base, prefix, suffix) {
       if (line.indexOf('URI="') === -1) {
         return line;
       }
-      var type = PLAYLIST_TAGS.some(function (t) { return line.indexOf(t + ':') === 0; }) ? 'p' : 's';
+      var type = PLAYLIST_TAGS.some(function (t) { return line.indexOf(t + ':') === 0; }) ?
+        (/^#EXT-X-MEDIA:.*\bTYPE=SUBTITLES\b/.test(line) ? 'v' : 'p') : 's';
       return line.replace(/URI="([^"]*)"/g, function (all, uri) {
         var t = target(uri, type);
         return t ? 'URI="' + t + '"' : all;   // data: and other schemes stay as they are
       });
     }
-    return target(line, master ? 'p' : 's') || '';
+    return target(line, master ? 'p' : 's', !master) || '';
   });
   return { text: out.join('\n') + '\n', master: master, live: !master && !ended };
 }
@@ -349,7 +360,7 @@ function playlist(req, res, m, token, deviceId) {
       // ffmpeg reading it for the server (a direct download): its token and device on every part
       var internal = req.query.internal ? '?' + protocol.DEVICE_PARAM + '=' + encodeURIComponent(deviceId) +
         '&internal=' + encodeURIComponent(String(req.query.internal)) : '';
-      var done = rewrite(entry, text, r.url, token == null ? 'r/' : '../', internal);
+      var done = rewrite(entry, text, r.url, token == null ? 'r/' : '../', internal, asked.type === 'v');
       if (done.live && entry.live !== true) {
         entry.live = true;
         if (!admit(entry, deviceId)) {

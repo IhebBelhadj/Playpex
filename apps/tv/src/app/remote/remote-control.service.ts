@@ -14,7 +14,20 @@ export interface RemotePointer {
   pressed:boolean;
 }
 
+/** A text field the controller can fill (the on-screen keyboard while it's open) */
+export interface RemoteTextField {
+  readonly value:string;
+  readonly title:string;
+  readonly placeholder:string;
+  readonly maxLength:number;
+  readonly kind:'text' | 'search' | 'address';
+  /** the controller's text, the whole field (never sent back); submit: its Done */
+  remoteValue(value:string, submit:boolean):void;
+}
+
 const POINTER_IDLE_MS = 3000;
+// the field's text sent to the controller at most this often while it's typed on the TV
+const FIELD_EVERY_MS = 150;
 const CURSOR_EVERY_MS = 33;
 
 // Remote control from the server (docs/remote-control-plan.md §2.6): this
@@ -34,6 +47,11 @@ const CURSOR_EVERY_MS = 33;
 // (`RemoteRtc`, set up through `signal` messages on this socket): on a lossy
 // Wi-Fi a lost packet then holds nothing up behind it. This socket stays the
 // fallback, and carries keys and text.
+//
+// Text fields: while an on-screen keyboard is open (`openField`, from
+// <text-keyboard>) the controller gets a `field` message (its text, title,
+// kind) and again when the text changes here; it answers with the whole text
+// (its phone's own keyboard), applied to that field only (`id`), never echoed.
 @Injectable({
   providedIn: 'root'
 })
@@ -53,6 +71,10 @@ export class RemoteControl implements OnDestroy {
   private x = -1;
   private y = -1;
   private onResize = () => this.hello();
+  private field:RemoteTextField | null = null;
+  private fieldId = '';
+  private fieldCount = 0;
+  private fieldTimer:any = null;
   private rtc = new RemoteRtc(data => this.send({ type: 'signal', data }), msg => this.pointer(msg));
 
   constructor(private server:ServerService, private settings:SettingsService, private mediaKeys:MediaKeys, private zone:NgZone) { }
@@ -84,6 +106,8 @@ export class RemoteControl implements OnDestroy {
       socket.onopen = () => {
         this.retryMs = 2000;
         this.hello();
+        // a keyboard already open: the server keeps it for the controller
+        if (this.field) this.sendField();
       };
       socket.onmessage = message => {
         let msg:RemoteMessage;
@@ -119,7 +143,7 @@ export class RemoteControl implements OnDestroy {
   }
 
   private hello() {
-    this.send({ type: 'hello', role: 'target', capabilities: { keyboard: true, pointer: true, text: true, rtc: RemoteRtc.supported },
+    this.send({ type: 'hello', role: 'target', capabilities: { keyboard: true, pointer: true, text: true, rtc: RemoteRtc.supported, field: true },
       screen: { width: window.innerWidth, height: window.innerHeight } });
   }
 
@@ -151,7 +175,47 @@ export class RemoteControl implements OnDestroy {
       case 'pointer':
         this.pointer(msg);
         break;
+      case 'field':
+        // the controller's text for the field open now (another one's was dropped by the server; checked again)
+        if ('value' in msg && !('open' in msg) && this.field && msg.id == this.fieldId && typeof msg.value == 'string') {
+          let field = this.field;
+          this.zone.run(() => field.remoteValue(msg.value, msg.submit === true));
+        }
+        break;
     }
+  }
+
+  // ── text fields ───────────────────────────────────────────────────────────
+
+  /** an on-screen keyboard opened: the controller may type into it */
+  openField(field:RemoteTextField) {
+    this.field = field;
+    this.fieldId = 'f' + (++this.fieldCount);
+    this.sendField();
+  }
+
+  /** its text changed here (keys on the TV): the controller's copy follows */
+  fieldChanged(field:RemoteTextField) {
+    if (field !== this.field || this.fieldTimer) return;
+    this.fieldTimer = setTimeout(() => {
+      this.fieldTimer = null;
+      if (field === this.field) this.sendField();
+    }, FIELD_EVERY_MS);
+  }
+
+  closeField(field:RemoteTextField) {
+    if (field !== this.field) return;
+    clearTimeout(this.fieldTimer);
+    this.fieldTimer = null;
+    this.send({ type: 'field', open: false, id: this.fieldId });
+    this.field = null;
+  }
+
+  private sendField() {
+    let f = this.field;
+    if (!f) return;
+    this.send({ type: 'field', open: true, id: this.fieldId, value: f.value, title: f.title || undefined,
+      placeholder: f.placeholder || undefined, maxLength: f.maxLength, kind: f.kind });
   }
 
   private pointer(msg:Extract<RemoteMessage, { type:'pointer' }>) {

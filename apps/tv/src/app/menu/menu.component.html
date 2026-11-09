@@ -5,9 +5,11 @@
   </div>
 
   <!-- Places to browse, centered: the sections declared with a menu entry
-       (src/app/nav/screens.ts), in their order -->
-  <div class="tabs sections">
+       (src/app/nav/screens.ts), in their order. A scrolling stack: with more
+       entries than fit (plugins add theirs) it scrolls, the focused one kept in view -->
+  <div class="tabs sections" pxStack="menuSections">
     <button *ngFor="let section of sections; trackBy: trackById" class="tabGroup element menuItem"
+      pxItem [pxItemKey]="section.id"
       [class.active]="section.id == activeSection" (pxSelect)="openSection(section)">
       <div class="inner">
         <img [src]="icon(section)" alt="">

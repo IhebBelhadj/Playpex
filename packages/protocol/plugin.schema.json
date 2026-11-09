@@ -218,11 +218,11 @@
         },
         "play": { "description": "May answer play effects (the core's player)", "type": "boolean" },
         "sources": {
-          "description": "Kinds of Source it may return (play.collect, play.resolve, play effects): magnet, http (a file over HTTPS), hls (an HLS playlist, VOD or live), live (a continuous stream: MPEG-TS)",
+          "description": "Kinds of Source it may return (play.collect, play.resolve, play effects): magnet, http (a file over HTTPS), hls (an HLS playlist, VOD or live), live (a continuous stream: MPEG-TS), embed (a video in its site's own embedded player: YouTube; play effects only)",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "enum": ["magnet", "http", "hls", "live"] }
+          "items": { "enum": ["magnet", "http", "hls", "live", "embed"] }
         },
         "hooks": {
           "type": "array",
@@ -279,6 +279,7 @@
             "codeUrl": { "type": "string", "pattern": "^https://" },
             "tokenUrl": { "type": "string", "pattern": "^https://" },
             "refreshUrl": { "type": "string", "pattern": "^https://" },
+            "revokeUrl": { "description": "RFC 7009 token revocation: unlinking sends the refresh token (else the access token) there, so the account forgets this server too", "type": "string", "pattern": "^https://" },
             "scope": { "type": "string", "maxLength": 200 },
             "body": { "description": "How requests are sent: form (RFC 8628, default) or json (Trakt)", "enum": ["form", "json"] },
             "clientIdSecret": { "$ref": "#/$defs/name" },

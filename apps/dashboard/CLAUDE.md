@@ -20,8 +20,9 @@ src/router.tsx          routes: /setup, /login, /docs (public, lazy: DocsLayout 
                         library file's sheet), /downloads (?hash= opens a download's sheet; ?filter=direct: direct downloads), /search (Search), /storage (→ /library, its query kept), /logs,
                         /settings[/:tab] (tabs = settings groups + desktop app (desktop host only) + account), /plugins, /plugins/:pluginId,
                         /profiles, /about, /remote (the devices that can be controlled: GET /remote/targets) and /remote/:deviceId (the controller:
-                        lib/remote.ts's socket to /api/v1/remote?role=controller, components/remote-touchpad.tsx, a D-pad, keyboard capture, Type
-                        text; docs/remote-control-plan.md); /watch/:ref (the player, RequireAdmin without AppLayout: the whole window)
+                        lib/remote.ts's socket to /api/v1/remote?role=controller, components/remote-touchpad.tsx, a D-pad, keyboard capture;
+                        components/remote-field.tsx while the device has a text field open: its text, this phone's keyboard
+                        (PlaypexKeyboard in Server Manager), Enter = Done; docs/remote-control-plan.md); /watch/:ref (the player, RequireAdmin without AppLayout: the whole window)
 src/lib/api.ts          `api` (openapi-fetch client, baseUrl /api/v1, cookies), `unwrap()` → data or ApiError
                         ({error,code} / Better Auth {message,code} / RFC {error_description}), schema type aliases
 src/lib/auth.ts         useSetupState (GET /admin/setup {needed, local}), useSession (Better Auth get-session),

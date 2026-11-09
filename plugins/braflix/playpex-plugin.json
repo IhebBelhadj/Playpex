@@ -1,0 +1,59 @@
+{
+  "$schema": "../../packages/protocol/plugin.schema.json",
+  "id": "braflix",
+  "name": "Braflix",
+  "description": "Direct play for movies and TV episodes from Braflix's own players: an HLS stream up to 1080p (its default server) and MP4 files, found by the title's TMDB id and played through the server.",
+  "version": "1.0.0",
+  "publisher": {
+    "name": "Playpex"
+  },
+  "api": {
+    "server": "^1"
+  },
+  "audience": "everyone",
+  "listing": {
+    "summary": "Stream movies and TV episodes from Braflix's players: HLS up to 1080p and MP4 files, no torrent.",
+    "description": "Braflix (braflix.at) lists about thirty third-party embed players for a title. This plugin reads the two that are Braflix's own and answer plain JSON: its default server (vidsrc.party: an HLS stream, most titles in 1080p / 720p / 480p with English audio and subtitles) and \"Vidsrc HD\" (braflix.dev: MP4 files, usually 480p and 360p, sometimes 1080p). Both show in a title's Play, in the Stream group, for movies and for episodes. Each is a switch in the settings. The other embed players encrypt their streams or sit behind Cloudflare challenges and are left out.",
+    "disclaimer": "Streaming copyrighted content may be illegal where you live. Educational project.",
+    "license": "PolyForm-Noncommercial-1.0.0",
+    "categories": [
+      "streams"
+    ]
+  },
+  "permissions": {
+    "network": [
+      "vidsrc.party",
+      "braflix.dev",
+      "*.hakunaymatata.com"
+    ],
+    "sources": [
+      "hls",
+      "http"
+    ],
+    "hooks": [
+      "play.collect"
+    ]
+  },
+  "contributes": {
+    "settings": [
+      {
+        "key": "hls",
+        "scope": "server",
+        "type": "switch",
+        "label": "Braflix (HLS)",
+        "description": "Braflix's default server (vidsrc.party): an HLS stream, most titles up to 1080p, English audio and subtitles in the stream.",
+        "group": "Servers",
+        "default": true
+      },
+      {
+        "key": "mp4",
+        "scope": "server",
+        "type": "switch",
+        "label": "Vidsrc HD (MP4)",
+        "description": "Braflix's \"Vidsrc HD\" server (braflix.dev): MP4 files, usually 480p and 360p, played and seeked by range.",
+        "group": "Servers",
+        "default": true
+      }
+    ]
+  }
+}

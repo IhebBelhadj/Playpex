@@ -45,7 +45,7 @@ var TEST_HOST = '127.0.0.2',
   remotePort = 0,
   tls = null,
   options = null,
-  device = { approved: false, tokenCalls: 0, refreshes: 0 },
+  device = { approved: false, tokenCalls: 0, refreshes: 0, revoked: [] },
   ana = null, bob = null, kid = null;
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -93,12 +93,17 @@ function web(req, res) {
       }
       device.tokenCalls++;
       assert.equal(form.get('device_code'), 'dc-1');
+      assert.equal(form.get('code'), null, 'a form flow sends the RFC\'s fields only (Google refuses others)');
       if (!device.approved) {
         res.statusCode = 400;
         return res.end(JSON.stringify({ error: 'authorization_pending' }));
       }
       // expires within the refresh margin: link.status refreshes it
       return res.end(JSON.stringify({ access_token: 'at-1', refresh_token: 'rt-1', token_type: 'Bearer', expires_in: 60 }));
+    }
+    if (url.pathname === '/device/revoke') {
+      device.revoked.push({ token: form.get('token'), hint: form.get('token_type_hint'), client: form.get('client_id') });
+      return res.end('{}');
     }
     res.statusCode = 404;
     res.end('{}');
@@ -285,7 +290,7 @@ test.before(function () {
         },
         link: [{ name: 'acct', label: 'Test account', scope: 'profile', deviceCode: {
           codeUrl: 'https://' + HOST + ':' + remotePort + '/device/code', tokenUrl: 'https://' + HOST + ':' + remotePort + '/device/token',
-          clientIdSecret: 'clientId' } }],
+          revokeUrl: 'https://' + HOST + ':' + remotePort + '/device/revoke', clientIdSecret: 'clientId' } }],
         contributes: { settings: [{ key: 'clientId', scope: 'server', type: 'secret', label: 'Client id' }] }
       }, WATCHER),
       writePlugin('adultwatch', { audience: 'adults', permissions: { events: ['playback', 'watchlist'], notify: true } }, ADULTS),
@@ -508,7 +513,7 @@ test('a job runs on its interval, never overlaps itself, and again after a resta
 test('a device-code link: the code, the token kept, refreshed near expiry, unlinked', { skip: skip() }, function () {
   return call('POST', '/admin/plugins/watcher/links/acct/start', { profile: ana }).then(function (r) {
     assert.equal(r.status, 400, 'no client id yet');
-    assert.match(r.json.error, /clientId/);
+    assert.match(r.json.error, /"Client id"/);
     return call('PUT', '/admin/plugins/watcher/settings', { values: { clientId: 'client-1' } });
   }).then(function () {
     return call('POST', '/admin/plugins/watcher/links/acct/start', {});
@@ -553,9 +558,25 @@ test('a device-code link: the code, the token kept, refreshed near expiry, unlin
     return call('DELETE', '/admin/plugins/watcher/links/acct?profile=' + ana);
   }).then(function (r) {
     assert.equal(r.status, 200, r.text);
+    assert.deepEqual(device.revoked, [{ token: 'rt-2', hint: 'refresh_token', client: 'client-1' }], 'unlinking revokes the refresh token there');
     return data('watcher', 'write', { op: 'link', profileId: ana });
   }).then(function (r) {
     assert.equal(r.value.linked, false);
+    // no client id on the dashboard: the server's environment provides it (lib/plugins/envSecrets.js)
+    return call('PUT', '/admin/plugins/watcher/settings', { values: { clientId: null } });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    return call('POST', '/admin/plugins/watcher/links/acct/start', { profile: ana });
+  }).then(function (r) {
+    assert.equal(r.status, 400, 'none anywhere');
+    process.env.PLAYPEX_PLUGIN_WATCHER_CLIENT_ID = 'client-1';
+    return call('POST', '/admin/plugins/watcher/links/acct/start', { profile: ana });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.code, 'ABCD-1234', 'the environment\'s client asked for the code');
+    return call('DELETE', '/admin/plugins/watcher/links/acct?profile=' + ana);
+  }).then(function () {
+    delete process.env.PLAYPEX_PLUGIN_WATCHER_CLIENT_ID;
   });
 });
 

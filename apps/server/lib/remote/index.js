@@ -15,7 +15,11 @@
 // and drops pointer moves (never keys or buttons) while the target's socket
 // is behind. A target that says `rtc` gets `signal` messages relayed both ways
 // (WebRTC set-up): the pointer then goes straight to it over data channels,
-// which the server never sees; this socket stays the fallback.
+// which the server never sees; this socket stays the fallback. A target that
+// says `field` reports its open text field (`field` messages: open with its
+// text, closed); the server keeps the open one (in memory, while the target is
+// connected) for a controller that comes later, and passes the controller's
+// `field` answers (the whole text, for that field's id) to the target.
 //
 //   remote.control(deviceId)  → { online, playback, keyboard, pointer, text } (sessions, devices)
 //   remote.targets()          → GET /remote/targets
@@ -98,10 +102,41 @@ function str(v, max) {
   return typeof v === 'string' && v.length > 0 && v.length <= max ? v : null;
 }
 
+var FIELD_ID_MAX = 64, FIELD_TITLE_MAX = 80;
+
+/** A target's `field` message as kept and relayed, or null (malformed) */
+function fieldOf(msg) {
+  if (msg.open === false) {
+    var closed = str(msg.id, FIELD_ID_MAX);
+    return closed ? { type: 'field', open: false, id: closed } : { type: 'field', open: false };
+  }
+  var id = str(msg.id, FIELD_ID_MAX), value = typeof msg.value === 'string' ? msg.value.slice(0, REMOTE.TEXT_MAX) : null;
+  if (msg.open !== true || !id || value === null) {
+    return null;
+  }
+  var out = { type: 'field', open: true, id: id, value: value },
+    title = str(msg.title, FIELD_TITLE_MAX), placeholder = str(msg.placeholder, FIELD_TITLE_MAX),
+    max = num(msg.maxLength, 1, REMOTE.TEXT_MAX);
+  if (title) out.title = title;
+  if (placeholder) out.placeholder = placeholder;
+  if (max) out.maxLength = Math.round(max);
+  if (REMOTE.FIELD_KINDS.indexOf(msg.kind) >= 0) out.kind = msg.kind;
+  return out;
+}
+
 // A controller's message as the target gets it, or null (refused)
-function clean(msg, caps) {
+function clean(msg, caps, field) {
   if (!msg || typeof msg !== 'object' || !caps) {
     return null;
+  }
+  // a field's text: only for the field open now (an old one's is dropped), empty allowed
+  if (msg.type === 'field' && caps.field) {
+    if (!field || msg.id !== field.id || typeof msg.value !== 'string' || msg.value.length > REMOTE.TEXT_MAX) {
+      return null;
+    }
+    var answer = { type: 'field', id: field.id, value: field.maxLength ? msg.value.slice(0, field.maxLength) : msg.value };
+    if (msg.submit === true) answer.submit = true;
+    return answer;
   }
   if (msg.type === 'key' && caps.keyboard) {
     var key = str(msg.key, KEY_MAX);
@@ -192,7 +227,7 @@ function onTarget(socket, deviceId, who, req) {
       name: who.kind === 'device' ? who.device.name || null : null,
       client: client && client.name ? client.name + (client.version ? '/' + client.version : '') :
         who.kind === 'device' ? who.device.client || null : null,
-      capabilities: null, screen: null
+      capabilities: null, screen: null, field: null
     };
   keepAlive(t);
   socket.on('message', function (data) {
@@ -203,7 +238,8 @@ function onTarget(socket, deviceId, who, req) {
     if (msg.type === 'hello') {
       var caps = msg.capabilities || {}, first = !t.capabilities;
       t.capabilities = { keyboard: caps.keyboard === true, pointer: caps.pointer === true, text: caps.text === true,
-        rtc: caps.rtc === true && caps.pointer === true };
+        rtc: caps.rtc === true && caps.pointer === true, field: caps.field === true };
+      if (!t.capabilities.field) t.field = null;
       var w = num(msg.screen && msg.screen.width, 1, 20000), h = num(msg.screen && msg.screen.height, 1, 20000);
       t.screen = w && h ? { width: w, height: h } : null;
       if (typeof msg.name === 'string' && !t.paired) {
@@ -222,6 +258,16 @@ function onTarget(socket, deviceId, who, req) {
       var to = controllers[deviceId], data = signal(msg, t.capabilities);
       if (to && data) {
         send(to.socket, { type: 'signal', data: data });
+      }
+    } else if (msg.type === 'field') {
+      var f = t.capabilities && t.capabilities.field ? fieldOf(msg) : null;
+      if (!f) {
+        return;
+      }
+      t.field = f.open ? f : null;
+      var fc = controllers[deviceId];
+      if (fc) {
+        send(fc.socket, f);
       }
     } else if (msg.type === 'bye') {
       endControl(deviceId, 'ended');
@@ -267,6 +313,11 @@ function onController(socket, deviceId, who) {
   keepAlive(c);
   log.info('remote control of ' + deviceId + ' started by ' + c.name);
   tell(deviceId);
+  // a field already open on the device: this controller can type into it at once
+  var open = targets[deviceId] && targets[deviceId].field;
+  if (open) {
+    send(socket, open);
+  }
   changed(deviceId);
   socket.on('message', function (data) {
     if (controllers[deviceId] !== c) {
@@ -284,7 +335,7 @@ function onController(socket, deviceId, who) {
       }
       return;
     }
-    var out = t && clean(msg, t.capabilities);
+    var out = t && clean(msg, t.capabilities, t.field);
     if (!out || t.socket.readyState !== WebSocket.OPEN) {
       return;
     }

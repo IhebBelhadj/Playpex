@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { LiveChannel, LiveChannels, LiveProgramme, LiveService } from '../../live/live.service';
+import { LiveChannel, LiveChannels, LiveProgramme, LiveService, searchChannels } from '../../live/live.service';
 import { FocusEngine, PositionStore } from '../../movement/movement';
 import { NavigationService } from '../../navigation.service';
 import { Dialogs } from '../../ui/public-api';
@@ -16,6 +16,8 @@ const LINES_AHEAD = 8;
 
 interface GuideState {
   group:string | null;
+  // the search: channels whose name, number or group has words starting with every word of it
+  query:string;
   // hours after the current half hour the window starts at (no catch-up: never before it)
   offset:number;
   shown:number;
@@ -41,7 +43,9 @@ interface Line {
 // by their length over a 3 h window starting at the current half hour (no
 // catch-up: nothing before it); an amber rule is now. One pxGrid: ←/→ along a
 // channel's programmes, ↑/↓ to the programme of the next channel nearest
-// in time. The toolbar: its groups (a panel), Later / Earlier / Now. The
+// in time. The toolbar: a search (the channels whose name, number or group
+// starts with the words typed, within the group chosen: <text-keyboard>,
+// Clear), its groups (a panel), Later / Earlier / Now. The
 // focused programme's details on top. Enter: what is on now (or a channel
 // without a guide) plays full screen, ↑ / ↓ in the player flip through this
 // list; a later programme shows its details. Its data handler (optional)
@@ -61,7 +65,7 @@ export class PluginGuideComponent extends PluginScreen implements OnInit, AfterV
   loadError = '';
   emptyText = '';
   title = '';
-  panel:null | 'groups' = null;
+  panel:null | 'groups' | 'keyboard' = null;
   spot:Cell | null = null;
   start = new Date();
   ticks:{ label:string, left:number }[] = [];
@@ -95,8 +99,14 @@ export class PluginGuideComponent extends PluginScreen implements OnInit, AfterV
 
   get filtered():LiveChannel[] {
     let all = this.answer?.channels || [];
-    return this.state.group ? all.filter(c => c.group == this.state.group) : all;
+    if (all !== this.memo.all || this.state.group !== this.memo.group || this.state.query !== this.memo.query) {
+      let inGroup = this.state.group ? all.filter(c => c.group == this.state.group) : all;
+      this.memo = { all, group: this.state.group, query: this.state.query, list: searchChannels(inGroup, this.state.query) };
+    }
+    return this.memo.list;
   }
+  // filtered is read on every change detection: kept until the channels, the group or the search change
+  private memo:{ all:LiveChannel[] | null, group:string | null, query:string, list:LiveChannel[] } = { all: null, group: null, query: '', list: [] };
 
   get groupLabel():string {
     return this.state.group || 'All channels';
@@ -107,7 +117,7 @@ export class PluginGuideComponent extends PluginScreen implements OnInit, AfterV
   }
 
   ngOnInit(): void {
-    this.state = this.kept<GuideState>(() => ({ group: null, offset: 0, shown: LINES }));
+    this.state = { query: '', ...this.kept<GuideState>(() => ({ group: null, query: '', offset: 0, shown: LINES })) };
     this.setWindow();
     this.loadName();
     this.load();
@@ -309,6 +319,38 @@ export class PluginGuideComponent extends PluginScreen implements OnInit, AfterV
     this.panel = 'groups';
   }
 
+  openKeyboard() {
+    this.panel = 'keyboard';
+  }
+
+  closeKeyboard() {
+    this.panel = null;
+    this.focusToolbar('search');
+  }
+
+  /** a new search (empty: every channel of the group); the lines start over at the top */
+  search(query:string) {
+    this.panel = null;
+    query = query.trim();
+    if (query != this.state.query) {
+      this.positions.clear(this.gridId);
+      this.set({ query, shown: LINES });
+      this.spot = null;
+      this.layout();
+      this.loadGuide();
+    }
+    // a search found channels: the first one; else (or Clear) the search field
+    if (query && this.filtered.length) setTimeout(() => {
+      let first = document.querySelector('.pluginGuide .lines [data-px-item]') as HTMLElement;
+      if (first) this.engine.focus(first, 'restore');
+    }, 0);
+    else this.focusToolbar('search');
+  }
+
+  private focusToolbar(key:string) {
+    setTimeout(() => (document.querySelector(`.pluginGuide [data-px-key="${key}"]`) as HTMLElement)?.focus({ preventScroll: true }), 0);
+  }
+
   chooseGroup(group:string | null) {
     this.panel = null;
     if (group != this.state.group) {
@@ -318,7 +360,7 @@ export class PluginGuideComponent extends PluginScreen implements OnInit, AfterV
       this.layout();
       this.loadGuide();
     }
-    setTimeout(() => (document.querySelector('.pluginGuide [data-px-key="groups"]') as HTMLElement)?.focus({ preventScroll: true }), 0);
+    this.focusToolbar('groups');
   }
 
   // programmes → toolbar → menu; on the menu Back leaves (the power menu)

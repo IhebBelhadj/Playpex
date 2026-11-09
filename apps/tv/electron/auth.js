@@ -15,6 +15,13 @@
 // included. The server's CORS allow list therefore no longer needs `null` /
 // `file://`, which any sandboxed iframe on the web can also send.
 //
+// Only the app's own document: the token and the CORS answers go with requests
+// of its top frame (and requests with no frame: the shell's own, a file:// page's
+// media). A frame inside it (the server's embed page, YouTube's player in it:
+// a plugin's embed source) is someone else's code: its requests to the server
+// leave without the token or the device id and get no CORS answer, so they are
+// a stranger's (401 on everything but the public routes).
+//
 //   auth.install(session, () => ({ origin, token, deviceId }), clientHeader)   origin null = no server
 
 const protocol = require('@playpex/protocol');
@@ -24,16 +31,48 @@ const ALLOW_HEADERS = ['Authorization', 'Content-Type', 'Accept', 'Range', 'X-Re
 
 const URLS = ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'];
 
+// The request comes from the app's own document, not from a frame inside it.
+// A frame's own document (a subFrame load: the server's embed page) is public
+// and gets nothing either.
+function fromApp(details) {
+  if (!details) {
+    return true;
+  }
+  if (details.resourceType === 'subFrame') {
+    return false;
+  }
+  let frame = null;
+  try {
+    frame = details.frame || null;
+  } catch (e) {
+    return false;
+  }
+  if (!frame) {
+    // no frame known (the shell's own requests, a frame already gone): only
+    // when nothing on the web asked for it
+    const referrer = details.referrer || '';
+    return !referrer || referrer.startsWith('file://') || referrer.startsWith('devtools://');
+  }
+  try {
+    return frame.parent === null;
+  } catch (e) {
+    return false;
+  }
+}
+
 function install(session, current, clientHeader) {
   // the events WebSocket (ws://<server>/api/v1/events) counts as the server too
-  const ours = url => {
+  const ours = (url, details) => {
     const state = current();
     const http = url.replace(/^ws(s?):/, 'http$1:');
-    return state && state.origin && (http === state.origin || http.startsWith(state.origin + '/')) ? state : null;
+    if (!state || !state.origin || !(http === state.origin || http.startsWith(state.origin + '/'))) {
+      return null;
+    }
+    return fromApp(details) ? state : null;
   };
 
   session.webRequest.onBeforeSendHeaders({ urls: URLS }, (details, callback) => {
-    const state = ours(details.url);
+    const state = ours(details.url, details);
     if (!state) {
       return callback({});
     }
@@ -56,7 +95,7 @@ function install(session, current, clientHeader) {
   });
 
   session.webRequest.onHeadersReceived({ urls: URLS }, (details, callback) => {
-    if (!ours(details.url)) {
+    if (!ours(details.url, details)) {
       return callback({});
     }
     const headers = {};
