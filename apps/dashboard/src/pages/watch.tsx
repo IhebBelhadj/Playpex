@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { ContinueOnButton } from '@/components/cast'
 import { SIZES, SubtitlePanel, type SizeId, type SubtitleChoice } from '@/components/subtitle-panel'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
+import { refFormat, useCastTo, type CastScreen } from '@/lib/cast'
 import { clock } from '@/lib/format'
 import { CAPS, DEVICE, mediaUrl, release } from '@/lib/media'
 import type { PlayItem } from '@/lib/player'
@@ -178,6 +180,33 @@ function Player({ item }: { item: PlayItem }) {
   const profile = profiles.data?.profiles.find((p) => p.id === watchAs) ?? null
   const title = answer?.title ?? null
   const saving = !!(profile && title)
+
+  // "Continue on <screen>": the screen opens it where this player is, as "Watch as", and this player leaves
+  const castTo = useCastTo()
+  const continueOn = (screen: CastScreen) => {
+    const at = Math.floor(lastPosition.current || 0)
+    video.current?.pause()
+    castTo.mutate(
+      {
+        screen,
+        request: {
+          title: item.title,
+          subtitle: item.detail,
+          source: { ref: item.ref, format: refFormat(item.ref) },
+          positionS: at > 5 ? at : undefined,
+          profileId: watchAs ?? undefined,
+          item: title
+            ? {
+                mediaType: title.mediaType,
+                tmdbId: title.tmdbId,
+                ...(title.mediaType === 'tv' && title.season !== null && title.episode !== null ? { season: title.season, episode: title.episode } : {}),
+              }
+            : undefined,
+        },
+      },
+      { onSuccess: () => back() },
+    )
+  }
 
   const tracks = useQuery({
     queryKey: ['media-tracks', item.ref],
@@ -859,6 +888,7 @@ function Player({ item }: { item: PlayItem }) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            <ContinueOnButton onPick={continueOn} />
             {'pictureInPictureEnabled' in document && document.pictureInPictureEnabled && (
               <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Picture in picture" title="Picture in picture" onClick={pip}>
                 <PictureInPicture2 />

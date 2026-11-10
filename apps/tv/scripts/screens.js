@@ -110,6 +110,8 @@ async function useServer() {
 // sizes in real pixels: on a scaled display (125 %) the window would be
 // measured in larger units and clamped to the screen
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
+// silent: test runs play videos in the background (PLAYPEX_TEST_SOUND=1 to hear them)
+if (process.env.PLAYPEX_TEST_SOUND != '1') app.commandLine.appendSwitch('mute-audio');
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 

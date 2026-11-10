@@ -194,6 +194,9 @@ function transcoded(req, res) {
 // The player is still open (paused videos make no requests), with what it
 // plays: { positionS?, durationS?, paused?, title?, profileId?, file?, media? }
 function keepalive(req, res) {
+  if (req.body && req.body.castId) {
+    require('../cast').link(String(req.body.castId), req.lease);
+  }
   sessions.report(req.lease, req.body);
   res.json({ ok: true, sessionId: req.lease.id });
 }

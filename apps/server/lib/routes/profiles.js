@@ -34,8 +34,12 @@ router.delete('/:id', handle(function (s, req) {
 }));
 
 // body: { pin? } → the profile, 403 wrong PIN, 429 locked out
+// (the device that opened it may cast as it: lib/cast)
 router.post('/:id/unlock', handle(function (s, req) {
-  return s.profiles.unlock(req.params.id, req.body && req.body.pin);
+  return s.profiles.unlock(req.params.id, req.body && req.body.pin).then(function (profile) {
+    require('../cast').unlocked(require('../sessions').device(req).id, profile.id);
+    return profile;
+  });
 }));
 
 // body: { pin } sets / changes the PIN, { pin: null } removes it

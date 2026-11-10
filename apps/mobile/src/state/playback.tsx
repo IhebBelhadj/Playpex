@@ -69,7 +69,7 @@ export function usePlayer(session: PlaybackSession): Player {
         subtitleProvider: () =>
           queryClient.ensureQueryData(queries.settings(client, profile.id)).then((s) => (typeof s.profile?.['subtitles.provider'] === 'string' ? s.profile['subtitles.provider'] : null)),
         autoplayNext: () => queryClient.ensureQueryData(queries.settings(client, profile.id)).then((s) => s.profile?.['player.autoplayNext'] !== false),
-        onNext: (sessionId) => openPlayer(sessionId),
+        onNext: (sessionId) => openPlayer(sessionId, { here: true }),
         rememberSubtitleProvider: (provider) => {
           void changeSetting(client, profile.id, 'subtitles.provider', provider).then(() => queryClient.invalidateQueries({ queryKey: keys.settings(profile.id) }))
         },

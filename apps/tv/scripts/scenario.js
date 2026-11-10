@@ -65,11 +65,14 @@ try {
 record.uiScale = scale;
 app.setPath('userData', userData);
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
+// silent: test runs play videos in the background (PLAYPEX_TEST_SOUND=1 to hear them)
+if (process.env.PLAYPEX_TEST_SOUND != '1') app.commandLine.appendSwitch('mute-audio');
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function harness(win) {
   const wc = win.webContents;
+  if (process.env.PLAYPEX_TEST_SOUND != '1') wc.setAudioMuted(true);
   const results = [];
   const t = {
     keyGap: 180,      // ms between presses (perf journeys shorten it)

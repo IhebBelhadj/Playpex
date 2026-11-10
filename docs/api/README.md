@@ -21,6 +21,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | [Plugins](plugins.md) | rendering what the server's plugins contribute, asking their handlers, performing their effects |
 | [Real-time events](events.md) | the WebSocket, topics and payloads |
 | [Control from the server](remote.md) | the admin's pause / seek / stop of your player (`session.command`), remote keyboard and pointer (`/remote`) |
+| [Casting](cast.md) | play on another Playpex screen and drive it (`/cast/*`), or be a screen (`?control=cast`, `cast.play`) |
 | [Errors, versions, limits](errors-and-versions.md) | error shapes, codes, API versions, rate limits, security notes |
 
 ## What a server is

@@ -17,9 +17,10 @@
 // manifest's api.server range must contain it.
 // "major.minor": a breaking change bumps the major; an addition a plugin may
 // need bumps the minor (1.1: direct links in releases screens; 1.2: their
-// pictures, `image` / `imageVariant`; 1.3: `embed` sources), asked with
+// pictures, `image` / `imageVariant`; 1.3: `embed` sources; 1.4: a filter group's
+// own toolbar button, `button`), asked with
 // `^1.1` / `>=1.1` (servers before 1.1 refuse such a range: they can't run it)
-var SERVER_PLUGIN_API = '1.3';
+var SERVER_PLUGIN_API = '1.4';
 
 var ID = /^[a-z][a-z0-9-]{1,31}$/;
 

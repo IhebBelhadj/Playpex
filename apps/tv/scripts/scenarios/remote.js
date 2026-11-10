@@ -5,7 +5,9 @@
 //   1. Remote control: the TV is a target of /remote; a controller (the
 //      admin's cookie) connects, the badge shows, keys move the focus, the
 //      pointer hovers / clicks a chip (a setting changes), text types into
-//      the search keyboard, the cursor comes back; Settings' switch turns it off.
+//      the search keyboard, the cursor comes back; the volume keys change this
+//      device's playback volume (shown at the top, the player follows);
+//      Settings' switch turns it off.
 //   2. Session commands: the player pauses, resumes, seeks and stops on
 //      POST /sessions/{id}/commands; the dashboard's session follows at once.
 // Needs a throwaway server with an admin and a library file:
@@ -145,6 +147,22 @@ module.exports = async function (t) {
     await t.js("document.querySelector('px-search-field')?.textContent"));
   await t.wait(400);
 
+  // volume keys (a phone's volume buttons): this device's playback volume, shown at the top
+  const volumeNow = () => t.js(`fetch(window.playpexDev.api + '/settings?device=' + window.playpexDev.deviceId).then(r => r.json()).then(s => s.device['player.volume'])`);
+  const volumeBefore = Number(await volumeNow());
+  const expected = Math.max(0, Math.round(volumeBefore / 5) * 5 - 5);
+  await key(ws, 'AudioVolumeDown');
+  t.check('volume down shows the volume', await t.until(`document.querySelector('remote-overlay .volume')?.textContent.includes('${expected} %')`, 2000),
+    await t.js("document.querySelector('remote-overlay .volume')?.textContent"));
+  t.check('and stores it on this device', !!await until(async () => Number(await volumeNow()) == expected, 3000), await volumeNow());
+  await t.shot('remote-volume');
+  await key(ws, 'AudioVolumeMute');
+  t.check('mute: Sound off', await t.until("document.querySelector('remote-overlay .volume')?.textContent.includes('Sound off')", 2000));
+  await key(ws, 'AudioVolumeUp');
+  t.check('volume up turns the sound back on, one step up', await t.until(`document.querySelector('remote-overlay .volume')?.textContent.includes('${Math.min(100, expected + 5)} %')`, 2000),
+    await t.js("document.querySelector('remote-overlay .volume')?.textContent"));
+  t.check('the volume shows only a moment', await t.until("!document.querySelector('remote-overlay .volume')", 3000));
+
   // the controller leaves: the badge goes
   ws.json({ type: 'bye' });
   t.check('the badge goes with the controller', await t.until("!document.querySelector('remote-overlay .badge')", 3000));
@@ -156,6 +174,20 @@ module.exports = async function (t) {
   t.check('its session, at once (first keepalive)', !!session, (await admin('GET', '/sessions')).body);
   t.check('the session takes commands', session && session.control.playback, session && session.control);
   if (!session) return;
+
+  // the volume keys reach the player at once
+  const vol = controller(device);
+  await vol.ready;
+  await until(() => vol.got.find(m => m.type == 'state' && m.connected));
+  const playerVolume = Number(await t.js(`${video}.volume`));
+  await key(vol, 'AudioVolumeDown');
+  t.check('volume down lowers the player', await t.until(`${video}.volume < ${playerVolume} - 0.01`, 2000), await t.js(`${video}.volume`));
+  await key(vol, 'AudioVolumeMute');
+  t.check('mute silences it', await t.until(`${video}.muted`, 2000));
+  await key(vol, 'AudioVolumeUp');
+  t.check('volume up: sound on, as before', await t.until(`!${video}.muted && Math.abs(${video}.volume - ${playerVolume}) < 0.06`, 2000),
+    await t.js(`${video}.volume`));
+  vol.json({ type: 'bye' });
 
   let r = await admin('POST', '/sessions/' + session.id + '/commands', { action: 'pause' });
   t.check('pause delivered', r.status == 202, r);

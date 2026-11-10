@@ -37,9 +37,20 @@ export declare const REMOTE: {
   readonly RTC: { readonly MOVES: 'moves'; readonly INPUT: 'input'; readonly SIGNAL_MAX: number };
   readonly FIELD_KINDS: ReadonlyArray<'text' | 'search' | 'address'>;
 };
+/** Casting (docs/cast-plan.md) */
+export type CastAccept = 'media' | 'magnet' | 'embed';
+export type CastState = 'opening' | 'playing' | 'paused' | 'buffering' | 'ended' | 'failed';
+export declare const CAST: {
+  readonly ACCEPTS: ReadonlyArray<CastAccept>;
+  readonly STATES: ReadonlyArray<CastState>;
+  readonly EMBED_PROVIDERS: ReadonlyArray<'youtube'>;
+  readonly KEEP_MS: number;
+};
 /** session.command (events socket, to one device) */
 export interface SessionCommandEvent {
-  sessionId: string;
+  /** null: a cast's command sent straight to its screen (castId) */
+  sessionId: string | null;
+  castId?: string;
   infoHash: string | null;
   ref: string | null;
   action: SessionCommandAction;

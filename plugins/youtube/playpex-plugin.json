@@ -2,14 +2,14 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "youtube",
   "name": "YouTube",
-  "description": "YouTube on the big screen: trending and category rows, search, channels and playlists, and with a linked Google account your subscriptions, liked videos and playlists. Videos play in YouTube's own player under Playpex's controls.",
-  "version": "1.0.2",
+  "description": "YouTube on the big screen: For you (made from what each profile watches and likes), subscriptions, liked videos, playlists, trending, categories and search. Videos play in YouTube's own player under Playpex's controls.",
+  "version": "1.0.6",
   "publisher": {
     "name": "Playpex"
   },
   "homepage": "https://www.youtube.com",
   "api": {
-    "server": "^1.3",
+    "server": "^1.4",
     "nav": "^1",
     "ui": "^1"
   },

@@ -22,7 +22,9 @@
 // sends only to the sockets of a device: a paired one's token names it, a
 // local client (or the dashboard's player) says `?device=<id>` like with
 // leases. `?control=playback` on the upgrade: this socket's client obeys
-// session.command (its player pauses, seeks, stops when the admin asks).
+// session.command (its player pauses, seeks, stops when the admin asks);
+// `?control=cast&accepts=media,magnet,embed`: it is a cast screen and gets
+// cast.play (lib/cast, docs/cast-plan.md).
 //
 //   events.publish(topic, data, { admin: true })   from anywhere in the server
 //   events.publishTo(deviceId, topic, data)        one device only (→ how many sockets got it)
@@ -49,7 +51,7 @@ var wss = null,
 
 var ONLINE_MS = 90 * 1000,
   DEVICE_ID = /^[A-Za-z0-9._:-]{1,64}$/,
-  CONTROLS = ['playback'];
+  CONTROLS = ['playback', 'cast'];
 
 var routes = {};       // path → { onConnection, wss, maxPayload } (WebSockets besides /events)
 
@@ -105,16 +107,33 @@ function refuse(socket, status, code, message) {
     'Content-Type: application/json\r\nContent-Length: ' + Buffer.byteLength(body) + '\r\nConnection: close\r\n\r\n' + body);
 }
 
+// A socket closed: a device that was a cast screen and has no other such socket left is told about
+var screenListeners = [];
+function gone(client) {
+  if (!clients.delete(client)) {
+    return;
+  }
+  if (client.control.indexOf('cast') >= 0 && !deviceControl(client.deviceId).cast) {
+    screenListeners.forEach(function (fn) { fn(client.deviceId, false); });
+  }
+}
+
 function onConnection(socket, req, auth) {
   var topics = req.query.topics ? String(req.query.topics).split(',').map(function (t) { return t.trim(); }).filter(Boolean) : null,
     control = req.query.control ? String(req.query.control).split(',').map(function (c) { return c.trim(); })
       .filter(function (c) { return CONTROLS.indexOf(c) >= 0; }) : [],
+    accepts = req.query.accepts ? String(req.query.accepts).split(',').map(function (c) { return c.trim(); })
+      .filter(function (c) { return protocol.CAST.ACCEPTS.indexOf(c) >= 0; }) : protocol.CAST.ACCEPTS.slice(),
     client = { socket: socket, admin: auth.kind === 'admin', topics: topics, alive: true,
-      paired: auth.kind === 'device', deviceId: socketDevice(req, auth), control: control };
+      paired: auth.kind === 'device', deviceId: socketDevice(req, auth), control: control, accepts: accepts,
+      client: protocol.parseClientHeader(req.headers[protocol.CLIENT_HEADER.toLowerCase()]) };
   clients.add(client);
   socket.on('pong', function () { client.alive = true; });
-  socket.on('close', function () { clients.delete(client); });
-  socket.on('error', function () { clients.delete(client); });
+  if (control.indexOf('cast') >= 0) {
+    screenListeners.forEach(function (fn) { fn(client.deviceId, true); });
+  }
+  socket.on('close', function () { gone(client); });
+  socket.on('error', function () { gone(client); });
   // Nothing to read from clients for now; ignore what they send
   socket.on('message', function () {});
   if (statusProvider && wanted(client, 'server.status')) {
@@ -181,7 +200,7 @@ function attach(server, providers) {
     clients.forEach(function (client) {
       if (!client.alive) {
         client.socket.terminate();
-        clients.delete(client);
+        gone(client);
         return;
       }
       client.alive = false;
@@ -246,18 +265,34 @@ function publishTo(deviceId, topic, data) {
   return sent;
 }
 
-// What a device's open sockets declared: { online, playback }
+// What a device's open sockets declared: { online, playback, cast, accepts, client }
 function deviceControl(deviceId) {
-  var out = { online: false, playback: false };
+  var out = { online: false, playback: false, cast: false, accepts: [], client: null };
   clients.forEach(function (client) {
     if (deviceId && client.deviceId === deviceId) {
       out.online = true;
       if (client.control.indexOf('playback') >= 0 && wanted(client, 'session.command')) {
         out.playback = true;
       }
+      if (client.control.indexOf('cast') >= 0 && wanted(client, 'cast.play')) {
+        out.cast = true;
+        client.accepts.forEach(function (a) { if (out.accepts.indexOf(a) < 0) { out.accepts.push(a); } });
+        out.client = out.client || client.client;
+      }
     }
   });
   return out;
+}
+
+// Devices with an events socket open with control=cast (lib/cast: the screens)
+function castScreens() {
+  var ids = {};
+  clients.forEach(function (c) {
+    if (c.deviceId && c.control.indexOf('cast') >= 0 && wanted(c, 'cast.play')) {
+      ids[c.deviceId] = true;
+    }
+  });
+  return Object.keys(ids);
 }
 
 module.exports = {
@@ -265,6 +300,9 @@ module.exports = {
   publish: publish,
   publishTo: publishTo,
   deviceControl: deviceControl,
+  castScreens: castScreens,
+  // fn(deviceId, online): a device became a cast screen, or stopped being one
+  onScreen: function (fn) { screenListeners.push(fn); },
   // another WebSocket path, behind the same Host / Origin / auth checks as /events:
   // onConnection(socket, req, auth); options { maxPayload, onDetach }
   route: function (path, onConnection, opts) {

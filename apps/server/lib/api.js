@@ -89,6 +89,8 @@ v1.use(function (req, res, next) {
 // (lib/auth). Without → 401 PAIRING_REQUIRED.
 v1.use(authHttp.requireClient);
 v1.use('/devices', require('./routes/devices'));
+// Casting to Playpex screens (docs/cast-plan.md)
+v1.use('/cast', require('./routes/cast'));
 
 // Answers a torrent client failure (lib/torrents/client.js err.code)
 var failed = errors.failed;
@@ -219,13 +221,18 @@ v1.delete('/torrents/:infoHash', findTorrent, function (req, res) {
 // The player is still open (paused videos make no requests), with what it
 // plays: { positionS?, durationS?, paused?, title?, profileId?, file?, media? }
 v1.post('/torrents/:infoHash/keepalive', findTorrent, lease, function (req, res) {
+  if (req.body && req.body.castId) {
+    require('./cast').link(String(req.body.castId), req.lease);
+  }
   sessions.report(req.lease, req.body);
   res.json({ ok: true, sessionId: req.lease.id });
 });
 
 // What every device plays (the dashboard's Activity)
 v1.get('/sessions', authHttp.requireAdmin, function (req, res) {
-  res.json(sessions.list());
+  res.json(sessions.list().map(function (s) {
+    return Object.assign(s, { cast: require('./cast').ofSession(s.id) });
+  }));
 });
 
 // The admin's name, for what a device is told ("Paused by …")
@@ -243,8 +250,15 @@ v1.delete('/sessions/:id', authHttp.requireAdmin, function (req, res) {
   res.json({ ok: true });
 });
 
-// Pause, resume, seek or stop a session's player
-v1.post('/sessions/:id/commands', authHttp.requireAdmin, function (req, res) {
+// Pause, resume, seek or stop a session's player: the admin, or who cast it there (docs/cast-plan.md §4.4)
+function adminOrCaster(req, res, next) {
+  if (req.auth && req.auth.kind === 'admin' || require('./cast').maySend(req, req.params.id)) {
+    return next();
+  }
+  authHttp.requireAdmin(req, res, next);
+}
+
+v1.post('/sessions/:id/commands', adminOrCaster, function (req, res) {
   var lease = sessions.find(req.params.id), body = req.body || {},
     action = body.action, cmd = { action: action };
   if (!lease) {
@@ -273,10 +287,10 @@ v1.post('/sessions/:id/commands', authHttp.requireAdmin, function (req, res) {
     return fail(res, 'UNSUPPORTED', 'This device\'s player does not take commands');
   }
   if (action === 'stop') {
-    sessions.stopSession(lease.id, adminName(req));
+    sessions.stopSession(lease.id, adminName(req) || sessions.device(req).name);
     return res.status(202).json({ delivered: 1 });
   }
-  var delivered = sessions.command(lease, cmd, adminName(req));
+  var delivered = sessions.command(lease, cmd, adminName(req) || sessions.device(req).name);
   if (!delivered) {
     return fail(res, 'DEVICE_OFFLINE', 'The device is not connected');
   }

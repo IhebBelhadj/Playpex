@@ -439,7 +439,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   // ── a link ──────────────────────────────────────────────────────────────
 
   linkKind(item:LinkItem):string {
-    return { video: 'Video', hls: 'Stream', magnet: 'Magnet', torrent: 'Torrent' }[item.kind];
+    return { video: 'Video', hls: 'Stream', magnet: 'Magnet', torrent: 'Torrent', youtube: 'YouTube video' }[item.kind];
   }
 
   linkSummary(a:LinkInspection):string {

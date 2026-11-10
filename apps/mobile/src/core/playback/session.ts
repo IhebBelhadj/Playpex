@@ -96,7 +96,7 @@ export class PlaybackSession {
   startAt: number
   private readonly client: ApiClient
   private readonly profileId: string
-  private readonly tracking: 'full' | 'none'
+  readonly tracking: 'full' | 'none'
   private run: Disposer | null = null
   private lease: { ref: string | null; infoHash: string | null } = { ref: null, infoHash: null }
   private last: Report = { position: 0, duration: 0, paused: false }
@@ -160,7 +160,9 @@ export class PlaybackSession {
   }
 
   /** Whether a session.command / session.ended from the server is about this playback */
-  owns(event: { sessionId?: string; id?: string; infoHash: string | null; ref: string | null }): boolean {
+  owns(event: { sessionId?: string | null; id?: string; castId?: string; infoHash: string | null; ref: string | null }): boolean {
+    // a cast's player with no session yet: this phone plays no cast (it isn't a screen)
+    if (event.castId && !event.sessionId) return false
     const id = event.sessionId ?? event.id
     if (this.serverSession && id) return id === this.serverSession
     const status = this.state.get().status

@@ -1490,7 +1490,9 @@ export interface paths {
          *     at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
          *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`),
          *     `remote.updated` (`RemoteTarget`, a device's remote control changed). To one device only:
-         *     `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`). `?topics=session,torrent.stats` keeps
+         *     `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`);
+         *     `cast.play` (`CastPlayEvent`, to sockets opened with `?control=cast`); `cast.updated` / `cast.ended`
+         *     (`Cast`, to the cast's sender, and to the admin). `?topics=session,torrent.stats` keeps
          *     topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
          *     from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
          */
@@ -2624,11 +2626,120 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Tell a session's player to pause, resume, seek or stop. Admin only.
+         * Tell a session's player to pause, resume, seek or stop. The admin, or the sender of the session's cast.
          * @description Sent as `session.command` to the device's events sockets opened with `?control=playback`. The player
          *     acts and sends a keepalive at once, so the result shows as `session.updated`.
          */
         post: operations["commandSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/screens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The screens that take casts now
+         * @description Devices with an events socket opened with `?control=cast`; `self` is the caller.
+         */
+        get: operations["castScreens"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/screens/{deviceId}/play": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Play something on a screen
+         * @description The server checks the request (casting on, the profile and its PIN, no adults plugin's source as or to a
+         *     kids profile; such a source always plays with `tracking: none`) and sends the screen `cast.play`. What
+         *     ran on that screen is replaced. Follow it with `cast.updated` on your events socket, or `GET /cast/{castId}`.
+         */
+        post: operations["castPlay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/{castId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        /** A cast's state (its sender, its screen, the admin) */
+        get: operations["getCast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/{castId}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The screen says how its cast goes
+         * @description For what has no session on the server (an embedded video), and for `failed` (it couldn't play) and
+         *     `ended`. A player with a session also names the cast in its keepalives (`castId`), which is enough.
+         */
+        post: operations["reportCast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/{castId}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause, resume, seek or stop a cast (its sender, its screen, the admin)
+         * @description Through the screen's session when it has one (as `POST /sessions/{id}/commands`), else straight to the
+         *     screen as `session.command` with `castId` and no `sessionId`.
+         */
+        post: operations["commandCast"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4020,7 +4131,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "CAST_REFUSED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -4118,6 +4229,8 @@ export interface components {
             profileId?: string;
             /** @description Path of the file in the torrent */
             file?: string;
+            /** @description The cast this player plays (cast.play): its sender follows this session */
+            castId?: string;
             /** @description Which title it is (TMDB): kept with the download, so the server knows what it holds */
             media?: {
                 mediaType: components["schemas"]["MediaType"];
@@ -4160,18 +4273,140 @@ export interface components {
             } | null;
         };
         SessionCommandEvent: {
-            sessionId: string;
+            /** @description null: a cast without a session (castId) */
+            sessionId: string | null;
+            /** @description A cast's command sent straight to its screen */
+            castId?: string;
             infoHash: string | null;
             ref: string | null;
             /** @enum {string} */
             action: "pause" | "resume" | "toggle" | "seek" | "seekBy" | "stop";
             positionS?: number;
             deltaS?: number;
-            /** @description The admin who sent it */
+            /** @description Who sent it (the admin, a cast's sender) */
             by: string | null;
+        };
+        /** @enum {string} */
+        CastState: "opening" | "playing" | "paused" | "buffering" | "ended" | "failed";
+        /** @description What to play, one of */
+        CastSource: {
+            /** @description A media ref, as /play/sources answers */
+            ref: string;
+            /** @enum {string} */
+            format?: "file" | "hls" | "live";
+            /** @description A download's file: its torrent */
+            infoHash?: string;
+            path?: string;
+        } | {
+            /** @description A magnet link or an info hash: the screen adds it (its own lease) */
+            magnet: string;
+            file?: {
+                name?: string;
+                index?: number;
+            };
+        } | {
+            embed: {
+                /** @enum {string} */
+                provider: "youtube";
+                id: string;
+            };
+        };
+        /** @description What a sender asks a screen to play (docs/cast-plan.md §3); the sender resolved the source */
+        CastRequest: {
+            title: string;
+            /** @description e.g. "S01E03 · The Bear" */
+            subtitle?: string;
+            year?: string;
+            artwork?: {
+                title?: string;
+                posterPath?: string;
+                backdropPath?: string;
+            };
+            /** @description An https picture of it (a plugin's) */
+            image?: string;
+            /** @description Which title it is (TMDB), for resume points and history */
+            item?: {
+                mediaType?: components["schemas"]["MediaType"];
+                tmdbId?: number;
+                imdbId?: string;
+                season?: number;
+                episode?: number;
+            };
+            source: components["schemas"]["CastSource"];
+            /** @description Where to start; unset: the profile's resume point */
+            positionS?: number;
+            /** @description Language to start with */
+            audio?: string;
+            /** @description Who watches; unset: the screen's own profile */
+            profileId?: string;
+            /** @description A locked profile's PIN, when this device hasn't opened it */
+            pin?: string;
+            /** @description The plugin the source came from (its audience is checked) */
+            pluginId?: string;
+            /** @enum {string} */
+            tracking?: "full" | "none";
+        };
+        CastPlayEvent: {
+            castId: string;
+            /** @description An adults plugin's source: a screen showing a kids profile refuses it */
+            adults: boolean;
+            from: {
+                deviceId: string;
+                name: string;
+            };
+            profileId: string | null;
+            request: components["schemas"]["CastRequest"];
+        };
+        Cast: {
+            castId: string;
+            /** @description The screen */
+            deviceId: string;
+            from: {
+                deviceId: string;
+                name: string;
+            };
+            /** @description The screen's session, once its player sent a keepalive */
+            sessionId: string | null;
+            state: components["schemas"]["CastState"];
+            positionS: number | null;
+            durationS: number | null;
+            title: string;
+            profileId: string | null;
+            error: string | null;
+            /** Format: date-time */
+            startedAt: string;
+        };
+        CastScreen: {
+            deviceId: string;
+            name: string;
+            /** @enum {string} */
+            kind: "tv" | "mobile" | "web" | "other";
+            /** @description The calling device */
+            self: boolean;
+            online: boolean;
+            accepts: {
+                media: boolean;
+                magnet: boolean;
+                embed: boolean;
+            };
+            playing: {
+                castId: string | null;
+                sessionId: string | null;
+                title: string | null;
+                state: components["schemas"]["CastState"];
+                positionS: number | null;
+            } | null;
         };
         Session: {
             control: components["schemas"]["DeviceControl"];
+            /** @description The cast this session plays (GET /sessions only): who cast it; null when the device opened it itself */
+            cast?: {
+                castId: string;
+                from: {
+                    deviceId: string;
+                    name: string;
+                };
+            } | null;
             id: string;
             /** @description A paired device's id, else what a local client named itself (or addr:<ip>) */
             deviceId: string;
@@ -5712,9 +5947,12 @@ export interface components {
             items: components["schemas"]["SearchSource"][];
         };
         LinkItem: {
-            /** @enum {string} */
-            kind: "magnet" | "torrent" | "video" | "hls";
-            /** @description The link's text, else its file name */
+            /**
+             * @description youtube: a YouTube video, played in the core's embed page (a cast's `embed` source; docs/cast-plan.md §5)
+             * @enum {string}
+             */
+            kind: "magnet" | "torrent" | "video" | "hls" | "youtube";
+            /** @description The link's text, else its file name; youtube: the video's title */
             label: string;
             /** @description Where it is (a magnet: the magnet) */
             url: string;
@@ -5725,6 +5963,18 @@ export interface components {
             /** @description video, torrent: when the server learnt it */
             size?: number | null;
             contentType?: string | null;
+            /** @description youtube: what to cast (CastSource `embed`) */
+            embed?: {
+                /** @enum {string} */
+                provider: "youtube";
+                id: string;
+            };
+            /** @description youtube: where the link starts (its `t=`), seconds */
+            startS?: number;
+            /** @description youtube: its picture */
+            image?: string;
+            /** @description youtube: its channel */
+            author?: string;
         };
         LinkInspection: {
             /** @description Where the server ended up (after redirects) */
@@ -5733,7 +5983,7 @@ export interface components {
              * @description What the URL itself is
              * @enum {string}
              */
-            kind: "magnet" | "torrent" | "video" | "hls" | "page";
+            kind: "magnet" | "torrent" | "video" | "hls" | "page" | "youtube";
             /** @description A page's title */
             title?: string | null;
             /** @description The URL itself (magnet, torrent, video, hls), or what a page links to */
@@ -6743,6 +6993,15 @@ export interface components {
     responses: {
         /** @description Not signed in as the admin (`ADMIN_REQUIRED`) */
         AdminRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description No valid device token, not on this machine and not the admin (`PAIRING_REQUIRED`) */
+        PairingRequired: {
             headers: {
                 [name: string]: unknown;
             };
@@ -9351,8 +9610,9 @@ export interface operations {
                 topics?: string;
                 /** @description A client without a device token: the device it is (as with leases), so events for that device reach it */
                 device?: string;
-                /** @description playback: this client obeys `session.command` (docs/remote-control-plan.md) */
-                control?: "playback";
+                control?: string;
+                /** @description With control=cast: what its player plays, comma-separated media, magnet, embed (default: all) */
+                accepts?: string;
                 access_token?: string;
             };
             header?: never;
@@ -10982,6 +11242,228 @@ export interface operations {
             };
             /** @description UNSUPPORTED: the device does not take commands */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    castScreens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The screens */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CastScreen"][];
+                };
+            };
+            401: components["responses"]["PairingRequired"];
+        };
+    };
+    castPlay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CastRequest"];
+            };
+        };
+        responses: {
+            /** @description Delivered to the screen */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        castId: string;
+                        /** @description How many of its sockets got it */
+                        delivered: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["PairingRequired"];
+            /** @description CAST_REFUSED (casting off, a locked profile without its PIN, an adults source and a kids profile) or FORBIDDEN (a wrong PIN) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_FOUND: the profile, or the source expired (find it again) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description DEVICE_OFFLINE: the screen is not connected, or takes no casts */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description UNSUPPORTED: the screen does not play this kind of source */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TOO_MANY_ATTEMPTS: wrong PINs */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cast */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cast"];
+                };
+            };
+            401: components["responses"]["PairingRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    reportCast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    state: components["schemas"]["CastState"];
+                    positionS?: number;
+                    durationS?: number;
+                    /** @description failed: why, for people */
+                    error?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The cast */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cast"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["PairingRequired"];
+            /** @description FORBIDDEN: not that cast's screen */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    commandCast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                castId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "pause" | "resume" | "toggle" | "seek" | "seekBy" | "stop";
+                    /** @description seek: where to */
+                    positionS?: number;
+                    /** @description seekBy: how far (negative: back) */
+                    deltaS?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Delivered to the screen */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivered: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["PairingRequired"];
+            /** @description FORBIDDEN: not who cast it */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description DEVICE_OFFLINE: the screen is not connected */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

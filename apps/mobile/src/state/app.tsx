@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Caster } from '../core/cast/caster'
 import { ServerEvents, type ServerEventMap } from '../core/events/serverEvents'
 import { Emitter } from '../core/util/emitter'
 import { SessionRegistry } from '../core/playback/registry'
@@ -19,6 +20,8 @@ export type PlayerRemote = Emitter<Pick<ServerEventMap, 'session.command' | 'ses
 type App = { session: SessionController; queryClient: QueryClient; playbacks: SessionRegistry; remote: PlayerRemote }
 
 const AppContext = createContext<App | null>(null)
+// The connected server's caster (core/cast/caster.ts): made with the client, gone with it
+const CasterContext = createContext<Caster | null>(null)
 
 function createApp(): App {
   return {
@@ -46,9 +49,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // The server's events while connected: what they make stale (invalidation.ts)
   const state = useStore(app.session.state)
   const client = state.kind === 'connected' ? state.client : null
+  const caster = useMemo(() => (client ? new Caster(client) : null), [client])
   useEffect(() => {
-    if (!client) return
+    if (!caster) return
+    caster.start()
+    return () => caster.stop()
+  }, [caster])
+  useEffect(() => {
+    if (!client || !caster) return
     const events = new ServerEvents(client)
+    const offCast = [
+      events.events.on('cast.updated', (c) => caster.onCast('cast.updated', c)),
+      events.events.on('cast.ended', (c) => caster.onCast('cast.ended', c)),
+    ]
     const off = invalidateOnEvents(events, app.queryClient)
     const offCommand = events.events.on('session.command', (c) => app.remote.emit('session.command', c))
     const offEnded = events.events.on('session.ended', (e) => app.remote.emit('session.ended', e))
@@ -57,15 +70,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       off()
       offCommand()
       offEnded()
+      offCast.forEach((o) => o())
       events.stop()
     }
-  }, [client, app.queryClient, app.remote])
+  }, [client, caster, app.queryClient, app.remote])
 
   return (
     <AppContext.Provider value={app}>
-      <QueryClientProvider client={app.queryClient}>{children}</QueryClientProvider>
+      <CasterContext.Provider value={caster}>
+        <QueryClientProvider client={app.queryClient}>{children}</QueryClientProvider>
+      </CasterContext.Provider>
     </AppContext.Provider>
   )
+}
+
+/** The caster while connected (null before) */
+export function useCaster(): Caster | null {
+  return useContext(CasterContext)
 }
 
 export function useApp(): App {

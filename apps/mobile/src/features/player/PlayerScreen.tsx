@@ -13,6 +13,11 @@ import { useStore } from '../../state/hooks'
 import { usePlayer, useTakenSession } from '../../state/playback'
 import { useSettings } from '../../state/settings'
 import { Button, Message, type IconName } from '../../ui/components'
+import { ScreenSheet } from '../cast/Cast'
+import { useCast } from '../../state/cast'
+import { useProfile } from '../../state/app'
+import { useToast } from '../../ui/toast'
+import type { CastScreen } from '../../core/cast/caster'
 import { Press } from '../../ui/press'
 import { color, fade, font, motion, radius, space, text } from '../../ui/theme'
 import { endsAt } from './format'
@@ -51,6 +56,24 @@ function Player({ session }: { session: PlaybackSession }) {
   const { status } = useStore(session.state)
   const ui = useStore(controller.state)
   const [open, setOpen] = useState<Open>(null)
+  // Play on a screen: the screens; picking one hands this playback over where it is
+  const [casting, setCasting] = useState(false)
+  const { caster, state: castState } = useCast()
+  const profile = useProfile()
+  const toast = useToast()
+  const castTo = (screen: CastScreen) => {
+    setCasting(false)
+    if (!caster) return
+    // the file this player reads (a torrent's chosen file is a media ref: the screen plays the same one)
+    const source = status.phase === 'ready' ? { ...session.source, ref: status.target.ref, format: status.stream.format } : session.source
+    caster.play({ title: session.title, source, tracking: session.tracking }, { positionS: ui.position, profileId: profile.id, screen }).then(
+      () => {
+        toast(`Playing on ${screen.name}`, { source: session.label })
+        router.back()
+      },
+      (e: Error) => toast(e.message || `Couldn’t play on ${screen.name}`, { tone: 'error' }),
+    )
+  }
   // Settings opens on the tab used last, as on the TV
   const [lastTab, setLastTab] = useState<SettingsTab>('style')
   // Stop on the server's dashboard: the player closes
@@ -87,7 +110,14 @@ function Player({ session }: { session: PlaybackSession }) {
       {firstFrame ? (
         <>
           <Surface controller={controller} />
-          <Overlay controller={controller} extras={extras} session={session} onTracks={openTracks} onSettings={() => openSettings(lastTab)} />
+          <Overlay
+            controller={controller}
+            extras={extras}
+            session={session}
+            onTracks={openTracks}
+            onSettings={() => openSettings(lastTab)}
+            onCast={castState.screens.length ? () => { void caster?.refresh(); setCasting(true) } : undefined}
+          />
         </>
       ) : (
         <LoadingView session={session} stats={status.phase === 'preparing' ? status.stats : null} ready={status.phase === 'ready'} message={status.phase === 'preparing' ? status.message : undefined}>
@@ -103,6 +133,7 @@ function Player({ session }: { session: PlaybackSession }) {
           onFindSubtitles={() => openSettings('subtitles')}
         />
       ) : null}
+      {casting ? <ScreenSheet title="Play on a screen" onPick={(s) => s && castTo(s)} onClose={() => setCasting(false)} /> : null}
       {open?.panel === 'settings' ? <SettingsPanel controller={controller} extras={extras} session={session} tab={open.tab} onTab={setLastTab} onClose={() => setOpen(null)} /> : null}
     </View>
   )
@@ -145,9 +176,9 @@ function SkipBubble({ seconds }: { seconds: number }) {
   )
 }
 
-type OverlayProps = { controller: PlayerController; extras: PlayerExtras; session: PlaybackSession; onTracks: () => void; onSettings: () => void }
+type OverlayProps = { controller: PlayerController; extras: PlayerExtras; session: PlaybackSession; onTracks: () => void; onSettings: () => void; onCast?: () => void }
 
-function Overlay({ controller, extras, session, onTracks, onSettings }: OverlayProps) {
+function Overlay({ controller, extras, session, onTracks, onSettings, onCast }: OverlayProps) {
   const insets = useSafeAreaInsets()
   const ui = useStore(controller.state)
   const { status: phase, downloaded } = useStore(session.state)
@@ -240,6 +271,7 @@ function Overlay({ controller, extras, session, onTracks, onSettings }: OverlayP
               </View>
               <View style={[styles.group, styles.end]}>
                 {upNext.next ? <Control icon="play-skip-forward" label={upNext.looking ? 'Finding a release…' : 'Next episode'} onPress={() => void extras.playNext()} /> : null}
+                {onCast && !live ? <Control icon="tv-outline" label="Play on a screen" onPress={onCast} /> : null}
                 <Control icon="options-outline" label="Settings" onPress={onSettings} />
               </View>
             </View>

@@ -36,7 +36,7 @@ describe('ServerEvents', () => {
     const changed: unknown[] = []
     events.events.on('library.changed', (d) => changed.push(d))
     events.start()
-    expect(sockets[0].url).toBe('ws://10.0.0.2:28470/api/v1/events?topics=library,plugin,settings,download,session.ended,session.command&control=playback')
+    expect(sockets[0].url).toBe('ws://10.0.0.2:28470/api/v1/events?topics=library,plugin,settings,download,session.ended,session.command,cast&control=playback')
     expect(sockets[0].headers.Authorization).toBe('Bearer tok')
     sockets[0].onmessage?.({ data: JSON.stringify({ topic: 'library.changed', data: { folderId: null } }) })
     sockets[0].onmessage?.({ data: JSON.stringify({ topic: 'log', data: {} }) })

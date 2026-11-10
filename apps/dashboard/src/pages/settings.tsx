@@ -70,6 +70,14 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     ],
   },
   {
+    id: 'cast',
+    title: 'Casting',
+    description: 'Phones, this dashboard and other screens start playback on a Playpex screen (Playpex TV, later Playpex Mobile). Each screen can refuse casts in its own Settings; a locked profile needs its PIN, and nothing from an adults plugin is cast to a kids profile.',
+    fields: [
+      { key: 'cast.enabled', label: 'Let devices cast to Playpex screens', kind: 'switch', help: 'Off: every cast is refused (CAST_REFUSED). Applied when you save.' },
+    ],
+  },
+  {
     id: 'security',
     title: 'Security',
     description: 'Pairing of devices.',

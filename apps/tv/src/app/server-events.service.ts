@@ -25,6 +25,9 @@ export class ServerEvents implements OnDestroy {
   private retryTimer:any = null;
   private listeners = 0;
   private incoming = new Subject<ServerEvent>();
+  // what this client's socket declares (`?control=`): playback (the player obeys
+  // session.command), cast (a cast screen: cast.play, docs/cast-plan.md)
+  private controls = new Set<string>(['playback']);
   private all$:Observable<ServerEvent>;
 
   constructor(private server:ServerService, private zone:NgZone) {
@@ -48,14 +51,27 @@ export class ServerEvents implements OnDestroy {
     this.close();
   }
 
+  /** Declares (or stops declaring) a control word; an open socket opens again with it */
+  setControl(name:'playback' | 'cast', on:boolean) {
+    if (this.controls.has(name) == on) return;
+    if (on) this.controls.add(name);
+    else this.controls.delete(name);
+    if (this.socket) {
+      this.close();
+      if (this.listeners > 0) this.open();
+    }
+  }
+
   private open() {
     if (this.socket || !this.server.connected || typeof WebSocket == 'undefined') return;
     let url = new URL(`${this.server.api}/events`);
     url.protocol = url.protocol == 'https:' ? 'wss:' : 'ws:';
     // a browser (ng serve) has no shell to add the device header
     url.searchParams.set('device', this.server.deviceId);
-    // the player obeys the admin's session.command (docs/remote-control-plan.md §2.4)
-    url.searchParams.set('control', 'playback');
+    // the player obeys the admin's session.command (docs/remote-control-plan.md §2.4);
+    // a cast screen gets cast.play, and says what its player plays (docs/cast-plan.md)
+    url.searchParams.set('control', [...this.controls].join(','));
+    if (this.controls.has('cast')) url.searchParams.set('accepts', 'media,magnet,embed');
     this.zone.runOutsideAngular(() => {
       let socket = this.socket = new WebSocket(url.toString());
       socket.onopen = () => this.retryMs = 2000;

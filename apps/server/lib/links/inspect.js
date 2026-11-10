@@ -11,7 +11,12 @@
 // checked again (the server sits on the LAN: a pasted link mustn't reach the
 // router's admin page). A magnet isn't fetched.
 //
+// A YouTube link (watch, youtu.be, shorts, live, embed; `t=` / `start=`) isn't
+// fetched: it's a `youtube` item the core's embed page plays (/embed/youtube,
+// no plugin needed: docs/cast-plan.md §5), titled by YouTube's oEmbed answer.
+//
 //   inspect(url) → Promise<{ url, kind, title, items, truncated }>
+//   youtubeOf(url) → { id, startS } | null
 //   LINKS: the principal (also the direct downloads' for links)
 
 var http = require('../plugins/http'),
@@ -242,8 +247,75 @@ function scrape(html, base) {
   };
 }
 
+var YOUTUBE_HOSTS = /^(?:www\.|m\.|music\.)?(?:youtube\.com|youtube-nocookie\.com)$/i,
+  YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
+// "90", "90s", "1m30s", "1h2m3s" → seconds
+function seconds(value) {
+  var v = String(value || '').trim(), m;
+  if (/^\d+$/.test(v)) {
+    return Number(v);
+  }
+  m = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(v);
+  return m && (m[1] || m[2] || m[3]) ? (Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0)) : 0;
+}
+
+/** A YouTube video link's id and start, else null */
+function youtubeOf(text) {
+  var u;
+  try {
+    u = new URL(String(text || '').trim());
+  } catch (e) {
+    return null;
+  }
+  if (!/^https?:$/.test(u.protocol)) {
+    return null;
+  }
+  var host = u.hostname.toLowerCase(), id = null,
+    parts = u.pathname.split('/').filter(Boolean);
+  if (host === 'youtu.be') {
+    id = parts[0] || null;
+  } else if (YOUTUBE_HOSTS.test(host)) {
+    if (parts[0] === 'watch') {
+      id = u.searchParams.get('v');
+    } else if (['shorts', 'live', 'embed', 'v'].indexOf(parts[0]) !== -1) {
+      id = parts[1] || null;
+    }
+  }
+  if (!id || !YOUTUBE_ID.test(id)) {
+    return null;
+  }
+  return { id: id, startS: seconds(u.searchParams.get('t') || u.searchParams.get('start')) };
+}
+
+// The video's title and picture from YouTube's oEmbed (no key); none when it doesn't answer in time
+function youtubeItem(url, video) {
+  var watch = 'https://www.youtube.com/watch?v=' + video.id;
+  var item = { kind: 'youtube', label: 'YouTube video', url: watch, embed: { provider: 'youtube', id: video.id },
+    startS: video.startS || 0, image: 'https://i.ytimg.com/vi/' + video.id + '/hqdefault.jpg', size: null, contentType: null };
+  return http.request(LINKS, { url: 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(watch), responseType: 'json', timeoutMs: 5000 })
+    .then(function (answer) {
+      var v = answer && answer.value, b = v && v.status === 200 ? v.body : null;
+      if (b && typeof b.title === 'string' && b.title.trim()) {
+        item.label = b.title.trim().slice(0, 300);
+      }
+      if (b && typeof b.author_name === 'string') {
+        item.author = b.author_name.slice(0, 200);
+      }
+      return item;
+    }, function () {
+      return item;
+    }).then(function (found) {
+      return { url: url, kind: 'youtube', title: found.label === 'YouTube video' ? null : found.label, items: [found], truncated: false };
+    });
+}
+
 function inspect(given) {
   var text = String(given || '').trim();
+  var video = youtubeOf(text);
+  if (video) {
+    return youtubeItem(text, video);
+  }
   if (/^magnet:/i.test(text)) {
     var item = magnetItem(text);
     return item ? Promise.resolve({ url: text, kind: 'magnet', title: null, items: [item], truncated: false }) :
@@ -303,6 +375,7 @@ function inspect(given) {
 
 module.exports = {
   inspect: inspect,
+  youtubeOf: youtubeOf,
   scrape: scrape,
   LINKS: LINKS
 };

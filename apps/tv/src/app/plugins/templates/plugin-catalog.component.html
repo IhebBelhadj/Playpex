@@ -11,6 +11,9 @@
       <px-chip *ngFor="let o of g.options; trackBy: trackOption" [key]="g.key + ':' + o.value" [label]="o.label"
         [selected]="isChosen(g, o.value)" (pxSelect)="pickToolbar(g, o.value)"></px-chip>
     </div>
+    <!-- groups with a button of their own (a view, a category): each opens its own panel -->
+    <px-button *ngFor="let g of buttonGroups; trackBy: trackGroup" [key]="'group:' + g.key" variant="toolbar" [label]="buttonLabel(g)"
+      (pxSelect)="openGroupPanel(g)"></px-button>
     <px-button *ngIf="filterGroups.length" key="filters" variant="toolbar" icon="opts" [label]="filterLabel"
       [active]="filterLabel != 'Filters'" (pxSelect)="openFilters()"></px-button>
     <px-button *ngIf="filtered" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearAll()"></px-button>
@@ -57,6 +60,22 @@
     <div class="panelActions" pxGrid enter="nearest">
       <px-button key="apply" variant="primary" label="Show" (pxSelect)="applyFilters()"></px-button>
       <px-button key="reset" label="Reset filters" (pxSelect)="resetFilters()"></px-button>
+    </div>
+  </div>
+</px-panel>
+
+<!-- A group's own panel (a `button` group): the plugin's options only (a view has no "All"; a multiple choice gets Any);
+     a single choice applies at once -->
+<px-panel *ngIf="openGroup as g" class="filterPanel" id="pluginGroupPanel" [title]="g.label" align="start" [width]="1040"
+  focus=".panelBody .selected" (closed)="closeGroupPanel()">
+  <div class="panelBody" pxStack>
+    <div class="chipLine" pxGrid enter="selected">
+      <px-chip *ngIf="g.multiple" [key]="g.key + ':any'" label="Any" [selected]="isOn(g, null)" (pxSelect)="pickInGroup(g, null)"></px-chip>
+      <px-chip *ngFor="let o of g.options; trackBy: trackOption" [key]="g.key + ':' + o.value" [label]="o.label" [selected]="isOn(g, o.value)"
+        (pxSelect)="pickInGroup(g, o.value)"></px-chip>
+    </div>
+    <div class="panelActions" pxGrid enter="nearest" *ngIf="g.multiple">
+      <px-button key="apply" variant="primary" label="Show" (pxSelect)="applyGroup(g)"></px-button>
     </div>
   </div>
 </px-panel>

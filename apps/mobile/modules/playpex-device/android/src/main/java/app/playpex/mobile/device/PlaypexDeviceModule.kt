@@ -1,6 +1,7 @@
 package app.playpex.mobile.device
 
 import android.content.Context
+import android.content.Intent
 import android.media.MediaCodecList
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -30,7 +31,10 @@ import java.util.concurrent.Executors
  * Manager's PlaypexDiscovery.java: mDNS / DNS-SD with NsdManager, and the UDP query
  * `PLAYPEX_DISCOVER 1` to port 28471 every 5 s. Every address is confirmed with
  * GET /api/v1/server (its id must match what discovery said) before the event "server".
- * Also what this phone decodes (`codecs`, for /media/{ref}/playback and PUT /devices/me).
+ * Also what this phone decodes (`codecs`, for /media/{ref}/playback and PUT /devices/me), and
+ * Share to Playpex (docs/cast-plan.md §5): the text another app shared (ACTION_SEND text/plain,
+ * app.json's intent filter): the one that opened the app by `takeSharedText()` (once), the
+ * ones that come while it runs by the event "share".
  */
 class PlaypexDeviceModule : Module() {
   private var nsd: NsdManager? = null
@@ -46,7 +50,15 @@ class PlaypexDeviceModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("PlaypexDevice")
-    Events("server")
+    Events("server", "share")
+
+    /** The text shared to the app when it opened (once: the intent is emptied), else null */
+    Function("takeSharedText") { takeShared(appContext.currentActivity?.intent) }
+
+    /** A share while the app runs (singleTask: the same activity gets the new intent) */
+    OnNewIntent { intent ->
+      takeShared(intent)?.let { sendEvent("share", mapOf("text" to it)) }
+    }
 
     Function("startDiscovery") { start() }
     Function("stopDiscovery") { stopAll() }
@@ -67,6 +79,15 @@ class PlaypexDeviceModule : Module() {
     Function("codecs") { codecs() }
 
     OnDestroy { stopAll() }
+  }
+
+  private fun takeShared(intent: Intent?): String? {
+    if (intent == null || intent.action != Intent.ACTION_SEND) return null
+    val text = (intent.getCharSequenceExtra(Intent.EXTRA_TEXT) ?: intent.getStringExtra(Intent.EXTRA_SUBJECT))?.toString()?.trim()
+    // read once: an activity recreated later (rotation) must not share it again
+    intent.removeExtra(Intent.EXTRA_TEXT)
+    intent.action = Intent.ACTION_MAIN
+    return if (text.isNullOrEmpty()) null else text.take(8192)
   }
 
   private val context: Context

@@ -171,6 +171,24 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
   z-index: var(--px-z-notice);
 }
 
+// a cast: who sent it, above the title (the loading view, the controls)
+.castFrom {
+  display: flex;
+  align-items: center;
+  gap: dp(8);
+  margin: 0 0 dp(8);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-secondary);
+
+  img {
+    width: dp(18);
+    height: dp(18);
+    filter: var(--px-icon-light);
+    opacity: .8;
+  }
+}
+
 // ── controls ────────────────────────────────────────────────────────────────
 
 .controls {

@@ -235,6 +235,28 @@ test('a video file, a .torrent, a magnet: what each is', function () {
   });
 });
 
+test('YouTube links: the video and where it starts, never fetched as a page (titled by oEmbed when YouTube answers)', function () {
+  var youtubeOf = require('../lib/links/inspect').youtubeOf;
+  assert.deepEqual(youtubeOf('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s'), { id: 'dQw4w9WgXcQ', startS: 90 });
+  assert.deepEqual(youtubeOf('https://youtu.be/dQw4w9WgXcQ?t=42'), { id: 'dQw4w9WgXcQ', startS: 42 });
+  assert.deepEqual(youtubeOf('https://m.youtube.com/shorts/abcdefghijk'), { id: 'abcdefghijk', startS: 0 });
+  assert.deepEqual(youtubeOf('https://music.youtube.com/watch?v=dQw4w9WgXcQ&start=7'), { id: 'dQw4w9WgXcQ', startS: 7 });
+  assert.equal(youtubeOf('https://www.youtube.com/@someone'), null);
+  assert.equal(youtubeOf('https://example.com/watch?v=dQw4w9WgXcQ'), null);
+  assert.equal(youtubeOf('https://www.youtube.com/watch?v=short'), null);
+  // a paired device's route (POST /links/inspect): what Share to Playpex reads
+  return call('POST', '/links/inspect', { url: 'https://youtu.be/dQw4w9WgXcQ?t=42' }).then(function (r) {
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    conforms('LinkInspection', r.body);
+    assert.equal(r.body.kind, 'youtube');
+    var item = r.body.items[0];
+    assert.deepEqual(item.embed, { provider: 'youtube', id: 'dQw4w9WgXcQ' });
+    assert.equal(item.startS, 42);
+    assert.equal(item.url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    assert.ok(item.label);
+  });
+});
+
 test('refused: addresses on this network, not links, the admin only', function () {
   var saved = cookie;
   return Promise.all([

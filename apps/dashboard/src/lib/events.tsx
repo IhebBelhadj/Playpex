@@ -26,7 +26,9 @@ const EventsContext = createContext<EventsContextValue>({
 
 // topic prefix → queries to refresh
 const INVALIDATES: [string, string[]][] = [
-  ['session.', ['sessions', 'torrents', 'overview']],
+  ['session.', ['sessions', 'torrents', 'overview', 'cast-screens']],
+  // cast.updated patches the screens' `playing` in place (lib/cast.ts); a cast's end refreshes them
+  ['cast.ended', ['cast-screens', 'sessions']],
   ['device.', ['devices']],
   // a device's remote socket opened or closed, a controller came or left (admin only)
   ['remote.', ['remote-targets', 'devices', 'sessions']],

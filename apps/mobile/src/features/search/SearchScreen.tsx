@@ -12,6 +12,7 @@ import { useSearchChips, type SearchChip } from '../../lib/plugins'
 import { PluginRowView } from '../../ui/plugin-rows'
 import { titlesOf } from '../../lib/recommend'
 import { useBackPress, useDebouncedValue } from '../../state/hooks'
+import { openShare } from '../../state/navigation'
 import { usePlayFound } from '../../state/playback'
 import { useChannelResults, useLinkReader, usePlayAnything, useStreamResults, useTitleResults, useTorrentResults, type Group } from '../../state/search'
 import { IconButton, ROW_LIST, TitleCard, type IconName } from '../../ui/components'
@@ -436,7 +437,7 @@ function LinkView({ text: typed, reading, error, answer, onRead }: { text: strin
         <Text style={styles.linkWhat}>{linkSummary(answer)}</Text>
       </View>
       {playable.map((item, i) => (
-        <Press key={item.url + i} onPress={() => play.link(item)} scale={0.98} style={styles.video} accessibilityLabel={`Play ${item.label}`}>
+        <Press key={item.url + i} onPress={() => (item.kind === 'youtube' ? openShare(item.url) : play.link(item))} scale={0.98} style={styles.video} accessibilityLabel={`Play ${item.label}`}>
           <View style={styles.thumb}>
             <Ionicons name={LINK_ICONS[item.kind]} size={22} color={color.accent} />
           </View>
@@ -457,10 +458,11 @@ function LinkView({ text: typed, reading, error, answer, onRead }: { text: strin
   )
 }
 
-const LINK_ICONS: Record<LinkItem['kind'], IconName> = { video: 'film-outline', hls: 'radio-outline', magnet: 'magnet-outline', torrent: 'document-attach-outline' }
-const LINK_KINDS: Record<LinkItem['kind'], string> = { video: 'Video file', hls: 'Stream', magnet: 'Magnet', torrent: 'Torrent file' }
+const LINK_ICONS: Record<LinkItem['kind'], IconName> = { video: 'film-outline', hls: 'radio-outline', magnet: 'magnet-outline', torrent: 'document-attach-outline', youtube: 'logo-youtube' }
+const LINK_KINDS: Record<LinkItem['kind'], string> = { video: 'Video file', hls: 'Stream', magnet: 'Magnet', torrent: 'Torrent file', youtube: 'YouTube video' }
 
 function linkSummary(a: LinkInspection): string {
+  if (a.kind === 'youtube') return 'A YouTube video: it plays on a screen'
   if (a.kind !== 'page') return `${LINK_KINDS[a.kind]}, ready to play`
   const count = (kind: LinkItem['kind'], one: string, many: string) => {
     const n = a.items.filter((i) => i.kind === kind).length

@@ -25,6 +25,8 @@ The admin's side: `POST /sessions/{id}/commands {action, positionS?, deltaS?}` â
 
 ## Remote input (keyboard, pointer, text)
 
+Volume keys: `key` messages `AudioVolumeUp`, `AudioVolumeDown`, `AudioVolumeMute` (the dashboard's âˆ’ / + and, in Server Manager, the phone's volume buttons). Playpex TV doesn't inject them: they change its own playback volume (the device setting `player.volume`, 5 % a step; mute for this run), shown for a moment at the top of the screen; the player follows at once. Another target may do the same, or ignore them.
+
 A client whose UI can take injected input (Playpex TV: its Electron shell; not phones yet) can let the admin use it from the dashboard: arrows, OK, Back, media keys, a touchpad pointer and typed text.
 
 Open the WebSocket **`ws://<host>:<port>/api/v1/remote`** as a **target** (your token, or loopback with `?device=<id>`; same Host / Origin checks as the events socket) and say what you take, with your window's size:

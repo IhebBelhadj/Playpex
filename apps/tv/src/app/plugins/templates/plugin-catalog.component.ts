@@ -46,7 +46,9 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   state:CatalogState;
   loading = false;
   loadError = '';
-  panel:null | 'keyboard' | 'filters' = null;
+  panel:null | 'keyboard' | 'filters' | 'group' = null;
+  // the group whose own panel is open (a `button` group)
+  groupKey:string | null = null;
   draft:Record<string, string[]> = {};
   // the panel's groups: the plugin's for the draft (null = the screen's own)
   draftGroups:PluginFilterGroup[] | null = null;
@@ -78,14 +80,65 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     return this.state.data?.filters || [];
   }
 
-  /** The groups the panel shows: the plugin's for the draft, else the screen's; never the toolbar's */
+  /** The groups the panel shows: the plugin's for the draft, else the screen's; never the toolbar's or the buttons' */
   get panelGroups():PluginFilterGroup[] {
-    return (this.draftGroups || this.groups).filter(g => !g.toolbar);
+    return (this.draftGroups || this.groups).filter(g => !g.toolbar && !g.button);
   }
 
   /** The screen's groups in the filters panel */
   get filterGroups():PluginFilterGroup[] {
-    return this.groups.filter(g => !g.toolbar);
+    return this.groups.filter(g => !g.toolbar && !g.button);
+  }
+
+  /** The screen's groups with a toolbar button of their own, each opening its own panel */
+  get buttonGroups():PluginFilterGroup[] {
+    return this.groups.filter(g => g.button && !g.toolbar);
+  }
+
+  /** The group of the open own panel */
+  get openGroup():PluginFilterGroup | null {
+    return this.panel == 'group' ? this.groups.find(g => g.key == this.groupKey) || null : null;
+  }
+
+  /** "View: For you", "Category: All" */
+  buttonLabel(group:PluginFilterGroup):string {
+    let chosen = this.chosen()[group.key] || [];
+    let labels = group.options.filter(o => chosen.includes(o.value)).map(o => o.label);
+    return group.label + ': ' + (labels.length ? labels.join(', ') : group.multiple ? 'Any' : 'All');
+  }
+
+  openGroupPanel(group:PluginFilterGroup) {
+    this.draft = JSON.parse(JSON.stringify(this.chosen()));
+    this.groupKey = group.key;
+    this.panel = 'group';
+  }
+
+  closeGroupPanel() {
+    let key = this.groupKey;
+    this.panel = null;
+    this.groupKey = null;
+    if (key) this.focusSelector(`.pluginCatalog [data-px-key="group:${CSS.escape(key)}"]`);
+  }
+
+  // in a group's own panel: a single choice applies at once, a multiple one is drafted until Show
+  pickInGroup(group:PluginFilterGroup, value:string | null) {
+    if (group.multiple) {
+      let chosen = this.draft[group.key] || [];
+      chosen = value === null ? [] : chosen.includes(value) ? chosen.filter(v => v != value) : [...chosen, value];
+      this.draft = { ...this.draft, [group.key]: chosen };
+      return;
+    }
+    let before = this.chosen()[group.key] || [];
+    let next = value === null ? [] : [value];
+    this.closeGroupPanel();
+    if (before.length == next.length && before.every((v, i) => v == next[i])) return;
+    this.change({ filters: { ...this.chosen(), [group.key]: next } });
+  }
+
+  applyGroup(group:PluginFilterGroup) {
+    let next = this.draft[group.key] || [];
+    this.closeGroupPanel();
+    this.change({ filters: { ...this.chosen(), [group.key]: next } });
   }
 
   /** The screen's groups in the toolbar (a view): chips applied at once */
@@ -353,7 +406,8 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   /** The choices of the toolbar's groups */
   private toolbarChoices():Record<string, string[]> {
     let chosen = this.chosen(), out:Record<string, string[]> = {};
-    this.toolbarGroups.forEach(g => { if (chosen[g.key]?.length) out[g.key] = chosen[g.key]; });
+    // the toolbar's chips and the groups with their own button (a view, a category): kept by Clear and the panel
+    this.groups.filter(g => g.toolbar || g.button).forEach(g => { if (chosen[g.key]?.length) out[g.key] = chosen[g.key]; });
     return out;
   }
 

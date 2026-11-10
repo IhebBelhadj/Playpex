@@ -426,6 +426,43 @@ test('a channel on a host resolving to loopback is refused; unknown channels 404
   });
 });
 
+test('several playlists: their channels together (the others\' ids prefixed, numbers not taken twice), each with its guide, each plays', function (t) {
+  if (skip(t)) {
+    return;
+  }
+  var from = new Date(Math.floor(Date.now() / 1800000) * 1800000), to = new Date(from.getTime() + 3600000), both;
+  return pluginSettings.update('m3u', { values: { playlist3: web.playlist, guide3: web.guide } }).then(function () {
+    return call('GET', '/live/m3u/channels');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    matches('LiveChannels', r.json);
+    var list = r.json.channels;
+    assert.equal(list.length, web.channels * 2);
+    assert.deepEqual(list.slice(0, web.channels).map(function (c) { return c.id; }), channels.map(function (c) { return c.id; }), 'the first playlist\'s ids unchanged');
+    var other = list.filter(function (c) { return c.id === '3:' + channels[0].id; })[0];
+    assert.ok(other, 'the third playlist\'s channels prefixed 3:');
+    assert.equal(other.name, channels[0].name);
+    assert.equal(new Set(list.map(function (c) { return c.id; })).size, list.length);
+    assert.equal(new Set(list.map(function (c) { return c.number; })).size, list.length, 'one number per channel');
+    both = [channels[0].id, other.id];
+    return call('GET', '/live/m3u/guide?channels=' + encodeURIComponent(both.join(',')) + '&from=' + from.toISOString() + '&to=' + to.toISOString());
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var seen = new Set(r.json.programmes.map(function (p) { return p.channel; }));
+    assert.ok(seen.has(both[0]) && seen.has(both[1]), 'programmes for both: ' + Array.from(seen).join(', '));
+    return call('POST', '/live/m3u/channels/' + encodeURIComponent(both[1]) + '/play');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.channel.id, both[1]);
+    assert.match(r.json.source.ref, /^[lh]_[0-9a-f]{32}$/);
+    return pluginSettings.update('m3u', { values: { playlist3: null, guide3: null } });
+  }).then(function () {
+    return call('GET', '/live/m3u/channels');
+  }).then(function (r) {
+    assert.equal(r.json.channels.length, web.channels, 'gone with its address');
+  });
+});
+
 test('the admin: channels with their status, Refresh; a new address drops the old channels', function (t) {
   if (skip(t)) {
     return;

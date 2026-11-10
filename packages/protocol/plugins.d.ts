@@ -372,6 +372,8 @@ export interface FilterGroup {
   multiple?: boolean;
   /** in the catalog's toolbar, applied at once (a view, a mode), not in the filters panel */
   toolbar?: boolean;
+  /** its own toolbar button opening a panel of this group only (a single choice applies at once); plugin API 1.4 */
+  button?: boolean;
   options: { value: string; label: string; on?: boolean }[];
 }
 

@@ -13,6 +13,7 @@
   <div class="loadingView" *ngIf="!playerReady || buffering">
     <img class="spinner" src="assets/icons/loading.svg" alt="">
     <ng-container *ngIf="!playerReady; else stalled">
+      <p class="castFrom" *ngIf="playback?.castFrom"><img src="assets/icons/cast.svg" alt="">Cast from {{ playback.castFrom }}</p>
       <p class="loadingTitle">{{ playback?.title }}</p>
       <p class="loadingMeta" *ngIf="metaLine">{{ metaLine }}</p>
       <ol class="stages">
@@ -72,6 +73,7 @@
   <div class="controls" pxSection="playerControls" (focusin)="poke()">
     <div class="titleBlock">
       <span class="liveMark" *ngIf="live">Live</span>
+      <p class="castFrom" *ngIf="playback?.castFrom"><img src="assets/icons/cast.svg" alt="">Cast from {{ playback.castFrom }}</p>
       <h1 class="title">{{ playback?.title }}</h1>
       <p class="meta" *ngIf="metaLine">{{ metaLine }}</p>
     </div>
@@ -118,6 +120,7 @@
         <div class="group end">
           <px-button variant="icon" *ngIf="upNext" key="next" icon="next" [label]="upNextLooking ? 'Finding a release…' : 'Next episode'"
             (pxSelect)="playNext()"></px-button>
+          <px-button variant="icon" *ngIf="castScreens.length && !playback?.channel" key="cast" icon="cast" label="Play on another screen" (pxSelect)="openCastPanel()"></px-button>
           <px-button variant="icon" key="settings" icon="opts" label="Settings" (pxSelect)="openSettings()"></px-button>
         </div>
       </div>
@@ -296,6 +299,19 @@
     </div>
   </px-panel>
 </div>
+
+<!-- Play on another screen: the other screens that take casts; OK hands this playback over at its position -->
+<px-panel *ngIf="castPanelOpen" id="playerCast" edge="end" [width]="620" title="Play on another screen"
+  (closed)="castPanelOpen = false">
+  <div class="subList" pxGrid="player-cast">
+    <button *ngFor="let s of castScreens; trackBy: screenId" class="subRow" pxItem [pxItemKey]="'screen:' + s.deviceId" (pxSelect)="castTo(s)">
+      <span class="subName">{{ s.name }}</span>
+      <span class="subLang">{{ castSending ? 'Sending…' : castLine(s) }}</span>
+    </button>
+    <p class="note" *ngIf="!castScreens.length">No other screen is on. Open Playpex on another screen first.</p>
+  </div>
+  <p class="settingHelp castHelp">It carries on there from {{ clock(position()) }}{{ castAs ? ', as ' + castAs : '' }}.</p>
+</px-panel>
 
 <!-- A TV channel's list (OK with the controls hidden, or Channels in the controls): the lineup with what's on;
      OK on another channel switches to it and the list stays open, on the one playing closes it -->

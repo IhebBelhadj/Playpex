@@ -40,6 +40,52 @@
   color: var(--px-color-text-muted);
 }
 
+// the volume, a moment after the remote's volume keys: top centre, like a TV's
+.volume {
+  position: absolute;
+  top: calc(var(--px-safe-y) + #{dp(18)});
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: dp(14);
+  padding: dp(10) dp(20) dp(10) dp(16);
+  border-radius: var(--px-radius-l);
+  background: var(--px-surface-raised);
+  box-shadow: var(--px-shadow-button);
+  color: var(--px-color-text);
+  transform: translateX(-50%);
+  animation: arrive-centre var(--px-dur-fast) ease-out;
+
+  img {
+    width: dp(24);
+    height: dp(24);
+    filter: var(--px-icon-light);
+  }
+}
+
+.track {
+  position: relative;
+  width: dp(220);
+  height: dp(6);
+  border-radius: var(--px-radius-s);
+  background: var(--px-color-progress-track);
+  overflow: hidden;
+}
+
+.level {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--px-color-text);
+  transition: width var(--px-dur-quick) linear;
+}
+
+.value {
+  min-width: dp(84);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  text-align: right;
+}
+
 // the system cursor's image, its hot spot (5, 3) at the point
 .pointer {
   position: absolute;
@@ -47,6 +93,11 @@
   left: dp(-5);
   width: dp(24);
   will-change: transform;
+}
+
+@keyframes arrive-centre {
+  from { opacity: 0; transform: translate(-50%, dp(-12)); }
+  to { opacity: 1; transform: translateX(-50%); }
 }
 
 @keyframes arrive {

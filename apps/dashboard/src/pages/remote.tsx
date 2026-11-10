@@ -12,6 +12,8 @@ import {
   RotateCcw,
   RotateCw,
   Undo2,
+  Volume1,
+  Volume2,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
@@ -163,6 +165,43 @@ function KeyButton({
   )
 }
 
+interface NativeVolumeKeys {
+  capture(options: { on: boolean }): Promise<unknown>
+  addListener(event: 'key', fn: (e: { key: 'up' | 'down'; phase: 'down' | 'up'; repeat?: boolean }) => void): Promise<{ remove(): unknown }>
+}
+
+/** Playpex Server Manager's volume buttons (PlaypexVolumeKeys.java): null in a browser */
+function nativeVolumeKeys(): NativeVolumeKeys | null {
+  const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor
+  return (cap?.Plugins?.PlaypexVolumeKeys as NativeVolumeKeys | undefined) ?? null
+}
+
+/** While this page controls a device, the phone's volume buttons are the device's (not the phone's) */
+function useVolumeKeys(send: (msg: RemoteInput) => void, enabled: boolean) {
+  useEffect(() => {
+    const keys = nativeVolumeKeys()
+    if (!keys || !enabled) return
+    let gone = false
+    let handle: { remove(): unknown } | null = null
+    keys.capture({ on: true }).catch(() => undefined)
+    keys
+      .addListener('key', (e) => {
+        if (e.phase === 'down') navigator.vibrate?.(5)
+        send({ type: 'key', phase: e.phase, key: e.key === 'up' ? 'AudioVolumeUp' : 'AudioVolumeDown', repeat: e.repeat || undefined })
+      })
+      .then((h) => {
+        if (gone) h.remove()
+        else handle = h
+      })
+      .catch(() => undefined)
+    return () => {
+      gone = true
+      handle?.remove()
+      keys.capture({ on: false }).catch(() => undefined)
+    }
+  }, [send, enabled])
+}
+
 /** The touchpad's click button: held, it holds the TV's mouse button (drag with a second finger) */
 function ClickButton({ send, disabled, className }: { send: (msg: RemoteInput) => void; disabled: boolean; className?: string }) {
   const held = useRef(false)
@@ -265,6 +304,8 @@ function Controller({ deviceId }: { deviceId: string }) {
 
   const keys = live && !!caps?.keyboard
   const k = { send, disabled: !keys }
+  // the phone's volume buttons (Server Manager) change the device's volume
+  useVolumeKeys(send, keys)
   // a text field open on the device: typed from here (this phone's keyboard)
   const typing = live && field ? <RemoteFieldBar key={field.id} field={field} send={send} name={name} /> : null
 
@@ -338,6 +379,14 @@ function Controller({ deviceId }: { deviceId: string }) {
             </span>
           )}
         </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <KeyButton {...k} keyName="AudioVolumeDown" label="Volume down" className="size-10 md:size-12">
+          <Volume1 />
+        </KeyButton>
+        <KeyButton {...k} keyName="AudioVolumeUp" label="Volume up" className="size-10 md:size-12">
+          <Volume2 />
+        </KeyButton>
       </div>
       {stopped && (
         <Button size="sm" variant="outline" onClick={connect}>

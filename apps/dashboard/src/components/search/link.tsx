@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { Copy, Download as DownloadIcon, FileVideo, Link2, Magnet, Play, Plus, Radio, SearchX } from 'lucide-react'
+import { Copy, Download as DownloadIcon, FileVideo, Link2, Magnet, Play, Plus, Radio, SearchX, MonitorPlay } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { PlayOnScreenButton } from '@/components/cast'
 import { Empty, Spinner } from '@/components/common'
 import { useSearchActions } from '@/components/search/parts'
 import { Button } from '@/components/ui/button'
@@ -15,13 +16,14 @@ import { bytes } from '@/lib/format'
 type Item = Schemas['LinkItem']
 
 const KINDS: { kind: Item['kind']; title: string; icon: ReactNode; hint: string }[] = [
+  { kind: 'youtube', title: 'YouTube', icon: <MonitorPlay className="size-4" />, hint: 'Plays on a Playpex screen, in YouTube’s own player' },
   { kind: 'video', title: 'Video files', icon: <FileVideo className="size-4" />, hint: 'Played and downloaded through the server' },
   { kind: 'hls', title: 'Streams', icon: <Radio className="size-4" />, hint: 'HLS playlists: downloading saves the whole stream with ffmpeg' },
   { kind: 'torrent', title: 'Torrent files', icon: <Link2 className="size-4" />, hint: 'Added to Downloads' },
   { kind: 'magnet', title: 'Magnet links', icon: <Magnet className="size-4" />, hint: 'Added to Downloads' },
 ]
 
-const WHAT: Record<string, string> = { page: 'A web page', video: 'A video file', hls: 'A stream', torrent: 'A torrent file', magnet: 'A magnet link' }
+const WHAT: Record<string, string> = { youtube: 'A YouTube video', page: 'A web page', video: 'A video file', hls: 'A stream', torrent: 'A torrent file', magnet: 'A magnet link' }
 
 function hostOf(url: string) {
   try {
@@ -89,10 +91,21 @@ export function LinkView({ url, onAdd }: { url: string; onAdd: (link: string, na
                       {item.label}
                     </div>
                     <div className="truncate text-xs text-muted-foreground" title={item.url}>
-                      {[item.size ? bytes(item.size) : null, item.kind === 'magnet' ? item.infoHash : hostOf(item.url)].filter(Boolean).join(', ')}
+                      {[item.size ? bytes(item.size) : null, item.kind === 'magnet' ? item.infoHash : item.kind === 'youtube' ? item.author : hostOf(item.url)].filter(Boolean).join(', ')}
                     </div>
                   </div>
-                  {item.ref ? (
+                  {item.kind === 'youtube' && item.embed ? (
+                    <PlayOnScreenButton
+                      request={{
+                        title: item.label,
+                        ...(item.author ? { subtitle: item.author } : {}),
+                        ...(item.image ? { image: item.image } : {}),
+                        source: { embed: { provider: 'youtube', id: item.embed.id } },
+                        ...(item.startS ? { positionS: Math.floor(item.startS) } : {}),
+                        tracking: 'none',
+                      }}
+                    />
+                  ) : item.ref ? (
                     <>
                       <Button variant="ghost" size="xs" onClick={() => act.play(item.ref!, item.label, hostOf(item.url))}>
                         <Play /> Play

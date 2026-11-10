@@ -1,3 +1,4 @@
+import { VolumeControl } from '../volume.service';
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import type { RemoteMessage } from '@playpex/protocol';
@@ -77,7 +78,8 @@ export class RemoteControl implements OnDestroy {
   private fieldTimer:any = null;
   private rtc = new RemoteRtc(data => this.send({ type: 'signal', data }), msg => this.pointer(msg));
 
-  constructor(private server:ServerService, private settings:SettingsService, private mediaKeys:MediaKeys, private zone:NgZone) { }
+  constructor(private server:ServerService, private settings:SettingsService, private mediaKeys:MediaKeys, private zone:NgZone,
+    private volume:VolumeControl) { }
 
   // AppComponent, once
   start() {
@@ -165,6 +167,12 @@ export class RemoteControl implements OnDestroy {
         // keys Chromium has no key code for: straight to the media keys
         if (msg.key == 'MediaFastForward' || msg.key == 'MediaRewind') {
           if (msg.phase == 'down') this.mediaKeys.emit(msg.key == 'MediaFastForward' ? 'forward' : 'rewind');
+          return;
+        }
+        // volume keys (a phone's volume buttons): this device's playback volume, not the system's
+        if (msg.key == 'AudioVolumeUp' || msg.key == 'AudioVolumeDown' || msg.key == 'AudioVolumeMute') {
+          if (msg.phase == 'down') this.zone.run(() => msg.key == 'AudioVolumeMute' ? this.volume.toggleMute()
+            : this.volume.step(msg.key == 'AudioVolumeUp' ? 1 : -1));
           return;
         }
         this.input({ kind: 'key', phase: msg.phase, key: msg.key, modifiers: msg.modifiers, repeat: msg.repeat });

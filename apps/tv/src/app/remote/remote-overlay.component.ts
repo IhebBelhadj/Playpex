@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { RemoteControl, RemotePointer } from './remote-control.service';
+import { VolumeControl } from '../volume.service';
 
 const POINTER = 'assets/cursor/pointer.svg';
 const POINTER_PRESSED = 'assets/cursor/pointer-pressed.svg';
@@ -9,7 +10,8 @@ const POINTER_PRESSED = 'assets/cursor/pointer-pressed.svg';
 // §2.6): a badge while the admin controls this device (the person in front of
 // the TV must know), and the remote pointer: injected mouse events don't move
 // the system cursor, so it's drawn here. Never focusable, never catches the
-// mouse. The pointer is moved by hand outside Angular's zone (`pointer$` emits
+// mouse. The volume (the remote's volume keys: VolumeControl.hud$) shows for
+// a moment at the top. The pointer is moved by hand outside Angular's zone (`pointer$` emits
 // up to once a frame there): no change detection per move.
 @Component({
   selector: 'remote-overlay',
@@ -18,6 +20,11 @@ const POINTER_PRESSED = 'assets/cursor/pointer-pressed.svg';
       <span class="dot"></span>
       <span class="text">Controlled from the dashboard</span>
       <span class="who">{{ name }}</span>
+    </div>
+    <div class="volume" *ngIf="volume.hud$ | async as hud" role="status" aria-live="polite">
+      <img [src]="hud.muted || !hud.percent ? 'assets/icons/volume-off.svg' : 'assets/icons/volume.svg'" alt="">
+      <span class="track"><span class="level" [style.width.%]="hud.muted ? 0 : hud.percent"></span></span>
+      <span class="value">{{ hud.muted ? 'Sound off' : hud.percent + ' %' }}</span>
     </div>
     <img #pointer class="pointer" alt="" [src]="pointerImage" hidden>`,
   styleUrls: ['./remote-overlay.component.scss'],
@@ -29,7 +36,7 @@ export class RemoteOverlayComponent implements OnInit, OnDestroy {
   private subscription:Subscription;
   private pressed = false;
 
-  constructor(public remote:RemoteControl, private zone:NgZone) { }
+  constructor(public remote:RemoteControl, public volume:VolumeControl, private zone:NgZone) { }
 
   ngOnInit(): void {
     this.zone.runOutsideAngular(() => {

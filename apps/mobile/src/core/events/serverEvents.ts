@@ -1,3 +1,4 @@
+import type { Schemas } from '../http/api'
 import type { ApiClient } from '../http/client'
 import { Disposer } from '../util/disposer'
 import { Emitter } from '../util/emitter'
@@ -17,10 +18,15 @@ export type ServerEventMap = {
   'session.ended': { id: string; deviceId: string; infoHash: string | null; ref: string | null }
   /** The admin's command to this device's player (docs/remote-control-plan.md §2.4) */
   'session.command': SessionCommand
+  /** A cast this phone sent (docs/api/cast.md): its state, then its end */
+  'cast.updated': Schemas['Cast']
+  'cast.ended': Schemas['Cast']
 }
 
 export type SessionCommand = {
-  sessionId: string
+  sessionId: string | null
+  /** A cast's player with no session yet */
+  castId?: string
   infoHash: string | null
   ref: string | null
   action: 'pause' | 'resume' | 'toggle' | 'seek' | 'seekBy' | 'stop'
@@ -29,7 +35,7 @@ export type SessionCommand = {
   by: string | null
 }
 
-const TOPICS = ['library', 'plugin', 'settings', 'download', 'session.ended', 'session.command']
+const TOPICS = ['library', 'plugin', 'settings', 'download', 'session.ended', 'session.command', 'cast']
 const BACKOFF_MS = [1000, 2000, 5000, 10_000, 30_000]
 
 /** What the socket needs: React Native's WebSocket takes headers in a third argument */
@@ -96,4 +102,6 @@ const EVENT_TOPICS: Record<keyof ServerEventMap, true> = {
   'download.updated': true,
   'session.ended': true,
   'session.command': true,
+  'cast.updated': true,
+  'cast.ended': true,
 }

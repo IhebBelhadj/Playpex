@@ -12,7 +12,7 @@ Your `server.js` is **one bundled file** (esbuild, `--format=iife` or plain scri
 
 Every handler gets a context: `{ profile: { id, kids } | null, device: { id, name } | null, locale }`. No tokens, no names of other profiles. Requests of kids profiles never reach an `audience: adults` plugin.
 
-## Host API (`SERVER_PLUGIN_API` 1.3)
+## Host API (`SERVER_PLUGIN_API` 1.4)
 
 | Call | Needs | Notes |
 |---|---|---|

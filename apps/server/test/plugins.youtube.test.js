@@ -28,6 +28,8 @@ process.env.PLAYPEX_CONFIG_DIR = path.join(tmp, 'config');
 process.env.PLAYPEX_CACHE_DIR = path.join(tmp, 'cache');
 process.env.PLAYPEX_LOG_DIR = path.join(tmp, 'logs');
 process.env.PLAYPEX_DISCOVERY = '0';
+// the repo's .env may hold the server's own YouTube credentials: set empty here so dotenv leaves them out
+['API_KEY', 'CLIENT_ID', 'CLIENT_SECRET'].forEach(function (k) { process.env['PLAYPEX_PLUGIN_YOUTUBE_' + k] = ''; });
 
 var server = require('..'),
   schemas = require('../lib/plugins/schemas'),
@@ -45,14 +47,27 @@ function vid(n) {
 function videoItem(id, extra) {
   return Object.assign({
     id: id,
-    snippet: { title: 'Video ' + id + ' &amp; more', channelTitle: 'Channel A', channelId: CHANNEL_A, publishedAt: '2026-11-01T10:00:00Z',
+    snippet: { title: 'Video ' + id + ' &amp; more', channelTitle: 'Channel A', channelId: CHANNEL_A, publishedAt: '2026-11-01T10:00:00Z', categoryId: '10',
       description: 'About ' + id, liveBroadcastContent: 'none',
       thumbnails: { medium: { url: 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg' }, high: { url: 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' },
         maxres: { url: 'https://i.ytimg.com/vi/' + id + '/maxresdefault.jpg' } } },
     contentDetails: { duration: 'PT1H2M3S' },
     statistics: { viewCount: '1234567' },
-    status: { embeddable: true }
+    status: { embeddable: true },
+    player: { embedWidth: '640', embedHeight: '360' }
   }, extra || {});
+}
+
+// Shorts the made-up YouTube serves: a vertical clip of 45 s, one of 2:30, a horizontal "#shorts" of 50 s, and a
+// horizontal 2:30 video that isn't one
+var SHORTS = {};
+SHORTS[vid(801)] = { contentDetails: { duration: 'PT45S' }, player: { embedWidth: '202', embedHeight: '360' } };
+SHORTS[vid(802)] = { contentDetails: { duration: 'PT2M30S' }, player: { embedWidth: '202', embedHeight: '360' } };
+SHORTS[vid(803)] = { contentDetails: { duration: 'PT50S' } };
+var NOT_A_SHORT = vid(804);
+function itemOf(id) {
+  if (id === NOT_A_SHORT) return videoItem(id, { contentDetails: { duration: 'PT2M30S' } });
+  return videoItem(id, SHORTS[id] || (id === vid(500) ? { status: { embeddable: false } } : {}));
 }
 
 function fakeYoutube() {
@@ -70,15 +85,15 @@ function fakeYoutube() {
         if (cat && cat !== '10' && cat !== '20') {
           return { status: 404, body: { error: { code: 404, message: 'no chart', errors: [{ reason: 'videoChartNotFound' }] } } };
         }
-        return { status: 200, body: { items: [1, 2, 3].map(function (n) { return videoItem(vid(n + (cat ? Number(cat) * 10 : 0))); }) } };
+        // a chart with Shorts in it too
+        return { status: 200, body: { items: [1, 2, 3].map(function (n) { return videoItem(vid(n + (cat ? Number(cat) * 10 : 0))); })
+          .concat([itemOf(vid(801)), itemOf(vid(803)), itemOf(NOT_A_SHORT)]) } };
       }
       if (p === 'videos' && q.get('myRating') === 'like') {
         return { status: 200, body: { items: [videoItem(vid(900))] } };
       }
       if (p === 'videos' && q.get('id')) {
-        return { status: 200, body: { items: q.get('id').split(',').filter(function (id) { return id !== vid(404); }).map(function (id) {
-          return videoItem(id, id === vid(500) ? { status: { embeddable: false } } : {});
-        }) } };
+        return { status: 200, body: { items: q.get('id').split(',').filter(function (id) { return id !== vid(404); }).map(itemOf) } };
       }
       if (p === 'search') {
         return { status: 200, body: { items: [
@@ -99,11 +114,15 @@ function fakeYoutube() {
           thumbnails: { high: { url: 'https://i.ytimg.com/vi/y/hqdefault.jpg' } } }, contentDetails: { itemCount: 2 } }] } };
       }
       if (p === 'playlistItems') {
-        var page = q.get('pageToken') === 'p2' ? 2 : 1, base = q.get('playlistId') === 'UU' + CHANNEL_A.slice(2) ? 700 : 600;
+        // channel B has no long-videos list (UULF…): its whole uploads (UU…) instead
+        if (q.get('playlistId') === 'UULF' + CHANNEL_B.slice(2)) {
+          return { status: 404, body: { error: { code: 404, message: 'no such list', errors: [{ reason: 'playlistNotFound' }] } } };
+        }
+        var page = q.get('pageToken') === 'p2' ? 2 : 1, base = q.get('playlistId') === 'UULF' + CHANNEL_A.slice(2) || q.get('playlistId') === 'UU' + CHANNEL_A.slice(2) ? 700 : 600;
         return { status: 200, body: {
           nextPageToken: page === 1 ? 'p2' : undefined,
           items: [1, 2].map(function (n) { return { contentDetails: { videoId: vid(base + page * 10 + n), videoPublishedAt: '2026-11-0' + n + 'T00:00:00Z' } }; })
-            .concat(page === 1 ? [{ contentDetails: { videoId: vid(404) } }] : [])
+            .concat(page === 1 ? [{ contentDetails: { videoId: vid(404) } }, { contentDetails: { videoId: vid(802) } }] : [])
         } };
       }
       if (p === 'subscriptions') {
@@ -127,6 +146,7 @@ function load(options) {
     secrets: 'secrets' in options ? options.secrets : { apiKey: 'key-123' },
     server: Object.assign({ region: 'US', kids: 'off' }, options.server || {}),
     links: options.links || {},
+    store: options.store || {},
     yt: fakeYoutube()
   };
   var plain = function (v) { return v === undefined ? v : JSON.parse(JSON.stringify(v)); };
@@ -142,6 +162,10 @@ function load(options) {
     },
     secrets: { get: function (k) { return Promise.resolve(p.secrets[k] || null); } },
     settings: { get: function (k) { return Promise.resolve(p.server[k]); } },
+    store: {
+      get: function (k) { return Promise.resolve(k in p.store ? plain(p.store[k]) : null); },
+      set: function (k, v) { p.store[k] = plain(v); return Promise.resolve(true); }
+    },
     link: { status: function (name, id) { assert.equal(name, 'google'); return Promise.resolve(p.links[id] ? { linked: true, accessToken: p.links[id] } : { linked: false }); } },
     log: { warn: function () {}, info: function () {}, error: function () {} }
   };
@@ -161,9 +185,9 @@ function rowKeys(data) {
   return data.rows.map(function (r) { return r.key; });
 }
 
-test('home: trending and the categories that have a chart there, video cards with their info', function () {
+test('home, Trending view: trending and the categories that have a chart there, video cards with their info', function () {
   var p = load();
-  return p.handlers.home({ params: {}, query: '', filters: {} }, ANA).then(function (r) {
+  return p.handlers.home({ params: {}, query: '', filters: { view: ['trending'] } }, ANA).then(function (r) {
     valid('templates/properties/catalog', r.data);
     assert.deepEqual(rowKeys(r.data), ['youtube:trending', 'youtube:cat10', 'youtube:cat20']);
     var card = r.data.rows[0].items[0];
@@ -172,7 +196,11 @@ test('home: trending and the categories that have a chart there, video cards wit
     assert.equal(card.image, 'https://i.ytimg.com/vi/' + vid(1) + '/hqdefault.jpg');
     assert.deepEqual(card.badges, [{ text: '1:02:03' }]);
     assert.match(card.subtitle, /^Channel A · 1\.2M views · \d+ (day|week)s? ago$/);
-    assert.deepEqual(card.call, { data: 'play', args: { id: vid(1), title: card.title, channel: 'Channel A', embeddable: true } });
+    assert.deepEqual(card.call, { data: 'play', args: { id: vid(1), title: card.title, channel: 'Channel A', embeddable: true, channelId: CHANNEL_A, categoryId: '10' } });
+    // the filters: View (Trending on) and Category
+    assert.deepEqual(r.data.filters.map(function (f) { return f.key; }), ['view', 'category']);
+    assert.ok(r.data.filters.every(function (f) { return f.button === true; }), 'each its own toolbar button');
+    assert.equal(r.data.filters[0].options.filter(function (o) { return o.on; })[0].value, 'trending');
     assert.equal(card.info.backdrop, 'https://i.ytimg.com/vi/' + vid(1) + '/maxresdefault.jpg');
     assert.equal(r.data.search, true);
     // the key as a header, the region asked
@@ -180,41 +208,84 @@ test('home: trending and the categories that have a chart there, video cards wit
     assert.ok(p.yt.calls.every(function (c) { return c.query.regionCode === 'US'; }));
     // cached: the screen again asks nothing
     var before = p.yt.calls.length;
-    return p.handlers.home({ params: {}, query: '' }, ANA).then(function () {
+    return p.handlers.home({ params: {}, query: '', filters: { view: ['trending'] } }, ANA).then(function () {
       assert.equal(p.yt.calls.length, before);
     });
   });
 });
 
-test('home with a linked Google account: its rows first, each a paged row loading on its own with the token', function () {
+test('views of a linked account: subscriptions (latest, channels, a row per channel), liked by category, playlists', function () {
   var p = load({ links: { ana: 'token-ana' } });
-  return p.handlers.home({ query: '' }, ANA).then(function (r) {
-    valid('templates/properties/catalog', r.data);
-    assert.deepEqual(rowKeys(r.data).slice(0, 4), ['youtube:feed', 'youtube:subscriptions', 'youtube:liked', 'youtube:playlists']);
-    return Promise.all(['feed', 'subscriptions', 'liked', 'playlists'].map(function (list) {
-      return p.handlers.page({ list: list, page: 1 }, ANA);
-    }));
-  }).then(function (pages) {
-    pages.forEach(function (pg) { valid('rowPage', pg.data); assert.equal(pg.data.last, true); });
+  return Promise.all(['subscriptions', 'liked', 'playlists'].map(function (view) {
+    return p.handlers.home({ query: '', filters: { view: [view] } }, ANA);
+  })).then(function (r) {
+    r.forEach(function (x) { valid('templates/properties/catalog', x.data); });
+    var subs = rowKeys(r[0].data);
+    assert.deepEqual(subs.slice(0, 2), ['youtube:subs-latest', 'youtube:subs-channels']);
+    assert.ok(subs.indexOf('youtube:subs-' + CHANNEL_A) !== -1);
     // the feed: the subscriptions' uploads (UU…), newest first, a removed video left out
-    var feed = pages[0].data.items.map(function (c) { return c.key; });
+    var feed = r[0].data.rows[0].items.map(function (c) { return c.key; });
     assert.equal(feed[0], 'youtube:v:' + vid(712));
     assert.ok(feed.indexOf('youtube:v:' + vid(404)) === -1);
-    assert.ok(p.yt.calls.some(function (c) { return c.path === 'playlistItems' && c.query.playlistId === 'UU' + CHANNEL_A.slice(2); }));
-    assert.equal(pages[1].data.items[0].variant, 'portrait');
-    assert.deepEqual(pages[1].data.items[0].intent, { screen: 'plugin.youtube.channel', params: { id: CHANNEL_A } });
-    assert.equal(pages[2].data.items[0].key, 'youtube:v:' + vid(900));
-    assert.deepEqual(pages[3].data.items[0].intent, { screen: 'plugin.youtube.playlist', params: { id: 'PLmine1' } });
+    assert.deepEqual(r[0].data.rows[1].items[0].intent, { screen: 'plugin.youtube.channel', params: { id: CHANNEL_A } });
+    assert.deepEqual(rowKeys(r[1].data), ['youtube:liked-all']);
+    assert.deepEqual(r[1].data.rows[0].page, { data: 'page', args: { list: 'liked' } });
+    assert.deepEqual(rowKeys(r[2].data), ['youtube:playlists', 'youtube:playlist-PLmine1']);
+    return Promise.all([p.handlers.page({ list: 'liked', page: 1 }, ANA), p.handlers.page({ list: 'liked', page: 1, category: '20' }, ANA)]);
+  }).then(function (pages) {
+    valid('rowPage', pages[0].data);
+    assert.equal(pages[0].data.items[0].key, 'youtube:v:' + vid(900));
+    assert.deepEqual(pages[1].data.items, [], 'a category without liked videos');
     // the account's calls carry its token; nothing else does
     p.yt.calls.forEach(function (c) {
       var mine = c.query.mine === 'true' || c.query.myRating === 'like' || c.path === 'playlistItems' || (c.path === 'videos' && c.query.id);
       assert.equal(c.auth, mine ? 'Bearer token-ana' : null, c.path + ' ' + JSON.stringify(c.query));
     });
-    // a second page, or another profile without a link: nothing
-    return Promise.all([p.handlers.page({ list: 'feed', page: 2 }, ANA), p.handlers.page({ list: 'liked', page: 1 }, { profile: { id: 'bob', kids: false }, locale: 'en' })]);
+    // without a linked account those views say how to get one
+    return p.handlers.home({ query: '', filters: { view: ['liked'] } }, { profile: { id: 'bob', kids: false }, locale: 'en' });
   }).then(function (r) {
-    assert.deepEqual(r[0].data, { items: [], last: true });
-    assert.deepEqual(r[1].data, { items: [], last: true });
+    assert.deepEqual(r.data.rows, []);
+    assert.match(r.data.empty, /Link a Google account/);
+  });
+});
+
+test('For you: made from what the profile played and liked, without what it already saw; a category narrows it', function () {
+  var hist = [{ id: vid(1), title: 'Lo-fi beats to study [Official Video] | Channel A', channelId: CHANNEL_A, categoryId: '10', at: new Date().toISOString() }];
+  var p = load({ links: { ana: 'token-ana' }, store: { 'history:ana': hist } });
+  return p.handlers.home({ query: '', filters: {} }, ANA).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.equal(r.data.filters[0].options.filter(function (o) { return o.on; })[0].value, 'foryou', 'For you is the default view');
+    var keys = rowKeys(r.data);
+    assert.equal(keys[0], 'youtube:foryou');
+    assert.ok(keys.indexOf('youtube:because') !== -1, keys.join());
+    assert.ok(keys.indexOf('youtube:more-' + CHANNEL_A) !== -1, keys.join());
+    assert.ok(keys.indexOf('youtube:popular-10') !== -1, keys.join());
+    var all = [].concat.apply([], r.data.rows.map(function (x) { return x.items.map(function (c) { return c.key; }); }));
+    assert.ok(all.indexOf('youtube:v:' + vid(1)) === -1, 'what it played is left out');
+    assert.ok(all.indexOf('youtube:v:' + vid(900)) === -1, 'what it liked is left out');
+    var search = p.yt.calls.filter(function (c) { return c.path === 'search'; })[0];
+    assert.equal(search.query.q, 'Lo fi beats to study', 'the last play\'s title, its brackets and channel cut');
+    assert.equal(search.query.type, 'video');
+    // a category: only its videos
+    return p.handlers.home({ query: '', filters: { category: ['20'] } }, ANA);
+  }).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.match(r.data.rows[0].title, /Trending in Gaming/, 'nothing of it watched yet: its chart');
+  });
+});
+
+test('For you with nothing to go on: the charts, saying it learns from what you watch; a play is remembered', function () {
+  var p = load();
+  return p.handlers.home({ query: '', filters: {} }, ANA).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.match(r.data.rows[0].title, /^Trending · For you learns from what you watch$/);
+    return p.handlers.play({ id: vid(5), title: 'Five', channel: 'Channel A', embeddable: true, channelId: CHANNEL_A, categoryId: '10' }, ANA);
+  }).then(function () {
+    assert.deepEqual(p.store['history:ana'].map(function (h) { return [h.id, h.channelId, h.categoryId]; }), [[vid(5), CHANNEL_A, '10']]);
+    return p.handlers.play({ id: vid(5), title: 'Five', channelId: 'nope' }, ANA);
+  }).then(function () {
+    assert.equal(p.store['history:ana'].length, 1, 'once per video');
+    assert.equal(p.store['history:ana'][0].channelId, null, 'a bad channel id isn\'t kept');
   });
 });
 
@@ -268,7 +339,8 @@ test('channel and playlist screens: uploads and a playlist page by page', functi
     return p.handlers.page({ list: 'playlist', id: 'UU' + CHANNEL_A.slice(2), page: 1 }, ANA);
   }).then(function (r) {
     valid('rowPage', r.data);
-    assert.deepEqual(r.data.items.map(function (c) { return c.key; }), ['youtube:v:' + vid(711), 'youtube:v:' + vid(712)]);
+    assert.deepEqual(r.data.items.map(function (c) { return c.key; }), ['youtube:v:' + vid(711), 'youtube:v:' + vid(712), 'youtube:v:' + vid(802)],
+      'its uploads, its Short too (a removed video left out)');
     assert.equal(r.data.last, false);
     return p.handlers.page({ list: 'playlist', id: 'UU' + CHANNEL_A.slice(2), page: 2 }, ANA);
   }).then(function (r) {
@@ -325,6 +397,43 @@ test('no key, a used-up quota, a refused key: said in words, nothing breaks', fu
   }).then(function (r) {
     valid('templates/properties/catalog', r.data);
     assert.match(r.data.empty, /refused this server's API key/);
+  });
+});
+
+test('Shorts: shown where people browse (marked Short), never recommended in For you', function () {
+  var hist = [{ id: vid(1), title: 'Something good to watch', channelId: CHANNEL_A, categoryId: '10', at: new Date().toISOString() }];
+  var p = load({ links: { ana: 'token-ana' }, store: { 'history:ana': hist } });
+  function keysOf(rows) {
+    return [].concat.apply([], rows.map(function (x) { return (x.items || []).map(function (c) { return c.key; }); }));
+  }
+  return Promise.all([
+    p.handlers.home({ query: '', filters: { view: ['trending'] } }, ANA),
+    p.handlers.page({ list: 'playlist', id: 'UU' + CHANNEL_A.slice(2), page: 1 }, ANA),
+    p.handlers.home({ query: '', filters: {} }, ANA)
+  ]).then(function (r) {
+    // browsing: the Shorts are there, marked
+    var trending = r[0].data.rows[0].items;
+    var short = trending.filter(function (c) { return c.key === 'youtube:v:' + vid(801); })[0];
+    assert.ok(short, 'a Short in Trending');
+    assert.deepEqual(short.badges, [{ text: 'Short' }]);
+    assert.ok(short.info.meta.some(function (m) { return m.kind === 'chip' && /^Short · 0:45$/.test(m.text); }));
+    assert.ok(r[1].data.items.some(function (c) { return c.key === 'youtube:v:' + vid(802); }), 'a channel\'s uploads keep their Shorts');
+    // For you: none
+    var forYou = keysOf(r[2].data.rows);
+    assert.ok(forYou.length > 0);
+    [801, 802, 803].forEach(function (n) { assert.ok(forYou.indexOf('youtube:v:' + vid(n)) === -1, vid(n) + ' is a Short: not recommended'); });
+    assert.ok(forYou.indexOf('youtube:v:' + NOT_A_SHORT) !== -1, 'a short horizontal video is no Short');
+    // For you reads the channels' long-videos lists, the whole uploads for a channel without one
+    var lists = p.yt.calls.filter(function (c) { return c.path === 'playlistItems'; }).map(function (c) { return c.query.playlistId; });
+    assert.ok(lists.indexOf('UULF' + CHANNEL_A.slice(2)) !== -1, lists.join());
+    assert.ok(p.yt.calls.filter(function (c) { return c.path === 'videos'; }).every(function (c) { return /player/.test(c.query.part) && c.query.maxHeight === '360'; }));
+    // with nothing to go on, For you's charts have no Shorts either
+    var fresh = load();
+    return fresh.handlers.home({ query: '', filters: {} }, ANA);
+  }).then(function (r) {
+    var keys = keysOf(r.data.rows);
+    assert.ok(keys.length > 0);
+    [801, 803].forEach(function (n) { assert.ok(keys.indexOf('youtube:v:' + vid(n)) === -1); });
   });
 });
 
@@ -416,7 +525,7 @@ test('loaded by a real server: play effects leave as embed sources; the embed pa
   }).then(function (r) {
     assert.equal(r.status, 200, r.text);
     assert.doesNotMatch(r.body.data.empty || '', /no YouTube API key yet/, 'the environment\'s key is used');
-    delete process.env.PLAYPEX_PLUGIN_YOUTUBE_API_KEY;
+    process.env.PLAYPEX_PLUGIN_YOUTUBE_API_KEY = '';
     // the embed page: no auth, static, its script allowed by hash only
     return request('GET', '/api/v1/embed/youtube?v=' + vid(7) + '&start=30');
   }).then(function (r) {
@@ -442,9 +551,9 @@ test('envSecrets: a plugin secret\'s default from the environment; the admin\'s 
     assert.equal(env.get('youtube', 'clientId'), 'env-client');
     assert.equal(env.orDefault('youtube', 'clientId', null), 'env-client');
     assert.equal(env.orDefault('youtube', 'clientId', 'admin-client'), 'admin-client');
-    assert.equal(env.get('youtube', 'clientSecret'), null);
+    assert.ok(env.get('youtube', 'clientSecret') === null, 'an empty variable is none');
   } finally {
-    delete process.env.PLAYPEX_PLUGIN_YOUTUBE_CLIENT_ID;
+    process.env.PLAYPEX_PLUGIN_YOUTUBE_CLIENT_ID = '';
   }
 });
 

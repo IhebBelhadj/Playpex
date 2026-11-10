@@ -518,9 +518,17 @@ function source(ref) {
     by: entry.principal ? entry.principal.id : entry.pluginId };
 }
 
+/** Whose an h_ / l_ ref is, without using it: { pluginId, core } or null (unknown, expired) (lib/cast) */
+function owner(ref) {
+  var parsed = refs.parse(ref),
+    entry = parsed && (parsed.kind === 'hls' || parsed.kind === 'live') ? entries.get(parsed.id) : null;
+  return entry && Date.now() - entry.usedAt <= TTL_MS ? { pluginId: entry.pluginId, core: !!entry.principal } : null;
+}
+
 module.exports = {
   register: register,
   source: source,
+  owner: owner,
   media: media,
   playlist: playlist,
   live: live,

@@ -82,6 +82,8 @@ export interface PluginFilterGroup {
   multiple?:boolean;
   /** in the toolbar, applied at once (a view, a mode), not in the filters panel */
   toolbar?:boolean;
+  /** its own toolbar button ("View: For you") opening a panel of this group only; a single choice applies at once */
+  button?:boolean;
   options:{ value:string, label:string, on?:boolean }[];
 }
 

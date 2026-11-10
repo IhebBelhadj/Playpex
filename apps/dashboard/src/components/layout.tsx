@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboa
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
+import { CastBar, CastButton, CastSpacer } from '@/components/cast'
 import { Dot, Spinner } from '@/components/common'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -187,6 +188,7 @@ function ServerCorner({ name, traffic }: { name?: string; traffic?: { down: numb
         </Link>
       )}
       <span className="hidden h-full border-l lg:block" aria-hidden />
+      <CastButton />
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="flex min-w-0 items-center gap-2 text-sm">
@@ -253,6 +255,7 @@ export function AppLayout() {
   return (
     <div className="min-h-svh md:grid md:grid-cols-[13.75rem_minmax(0,1fr)]">
       <PairingToasts />
+      <CastBar />
       {/* the shell: sidebar and top bar on the page's own ground, split by 1px rules */}
       <aside className="sticky top-0 hidden h-svh flex-col border-r bg-sidebar md:flex">
         <div className="flex h-16 shrink-0 items-center">
@@ -320,6 +323,7 @@ export function AppLayout() {
             </Alert>
           )}
           <Outlet />
+          <CastSpacer />
         </main>
       </div>
     </div>

@@ -9,13 +9,28 @@ export function openPlay(title: PlayTitle, resume?: ResumePoint | null): void {
   router.push({ pathname: '/play', params: { title: JSON.stringify(title), ...(resume ? { resume: JSON.stringify(resume) } : {}) } })
 }
 
+// While a screen is chosen in the cast button, a session made for the player goes there instead
+// (state/cast.tsx installs it): true = cast, the player doesn't open. `here` opens this phone's player
+// anyway (Continue on phone, Up next inside this phone's player).
+type CastHandoff = (sessionId: string) => boolean
+let castHandoff: CastHandoff | null = null
+export function setCastHandoff(handoff: CastHandoff | null): void {
+  castHandoff = handoff
+}
+
 /** The player for a session the source list made: it takes the list's place (Back returns to the title) */
-export function openPlayer(sessionId: string): void {
+export function openPlayer(sessionId: string, opts?: { here?: boolean }): void {
+  if (!opts?.here && castHandoff?.(sessionId)) {
+    // the source list closes: what it chose plays on the screen
+    if (router.canGoBack()) router.back()
+    return
+  }
   router.replace({ pathname: '/player', params: { session: sessionId } })
 }
 
 /** The player for a session made elsewhere (a plugin's play effect): over the current screen */
-export function pushPlayer(sessionId: string): void {
+export function pushPlayer(sessionId: string, opts?: { here?: boolean }): void {
+  if (!opts?.here && castHandoff?.(sessionId)) return
   router.push({ pathname: '/player', params: { session: sessionId } })
 }
 
@@ -33,4 +48,9 @@ export function openReleases(from: { title?: PlayTitle; kind?: 'movie' | 'tv'; q
     pathname: '/releases',
     params: { ...(from.title ? { title: JSON.stringify(from.title) } : {}), ...(from.kind ? { kind: from.kind } : {}), ...(from.q ? { q: from.q } : {}) },
   })
+}
+
+/** Share to Playpex's screen for a link: what it holds, where to play it (a YouTube video: on a screen) */
+export function openShare(link: string): void {
+  router.push({ pathname: '/share', params: { link } })
 }

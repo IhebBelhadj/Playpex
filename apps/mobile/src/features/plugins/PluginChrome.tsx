@@ -5,6 +5,7 @@ import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useS
 import type { ScreenMobile } from '@playpex/protocol/plugins'
 import { useSession } from '../../lib/session'
 import { useMorphTag } from '../../state/boundary'
+import { CastButton } from '../cast/Cast'
 import { Avatar } from '../../ui/avatar'
 import { TOP_BAR_HEIGHT, TopBar } from '../../ui/chrome'
 import { IconButton } from '../../ui/components'
@@ -97,6 +98,7 @@ function AppBar({ scrollY }: { scrollY: SharedValue<number> }) {
       onBack={() => router.back()}
       onProfile={() => morph.open(() => router.push({ pathname: '/settings', params: { tag } }))}
       onSearch={() => router.navigate('/search')}
+      cast={<CastButton />}
       profile={profile ? <Avatar key={morph.key} id={profile.avatar} name={profile.name} size={34} round tag={morph.tag} /> : null}
     />
   )

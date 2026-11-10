@@ -26,6 +26,9 @@ import { MediaTrack, MediaTracks, MediaTracksService } from '../media-tracks.ser
 import { environment } from '../../environments/environment';
 import { HlsPlayer, loadHls } from './hls';
 import { EmbedVideo, embedErrorText } from './embed';
+import { CastReceiver } from '../cast/cast-receiver.service';
+import { CastScreen, CastSender } from '../cast/cast-sender.service';
+import { VolumeControl } from '../volume.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { LiveChannel, LiveService, NowNext } from '../live/live.service';
 
@@ -270,7 +273,20 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   private screen = useScreen<{ session:string }, PlaybackRequest>();
   // media keys while the player is shown and no layer is open (§13.2)
   private serverEvents = inject(ServerEvents);
+  // a cast from another device (PlaybackRequest.castId): its state goes back to the sender
+  private castReceiver = inject(CastReceiver);
+  // the volume changed from elsewhere (the remote control's volume keys)
+  private volumeControl = inject(VolumeControl);
+  private volumeSub:Subscription;
+  private castTimer:any = null;
+  private castOver = false;
   private toasts = inject(Toasts);
+  // "Play on another screen": the other screens, asked again every 30 s; the panel listing them
+  private castSender = inject(CastSender);
+  castScreens:CastScreen[] = [];
+  castPanelOpen = false;
+  castSending = false;
+  private castScreensTimer:any = null;
   private mediaSub = inject(MediaKeys).for(this.screen).subscribe(action => this.onMedia(action));
   private lastMedia:{ action:MediaAction | null, at:number } = { action: null, at: 0 };
   // Set first in ngOnDestroy: work that finishes later (a probe, the torrent's
@@ -319,6 +335,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.screen.onSelect(() => this.select());
     this.screen.onBack(() => this.back());
     this.listenToServer();
+    if (!this.playback.devSrc) {
+      let ask = () => { this.castSender.screens().then(list => { if (!this.destroyed) this.castScreens = list; }); };
+      ask();
+      this.castScreensTimer = setInterval(ask, 30000);
+    }
 
     let asked = this.playback.startAt !== undefined;
     if (asked) {
@@ -353,6 +374,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     // this device's settings (SettingsService: the server's, the defaults until it answers)
     this.subtitleSize = this.settings.value('subtitles.size');
     this.volume = this.settings.value('player.volume');
+    this.volumeSub = merge(
+      this.settings.changes('player.volume').pipe(map(v => () => this.volume = v)),
+      this.volumeControl.muted$.pipe(map(m => () => this.muted = m)),
+    ).subscribe(apply => { apply(); this.applyVolume(); });
     this.applySubtitleSize();
 
     // capture: before the spatial-navigation library moves the focus
@@ -428,6 +453,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // e.g. 503 BUSY: the server already streams as many torrents as it allows
   private cantStart(e) {
     if (this.destroyed) return;
+    this.castReport('failed', e?.error?.error || 'Couldn’t start this torrent');
     this.leavePlayer();
     this.notificationService.sendNotification("error" , e?.error?.error || "Couldn't start this torrent. Check that the Playpex server is running.");
   }
@@ -475,12 +501,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     // last position, while the <video> still has it
     this.saveProgress();
     this.destroyed = true;
+    clearInterval(this.castScreensTimer);
     // every way out lets go of the lease (beforeLeave did already, but not
     // every exit runs it); does nothing the second time
     this.releaseTorrent();
     this.mediaSub?.unsubscribe();
     this.serverSub?.unsubscribe();
     clearTimeout(this.keepaliveSoonTimer);
+    clearInterval(this.castTimer);
+    this.castReport('ended');
+    this.volumeSub?.unsubscribe();
     this.stopMediaSession();
     clearTimeout(this.seekTimer);
     clearTimeout(this.scrubTimer);
@@ -793,6 +823,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         title: [p.title, code].filter(Boolean).join(' · '),
         profileId: this.profiles.current.value?.id,
         file: this.filePath,
+        ...(p.castId ? { castId: p.castId } : {}),
         // which title the server's download is (not with tracking none)
         ...(p.tmdbId && p.mediaType && p.tracking != 'none' ? {
           media: { mediaType: p.mediaType, tmdbId: p.tmdbId, ...(p.season ? { season: p.season, episode: p.episode } : {}) },
@@ -818,7 +849,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         .pipe(map(e => ({ command: null, ended: e.data }))),
     ).subscribe(({ command, ended }) => {
       if (this.destroyed || !this.screen.active) return;
-      if (command && this.ownsSession(command.sessionId, command.infoHash, command.ref)) this.obey(command);
+      if (command && this.ownsSession(command.sessionId, command.infoHash, command.ref, command.castId)) this.obey(command);
       // a session.ended for this player's own session: it was cut (not one it let go itself: a
       // channel flip releases its stream first, and leaving then would pop the screen it came from)
       else if (ended && this.sessionId && ended.id == this.sessionId && !this.letGo) {
@@ -829,7 +860,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     });
   }
 
-  private ownsSession(sessionId:string, infoHash:string | null, ref:string | null):boolean {
+  private ownsSession(sessionId:string | null, infoHash:string | null, ref:string | null, castId?:string):boolean {
+    if (castId) return castId == this.playback.castId;
     if (this.sessionId && sessionId == this.sessionId) return true;
     let mine = this.playback.source?.ref;
     if (ref && (ref == mine || this.link == `${API_PREFIX}/media/${ref}`)) return true;
@@ -863,6 +895,73 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
     this.showControls(PLAY_BUTTON);
     this.keepaliveSoon();
+  }
+
+  // ── a cast (docs/cast-plan.md §4.2) ─────────────────────────────────────
+
+  // What has no session on the server (an embedded video) says how it goes
+  // itself: at once on play / pause / seek, and every 15 s while it plays.
+  // The rest is followed through its keepalives (castId).
+  private castState() {
+    if (!this.playback.castId || this.format != 'embed' || this.castOver || !this.moviePlayer) return;
+    let player = this.moviePlayer, duration = this.mediaDuration();
+    this.castReport(player.paused ? 'paused' : 'playing', { positionS: this.position(), durationS: duration });
+    if (!this.castTimer) this.castTimer = setInterval(() => this.castState(), 15000);
+  }
+
+  // Once failed or ended, nothing more is said
+  private castReport(state:'playing' | 'paused' | 'ended' | 'failed', extra:string | { positionS?:number, durationS?:number } = {}) {
+    if (!this.playback?.castId || this.castOver) return;
+    if (state == 'ended' || state == 'failed') {
+      this.castOver = true;
+      clearInterval(this.castTimer);
+    }
+    this.castReceiver.report(this.playback.castId, state, typeof extra == 'string' ? { error: extra } : extra);
+  }
+
+  // ── play on another screen (docs/cast-plan.md §4.2) ─────────────────────────
+
+  openCastPanel() {
+    this.castSender.screens().then(list => { if (!this.destroyed) this.castScreens = list; });
+    this.castPanelOpen = true;
+  }
+
+  screenId(_:number, s:CastScreen) { return s.deviceId; }
+
+  get castAs():string | null {
+    return this.profiles.current.value?.name || null;
+  }
+
+  castLine(s:CastScreen):string {
+    if (!s.playing) return 'Nothing playing';
+    let state = { playing: 'Playing', paused: 'Paused', opening: 'Opening', buffering: 'Loading' }[s.playing.state] || '';
+    return [state, s.playing.title].filter(Boolean).join(' · ') || 'Playing';
+  }
+
+  /** What plays here goes on there, from where it is; this player then leaves */
+  async castTo(screen:CastScreen) {
+    if (this.castSending) return;
+    let request = CastSender.request(this.playback, {
+      ref: this.ref, format: this.format, positionS: this.live ? undefined : this.position(),
+      profileId: this.profiles.current.value?.id,
+    });
+    if (!request) {
+      this.toasts.show({ text: 'This can’t be played on another screen', tone: 'error' });
+      return;
+    }
+    this.castSending = true;
+    try {
+      await this.castSender.play(screen, request);
+      this.castPanelOpen = false;
+      this.toasts.show({ text: `Playing on ${screen.name}`, detail: request.title, tone: 'success', icon: 'cast' });
+      this.leavePlayer();
+    }
+    catch (e) {
+      this.toasts.show({ text: e.message, tone: 'error' });
+    }
+    finally {
+      this.castSending = false;
+    }
   }
 
   // Back to where the user came from (the lease goes in beforeLeave)
@@ -1011,10 +1110,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.moviePlayer.play()?.catch(() => {});
     }
     // the dashboard's Activity follows play / pause / seeks within a second
-    ['play', 'pause', 'seeked'].forEach(name => on(name, () => { if (this.playerReady) this.keepaliveSoon(); }));
+    ['play', 'pause', 'seeked'].forEach(name => on(name, () => { if (this.playerReady) { this.keepaliveSoon(); this.castState(); } }));
     // e.g. HEVC/x265 or AVI that Chromium can't decode (hls.js says so itself)
     on('error', () => {
       if (this.hls || !this.screen.active || !this.moviePlayer.getAttribute('src')) return;
+      this.castReport('failed', "This video's format can't be played here");
       this.leavePlayer();
       this.notificationService.sendNotification("error" , "This video's format can't be played. Try another release");
     });
@@ -1025,6 +1125,10 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.readyTimer = setTimeout(() => {
         if (this.destroyed) return;
         this.playerReady = true;
+        // the position and state at once (the first keepalive went before them): the
+        // dashboard's Activity, a cast's sender
+        this.keepaliveSoon();
+        this.castState();
         this.updateClock();
         this.startMediaSession();
         // a channel: its banner once the picture is there
@@ -1287,7 +1391,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     clearTimeout(this.controlsIdle);
     if (!this.controlsVisible) return;
     this.controlsIdle = setTimeout(() => this.zone.run(() => {
-      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.tracksOpen || this.channelsOpen || this.pointer.visible) return;
+      if (this.moviePlayer?.paused || this.scrub || this.settingsOpen || this.tracksOpen || this.channelsOpen || this.castPanelOpen || this.pointer.visible) return;
       this.hideControls();
     }), CONTROLS_IDLE_MS);
   }
@@ -1744,6 +1848,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   private cantPlay(message:string) {
     if (this.destroyed || !this.screen.active) return;
+    this.castReport('failed', message);
     this.leavePlayer();
     this.notificationService.sendNotification('error', message);
   }
@@ -1795,6 +1900,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   setVolume(percent:number) {
     this.muted = false;
+    this.volumeControl.setMuted(false);
     this.volume = percent;
     this.applyVolume();
     // a slider: stored once it stops moving
@@ -1802,8 +1908,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   toggleMute() {
-    this.muted = !this.muted;
-    this.applyVolume();
+    this.volumeControl.setMuted(!this.muted);
   }
 
   private applyVolume() {

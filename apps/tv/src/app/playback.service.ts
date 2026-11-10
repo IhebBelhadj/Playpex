@@ -55,6 +55,12 @@ export interface PlaybackRequest {
   // IFrame player, framed from the server's /embed/youtube page and driven by
   // the player's own controls (player-page/embed.ts)
   embed?: { provider: 'youtube', id: string };
+  // A cast from another device (cast/cast-receiver.service.ts, docs/cast-plan.md): the
+  // keepalives name it, so its sender follows and drives this player; an embedded
+  // video reports its state through the receiver
+  castId?: string;
+  // who cast it, for people: "Pixel 8 · Anna" (the player shows it under the title)
+  castFrom?: string;
   // Development builds only: a video URL played directly, no torrent (the
   // player's screenshots and scenarios: window.playpexDev.player())
   devSrc?: string;

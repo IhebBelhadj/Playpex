@@ -135,6 +135,12 @@ function SessionCard({ session }: { session: Session }) {
           </CardTitle>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{session.deviceName ?? session.deviceId}</span>
+            {session.cast && (
+              <>
+                <span>·</span>
+                <span className="text-gold">cast from {session.cast.from.name}</span>
+              </>
+            )}
             <span>·</span>
             <span>{session.address}</span>
             {session.client && (

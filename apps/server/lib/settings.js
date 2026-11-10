@@ -91,6 +91,11 @@ function defaults() {
       enabled: false,
       port: 28472         // its own HTTP listener (read-only media, no auth)
     },
+    cast: {
+      // Playpex screens take casts from phones, the dashboard and other
+      // screens (docs/cast-plan.md §4.4); off: POST /cast/… answers CAST_REFUSED
+      enabled: true
+    },
     plugins: {
       // unsigned plugin packages install (at once), and the folders of
       // <config>/plugins-dev/<id>/ load (authors testing their own; after a

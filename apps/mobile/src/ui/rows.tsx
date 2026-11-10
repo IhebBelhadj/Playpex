@@ -9,6 +9,7 @@ import { titlesOf } from '../lib/recommend'
 import { useSession } from '../lib/session'
 import { useMorphTag } from '../state/boundary'
 import { openBrowse } from '../state/navigation'
+import { CastButton } from '../features/cast/Cast'
 import { Avatar } from './avatar'
 import { TAB_BAR_HEIGHT, TOP_BAR_HEIGHT, TopBar } from './chrome'
 import { Row } from './components'
@@ -72,6 +73,7 @@ export function TabPage({ title, overHero, children }: { title?: string; overHer
         solidAfter={overHero ? 260 : 60}
         onProfile={() => morph.open(() => router.push({ pathname: '/settings', params: { tag: avatarTag } }))}
         onSearch={() => router.navigate('/search')}
+        cast={<CastButton />}
         profile={profile ? <Avatar key={morph.key} id={profile.avatar} name={profile.name} size={34} round tag={morph.tag} /> : null}
       />
     </View>

@@ -57,6 +57,17 @@ var REMOTE = {
   FIELD_KINDS: ['text', 'search', 'address']
 };
 
+// Casting (docs/cast-plan.md): a sender asks the server to play something on a
+// screen (a device whose events socket says `?control=cast`, with what it
+// accepts: `&accepts=media,magnet,embed`); the screen gets `cast.play`, then
+// reports with `castId` on its keepalives or POST /cast/{castId}/state
+var CAST = {
+  ACCEPTS: ['media', 'magnet', 'embed'],
+  STATES: ['opening', 'playing', 'paused', 'buffering', 'ended', 'failed'],
+  EMBED_PROVIDERS: ['youtube'],
+  KEEP_MS: 60 * 60 * 1000          // a cast is forgotten an hour after it ended
+};
+
 // Fixed ports (plan §5.9); the HTTP one can be changed in the server settings
 var DEFAULT_PORT = 28470;
 var DISCOVERY_PORT = 28471;
@@ -97,6 +108,7 @@ var ERROR_CODES = {
   ORIGIN_NOT_ALLOWED: 403,       // state-changing request from a web origin that isn't allowed
   NOT_FOUND: 404,
   CONFLICT: 409,
+  CAST_REFUSED: 403,             // a cast the server won't deliver (docs/cast-plan.md §4.4): casting off, a profile, an adults source
   DEVICE_OFFLINE: 409,           // the device has no socket open: it can't be told (session commands, remote control)
   GONE: 410,                     // a route removed in a newer API version (API 2: /movies*, /shows/{imdbId}/torrents)
   CLIENT_TOO_OLD: 426,
@@ -151,6 +163,7 @@ module.exports = {
   DEVICE_PARAM: DEVICE_PARAM,
   AUTH: AUTH,
   REMOTE: REMOTE,
+  CAST: CAST,
   DEFAULT_PORT: DEFAULT_PORT,
   DISCOVERY_PORT: DISCOVERY_PORT,
   DISCOVERY: DISCOVERY,

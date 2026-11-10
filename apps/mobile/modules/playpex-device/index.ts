@@ -20,13 +20,14 @@ export type FoundServer = {
 /** What the phone's decoders take, in ffprobe's names (docs/api/auth.md#4-describe-the-device) */
 export type Codecs = { video: string[]; audio: string[]; maxHeight: number }
 
-type Events = { server: (server: FoundServer) => void }
+type Events = { server: (server: FoundServer) => void; share: (event: { text: string }) => void }
 
 declare class PlaypexDeviceModule extends NativeModule<Events> {
   startDiscovery(): void
   stopDiscovery(): void
   probe(address: string): Promise<FoundServer>
   codecs(): Codecs
+  takeSharedText(): string | null
 }
 
 const native = requireOptionalNativeModule<PlaypexDeviceModule>('PlaypexDevice')
@@ -75,4 +76,16 @@ export function toUrl(address: string): string {
   if (!match) throw new Error('Not an address: ' + address)
   const host = match[2].includes(':') && !match[2].startsWith('[') ? `[${match[2]}]` : match[2]
   return `${match[1].toLowerCase()}://${host}:${match[3] ?? '28470'}`
+}
+
+/** Share to Playpex (docs/cast-plan.md §5): the text that opened the app, once; null without one */
+export function takeSharedText(): string | null {
+  return native?.takeSharedText() ?? null
+}
+
+/** Texts shared to the app while it runs */
+export function onShare(listener: (text: string) => void): () => void {
+  if (!native) return () => {}
+  const subscription = native.addListener('share', (e) => listener(e.text))
+  return () => subscription.remove()
 }

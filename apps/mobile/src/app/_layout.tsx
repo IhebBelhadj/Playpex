@@ -4,8 +4,11 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { CastBar } from '../features/cast/Cast'
 import { LightsDown } from '../features/launch/LightsDown'
 import { AppProvider, useSessionState } from '../state/app'
+import { CastHandoff } from '../state/cast'
+import { ShareReceiver } from '../state/share'
 import { screenBoundary } from '../state/boundary'
 import { useHideSplashWhen } from '../state/launch'
 import { Loading } from '../ui/components'
@@ -55,6 +58,8 @@ function Screens() {
         <Stack.Screen name="settings" options={{ animation: 'fade', animationDuration: MORPH_SCREEN_FADE }} />
         {/* A screen of its own, not a form sheet: the player replaces it in one transition (no dismissal racing a push) */}
         <Stack.Screen name="play" options={{ animation: 'slide_from_bottom', animationDuration: 260 }} />
+        {/* Share to Playpex: a link another app shared (state/share.tsx) */}
+        <Stack.Screen name="share" options={{ animation: 'slide_from_bottom', animationDuration: 260 }} />
         <Stack.Screen name="player" options={{ animation: 'fade', orientation: 'landscape', statusBarHidden: true, navigationBarHidden: true }} />
       </Stack.Protected>
     </Stack>
@@ -74,6 +79,9 @@ export default function RootLayout() {
           <ToastProvider>
             <StatusBar style="light" />
             <Screens />
+            <CastHandoff />
+            <ShareReceiver />
+            <CastBar />
             <LightsDown />
           </ToastProvider>
         </AppProvider>

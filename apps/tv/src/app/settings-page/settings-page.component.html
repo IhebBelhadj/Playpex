@@ -28,6 +28,14 @@
             [on]="settings.value('remote.allowed')"
             (pxSelect)="settings.set('remote.allowed', !settings.value('remote.allowed'))"></px-switch>
         </section>
+
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Casting</h2><span class="scope">On this device</span></header>
+          <px-switch key="castAllowed" label="Let devices cast to this screen"
+            hint="Phones, the dashboard and other screens on this server can start playback here"
+            [on]="settings.value('cast.allowed')"
+            (pxSelect)="settings.set('cast.allowed', !settings.value('cast.allowed'))"></px-switch>
+        </section>
       </ng-container>
 
       <ng-container *ngIf="group == 'playback'">

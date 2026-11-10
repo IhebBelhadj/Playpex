@@ -106,6 +106,8 @@ tags:
     description: Every torrent the server keeps (running or not), managed like a torrent client
   - name: sessions
     description: What every device is playing (leases on torrents)
+  - name: cast
+    description: 'Playback started on another Playpex screen (docs/cast-plan.md, client guide docs/api/cast.md)'
   - name: catalog
     description: 'Movies, shows, seasons and people from the server''s metadata provider (TMDB, behind the server: clients need no key), in Playpex''s own shapes; IMDb ratings'
   - name: play
@@ -2028,13 +2030,16 @@ paths:
         at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
         `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`),
         `remote.updated` (`RemoteTarget`, a device's remote control changed). To one device only:
-        `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`). `?topics=session,torrent.stats` keeps
+        `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`);
+        `cast.play` (`CastPlayEvent`, to sockets opened with `?control=cast`); `cast.updated` / `cast.ended`
+        (`Cast`, to the cast's sender, and to the admin). `?topics=session,torrent.stats` keeps
         topics starting with one of those prefixes. Messages sent to the server are ignored. A web page
         from another origin is refused (403 `ORIGIN_NOT_ALLOWED`).
       parameters:
         - { name: topics, in: query, required: false, schema: { type: string }, description: 'Comma-separated topic prefixes' }
         - { name: device, in: query, required: false, schema: { type: string }, description: 'A client without a device token: the device it is (as with leases), so events for that device reach it' }
-        - { name: control, in: query, required: false, schema: { type: string, enum: [playback] }, description: 'playback: this client obeys `session.command` (docs/remote-control-plan.md)' }
+        - { name: control, in: query, required: false, schema: { type: string, description: 'Comma-separated: playback (this client obeys `session.command`, docs/remote-control-plan.md), cast (it is a cast screen: it gets `cast.play`, docs/cast-plan.md)' } }
+        - { name: accepts, in: query, required: false, schema: { type: string }, description: 'With control=cast: what its player plays, comma-separated media, magnet, embed (default: all)' }
         - { name: access_token, in: query, required: false, schema: { type: string } }
       responses:
         '101': { description: Switching protocols; then `Event` messages }
@@ -3040,7 +3045,7 @@ paths:
     post:
       tags: [sessions]
       operationId: commandSession
-      summary: Tell a session's player to pause, resume, seek or stop. Admin only.
+      summary: Tell a session's player to pause, resume, seek or stop. The admin, or the sender of the session's cast.
       description: |
         Sent as `session.command` to the device's events sockets opened with `?control=playback`. The player
         acts and sends a keepalive at once, so the result shows as `session.updated`.
@@ -3072,6 +3077,138 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { description: 'DEVICE_OFFLINE: no socket of the device is open', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '422': { description: 'UNSUPPORTED: the device does not take commands', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ── casting (docs/cast-plan.md) ───────────────────────────────────────────────
+  /cast/screens:
+    get:
+      tags: [cast]
+      operationId: castScreens
+      summary: The screens that take casts now
+      description: Devices with an events socket opened with `?control=cast`; `self` is the caller.
+      responses:
+        '200':
+          description: The screens
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CastScreen' } }
+        '401': { $ref: '#/components/responses/PairingRequired' }
+  /cast/screens/{deviceId}/play:
+    parameters:
+      - { name: deviceId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [cast]
+      operationId: castPlay
+      summary: Play something on a screen
+      description: |
+        The server checks the request (casting on, the profile and its PIN, no adults plugin's source as or to a
+        kids profile; such a source always plays with `tracking: none`) and sends the screen `cast.play`. What
+        ran on that screen is replaced. Follow it with `cast.updated` on your events socket, or `GET /cast/{castId}`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CastRequest' }
+      responses:
+        '202':
+          description: Delivered to the screen
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [castId, delivered]
+                properties:
+                  castId: { type: string }
+                  delivered: { type: integer, description: 'How many of its sockets got it' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/PairingRequired' }
+        '403': { description: 'CAST_REFUSED (casting off, a locked profile without its PIN, an adults source and a kids profile) or FORBIDDEN (a wrong PIN)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: 'NOT_FOUND: the profile, or the source expired (find it again)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'DEVICE_OFFLINE: the screen is not connected, or takes no casts', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: 'UNSUPPORTED: the screen does not play this kind of source', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: 'TOO_MANY_ATTEMPTS: wrong PINs', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /cast/{castId}:
+    parameters:
+      - { name: castId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [cast]
+      operationId: getCast
+      summary: A cast's state (its sender, its screen, the admin)
+      responses:
+        '200':
+          description: The cast
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cast' }
+        '401': { $ref: '#/components/responses/PairingRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cast/{castId}/state:
+    parameters:
+      - { name: castId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [cast]
+      operationId: reportCast
+      summary: The screen says how its cast goes
+      description: |
+        For what has no session on the server (an embedded video), and for `failed` (it couldn't play) and
+        `ended`. A player with a session also names the cast in its keepalives (`castId`), which is enough.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state: { $ref: '#/components/schemas/CastState' }
+                positionS: { type: number, minimum: 0 }
+                durationS: { type: number, minimum: 0 }
+                error: { type: string, maxLength: 300, description: 'failed: why, for people' }
+      responses:
+        '200':
+          description: The cast
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cast' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/PairingRequired' }
+        '403': { description: 'FORBIDDEN: not that cast''s screen', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cast/{castId}/commands:
+    parameters:
+      - { name: castId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [cast]
+      operationId: commandCast
+      summary: Pause, resume, seek or stop a cast (its sender, its screen, the admin)
+      description: |
+        Through the screen's session when it has one (as `POST /sessions/{id}/commands`), else straight to the
+        screen as `session.command` with `castId` and no `sessionId`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [pause, resume, toggle, seek, seekBy, stop] }
+                positionS: { type: number, minimum: 0, description: 'seek: where to' }
+                deltaS: { type: number, description: 'seekBy: how far (negative: back)' }
+      responses:
+        '202':
+          description: Delivered to the screen
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivered]
+                properties:
+                  delivered: { type: integer }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/PairingRequired' }
+        '403': { description: 'FORBIDDEN: not who cast it', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'DEVICE_OFFLINE: the screen is not connected', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   # ── remote control (docs/remote-control-plan.md) ────────────────────────────
   /remote:
@@ -4638,6 +4775,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    PairingRequired:
+      description: No valid device token, not on this machine and not the admin (`PAIRING_REQUIRED`)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     OAuthError:
       description: RFC 8628 / RFC 6749 error
       content:
@@ -4797,6 +4939,7 @@ components:
             - DEVICE_REQUIRED          # 400
             - PAIRING_REQUIRED         # 401
             - ADMIN_REQUIRED           # 401
+            - CAST_REFUSED             # 403
             - FORBIDDEN                # 403
             - HOST_NOT_ALLOWED         # 403
             - ORIGIN_NOT_ALLOWED       # 403
@@ -4904,6 +5047,7 @@ components:
         title: { type: string, maxLength: 300, description: 'For people, e.g. "Breaking Bad · S02E05"' }
         profileId: { type: string }
         file: { type: string, description: 'Path of the file in the torrent' }
+        castId: { type: string, description: 'The cast this player plays (cast.play): its sender follows this session' }
         media:
           type: object
           description: 'Which title it is (TMDB): kept with the download, so the server knows what it holds'
@@ -4954,18 +5098,133 @@ components:
       type: object
       required: [sessionId, infoHash, ref, action, by]
       properties:
-        sessionId: { type: string }
+        sessionId: { type: [string, 'null'], description: 'null: a cast without a session (castId)' }
+        castId: { type: string, description: 'A cast''s command sent straight to its screen' }
         infoHash: { type: [string, 'null'] }
         ref: { type: [string, 'null'] }
         action: { type: string, enum: [pause, resume, toggle, seek, seekBy, stop] }
         positionS: { type: number }
         deltaS: { type: number }
-        by: { type: [string, 'null'], description: 'The admin who sent it' }
+        by: { type: [string, 'null'], description: 'Who sent it (the admin, a cast''s sender)' }
+    CastState:
+      type: string
+      enum: [opening, playing, paused, buffering, ended, failed]
+    CastSource:
+      description: What to play, one of
+      oneOf:
+        - type: object
+          required: [ref]
+          properties:
+            ref: { type: string, description: 'A media ref, as /play/sources answers' }
+            format: { type: string, enum: [file, hls, live] }
+            infoHash: { type: string, description: 'A download''s file: its torrent' }
+            path: { type: string }
+        - type: object
+          required: [magnet]
+          properties:
+            magnet: { type: string, description: 'A magnet link or an info hash: the screen adds it (its own lease)' }
+            file: { type: object, properties: { name: { type: string }, index: { type: integer } } }
+        - type: object
+          required: [embed]
+          properties:
+            embed:
+              type: object
+              required: [provider, id]
+              properties:
+                provider: { type: string, enum: [youtube] }
+                id: { type: string }
+    CastRequest:
+      type: object
+      description: What a sender asks a screen to play (docs/cast-plan.md §3); the sender resolved the source
+      required: [title, source]
+      properties:
+        title: { type: string, maxLength: 300 }
+        subtitle: { type: string, maxLength: 300, description: 'e.g. "S01E03 · The Bear"' }
+        year: { type: string }
+        artwork: { type: object, properties: { title: { type: string }, posterPath: { type: string }, backdropPath: { type: string } } }
+        image: { type: string, description: 'An https picture of it (a plugin''s)' }
+        item:
+          type: object
+          description: 'Which title it is (TMDB), for resume points and history'
+          properties:
+            mediaType: { $ref: '#/components/schemas/MediaType' }
+            tmdbId: { type: integer, minimum: 1 }
+            imdbId: { type: string }
+            season: { type: integer, minimum: 0 }
+            episode: { type: integer, minimum: 0 }
+        source: { $ref: '#/components/schemas/CastSource' }
+        positionS: { type: number, minimum: 0, description: 'Where to start; unset: the profile''s resume point' }
+        audio: { type: string, description: 'Language to start with' }
+        profileId: { type: string, description: 'Who watches; unset: the screen''s own profile' }
+        pin: { type: string, description: 'A locked profile''s PIN, when this device hasn''t opened it' }
+        pluginId: { type: string, description: 'The plugin the source came from (its audience is checked)' }
+        tracking: { type: string, enum: [full, none] }
+    CastPlayEvent:
+      type: object
+      required: [castId, from, profileId, adults, request]
+      properties:
+        castId: { type: string }
+        adults: { type: boolean, description: 'An adults plugin''s source: a screen showing a kids profile refuses it' }
+        from: { type: object, required: [deviceId, name], properties: { deviceId: { type: string }, name: { type: string } } }
+        profileId: { type: [string, 'null'] }
+        request: { $ref: '#/components/schemas/CastRequest' }
+    Cast:
+      type: object
+      required: [castId, deviceId, from, sessionId, state, positionS, durationS, title, profileId, error, startedAt]
+      properties:
+        castId: { type: string }
+        deviceId: { type: string, description: 'The screen' }
+        from: { type: object, required: [deviceId, name], properties: { deviceId: { type: string }, name: { type: string } } }
+        sessionId: { type: [string, 'null'], description: 'The screen''s session, once its player sent a keepalive' }
+        state: { $ref: '#/components/schemas/CastState' }
+        positionS: { type: [number, 'null'] }
+        durationS: { type: [number, 'null'] }
+        title: { type: string }
+        profileId: { type: [string, 'null'] }
+        error: { type: [string, 'null'] }
+        startedAt: { type: string, format: date-time }
+    CastScreen:
+      type: object
+      required: [deviceId, name, kind, self, online, accepts, playing]
+      properties:
+        deviceId: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [tv, mobile, web, other] }
+        self: { type: boolean, description: 'The calling device' }
+        online: { type: boolean }
+        accepts:
+          type: object
+          required: [media, magnet, embed]
+          properties:
+            media: { type: boolean }
+            magnet: { type: boolean }
+            embed: { type: boolean }
+        playing:
+          type: [object, 'null']
+          required: [castId, sessionId, title, state, positionS]
+          properties:
+            castId: { type: [string, 'null'] }
+            sessionId: { type: [string, 'null'] }
+            title: { type: [string, 'null'] }
+            state: { $ref: '#/components/schemas/CastState' }
+            positionS: { type: [number, 'null'] }
     Session:
       type: object
       required: [id, deviceId, deviceName, paired, client, address, infoHash, ref, torrentName, file, method, streaming, since, lastActivity, playback, torrent, control]
       properties:
         control: { $ref: '#/components/schemas/DeviceControl' }
+        cast:
+          type: [object, 'null']
+          description: 'The cast this session plays (GET /sessions only): who cast it; null when the device opened it itself'
+          required: [castId, from]
+          properties:
+            castId: { type: string }
+            from:
+              type: object
+              required: [deviceId, name]
+              properties:
+                deviceId: { type: string }
+                name: { type: string }
         id: { type: string }
         deviceId: { type: string, description: 'A paired device''s id, else what a local client named itself (or addr:<ip>)' }
         deviceName: { type: [string, 'null'], description: 'Paired devices: the name it gave itself / the admin gave it' }
@@ -6446,19 +6705,29 @@ components:
       type: object
       required: [kind, label, url]
       properties:
-        kind: { type: string, enum: [magnet, torrent, video, hls] }
-        label: { type: string, description: 'The link''s text, else its file name' }
+        kind: { type: string, enum: [magnet, torrent, video, hls, youtube], description: 'youtube: a YouTube video, played in the core''s embed page (a cast''s `embed` source; docs/cast-plan.md §5)' }
+        label: { type: string, description: 'The link''s text, else its file name; youtube: the video''s title' }
         url: { type: string, description: 'Where it is (a magnet: the magnet)' }
         ref: { type: string, description: 'video, hls: a media ref to play or download (POST /downloads/direct)' }
         infoHash: { type: string, description: 'magnet' }
         size: { type: [number, 'null'], description: 'video, torrent: when the server learnt it' }
         contentType: { type: [string, 'null'] }
+        embed:
+          type: object
+          description: 'youtube: what to cast (CastSource `embed`)'
+          required: [provider, id]
+          properties:
+            provider: { type: string, enum: [youtube] }
+            id: { type: string }
+        startS: { type: number, description: 'youtube: where the link starts (its `t=`), seconds' }
+        image: { type: string, description: 'youtube: its picture' }
+        author: { type: string, description: 'youtube: its channel' }
     LinkInspection:
       type: object
       required: [url, kind, items]
       properties:
         url: { type: string, description: 'Where the server ended up (after redirects)' }
-        kind: { type: string, enum: [magnet, torrent, video, hls, page], description: 'What the URL itself is' }
+        kind: { type: string, enum: [magnet, torrent, video, hls, page, youtube], description: 'What the URL itself is' }
         title: { type: [string, 'null'], description: 'A page''s title' }
         items: { type: array, items: { $ref: '#/components/schemas/LinkItem' }, description: 'The URL itself (magnet, torrent, video, hls), or what a page links to' }
         truncated: { type: boolean, description: 'A page longer than the server reads (2 MB): what came after isn''t listed' }

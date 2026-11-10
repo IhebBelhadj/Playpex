@@ -1,23 +1,58 @@
-// Live TV (M3U): the channels of the admin's M3U playlist, their programmes
-// from an XMLTV guide, played by the server (HLS, or MPEG-TS remuxed).
-// The host parses both files (playpex.iptv.*): they can be big.
+// Live TV (M3U): the channels of the admin's M3U playlists (up to PLAYLISTS,
+// shown together), their programmes from XMLTV guides, played by the server
+// (HLS, or MPEG-TS remuxed). The host parses both files (playpex.iptv.*):
+// they can be big.
+//
+// Channel ids: the first playlist's as the host makes them (so they stay what
+// they were before there were several), the others' prefixed `<n>:`.
+
+const PLAYLISTS = 5;
+
+function suffix(n) {
+  return n === 1 ? '' : String(n);
+}
 
 async function settings() {
+  const playlists = [];
+  for (let n = 1; n <= PLAYLISTS; n++) {
+    const url = await playpex.settings.get('playlist' + suffix(n));
+    if (url) playlists.push({ n, url, guide: await playpex.settings.get('guide' + suffix(n)) });
+  }
   return {
-    playlist: await playpex.settings.get('playlist'),
-    guide: await playpex.settings.get('guide'),
+    playlists,
     playlistGuide: await playpex.settings.get('playlistGuide'),
     groups: String(await playpex.settings.get('groups') || '').split(',').map(g => g.trim().toLowerCase()).filter(Boolean)
   };
 }
 
-// The playlist's entries the admin wants (its groups)
+function idOf(n, id) {
+  return n === 1 ? id : (n + ':' + id).slice(0, 100);
+}
+
+// Every playlist's entries the admin wants (its groups), each with its
+// playlist; a playlist that fails is left out (logged) so the others still show
 async function entries() {
   const s = await settings();
-  if (!s.playlist) return { s, list: [], epg: [] };
-  const answer = await playpex.iptv.m3u(s.playlist);
-  const list = s.groups.length ? answer.channels.filter(e => e.group && s.groups.includes(e.group.toLowerCase())) : answer.channels;
-  return { s, list, epg: answer.epg };
+  const answers = await Promise.all(s.playlists.map(p => playpex.iptv.m3u(p.url).then(answer => ({ p, answer }), err => {
+    playpex.log.warn('playlist ' + p.n + ' not read: ' + (err && err.message));
+    return null;
+  })));
+  const list = [], seen = new Set(), numbers = new Set(), guides = [];
+  answers.filter(Boolean).forEach(({ p, answer }) => {
+    const guide = p.guide || (s.playlistGuide ? (answer.epg || [])[0] : null);
+    if (guide) guides.push({ n: p.n, url: guide });
+    answer.channels.forEach(e => {
+      if (s.groups.length && !(e.group && s.groups.includes(e.group.toLowerCase()))) return;
+      const id = idOf(p.n, e.id);
+      if (seen.has(id)) return;
+      seen.add(id);
+      // a number an earlier playlist took: the server numbers it after the highest
+      const number = e.number && !numbers.has(e.number) ? e.number : null;
+      if (number) numbers.add(number);
+      list.push(Object.assign({}, e, { id, number, playlist: p.n }));
+    });
+  });
+  return { s, list, guides };
 }
 
 function channelOf(e) {
@@ -36,16 +71,20 @@ playpex.hooks.on('live.channels', async () => {
   return { channels: list.slice(0, 5000).map(channelOf) };
 });
 
+// Each playlist's channels asked of its own guide, side by side
 playpex.hooks.on('live.guide', async (input) => {
-  const { s, list, epg } = await entries();
-  const url = s.guide || (s.playlistGuide ? epg[0] : null);
-  if (!url) return { programmes: [] };
+  const { list, guides } = await entries();
   const byId = new Map(list.map(e => [e.id, e]));
-  const channels = input.channels.map(id => byId.get(id)).filter(Boolean)
-    .map(e => ({ id: e.id, tvgId: e.tvgId, name: e.tvgName || e.name }));
-  if (!channels.length) return { programmes: [] };
-  const answer = await playpex.iptv.xmltv(url, { channels, from: input.from, to: input.to });
-  return { programmes: answer.programmes };
+  const wanted = input.channels.map(id => byId.get(id)).filter(Boolean);
+  const answers = await Promise.all(guides.map(g => {
+    const channels = wanted.filter(e => e.playlist === g.n).map(e => ({ id: e.id, tvgId: e.tvgId, name: e.tvgName || e.name }));
+    if (!channels.length) return [];
+    return playpex.iptv.xmltv(g.url, { channels, from: input.from, to: input.to }).then(a => a.programmes, err => {
+      playpex.log.warn('guide of playlist ' + g.n + ' not read: ' + (err && err.message));
+      return [];
+    });
+  }));
+  return { programmes: [].concat(...answers) };
 });
 
 playpex.hooks.on('live.stream', async (input) => {
@@ -67,7 +106,7 @@ playpex.data('guide', async () => {
   return {
     data: {
       title: 'Live TV',
-      empty: s.playlist ? 'The playlist has no channels (or none in the groups chosen).' : 'No playlist yet: the server\'s admin adds one on the dashboard (Plugins › Live TV (M3U) › Settings).'
+      empty: s.playlists.length ? 'The playlists have no channels (or none in the groups chosen).' : 'No playlist yet: the server\'s admin adds one on the dashboard (Plugins › Live TV (M3U) › Settings).'
     }
   };
 });

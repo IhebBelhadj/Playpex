@@ -1732,6 +1732,10 @@
                 }
               }
             }
+          },
+          "button": {
+            "description": "Its own button in the screen's toolbar (a catalog's), labelled with the group and its choice (\"View: For you\"), opening a panel of this group only: a single choice applies at once, a multiple one with Show; not in the filters panel (plugin API 1.4)",
+            "type": "boolean"
           }
         }
       }

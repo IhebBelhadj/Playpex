@@ -52,17 +52,21 @@ interface TorrentProvider extends Provider {
 }
 
 export interface LinkItem {
-  kind:'magnet' | 'torrent' | 'video' | 'hls';
+  kind:'magnet' | 'torrent' | 'video' | 'hls' | 'youtube';
   label:string;
   url:string;
   ref?:string;
   infoHash?:string;
   size?:number | null;
+  // youtube: the core's embed player plays it, from the link's `t=` (docs/cast-plan.md §5)
+  embed?:{ provider:'youtube', id:string };
+  startS?:number;
+  author?:string;
 }
 
 export interface LinkInspection {
   url:string;
-  kind:'magnet' | 'torrent' | 'video' | 'hls' | 'page';
+  kind:'magnet' | 'torrent' | 'video' | 'hls' | 'page' | 'youtube';
   title?:string | null;
   items:LinkItem[];
   truncated?:boolean;
@@ -174,7 +178,9 @@ export class SearchSourcesService {
   }
 
   playLink(item:LinkItem) {
-    if ((item.kind == 'video' || item.kind == 'hls') && item.ref) {
+    if (item.kind == 'youtube' && item.embed) {
+      this.playback.play({ title: item.label, subtitle: item.author, embed: item.embed, startAt: item.startS || 0, tracking: 'none' });
+    } else if ((item.kind == 'video' || item.kind == 'hls') && item.ref) {
       this.playback.play({ title: item.label, source: { ref: item.ref, format: item.kind == 'hls' ? 'hls' : 'file' }, tracking: 'none' });
     } else {
       // a magnet, or a .torrent's URL (the server fetches it)

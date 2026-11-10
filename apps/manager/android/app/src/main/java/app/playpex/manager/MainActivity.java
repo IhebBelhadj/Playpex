@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.animation.PathInterpolator;
 
@@ -43,11 +44,20 @@ public class MainActivity extends BridgeActivity implements PullToReload.BridgeA
         registerPlugin(PlaypexConnection.class);
         // the phone's keyboard for a field the page focused (the remote control's text box, PlaypexKeyboard.java)
         registerPlugin(PlaypexKeyboard.class);
+        // the volume buttons as the remote control's, while its page asks (PlaypexVolumeKeys.java)
+        registerPlugin(PlaypexVolumeKeys.class);
         super.onCreate(savedInstanceState);
         // swipe down from the top to reload, on every page (PullToReload.java)
         PullToReload.attach(this);
         // full screen that works, and Back that goes back (AppChrome.java)
         AppChrome.attach(this, getBridge());
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        // before the system: the remote control page may want the volume buttons
+        if (PlaypexVolumeKeys.handle(event)) return true;
+        return super.dispatchKeyEvent(event);
     }
 
     @Override

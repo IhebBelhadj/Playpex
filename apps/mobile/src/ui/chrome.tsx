@@ -81,7 +81,10 @@ export function TopBar({
   scrollY,
   solidAfter = 200,
   onBack,
+  cast,
 }: {
+  /** The cast button (features/cast), before Search */
+  cast?: ReactNode
   /** A screen opened over a section (a plugin's): Back before the mark */
   onBack?: () => void
   server: string
@@ -115,6 +118,7 @@ export function TopBar({
         </View>
       </View>
       <View style={styles.actions}>
+        {cast}
         <Press onPress={onSearch} hitSlop={10} scale={0.9} accessibilityLabel="Search" accessibilityRole="button" style={styles.search}>
           <Ionicons name="search" size={21} color={color.text} />
         </Press>

@@ -35,7 +35,9 @@ var SETTINGS = {
   // with a subtitle language: only forced subtitles (the lines in another language)
   'player.subtitleForcedOnly': { scope: 'profile', type: 'boolean', default: false },
   // The admin may drive this device's UI from the dashboard (docs/remote-control-plan.md §2.6)
-  'remote.allowed': { scope: 'device', type: 'boolean', default: true }
+  'remote.allowed': { scope: 'device', type: 'boolean', default: true },
+  // Phones, the dashboard and other screens may start playback here (docs/cast-plan.md §4.2)
+  'cast.allowed': { scope: 'device', type: 'boolean', default: true }
 };
 
 var SCOPES = ['device', 'profile'];

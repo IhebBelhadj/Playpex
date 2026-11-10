@@ -15,6 +15,7 @@ import { PluginMetaService } from './plugin-meta.service';
 import { RemotePlugins } from './plugins/remote';
 import { LiveService } from './live/live.service';
 import { RemoteControl } from './remote/remote-control.service';
+import { CastReceiver } from './cast/cast-receiver.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -57,6 +58,8 @@ export class AppComponent implements AfterViewInit , OnInit{
     liveTv:LiveService,
     // remote control from the server's dashboard (remote/remote-control.service.ts)
     remoteControl:RemoteControl,
+    // this screen as a cast target (cast/cast-receiver.service.ts)
+    castReceiver:CastReceiver,
     ){
     // remote / keyboard media keys → the screen shown (§13.2)
     mediaKeys.init();
@@ -65,6 +68,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     remotePlugins.start();
     liveTv.start();
     remoteControl.start();
+    castReceiver.start();
     navigator.current$.subscribe(entry => this.accent = entry?.screen.chrome?.accent ?? null);
   }
 

@@ -20,6 +20,7 @@ export interface SettingValues {
   'player.subtitleLanguage': string;
   'player.subtitleForcedOnly': boolean;
   'remote.allowed': boolean;
+  'cast.allowed': boolean;
 }
 
 export type SettingKey = keyof SettingValues;
