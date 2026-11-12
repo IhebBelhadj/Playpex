@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, QueryError, Spinner, Stat } from '@/components/common'
 import { PluginAccounts } from '@/components/plugin-accounts'
+import { ListedAddons } from '@/components/stremio-import'
 import {
   isStremio,
   originOf,
@@ -468,6 +469,7 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
           <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{p.changelog}</pre>
         </Panel>
       )}
+      {isStremio(p) && running && <ListedAddons pluginId={p.id} />}
     </div>
   )
 }

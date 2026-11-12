@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TabRow } from '@/components/tab-row'
+import { StremioImport } from '@/components/stremio-import'
 import { BrowseTab, RepositoriesTab, UpdatesTab } from '@/components/plugin-repositories'
 import { API_PREFIX, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 import { ago } from '@/lib/format'
@@ -304,14 +305,16 @@ function InstallDialog({
 
 function InstallFlow({ developerMode, initial, onDone }: { developerMode: boolean; initial: SourceMode; onDone: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null)
+  const [importing, setImporting] = useState(false)
+  if (importing) return <StremioImport onBack={() => setImporting(false)} onDone={onDone} />
   return preview ? (
     <PackagePreview preview={preview} developerMode={developerMode} onBack={() => setPreview(null)} onDone={onDone} onChange={setPreview} />
   ) : (
-    <SourceStep initial={initial} onRead={setPreview} />
+    <SourceStep initial={initial} onRead={setPreview} onImport={() => setImporting(true)} />
   )
 }
 
-function SourceStep({ initial, onRead }: { initial: SourceMode; onRead: (p: Preview) => void }) {
+function SourceStep({ initial, onRead, onImport }: { initial: SourceMode; onRead: (p: Preview) => void; onImport: () => void }) {
   const [mode, setMode] = useState<SourceMode>(initial)
   const [file, setFile] = useState<File | null>(null)
   const [url, setUrl] = useState('')
@@ -374,6 +377,9 @@ function SourceStep({ initial, onRead }: { initial: SourceMode; onRead: (p: Prev
             Its manifest URL (https://… or stremio://…). A configured add-on's address holds its settings, sometimes a key: Playpex keeps it as a
             secret and never shows it again.
           </p>
+          <Button type="button" variant="link" className="h-auto px-0" onClick={onImport}>
+            Or import the add-ons of my Stremio account
+          </Button>
         </div>
       ) : mode === 'file' ? (
         <div className="space-y-2">

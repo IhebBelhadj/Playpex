@@ -1201,9 +1201,66 @@ export interface paths {
          * Build a managed plugin from what the admin gives, staged for its preview
          * @description The provider reads the input (an add-on's URL for the Stremio bridge), builds a manifest around code the server
          *     ships, and stages it like a package: the preview (its permissions in words, `summary` = what the provider read)
-         *     is installed with `POST /admin/plugins/packages/{token}/install`. Its kids default starts hidden.
+         *     is installed with `POST /admin/plugins/packages/{token}/install`.
          */
         post: operations["inspectManagedPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/managed/stremio/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The add-ons of the admin's Stremio account, to choose from (docs/stremio-bridge-plan.md §5.4)
+         * @description The server signs in to Stremio's account API with these, reads the account's add-on collection and signs out
+         *     before answering; the password and Stremio's session are never stored, logged or answered. The add-ons'
+         *     addresses (which may hold their keys) stay on the server for 15 minutes: the answer names them only.
+         *     Stremio's own add-ons come unticked (`checked: false`). Its account API isn't a documented public one.
+         */
+        post: operations["importStremioAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/managed/stremio/import/{session}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Install the chosen add-ons of an import (or of an add-on's list), each through the bridge */
+        post: operations["installStremioAddons"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/stremio/addons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The add-ons a bridged add-on lists (its addon_catalog), offered as an import is (none ticked) */
+        get: operations["listStremioListedAddons"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5212,6 +5269,36 @@ export interface components {
             /** @description Video codec playable (no HEVC / 10-bit / XviD / 4K) */
             playable?: boolean;
         };
+        StremioAddonChoice: {
+            /** @description Install the chosen ones with POST /admin/plugins/managed/stremio/import/{session} (15 min) */
+            session: string | null;
+            addons: {
+                key: string;
+                name: string;
+                version?: string;
+                description?: string | null;
+                host?: string;
+                /** @description Its address holds its configuration (kept as a secret when installed) */
+                configured?: boolean;
+                /** @description One of Stremio's own */
+                official: boolean;
+                /** @enum {string} */
+                audience?: "everyone" | "adults";
+                usable: boolean;
+                /** @description Why it can't be used */
+                reason?: string | null;
+                /** @description The plugin it already is */
+                installed?: string | null;
+                /** @description Ticked to begin with */
+                checked: boolean;
+                offers?: {
+                    play?: boolean;
+                    subtitles?: boolean;
+                    catalogs?: number;
+                    titles?: boolean;
+                };
+            }[];
+        };
         PlaySourcesRequest: {
             /** @enum {string} */
             kind: "movie" | "episode";
@@ -5228,6 +5315,8 @@ export interface components {
             episode?: number;
             /** @description Who is watching: their settings and kids rules apply */
             profileId?: string | null;
+            /** @description The `bingeGroup` of the source the previous episode played from (Up next): sources of that group rank first, so the next episode plays from the same add-on and release style */
+            bingeGroup?: string | null;
         };
         PlaySource: {
             /** @description Stable for a source: the media ref of a file, a download's file or a plugin's source, `torrent:<infoHash>` of a torrent */
@@ -5275,6 +5364,8 @@ export interface components {
             duration?: number | null;
             seeds?: number | null;
             peers?: number | null;
+            /** @description torrent, plugin: the plugin's group for it (a Stremio add-on's `bingeGroup`: its sources of one release style); passed back with the next episode's request (PlaySourcesRequest.bingeGroup) */
+            bingeGroup?: string | null;
             /** @description download: how much of the file is there (1 = on disk) */
             progress?: number;
             state?: components["schemas"]["DownloadState"];
@@ -9336,6 +9427,99 @@ export interface operations {
                 };
             };
             400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    importStremioAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The account's add-ons */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StremioAddonChoice"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    installStremioAddons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    keys: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description What was installed and what wasn't (and why); the session is used once */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        installed: {
+                            key: string;
+                            id: string;
+                            name: string;
+                        }[];
+                        failed: {
+                            key: string;
+                            name: string;
+                            error: string;
+                        }[];
+                    };
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listStremioListedAddons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its listed add-ons (`session` null and none when it lists none) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StremioAddonChoice"];
+                };
+            };
             404: components["responses"]["NotFound"];
         };
     };

@@ -26,6 +26,9 @@ export interface PlaybackRequest {
   // file on the server (`source`)
   magnet?: string;
   source?: PlaybackSource;
+  // the play source's group (a Stremio add-on's bingeGroup): Up next asks the
+  // next episode's sources with it, so it plays from the same add-on and style
+  bingeGroup?: string | null;
   // a torrent's file to play, named by the plugin that found it
   // (PlaySource.file): the server chooses with it (GET /torrents/{hash}'s `chosen`)
   file?: { name?: string | null, index?: number | null };
@@ -93,9 +96,10 @@ export class PlaybackService {
   }
 
   // What a play source gives the player: its file, else its torrent
-  static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource, file?:PlaybackRequest['file'] } {
-    if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path, ...(source.format ? { format: source.format } : {}) } };
-    return { magnet: source.magnet || source.infoHash, ...(source.file ? { file: source.file } : {}) };
+  static target(source:PlaySource):{ magnet?:string, source?:PlaybackSource, file?:PlaybackRequest['file'], bingeGroup?:string } {
+    let group = source.bingeGroup ? { bingeGroup: source.bingeGroup } : {};
+    if (source.ref) return { source: { ref: source.ref, infoHash: source.infoHash, path: source.path, ...(source.format ? { format: source.format } : {}) }, ...group };
+    return { magnet: source.magnet || source.infoHash, ...(source.file ? { file: source.file } : {}), ...group };
   }
 
   // The player, over the current screen (Back returns to it). `replace`: in

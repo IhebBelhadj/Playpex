@@ -25,12 +25,13 @@ var LIMITS = {
   longText: 4000,     // a description
   id: 512,
   url: 2048,
-  cacheMax: { stream: 6 * 3600, subtitles: 6 * 3600, catalog: 24 * 3600, meta: 24 * 3600 },
-  cacheDefault: { stream: 900, subtitles: 3600, catalog: 3 * 3600, meta: 6 * 3600 },
+  cacheMax: { stream: 6 * 3600, subtitles: 6 * 3600, catalog: 24 * 3600, meta: 24 * 3600, addon_catalog: 24 * 3600 },
+  cacheDefault: { stream: 900, subtitles: 3600, catalog: 3 * 3600, meta: 6 * 3600, addon_catalog: 6 * 3600 },
+  addons: 500,
   staleMax: 7 * 24 * 3600
 };
 
-var RESOURCES = ['catalog', 'meta', 'stream', 'subtitles'],
+var RESOURCES = ['catalog', 'meta', 'stream', 'subtitles', 'addon_catalog'],
   // the types Playpex has a place for; others ('music', 'Dice'…) are dropped
   TYPES = ['movie', 'series', 'anime', 'channel', 'tv', 'other'],
   POSTER_SHAPES = ['poster', 'landscape', 'square'];
@@ -97,8 +98,11 @@ function id(v) {
 
 /**
  * The manifest URL the admin pastes (`https://host/[config/]manifest.json`,
- * `stremio://…` the same over https). `configured`: a path before
- * manifest.json (where configurable add-ons keep their keys)
+ * `stremio://…` the same over https). `configured`: the path before
+ * manifest.json looks like a configuration (where configurable add-ons keep
+ * their settings and keys): a segment with `=`, `|`, `,`, `%`, `{`, or one
+ * of 24+ characters (base64 / JSON); a plain path (`/publicdomainmovies/`)
+ * is only where an add-on lives
  */
 function addonUrl(text) {
   var raw = String(text || '').trim();
@@ -132,7 +136,9 @@ function addonUrl(text) {
     host: u.hostname.toLowerCase(),
     port: u.port ? parseInt(u.port, 10) : u.protocol === 'https:' ? 443 : 80,
     scheme: u.protocol.replace(':', ''),
-    configured: u.pathname.replace(/\/manifest\.json$/, '').replace(/^\/+/, '') !== ''
+    configured: u.pathname.replace(/\/manifest\.json$/, '').split('/').some(function (seg) {
+      return /[=|,%{]/.test(seg) || seg.length >= 24;
+    })
   };
 }
 
@@ -223,6 +229,10 @@ function cleanManifest(json) {
     return true;
   });
   var catalogs = (Array.isArray(json.catalogs) ? json.catalogs : []).slice(0, LIMITS.catalogs).map(catalogOf).filter(Boolean),
+    // the add-ons it lists (addon_catalog): offered on its dashboard page
+    addonCatalogs = (Array.isArray(json.addonCatalogs) ? json.addonCatalogs : []).slice(0, 20).filter(function (c) {
+      return isObject(c) && str(c.type, 40) && id(c.id);
+    }).map(function (c) { return { type: str(c.type, 40), id: c.id.slice(0, 200), name: str(c.name, 80) || c.id.slice(0, 80) }; }),
     hints = isObject(json.behaviorHints) ? json.behaviorHints : {};
   return {
     manifest: {
@@ -236,6 +246,7 @@ function cleanManifest(json) {
       idPrefixes: Array.isArray(json.idPrefixes) ? strings(json.idPrefixes, 40, 40) : null,
       resources: resources,
       catalogs: catalogs,
+      addonCatalogs: resources.some(function (r) { return r.name === 'addon_catalog'; }) ? addonCatalogs : [],
       behaviorHints: {
         adults: hints.adult === true,   // plugins-check: allow (Stremio's own field name: such an add-on becomes audience adults)
         p2p: hints.p2p === true,
@@ -421,6 +432,14 @@ function clean(resource, json) {
       throw failure('INVALID', 'subtitles isn\'t a list');
     }
     out.subtitles = (json.subtitles || []).slice(0, LIMITS.subtitles).map(subtitleOf).filter(Boolean);
+  } else if (resource === 'addon_catalog') {
+    if (json.addons !== undefined && !Array.isArray(json.addons)) {
+      throw failure('INVALID', 'addons isn\'t a list');
+    }
+    // each listed add-on as Stremio's collection holds it: read with cleanManifest when it's offered
+    out.addons = (json.addons || []).slice(0, LIMITS.addons).filter(function (a) {
+      return isObject(a) && typeof a.transportUrl === 'string' && a.transportUrl.length <= LIMITS.url && isObject(a.manifest);
+    }).map(function (a) { return { transportUrl: a.transportUrl, manifest: a.manifest, flags: isObject(a.flags) ? { official: a.flags.official === true } : {} }; });
   } else {
     throw failure('INVALID', 'resource: one of ' + RESOURCES.join(', '));
   }
@@ -430,7 +449,7 @@ function clean(resource, json) {
 /** The empty answer of a resource (an add-on's 404) */
 function empty(resource) {
   var out = { cache: { maxAge: null, staleRevalidate: null, staleError: null } };
-  out[{ stream: 'streams', catalog: 'metas', meta: 'meta', subtitles: 'subtitles' }[resource]] = resource === 'meta' ? null : [];
+  out[{ stream: 'streams', catalog: 'metas', meta: 'meta', subtitles: 'subtitles', addon_catalog: 'addons' }[resource]] = resource === 'meta' ? null : [];
   return out;
 }
 

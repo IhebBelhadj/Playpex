@@ -37,6 +37,10 @@
 //   GET    /admin/plugins/managed               { providers: [{ name, label }] }: what can make managed plugins (§9 of
 //                                               docs/plugin-layer-plan.md)
 //   POST   /admin/plugins/managed/:provider/inspect { input } → a staged preview (+ summary): install it by its token
+//   POST   /admin/plugins/managed/stremio/import { email, password } → { session, addons } (lib/plugins/stremio/account.js:
+//          the account's add-ons, read and signed out at once; nothing of the account kept)
+//   POST   /admin/plugins/managed/stremio/import/:session { keys } → { installed, failed }
+//   GET    /admin/plugins/:id/stremio/addons    → { session, addons }: the add-ons a bridged add-on lists (addon_catalog)
 //   PUT    /admin/plugins/:id/managed           { input } → a staged preview of that plugin built from a new input
 //   POST   /admin/plugins/:id/managed/check     → a staged preview of a new build, or { upToDate: true }
 //   PUT    /admin/plugins/:id/settings          { profile?, values: { key: value | null } } → the same
@@ -228,6 +232,19 @@ router.post('/plugins/updates/apply', function (req, res) {
 // every answer but the list is a staged preview, installed with POST /plugins/packages/:token/install
 router.get('/plugins/managed', function (req, res) {
   answer(res, function () { return Promise.resolve({ providers: managed.providers() }); });
+});
+
+router.post('/plugins/managed/stremio/import', function (req, res) {
+  var body = req.body || {};
+  answer(res, function () { return require('../plugins/stremio/account').list(body.email, body.password); });
+});
+
+router.get('/plugins/:id/stremio/addons', function (req, res) {
+  answer(res, function () { return require('../plugins/stremio/account').listed(req.params.id); });
+});
+
+router.post('/plugins/managed/stremio/import/:session', function (req, res) {
+  answer(res, function () { return require('../plugins/stremio/account').install(req.params.session, (req.body || {}).keys); });
 });
 
 router.post('/plugins/managed/:provider/inspect', function (req, res) {

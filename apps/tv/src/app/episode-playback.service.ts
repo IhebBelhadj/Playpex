@@ -133,8 +133,8 @@ export class EpisodePlaybackService {
   // Its best source (the server's ranking: a file on the server first when
   // the profile prefers them, else the first that plays here), looked up
   // ahead so "Play next" starts at once
-  bestSource(next:NextEpisode):Observable<PlaySource | null> {
-    return this.sources.find(EpisodePlaybackService.query(next)).pipe(
+  bestSource(next:NextEpisode, bingeGroup?:string | null):Observable<PlaySource | null> {
+    return this.sources.find({ ...EpisodePlaybackService.query(next), ...(bingeGroup ? { bingeGroup } : {}) }).pipe(
       map(result => PlaySourcesService.best(result)),
       catchError(() => of(null)),
     );
@@ -184,7 +184,7 @@ export class EpisodePlaybackService {
       { kind: 'download', only: ['torrent'], looked: () => this.resolving = null });
   }
 
-  private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource }, startAt?:number, replace = false) {
+  private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource, bingeGroup?:string }, startAt?:number, replace = false) {
     let ep = target.episode;
     this.playback.play({
       title: target.show.title,

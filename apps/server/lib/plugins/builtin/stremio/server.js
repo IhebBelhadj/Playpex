@@ -116,6 +116,9 @@ function sourceOf(s, options) {
     if (quality) {
       src.quality = quality;
     }
+    if (s.bingeGroup) {
+      src.bingeGroup = cut(s.bingeGroup, 200);
+    }
     src.notes = notes.slice(0, 6);
     return src;
   }
@@ -133,6 +136,9 @@ function sourceOf(s, options) {
     }
     if (quality) {
       out.quality = quality;
+    }
+    if (s.bingeGroup) {
+      out.bingeGroup = cut(s.bingeGroup, 200);
     }
     out.notes = notes.slice(0, 6);
     return out;
@@ -264,6 +270,48 @@ on('subtitles.providers', function (input) {
       });
       return out;
     });
+  });
+});
+
+// ── the dashboard's Search ──────────────────────────────────────────────────
+
+// Keywords → its movie search catalogs' first films → every bridged add-on's streams for them
+on('sources.search', function (input) {
+  if (input.kind === 'show' || input.page > 1) {
+    return { results: [], last: true };
+  }
+  return fresh().then(function (a) {
+    var cats = a.catalogs.filter(function (c) { return c.search && c.type === 'movie' && c.show !== 'hidden'; }).slice(0, 2);
+    return Promise.all(cats.map(function (c) {
+      return get('catalog', c.type, c.id, { search: String(input.query).slice(0, 200) }).then(function (r) { return r.metas || []; }, function () { return []; });
+    }));
+  }).then(function (lists) {
+    var films = [], seen = {};
+    lists.forEach(function (l) {
+      l.forEach(function (m) {
+        if (/^tt\d+$/.test(m.id) && !seen[m.id] && films.length < 3) {
+          seen[m.id] = true;
+          films.push(m);
+        }
+      });
+    });
+    return Promise.all(films.map(function (m) {
+      return playpex.core.call('stremio.streams', { type: 'movie', id: m.id }).then(function (answer) {
+        return sourcesOf(answer.streams || [], { embed: false, max: 12 }).map(function (src) {
+          var r = { source: src, title: cut(m.name, 200) };
+          var year = parseInt(String(m.releaseInfo || '').slice(0, 4), 10);
+          if (year >= 1870 && year <= 2100) {
+            r.year = year;
+          }
+          if (m.poster) {
+            r.poster = m.poster;
+          }
+          return r;
+        });
+      }, function () { return []; });
+    }));
+  }).then(function (groups) {
+    return { results: [].concat.apply([], groups).slice(0, 100), last: true };
   });
 });
 

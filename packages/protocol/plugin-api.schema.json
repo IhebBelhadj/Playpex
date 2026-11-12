@@ -251,6 +251,11 @@
             },
             "notes": {
               "$ref": "#/$defs/notes"
+            },
+            "bingeGroup": {
+              "description": "API 1.5: sources of one group (an add-on and a release style) play one after another: Up next prefers the next episode's source of the group the last one played from",
+              "type": "string",
+              "maxLength": 200
             }
           },
           "anyOf": [
@@ -317,6 +322,11 @@
             },
             "notes": {
               "$ref": "#/$defs/notes"
+            },
+            "bingeGroup": {
+              "description": "API 1.5: sources of one group (an add-on and a release style) play one after another: Up next prefers the next episode's source of the group the last one played from",
+              "type": "string",
+              "maxLength": 200
             }
           }
         },
@@ -368,6 +378,11 @@
             "live": {
               "type": "boolean",
               "description": "A live playlist (no end): the player shows Live, no timeline. Unset: the server reads it from the playlist (no #EXT-X-ENDLIST)"
+            },
+            "bingeGroup": {
+              "description": "API 1.5: sources of one group (an add-on and a release style) play one after another: Up next prefers the next episode's source of the group the last one played from",
+              "type": "string",
+              "maxLength": 200
             }
           }
         },

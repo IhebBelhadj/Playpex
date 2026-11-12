@@ -33,6 +33,7 @@ var stremio = require('@playpex/protocol/stremio'),
   managed = require('../lib/plugins/managed'),
   bridge = require('../lib/plugins/stremio'),
   manifests = require('../lib/plugins/stremio/manifest'),
+  account = require('../lib/plugins/stremio/account'),
   web = require('./helpers/stremio-addon');
 
 var addon = null, base = null, cookie = null, id = null, skip = false;
@@ -71,6 +72,7 @@ test.before(function () {
     // TMDB is never asked in tests: the ids metas don't carry are known already
     bridge.testing.tmdbIds.set('tt1000900', null);
     bridge.testing.tmdbIds.set('tt1000901', null);
+    account.configure({ base: addon.apiBase });
     return server.start({
       port: 0, console: false, torrents: { engine: 'fake', discovery: false }, library: false,
       plugins: { dirs: [], repositories: false, managed: { intervalMs: false }, http: addon.http() }
@@ -104,7 +106,8 @@ test('the protocol: addresses, paths, cleaners, free-text conventions', function
   assert.equal(stremio.requestPath('stream', 'series', 'tt1:1:2'), '/stream/series/tt1%3A1%3A2.json');
   assert.equal(stremio.requestPath('catalog', 'movie', 'top', { genre: 'Sci-Fi & Fantasy', skip: 100 }), '/catalog/movie/top/genre=Sci-Fi%20%26%20Fantasy&skip=100.json');
   var m = stremio.cleanManifest({ id: 'x', name: 'X', resources: ['stream', { name: 'meta', types: ['channel'], idPrefixes: ['yt:'] }, 'addon_catalog'], types: ['movie'] });
-  assert.deepEqual(m.unused, ['addon_catalog']);
+  assert.deepEqual(m.unused, [], 'addon_catalog is read');
+  assert.deepEqual(m.manifest.addonCatalogs, [], 'none listed');
   assert.deepEqual(m.manifest.resources[1], { name: 'meta', types: ['channel'], idPrefixes: ['yt:'] });
   assert.ok(stremio.offers(m.manifest, 'meta', 'channel', 'yt:abc'));
   assert.ok(!stremio.offers(m.manifest, 'meta', 'channel', 'tt1'));
@@ -142,7 +145,8 @@ test('inspect: what it offers, its id by configuration; a bad address and a wron
     assert.equal(sum.offers.play, true);
     assert.equal(sum.offers.subtitles, true);
     assert.deepEqual(sum.offers.catalogs.map(function (c) { return c.name + ':' + c.show; }), ['Top films:movies', 'Channels:section']);
-    assert.ok(sum.unused.indexOf('addon_catalog') !== -1);
+    assert.ok(sum.unused.indexOf('addon_catalog') === -1, 'it lists add-ons');
+    assert.equal(sum.offers.addons, true);
     assert.ok(sum.unused.some(function (u) { return /Needs a thing/.test(u); }), 'a catalog needing what the bridge can\'t give');
     assert.ok(sum.unused.some(function (u) { return /music/.test(u); }));
     return call('POST', '/admin/plugins/managed/stremio/inspect', { input: { url: addon.url('/cfg=SECRET42/manifest.json') } });
@@ -268,6 +272,23 @@ test('an add-on with subtitles only: its plugin has that hook alone, and starts'
   });
 });
 
+test('Up next: the sources of the group the last episode played from come first', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  var body = { kind: 'movie', tmdbId: 1, imdbId: 'tt0000001', title: 'Film', year: 2020 };
+  return call('POST', '/play/sources', body).then(function (r) {
+    var a = r.json.sources.filter(function (s) { return s.infoHash === 'a'.repeat(40); })[0];
+    assert.equal(a.bingeGroup, 'fake|1080p', 'the add-on\'s bingeGroup on the source');
+    assert.notEqual(r.json.sources[0].id, a.id, 'not first on its own');
+    return call('POST', '/play/sources', Object.assign({ bingeGroup: 'fake|1080p' }, body));
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.sources[0].infoHash, 'a'.repeat(40), 'first with its group asked');
+    assert.ok(r.json.sources[0].badges.indexOf('best') !== -1);
+  });
+});
+
 test('Play again: its cached answer (cacheMaxAge), not asked twice', function (t) {
   if (skip) {
     return t.skip('no openssl');
@@ -349,6 +370,18 @@ test('its section: other catalogs, genre, search; the search chip', function (t)
   });
 });
 
+test('the dashboard\'s Search: its search catalog finds films, the bridged add-ons\' streams for them', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  return call('GET', '/search/sources?provider=plugin:' + id + '&q=heat&kind=movie&page=1').then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var hit = r.json.items.filter(function (x) { return /Found\.Heat/.test(JSON.stringify(x)); })[0];
+    assert.ok(hit, JSON.stringify(r.json).slice(0, 400));
+    assert.equal(r.json.hasMore, false);
+  });
+});
+
 test('title pages of its own ids; a video plays through a play effect', function (t) {
   if (skip) {
     return t.skip('no openssl');
@@ -367,6 +400,24 @@ test('title pages of its own ids; a video plays through a play effect', function
     assert.equal(effect.type, 'play');
     var kinds = effect.request.sources.map(function (s) { return s.kind; });
     assert.ok(kinds.indexOf('embed') !== -1 || kinds.indexOf('http') !== -1, JSON.stringify(effect));
+  });
+});
+
+test('the add-ons it lists (addon_catalog): offered unticked, installed through the bridge', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  return call('GET', '/admin/plugins/' + id + '/stremio/addons').then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var subs = r.json.addons.filter(function (a) { return a.name === 'Subs Only'; })[0];
+    assert.ok(subs && subs.usable && !subs.checked, JSON.stringify(r.json.addons));
+    assert.equal(r.json.addons.filter(function (a) { return a.name === 'Songs'; })[0].usable, false);
+    assert.ok(r.text.indexOf('/subs-only/') === -1, 'no address answered');
+    return call('POST', '/admin/plugins/managed/stremio/import/' + r.json.session, { keys: [subs.key] });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.installed.length, 1);
+    return call('DELETE', '/admin/plugins/' + r.json.installed[0].id);
   });
 });
 
@@ -435,5 +486,43 @@ test('the add-on\'s update: Check for updates shows it; removal forgets it', fun
   }).then(function (r) {
     assert.equal(r.status, 200, r.text);
     assert.ok(!plugins.get(id));
+  });
+});
+
+test('Import from Stremio: the account\'s add-ons (no address answered), the chosen ones installed, signed out', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  var session;
+  return call('POST', '/admin/plugins/managed/stremio/import', { email: 'stremio@example.test', password: 'wrong' }).then(function (r) {
+    assert.equal(r.status, 400, r.text);
+    assert.match(r.json.error, /password is wrong/);
+    return call('POST', '/admin/plugins/managed/stremio/import', { email: 'stremio@example.test', password: 'right-pass' });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.ok(r.text.indexOf('IMPORTED9') === -1 && r.text.indexOf('right-pass') === -1, 'no address, no password in the answer');
+    assert.ok(r.text.indexOf('auth-123') === -1, 'no Stremio session');
+    session = r.json.session;
+    var by = {};
+    r.json.addons.forEach(function (a) { by[a.name] = a; });
+    assert.equal(by['Fake Add-on'].checked, true);
+    assert.equal(by['Fake Add-on'].configured, true);
+    assert.equal(by['Fake Add-on'].offers.play, true);
+    assert.equal(by['Subs Only'].checked, true);
+    assert.equal(by.Cinemeta.checked, false, 'Stremio\'s own: unticked');
+    assert.equal(by.Cinemeta.usable, true);
+    assert.equal(by['Local Files'].usable, false, 'on that computer');
+    assert.equal(by.Songs.usable, false, 'nothing Playpex uses');
+    assert.equal(addon.account.loggedOut >= 1, true, 'signed out at once');
+    return call('POST', '/admin/plugins/managed/stremio/import/' + session, { keys: [by['Fake Add-on'].key, by['Subs Only'].key] });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.json.failed, []);
+    assert.equal(r.json.installed.length, 2);
+    r.json.installed.forEach(function (x) { assert.equal(plugins.get(x.id).state, 'enabled'); });
+    return Promise.all([managed.inputOf(r.json.installed[0].id), call('POST', '/admin/plugins/managed/stremio/import/' + session, { keys: ['a0'] })]);
+  }).then(function (r) {
+    assert.equal(r[0].url, addon.url('/cfg=IMPORTED9/manifest.json'), 'its configured address kept as its secret');
+    assert.equal(r[1].status, 404, 'an import session is used once');
   });
 });

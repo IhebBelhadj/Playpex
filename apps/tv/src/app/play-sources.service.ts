@@ -25,6 +25,7 @@ export interface SourcesQuery {
   year?:number | null;
   season?:number;
   episode?:number;
+  bingeGroup?:string | null;  // Up next: the group the last episode played from ranks first
 }
 
 // The server's play pipeline (POST /play/sources, docs/media-server-plan.md

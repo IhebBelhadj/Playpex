@@ -3,12 +3,12 @@
   "id": "velvet",
   "name": "Velvet",
   "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of the sites (xHamster, Sex-Empire, TheSexTube). Never in the official repository.",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "publisher": {
     "name": "Playpex"
   },
   "api": {
-    "server": "^1.2",
+    "server": "^1.5",
     "nav": "^1",
     "ui": "^1"
   },
@@ -47,6 +47,7 @@
       "xhamster.com",
       "*.xhcdn.com"
     ],
+    "images": ["sex-empire.org", "*.metadataapi.net", "*.theporndb.net"],
     "storage": "1MB",
     "secrets": [
       "tmdbApiKey",

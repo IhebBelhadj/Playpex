@@ -107,6 +107,9 @@ function synthesize(addon, address, options) {
     }
     catalogs.push(Object.assign({ key: catalogKey(c), type: c.type, id: c.id, name: c.name, extra: c.extra }, p));
   });
+  if (addon.resources.some(function (r) { return r.name === 'addon_catalog'; }) && !(addon.addonCatalogs || []).length) {
+    unused.push('addon_catalog');
+  }
   addon.types.forEach(function (t) {
     if (stremio.TYPES.indexOf(t) === -1) {
       unused.push('type ' + t);
@@ -128,6 +131,10 @@ function synthesize(addon, address, options) {
     hooks.push('subtitles.providers');
     settings.push({ key: 'subtitles', scope: 'server', type: 'switch', label: 'Use for subtitles', default: true,
       description: 'Its subtitles in the player\'s list' });
+  }
+  // the dashboard's Search: its movie search catalog finds films, every bridged add-on's streams for them
+  if (catalogs.some(function (c) { return c.search && c.type === 'movie'; })) {
+    hooks.push('sources.search');
   }
   catalogs.forEach(function (c) {
     settings.push({

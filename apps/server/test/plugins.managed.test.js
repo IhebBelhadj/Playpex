@@ -31,6 +31,7 @@ var server = require('..'),
 var base = null, cookie = null,
   ADAPTER = path.join(tmp, 'adapter-v1.js'),
   ADAPTER2 = path.join(tmp, 'adapter-v2.js'),
+  ADAPTER3 = path.join(tmp, 'adapter-v3.js'),
   service = { version: '1.0.0', hooks: [] };   // what the made-up service is now
 
 var CODE = String.raw`
@@ -83,6 +84,7 @@ var PROVIDER = {
 test.before(function () {
   fs.writeFileSync(ADAPTER, CODE);
   fs.writeFileSync(ADAPTER2, CODE + '\n// the next server version\n');
+  fs.writeFileSync(ADAPTER3, CODE + '\n// a server version whose build asks for more\n');
   builtin.register('fake-adapter', ADAPTER);
   managed.register(PROVIDER);
   return server.start({
@@ -224,6 +226,25 @@ test('new shipped code: refresh rebuilds it (asking for nothing more) and it loa
     assert.equal(p.trusted, 'fake-adapter');
     var code = fs.readFileSync(path.join(process.env.PLAYPEX_CONFIG_DIR, 'plugins', 'fake-alpha', 'server.js'), 'utf8');
     assert.match(code, /the next server version/);
+  });
+});
+
+test('new shipped code whose build asks for more: it keeps running on the new code, the bigger build waits', function () {
+  var before = plugins.get('fake-alpha').manifest;
+  builtin.register('fake-adapter', ADAPTER3);
+  service = { version: '1.4.0', hooks: ['play.collect', 'play.before'] };
+  return managed.refresh().then(function () {
+    var p = plugins.get('fake-alpha');
+    assert.equal(p.state, 'enabled', 'it didn\'t stop: its old code wouldn\'t load any more');
+    assert.equal(p.trusted, 'fake-adapter');
+    assert.deepEqual(p.manifest.permissions, before.permissions, 'what it may do: as it was');
+    assert.equal(p.manifest.version, before.version);
+    assert.match(fs.readFileSync(path.join(process.env.PLAYPEX_CONFIG_DIR, 'plugins', 'fake-alpha', 'server.js'), 'utf8'), /asks for more/);
+    return call('POST', '/admin/plugins/fake-alpha/managed/check');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.version, '1.4.0', 'the bigger build: Check for updates');
+    assert.ok(r.json.added.length);
   });
 });
 

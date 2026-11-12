@@ -128,7 +128,8 @@ function build(input, current) {
             ownStreams: made.playable.stream && !made.playable.play,
             subtitles: made.playable.subtitles,
             catalogs: made.catalogs.map(function (c) { return { name: c.name, type: c.type, show: c.default }; }),
-            titles: made.playable.meta
+            titles: made.playable.meta,
+            addons: (addon.addonCatalogs || []).length > 0
           },
           unused: read.unused.concat(made.unused)
         }
@@ -344,6 +345,7 @@ register();
 
 module.exports = {
   register: register,
+  addonOf: addonOf,
   build: build,
   forget: forget,
   CODE: CODE,

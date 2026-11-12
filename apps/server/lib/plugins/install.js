@@ -616,9 +616,9 @@ function installStaged(entry, p, trust) {
     return s.plugins.installed.get(id);
   }).then(function (row) {
     delete loadErrors[id];
-    log.info('plugin ' + id + ' ' + p.version + (p.rollback ? ' put back (rollback)' : ' installed from ' +
+    log.info('plugin ' + id + ' ' + p.version + (p.rollback ? ' put back (rollback)' : p.origin === 'managed' ? ' built (' + p.source + ')' : ' installed from ' +
       (p.origin === 'repository' ? 'the repository ' + p.repository.name : p.origin === 'url' ? p.source : 'an upload')) +
-      (p.origin === 'repository' ? '' : trust.trusted ? ' (signed)' : ' (unsigned, developer mode)'), { plugin: id });
+      (p.origin === 'repository' || p.origin === 'managed' ? '' : trust.trusted ? ' (signed)' : ' (unsigned, developer mode)'), { plugin: id });
     if (!row.enabled) {
       return view(id);
     }

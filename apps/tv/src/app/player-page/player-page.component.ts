@@ -1527,7 +1527,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     if (!this.upNext || this.upNextLooking) return;
     this.upNextLooking = true;
     let next = this.upNext;
-    this.episodes.bestSource(next).subscribe(source => {
+    // the same add-on and release style as this episode's, when its source has a group (a Stremio add-on's)
+    this.episodes.bestSource(next, this.playback.bingeGroup).subscribe(source => {
       this.upNextLooking = false;
       next.source = source;
       if (source) then?.();

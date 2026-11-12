@@ -42,7 +42,7 @@ export class PlayerExtras {
     // A plugin's `tracking: 'none'` (or a release played as no title): nothing of the title is looked up
     const tracked = session.tracked && session.title.tmdbId > 0
     this.markers = new Markers(options.client, session.title, tracked)
-    this.upNext = new UpNext(options.client, options.profileId, session.title, options.registry, tracked)
+    this.upNext = new UpNext(options.client, options.profileId, session.title, options.registry, tracked, session.source.bingeGroup ?? null)
     this.subtitles = new OnlineSubtitles(options.client, session.title, options.subtitleProvider, options.rememberSubtitleProvider)
     this.stats = new PlayerStats(options.client, player, () => {
       const status = session.state.get().status

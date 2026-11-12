@@ -68,7 +68,8 @@ export function label(title: PlayTitle): string {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-export function findSources(client: ApiClient, title: PlayTitle, profileId: string): Promise<PlaySources> {
+/** `bingeGroup`: Up next's, the group the last episode played from (a Stremio add-on's), ranked first */
+export function findSources(client: ApiClient, title: PlayTitle, profileId: string, bingeGroup?: string | null): Promise<PlaySources> {
   const episode = title.mediaType === 'tv'
   return unwrap(
     client.api.POST('/play/sources', {
@@ -80,6 +81,7 @@ export function findSources(client: ApiClient, title: PlayTitle, profileId: stri
         year: title.year,
         ...(episode ? { season: title.season, episode: title.episode } : {}),
         profileId,
+        ...(bingeGroup ? { bingeGroup } : {}),
       },
     }),
   )

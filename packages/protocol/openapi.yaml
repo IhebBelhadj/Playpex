@@ -1621,7 +1621,7 @@ paths:
       description: |
         The provider reads the input (an add-on's URL for the Stremio bridge), builds a manifest around code the server
         ships, and stages it like a package: the preview (its permissions in words, `summary` = what the provider read)
-        is installed with `POST /admin/plugins/packages/{token}/install`. Its kids default starts hidden.
+        is installed with `POST /admin/plugins/packages/{token}/install`.
       security:
         - adminSession: []
       parameters:
@@ -1638,6 +1638,79 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PluginPackagePreview' }
         '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/managed/stremio/import:
+    post:
+      tags: [plugins]
+      operationId: importStremioAccount
+      summary: The add-ons of the admin's Stremio account, to choose from (docs/stremio-bridge-plan.md §5.4)
+      description: |
+        The server signs in to Stremio's account API with these, reads the account's add-on collection and signs out
+        before answering; the password and Stremio's session are never stored, logged or answered. The add-ons'
+        addresses (which may hold their keys) stay on the server for 15 minutes: the answer names them only.
+        Stremio's own add-ons come unticked (`checked: false`). Its account API isn't a documented public one.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, maxLength: 200 }
+                password: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: The account's add-ons
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StremioAddonChoice' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /admin/plugins/managed/stremio/import/{session}:
+    post:
+      tags: [plugins]
+      operationId: installStremioAddons
+      summary: Install the chosen add-ons of an import (or of an add-on's list), each through the bridge
+      security:
+        - adminSession: []
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [keys], properties: { keys: { type: array, items: { type: string } } } }
+      responses:
+        '200':
+          description: What was installed and what wasn't (and why); the session is used once
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [installed, failed]
+                properties:
+                  installed: { type: array, items: { type: object, required: [key, id, name], properties: { key: { type: string }, id: { type: string }, name: { type: string } } } }
+                  failed: { type: array, items: { type: object, required: [key, name, error], properties: { key: { type: string }, name: { type: string }, error: { type: string } } } }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/stremio/addons:
+    get:
+      tags: [plugins]
+      operationId: listStremioListedAddons
+      summary: The add-ons a bridged add-on lists (its addon_catalog), offered as an import is (none ticked)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Its listed add-ons (`session` null and none when it lists none)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StremioAddonChoice' }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/plugins/{pluginId}/managed:
     put:
@@ -6068,6 +6141,36 @@ components:
         codec: { type: [string, 'null'] }
         audio: { type: [string, 'null'], description: '"unsupported" for Dolby / DTS' }
         playable: { type: boolean, description: 'Video codec playable (no HEVC / 10-bit / XviD / 4K)' }
+    StremioAddonChoice:
+      type: object
+      required: [session, addons]
+      properties:
+        session: { type: [string, 'null'], description: 'Install the chosen ones with POST /admin/plugins/managed/stremio/import/{session} (15 min)' }
+        addons:
+          type: array
+          items:
+            type: object
+            required: [key, name, official, usable, checked]
+            properties:
+              key: { type: string }
+              name: { type: string }
+              version: { type: string }
+              description: { type: [string, 'null'] }
+              host: { type: string }
+              configured: { type: boolean, description: 'Its address holds its configuration (kept as a secret when installed)' }
+              official: { type: boolean, description: 'One of Stremio''s own' }
+              audience: { type: string, enum: [everyone, adults] }
+              usable: { type: boolean }
+              reason: { type: [string, 'null'], description: 'Why it can''t be used' }
+              installed: { type: [string, 'null'], description: 'The plugin it already is' }
+              checked: { type: boolean, description: 'Ticked to begin with' }
+              offers:
+                type: object
+                properties:
+                  play: { type: boolean }
+                  subtitles: { type: boolean }
+                  catalogs: { type: integer }
+                  titles: { type: boolean }
     PlaySourcesRequest:
       type: object
       required: [kind, tmdbId, title]
@@ -6080,6 +6183,7 @@ components:
         season: { type: integer, minimum: 0, description: 'Episodes' }
         episode: { type: integer, minimum: 1, description: 'Episodes' }
         profileId: { type: [string, 'null'], description: 'Who is watching: their settings and kids rules apply' }
+        bingeGroup: { type: [string, 'null'], maxLength: 200, description: 'The `bingeGroup` of the source the previous episode played from (Up next): sources of that group rank first, so the next episode plays from the same add-on and release style' }
     PlaySource:
       type: object
       required: [id, type, provider, label, playable, badges, notes]
@@ -6116,6 +6220,7 @@ components:
         duration: { type: [number, 'null'], description: 'file: seconds (ffprobe)' }
         seeds: { type: [integer, 'null'] }
         peers: { type: [integer, 'null'] }
+        bingeGroup: { type: [string, 'null'], description: 'torrent, plugin: the plugin''s group for it (a Stremio add-on''s `bingeGroup`: its sources of one release style); passed back with the next episode''s request (PlaySourcesRequest.bingeGroup)' }
         progress: { type: number, minimum: 0, maximum: 1, description: 'download: how much of the file is there (1 = on disk)' }
         state: { $ref: '#/components/schemas/DownloadState' }
         playable:

@@ -86,6 +86,21 @@ function filesOf(provider, built) {
   return files;
 }
 
+/**
+ * The installed manifest with the code the server ships now: what a server
+ * update installs at once when the new build asks for more (the add-on keeps
+ * running; the bigger build waits for the admin's consent under Check for updates)
+ */
+function keepingManifest(r) {
+  var dir = install().dirOf(r.current.id), assets = {};
+  (r.current && r.current.icon ? [r.current.icon] : []).forEach(function (asset) {
+    try {
+      assets[asset] = fs.readFileSync(path.join(dir, asset));
+    } catch (e) {}
+  });
+  return { manifest: r.current, assets: assets, summary: null };
+}
+
 function stageBuilt(provider, input, built) {
   var files = filesOf(provider, built);
   return install().stageFiles({ files: files, root: null }, {
@@ -168,6 +183,11 @@ function check(id) {
   });
 }
 
+/** Whether only the code differs from what's installed (the manifest is the installed one) */
+function codeOnly(r) {
+  return builtin.sha256(builtin.code(r.provider.code).text) !== r.info.codeHash;
+}
+
 /**
  * Every managed plugin its provider builds differently now (new shipped code,
  * the service's new version): installed at once when it asks for nothing
@@ -190,7 +210,18 @@ function refresh() {
           if (preview.added && preview.added.length) {
             log.info('plugin ' + row.id + ': a new build asks for more (' + preview.added.map(function (x) { return x.text; }).join('; ') +
               '): waiting for the admin', { plugin: row.id });
-            return null;
+            install().discard(preview.token);
+            // the server's new code with what it may do now, so it keeps running (it wouldn't load with its old code)
+            return rebuild(row.id).then(function (r) {
+              if (!codeOnly(r)) {
+                return null;
+              }
+              return stageBuilt(r.provider, r.input, keepingManifest(r)).then(function (same) {
+                return install().commit(same.token, {}).then(function () {
+                  log.info('plugin ' + row.id + ' rebuilt with this server\'s code, its permissions as they were', { plugin: row.id });
+                });
+              });
+            });
           }
           return install().commit(preview.token, {}).then(function () {
             log.info('plugin ' + row.id + ' rebuilt (' + row.source + ')', { plugin: row.id });

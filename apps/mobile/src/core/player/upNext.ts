@@ -29,6 +29,8 @@ export class UpNext {
     private readonly title: PlayTitle,
     private readonly registry: SessionRegistry,
     private readonly enabled: boolean,
+    /** The group of what plays now (a Stremio add-on's): the next episode prefers it */
+    private readonly bingeGroup: string | null = null,
   ) {}
 
   start(): void {
@@ -59,7 +61,7 @@ export class UpNext {
     const run = this.run
     this.state.patch({ looking: true })
     try {
-      const answer = await findSources(this.client, next.title, this.profileId)
+      const answer = await findSources(this.client, next.title, this.profileId, this.bingeGroup)
       if (!run || run.disposed) return null
       this.answer = answer
       const best = bestSource(answer)

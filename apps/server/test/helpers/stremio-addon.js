@@ -12,6 +12,8 @@
 //   cdn.playpex-test.dev     the files: /film.mp4 with byte ranges; /v.m3u8 a tiny HLS playlist and its segment
 //   subs.playpex-test.dev    /<n>.srt
 //   img.playpex-test.dev     /logo.png, /poster.png
+//   api.playpex-test.dev     Stremio's account API: /api/login (stremio@example.test / right-pass), /api/addonCollectionGet,
+//                            /api/logout (counted in `loggedOut`)
 //   loop.playpex-test.dev    resolves to 127.0.0.1 (never reachable by plugins); debrid's /dl/evil redirects there
 //
 //   start() → Promise<{ port, url(path), http (the start option plugins.http), counts, asked, stop() }> | null without openssl
@@ -67,6 +69,7 @@ function start() {
         { type: 'series', id: 'needs', name: 'Needs a thing', extra: [{ name: 'token', isRequired: true }] },
         { type: 'music', id: 'songs', name: 'Songs' }
       ],
+      addonCatalogs: [{ type: 'all', id: 'community', name: 'Community add-ons' }],
       behaviorHints: { configurable: true, configurationRequired: false, extra: configured ? 'yes' : 'no' }
     };
   }
@@ -147,6 +150,15 @@ function start() {
     if (rest === '/stream/movie/tt0000001.json') {
       return json(res, { streams: STREAMS(), cacheMaxAge: 3600, staleRevalidate: 60, staleError: 600 });
     }
+    if (rest === '/addon_catalog/all/community.json') {
+      return json(res, { addons: [
+        { transportUrl: at('addon', '/subs-only/manifest.json'), manifest: { id: 'org.test.subsonly', name: 'Subs Only', version: '0.1.0', types: ['movie'], idPrefixes: ['tt'], resources: ['subtitles'], catalogs: [] } },
+        { transportUrl: 'https://addon.playpex-test.dev:' + port + '/songs/manifest.json', manifest: { id: 'org.test.songs', name: 'Songs', version: '1.0.0', types: ['music'], resources: ['catalog'], catalogs: [] } }
+      ] });
+    }
+    if (rest === '/stream/movie/tt1000900.json') {
+      return json(res, { streams: [{ name: 'Fake\n1080p', title: 'Found.Heat.1995.1080p.WEB.x264.AAC-FAKE\n👤 40', infoHash: 'd'.repeat(40) }] });
+    }
     if (rest === '/stream/movie/tt0000009.json') {
       return json(res, { streams: [{ title: 'x'.repeat(3 * 1024 * 1024), infoHash: 'c'.repeat(40) }] });
     }
@@ -165,10 +177,46 @@ function start() {
     res.end('<html>not here</html>');
   }
 
+  var account = { loggedOut: 0 };
+
+  function stremioApi(req, res, p) {
+    var chunks = [];
+    req.on('data', function (c) { chunks.push(c); });
+    req.on('end', function () {
+      var body = {};
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) {}
+      if (p === '/api/login') {
+        return json(res, body.email === 'stremio@example.test' && body.password === 'right-pass' ?
+          { result: { authKey: 'auth-123', user: { email: body.email } } } : { error: { code: 3, message: 'Wrong passphrase', wrongPass: true } });
+      }
+      if (p === '/api/logout') {
+        account.loggedOut++;
+        return json(res, { result: { success: true } });
+      }
+      if (p === '/api/addonCollectionGet') {
+        if (body.authKey !== 'auth-123') {
+          return json(res, { error: { code: 1, message: 'Session does not exist' } });
+        }
+        return json(res, { result: { addons: [
+          { transportUrl: at('addon', '/cfg=IMPORTED9/manifest.json'), manifest: manifest(true), flags: {} },
+          { transportUrl: at('addon', '/subs-only/manifest.json'), manifest: { id: 'org.test.subsonly', name: 'Subs Only', version: '0.1.0', types: ['movie'], idPrefixes: ['tt'], resources: ['subtitles'], catalogs: [] }, flags: {} },
+          { transportUrl: at('addon', '/manifest.json'), manifest: Object.assign(manifest(false), { id: 'com.linvo.cinemeta', name: 'Cinemeta' }), flags: { official: true, protected: true } },
+          { transportUrl: 'http://127.0.0.1:11470/local-addon/manifest.json', manifest: { id: 'org.stremio.local', name: 'Local Files', version: '1.0.0', resources: ['meta', 'stream'], types: ['movie'] }, flags: { official: true } },
+          { transportUrl: at('addon', '/songs/manifest.json'), manifest: { id: 'org.test.songs', name: 'Songs', version: '1.0.0', types: ['music'], resources: ['catalog'], catalogs: [{ type: 'music', id: 's', name: 'S' }] }, flags: {} }
+        ] } });
+      }
+      res.statusCode = 404;
+      res.end();
+    });
+  }
+
   var server = https.createServer({ key: tls.key, cert: tls.cert }, function (req, res) {
     var url = new URL(req.url, 'https://x'), host = String(req.headers.host || '').split('.')[0];
     counts[host + url.pathname] = (counts[host + url.pathname] || 0) + 1;
     asked.push(host + url.pathname);
+    if (host === 'api') {
+      return stremioApi(req, res, url.pathname);
+    }
     if (host === 'addon') {
       return addon(res, url.pathname);
     }
@@ -237,6 +285,8 @@ function start() {
         http: function () { return { lookup: lookup, ports: [port], ca: tls.cert, allowAddresses: [ADDRESS] }; },
         counts: counts,
         asked: asked,
+        account: account,
+        apiBase: 'https://api.playpex-test.dev:' + port,
         film: FILM,
         version: version,
         stop: function () {

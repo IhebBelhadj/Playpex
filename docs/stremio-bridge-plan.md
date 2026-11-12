@@ -1,6 +1,6 @@
 # Stremio add-on bridge: Stremio add-ons as Playpex plugins
 
-Status: proposed 2026-11-12, **built the same day** (uncommitted). Step 0, the spike, done for every shape but the debrid one (results §12.1). Step 1 is the plugin-layer prerequisites (`docs/plugin-layer-plan.md`). Steps 1b–7 are built, with the deviations listed after the steps (§12.2). Verified on a fake add-on (`test/stremio.test.js`, 13 tests) and against the real add-ons of the spike (Torrentio, OpenSubtitles v3, Anime Kitsu, Cinemeta: install, Play, subtitles, Movies rows, a Kitsu section, title page and episode played from Torrentio). Not seen yet: the TV and Playpex Mobile drawing a bridged add-on's rows and pages (they use the existing templates), and a real debrid account (the redirects are tested on a fake debrid service). Step 8 is left for later. Asked by the user after a comparison with Plex, Stremio and Kodi: Playpex's plugin system is safer and better managed than Stremio's add-ons, but has about ten plugins against Stremio's thousands of add-ons. A bridge brings in that ecosystem. A Kodi add-on bridge (a sandboxed Python runtime in a container) was discussed the same day and put off: not in this plan.
+Status: proposed 2026-11-12, **built the same day** (uncommitted). Step 0, the spike, done for every shape but the debrid one (results §12.1). Step 1 is the plugin-layer prerequisites (`docs/plugin-layer-plan.md`). Steps 1b–7 are built, with the deviations listed after the steps (§12.2). Verified on a fake add-on (`test/stremio.test.js`, 13 tests) and against the real add-ons of the spike (Torrentio, OpenSubtitles v3, Anime Kitsu, Cinemeta: install, Play, subtitles, Movies rows, a Kitsu section, title page and episode played from Torrentio). Playpex TV checked the same day with the scenario `apps/tv/scripts/scenarios/stremio.js` (13 checks against real add-ons: Kitsu's section, its posters only through the server's image proxy, its genre filter, a title page whose `kitsu:` id survives the address, an episode opening the source picker with Torrentio's torrents, Cinemeta's rows in Movies; `STREMIO_SECTION=<id> STREMIO_ROWS=<id> npx electron scripts/scenario.js stremio --server <url>`). Not seen yet: Playpex Mobile (needs a phone), and a real debrid account (the redirects are tested on a fake debrid service). Step 8 built the same day too (§12.3), except archive streams. Asked by the user after a comparison with Plex, Stremio and Kodi: Playpex's plugin system is safer and better managed than Stremio's add-ons, but has about ten plugins against Stremio's thousands of add-ons. A bridge brings in that ecosystem. A Kodi add-on bridge (a sandboxed Python runtime in a container) was discussed the same day and put off: not in this plan.
 
 This plan **revises decision H of `docs/providers-plan.md`** ("a Stremio add-on bridge: later, as a plugin, if the host API allows it (it needs any host: against the per-host rule)"). §4 and decision B explain how it fits the per-host rule. It builds on the plugin system (`docs/plugins-plan.md`, P0–P6 done), the play pipeline and the Play chooser (`docs/providers-plan.md` §5), HLS sources (`docs/providers-plan.md` §8) and the plugin templates (`docs/plugins/tv.md`). Read those, the root `CLAUDE.md`, `apps/server/CLAUDE.md` and `docs/plugins/security.md` first.
 
@@ -360,6 +360,28 @@ The script and its recordings are outside the repository: `~/projects/playpex-sp
   - Countries (`countryWhitelist`): the region isn't passed yet, so these streams are kept.
   - The health notice after 7 days of failures.
   - The Plugins list's Stremio filter: the badge is there.
+
+### 12.3 Step 8 (built 2026-11-12, uncommitted)
+- **Import from Stremio** (`lib/plugins/stremio/account.js`, decision G).
+  - Routes: `POST /admin/plugins/managed/stremio/import { email, password }` → `{ session, addons }`, then `POST …/import/{session} { keys }` → `{ installed, failed }`.
+  - The server signs in to Stremio's account API (`api.strem.io`: `login`, `addonCollectionGet`) and signs out (`logout`) before it answers. The password and Stremio's session are never stored, logged or answered.
+  - The add-ons' addresses stay on the server in the import session (15 minutes, used once). The dashboard sees names, hosts and what each offers.
+  - Stremio's own add-ons come unticked. Local ones (`127.0.0.1:11470`) and those Playpex can't use can't be ticked.
+  - Each chosen add-on installs through the bridge's inspect and install, accepted.
+  - Dashboard: the Stremio add-on tab's "Or import the add-ons of my Stremio account" (`components/stremio-import.tsx`).
+- **Up next by `bingeGroup`.**
+  - Plugin sources carry `bingeGroup` (`plugin-api.schema.json`: magnet, http, hls), and the pipeline's sources too (`PlaySource.bingeGroup`).
+  - `PlaySourcesRequest.bingeGroup` ranks that group's sources first, a file on this server still before them (`lib/play/index.js#sameGroupFirst`).
+  - Playpex TV (`PlaybackRequest.bingeGroup`, `EpisodePlaybackService.bestSource(next, group)`) and Playpex Mobile (`UpNext`, `findSources`) send the group of what plays.
+- **Search.** A bridged add-on with a movie search catalog answers `sources.search`: its first three films, and every bridged add-on's streams for them (`stremio.streams`).
+- **`addon_catalog`.**
+  - `cleanManifest` keeps `addonCatalogs`, and `clean('addon_catalog')` keeps the add-ons listed.
+  - `GET /admin/plugins/{id}/stremio/addons` offers them as an import does, none ticked. A listed address that holds a configuration is someone else's and can't be installed.
+  - Dashboard: the plugin page's "Add-ons it lists".
+- **Found on the way:**
+  - `configured` now means a configuration-like path (a segment with `=` `|` `,` `%` `{`, or of 24+ characters). Before, any path counted, which marked add-ons living under a path (Public Domain Movies) as configured.
+  - A server update whose rebuilt add-on asks for more no longer stops it. The add-on is rebuilt at once on the new code with its permissions as they were, and the bigger build waits under Check for updates (`lib/plugins/managed#refresh`).
+- **Not built: archive streams** (`rarUrls`, `zipUrls`…). The server would have to unpack archives over HTTP, which is big work used by few add-ons (mostly Usenet through debrid).
 
 ## 13. Open questions
 - **Stremio's own servers.** Do add-ons hosted on `*.strem.fun` / `*.strem.io` rate-limit a server that asks for every title a household browses? The step-0 spike measures this. Answer: the cache of §6.1, plus asking only when a title page opens rather than on focus. Spike (§12.1): twelve Torrentio titles in a row, no refusal or slowdown; it sends an hour's cache itself.

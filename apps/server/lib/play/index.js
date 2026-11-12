@@ -294,6 +294,23 @@ function contextOf(title, services, options) {
 }
 
 /**
+ * Up next (PlaySourcesRequest.bingeGroup): the sources of the group the last
+ * episode played from first, in their order (a Stremio add-on's release style);
+ * a file on this server stays first
+ */
+function sameGroupFirst(list, group) {
+  if (typeof group !== 'string' || !group || group.length > 200) {
+    return list;
+  }
+  var local = list.filter(onDisk),
+    same = list.filter(function (s) { return !onDisk(s) && s.bingeGroup === group; });
+  if (!same.length) {
+    return list;
+  }
+  return local.concat(same, list.filter(function (s) { return local.indexOf(s) === -1 && same.indexOf(s) === -1; }));
+}
+
+/**
  * The sources of a title for a profile, best first.
  * @param {object} body       the request (titleOf)
  * @param {object} services   lib/services
@@ -313,7 +330,7 @@ function sources(body, services, options) {
           return bridge().rank(title, rank(unique, context), context);
         });
       }).then(function (ranked) {
-        var list = ranked.sources;
+        var list = sameGroupFirst(ranked.sources, body && body.bingeGroup);
         errors = errors.concat(ranked.errors);
         if (list.length) {
           list[0].badges = list[0].badges.concat('best');
