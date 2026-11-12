@@ -327,6 +327,59 @@
               "description": "API 1.5: sources of one group (an add-on and a release style) play one after another: Up next prefers the next episode's source of the group the last one played from",
               "type": "string",
               "maxLength": 200
+            },
+            "archive": {
+              "description": "API 1.5: the video is a file inside an archive on the web (its url is the first part): the server reads the archive's headers with ranges and streams the file, seeking included. Only stored (uncompressed) files: rar (4 and 5, several volumes in order), zip (stored entries; parts joined), tar (parts joined). Every part's host is checked like url's",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "format",
+                "parts"
+              ],
+              "properties": {
+                "format": {
+                  "enum": [
+                    "rar",
+                    "zip",
+                    "tar"
+                  ]
+                },
+                "parts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 200,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "url"
+                    ],
+                    "properties": {
+                      "url": {
+                        "$ref": "#/$defs/webUrl"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                },
+                "fileIndex": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "The file's place in the archive's list (Stremio's fileIdx)"
+                },
+                "fileMustInclude": {
+                  "type": "array",
+                  "maxItems": 10,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "description": "Words the file's name must hold (the first match plays); else the largest video"
+                }
+              }
             }
           }
         },

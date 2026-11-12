@@ -168,6 +168,8 @@ function learnFrom(plugin, answer) {
     if (s.url && /^https:/i.test(s.url)) {
       streams.push(s.url);
     }
+    // an archive's parts (https only: archiveOf refuses the others)
+    ((s.archive && s.archive.parts) || []).forEach(function (p) { streams.push(p.url); });
   });
   (answer.subtitles || []).forEach(function (s) {
     streams.push(s.url);

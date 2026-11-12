@@ -325,6 +325,12 @@ function streamOf(s) {
     out.url = webUrl(s.url);
     var proxy = isObject(hints.proxyHeaders) ? hints.proxyHeaders : {};
     out.headers = headersOf(proxy.request);
+  } else if (archiveOf(s)) {
+    // a file inside an archive on the web (rar / zip / tar streamed by the server; 7z / tgz can't be seeked: 'other')
+    var a = archiveOf(s);
+    out.kind = a.format === '7zip' || a.format === 'tgz' ? 'other' : 'archive';
+    out.archive = a;
+    out.headers = headersOf((isObject(hints.proxyHeaders) ? hints.proxyHeaders : {}).request);
   } else if (typeof s.ytId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(s.ytId)) {
     out.kind = 'youtube';
     out.ytId = s.ytId;
@@ -332,6 +338,32 @@ function streamOf(s) {
     out.kind = 'external';
   } else {
     out.kind = 'other';
+  }
+  return out;
+}
+
+var ARCHIVES = { rarUrls: 'rar', zipUrls: 'zip', tarUrls: 'tar', '7zipUrls': '7zip', tgzUrls: 'tgz' };
+
+/** A Stream's archive: { format, parts: [{ url, size? }], fileIndex?, fileMustInclude? } or null */
+function archiveOf(s) {
+  var key = Object.keys(ARCHIVES).filter(function (k) { return Array.isArray(s[k]) && s[k].length; })[0];
+  if (!key) {
+    return null;
+  }
+  var parts = s[key].slice(0, 200).map(function (p) {
+    var url = webUrl(isObject(p) ? p.url : p, true);
+    return url ? Object.assign({ url: url }, isObject(p) && int(p.bytes, 1) ? { size: int(p.bytes, 1) } : {}) : null;
+  });
+  if (parts.some(function (p) { return !p; })) {
+    return null;   // a part Playpex can't fetch (plain http, not a URL): the whole archive can't play
+  }
+  var out = { format: ARCHIVES[key], parts: parts };
+  if (int(s.fileIdx, 0, 100000) !== null) {
+    out.fileIndex = int(s.fileIdx, 0, 100000);
+  }
+  var must = strings([].concat(s.fileMustInclude || []), 10, 200);
+  if (must.length) {
+    out.fileMustInclude = must;
   }
   return out;
 }

@@ -289,6 +289,26 @@ test('Up next: the sources of the group the last episode played from come first'
   });
 });
 
+test('a film inside a rar of three volumes: played with ranges through the server; 7z dropped', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  var src;
+  return call('POST', '/play/sources', { kind: 'movie', tmdbId: 2, imdbId: 'tt0000002', title: 'Film', year: 2020 }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var mine = r.json.sources.filter(function (s) { return s.plugin === id; });
+    assert.equal(mine.length, 1, '7z: dropped');
+    src = mine[0];
+    assert.ok(src.notes.some(function (n) { return /rar archive/.test(n); }));
+    return call('GET', '/media/' + src.ref, undefined, { Range: 'bytes=100000-210000' });
+  }).then(function (r) {
+    assert.equal(r.status, 206, r.text.slice(0, 200));
+    assert.match(r.headers['content-range'], new RegExp('/' + addon.film.length + '$'), 'the film\'s size, not a volume\'s');
+    assert.ok(r.raw.equals(addon.film.subarray(100000, 210001)), 'the film\'s bytes, across two volumes');
+    assert.ok(addon.counts['cdn/rar/film.part3.rar'] >= 1, 'every volume\'s headers read');
+  });
+});
+
 test('Play again: its cached answer (cacheMaxAge), not asked twice', function (t) {
   if (skip) {
     return t.skip('no openssl');

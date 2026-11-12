@@ -44,7 +44,7 @@ Titles with an IMDb id that TMDB knows open Playpex's own movie and show pages. 
 
 ### What Playpex doesn't use
 - `externalUrl` streams (they open a web page).
-- Usenet and archive streams.
+- Usenet streams (`nzbUrl`), and archives that can't be seeked (`7zipUrls`, `tgzUrls`). Videos in `rarUrls`, `zipUrls` and `tarUrls` play when they're stored (uncompressed), as scene releases are: the server reads the archive and streams the file. A compressed one fails when you play it.
 - YouTube streams in Play. They do play from an add-on's own title pages.
 - Types Playpex has no place for (`music`…).
 - Streams over plain `http`.
@@ -74,5 +74,6 @@ Nothing to do: Playpex speaks the [Stremio add-on protocol](https://github.com/S
 - **`cacheMaxAge`** on answers. Playpex keeps an answer that long (at most 6 hours for streams, a day for catalogs) and asks again with `staleRevalidate`.
 - **`imdb_id` on metas** (also on videos: `imdb_id`, `imdbSeason`, `imdbEpisode`) when your ids aren't IMDb's. Playpex then opens its own pages for titles TMDB knows.
 - **`bingeGroup`** on streams of one release style, so Up next keeps to it.
+- **Archives stored, not compressed** (`rar -m0`, `zip -0`), with the parts in order and `fileIdx` or `fileMustInclude` when an archive holds several videos. Use https for every part.
 - **Configuration in the path** as `key=value` pairs or one encoded segment. Playpex recognises those as a configuration and keeps the address secret. A plain path, such as `/my-addon/manifest.json`, is only where your add-on lives.
 - **Catalogs with `extra`**: `skip` (paged rows; Playpex learns your page size from the first page), `genre` with its `options` (a filter), `search` (the search page). A required `extra` other than these makes the catalog unusable.

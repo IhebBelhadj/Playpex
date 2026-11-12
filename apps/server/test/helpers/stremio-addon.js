@@ -9,7 +9,8 @@
 //                            catalogs (paged by skip, genre, search), meta of its own fk: ids, streams, subtitles;
 //                            /stream/movie/tt0000009.json answers 3 MB (refused)
 //   debrid.playpex-test.dev  a debrid service: /dl/<n> redirects (302) to the CDN (a host no answer named)
-//   cdn.playpex-test.dev     the files: /film.mp4 with byte ranges; /v.m3u8 a tiny HLS playlist and its segment
+//   cdn.playpex-test.dev     the files: /film.mp4 with byte ranges; /v.m3u8 a tiny HLS playlist and its segment;
+//                            /rar/film.partN.rar the same film stored in a rar of 3 volumes (/stream/movie/tt0000002.json)
 //   subs.playpex-test.dev    /<n>.srt
 //   img.playpex-test.dev     /logo.png, /poster.png
 //   api.playpex-test.dev     Stremio's account API: /api/login (stremio@example.test / right-pass), /api/addonCollectionGet,
@@ -47,7 +48,10 @@ function start() {
     fs.rmSync(dir, { recursive: true, force: true });
     return Promise.resolve(null);
   }
-  var port = 0, counts = {}, asked = [], version = { value: '1.2' };
+  var port = 0, counts = {}, asked = [], version = { value: '1.2' },
+    // the film stored in three rar volumes (test/helpers/rar-writer.js)
+    rarVolumes = require('./rar-writer').write([{ name: 'Film.2020.nfo', bytes: Buffer.from('nfo') },
+      { name: 'Film.2020.1080p.WEB.x264.AAC-FAKE.mkv', bytes: FILM }], { version: 5, volumeBytes: 100 * 1024 });
 
   function at(host, p) {
     return 'https://' + host + '.playpex-test.dev:' + port + p;
@@ -156,6 +160,14 @@ function start() {
         { transportUrl: 'https://addon.playpex-test.dev:' + port + '/songs/manifest.json', manifest: { id: 'org.test.songs', name: 'Songs', version: '1.0.0', types: ['music'], resources: ['catalog'], catalogs: [] } }
       ] });
     }
+    if (rest === '/stream/movie/tt0000002.json') {
+      // a film inside a stored rar of three volumes on the CDN, a 7z one (dropped)
+      return json(res, { streams: [
+        { name: 'Fake RAR', title: 'Film.2020.1080p.WEB.x264.AAC-FAKE', rarUrls: [1, 2, 3].map(function (n) { return { url: at('cdn', '/rar/film.part' + n + '.rar') }; }),
+          behaviorHints: { filename: 'Film.2020.1080p.WEB.x264.AAC-FAKE.mkv' } },
+        { name: 'Fake 7z', title: 'Film 2020 in 7z', '7zipUrls': [at('cdn', '/film.7z')] }
+      ] });
+    }
     if (rest === '/stream/movie/tt1000900.json') {
       return json(res, { streams: [{ name: 'Fake\n1080p', title: 'Found.Heat.1995.1080p.WEB.x264.AAC-FAKE\n👤 40', infoHash: 'd'.repeat(40) }] });
     }
@@ -238,6 +250,18 @@ function start() {
       if (url.pathname === '/v.m3u8') {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         return res.end('#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\nhttps://parts.playpex-test.dev:' + port + '/seg0.ts\n#EXT-X-ENDLIST\n');
+      }
+      var vol = /^\/rar\/film\.part(\d)\.rar$/.exec(url.pathname);
+      if (vol && rarVolumes[vol[1] - 1]) {
+        var bytes = rarVolumes[vol[1] - 1], rr = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range || '');
+        res.setHeader('Accept-Ranges', 'bytes');
+        if (rr) {
+          var rs = parseInt(rr[1], 10), re = rr[2] ? Math.min(parseInt(rr[2], 10), bytes.length - 1) : bytes.length - 1;
+          res.statusCode = 206;
+          res.setHeader('Content-Range', 'bytes ' + rs + '-' + re + '/' + bytes.length);
+          return res.end(bytes.subarray(rs, re + 1));
+        }
+        return res.end(bytes);
       }
       if (url.pathname === '/film.mp4') {
         var range = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range || '');

@@ -59,6 +59,10 @@ function sourceAllowed(plugin, source) {
   if (source.kind !== 'magnet') {
     try {
       http.target(plugin, source.url, { stream: true });
+      // an archive's every part (lib/media/archive.js), like its url
+      ((source.archive && source.archive.parts) || []).forEach(function (part) {
+        http.target(plugin, part.url, { stream: true });
+      });
       return true;
     } catch (e) {
       return false;

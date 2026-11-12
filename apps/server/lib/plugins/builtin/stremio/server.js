@@ -143,6 +143,31 @@ function sourceOf(s, options) {
     out.notes = notes.slice(0, 6);
     return out;
   }
+  if (s.kind === 'archive') {
+    // a stored file inside a rar / zip / tar: the server reads the archive and streams the file
+    var arch = { kind: 'http', url: s.archive.parts[0].url, label: label, archive: { format: s.archive.format, parts: s.archive.parts } };
+    if (s.archive.fileIndex !== undefined) {
+      arch.archive.fileIndex = s.archive.fileIndex;
+    }
+    if (s.archive.fileMustInclude) {
+      arch.archive.fileMustInclude = s.archive.fileMustInclude;
+    }
+    if (s.headers) {
+      arch.headers = s.headers;
+    }
+    if (size) {
+      arch.size = size;
+    }
+    if (quality) {
+      arch.quality = quality;
+    }
+    if (s.bingeGroup) {
+      arch.bingeGroup = cut(s.bingeGroup, 200);
+    }
+    notes.push('In a ' + s.archive.format + ' archive');
+    arch.notes = notes.slice(0, 6);
+    return arch;
+  }
   if (s.kind === 'youtube' && options.embed) {
     return { kind: 'embed', provider: 'youtube', id: s.ytId, label: label };
   }
