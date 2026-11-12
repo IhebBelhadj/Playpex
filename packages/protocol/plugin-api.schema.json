@@ -2372,6 +2372,11 @@
             },
             "size": {
               "type": "integer"
+            },
+            "hash": {
+              "description": "API 1.5: the file's OpenSubtitles hash (16 hex digits), when the server has its bytes on disk",
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
             }
           }
         },

@@ -12,6 +12,7 @@
     "settings.d.ts",
     "plugins.js",
     "plugins.d.ts",
+    "stremio.js",
     "plugin.schema.json",
     "plugin-api.schema.json",
     "repository.schema.json",

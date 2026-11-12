@@ -69,7 +69,7 @@ liveWeb.start({ channels: arg('channels', 300), days: 2 }).then(function (w) {
     })();
   });
 }).then(function (info) {
-  return pluginSettings.update('m3u', { values: { playlist: web.playlist, guide: web.guide } }).then(function () { return info; });
+  return pluginSettings.update('m3u', { values: { playlists: [{ name: 'Test IPTV', url: web.playlist, guide: web.guide }] } }).then(function () { return info; });
 }).then(function (info) {
   return request('POST', '/profiles', { name: 'Tester' }).then(function () {
     return request('GET', '/live/m3u/channels');

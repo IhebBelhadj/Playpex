@@ -21,6 +21,7 @@ export interface SettingValues {
   'player.subtitleForcedOnly': boolean;
   'remote.allowed': boolean;
   'cast.allowed': boolean;
+  'cast.shareTo': string | null;
 }
 
 export type SettingKey = keyof SettingValues;

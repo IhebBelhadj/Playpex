@@ -55,7 +55,14 @@ function search(providerId, query, codes) {
   var id = providerId.slice(PREFIX.length),
     title = query.season ? { kind: 'episode', imdbId: query.imdbId, season: query.season, episode: query.episode } :
       { kind: 'movie', imdbId: query.imdbId };
-  return plugins.runHook('subtitles.providers', { title: title, languages: codes || [] }, NO_ADULTS, { only: id }).then(function (r) {
+  var input = { title: title, languages: codes || [] };
+  // the file playing, when the client named it (API 1.5: its OpenSubtitles hash when its bytes are on disk)
+  ['fileName', 'size', 'hash'].forEach(function (k) {
+    if (query[k] !== undefined) {
+      input[k] = query[k];
+    }
+  });
+  return plugins.runHook('subtitles.providers', input, NO_ADULTS, { only: id }).then(function (r) {
     if (!r.results.length) {
       throw new Error((r.errors[0] ? r.errors[0].message : 'no plugin ' + id));
     }
@@ -76,7 +83,8 @@ function fetch(providerId, ref) {
   if (!entry || PREFIX + entry.pluginId !== providerId || !plugin || plugin.state !== 'enabled') {
     return Promise.reject(new Error('this subtitle is gone: search again'));
   }
-  return http.request(plugin, { url: entry.url, responseType: 'bytes' }).then(function (r) {
+  // a host its answer named counts (a bridged add-on's subtitle files: lib/plugins/stremio)
+  return http.request(plugin, { url: entry.url, responseType: 'bytes' }, null, 'stream').then(function (r) {
     if (r.value.status !== 200) {
       throw new Error('HTTP ' + r.value.status);
     }

@@ -42,6 +42,8 @@ src/components/sources-notice.tsx SourcesNotice (Overview, while `overview.sourc
 src/components/metadata-providers.tsx MetadataProviders (Settings › Metadata, under its fields: the plugins with metadata.details /
                         metadata.title from GET /admin/plugins `hooks`, in the server's order; ↑ / ↓ and a switch each, saved at once:
                         PUT /admin/settings {metadata: {order | disabled}}; docs/providers-plan.md §7.2)
+src/components/youtube-cast.tsx  YouTubeCastPanel (Settings › Casting, under `cast.enabled` / `cast.youtube`: GET /cast/youtube every 10 s, key
+                        `cast-youtube`: the screens in the YouTube app's Cast list and the phones connected to each)
 src/components/dlna.tsx   DlnaPanel (Settings › DLNA, under its two settings: GET /admin/dlna every 10 s: status, the folders'
                         switches (PATCH /admin/library/folders/{id} {dlna}; adults-only ones disabled), "Seen by")
 src/components/common.tsx  PageHeader, Stat, Empty, QueryError, Loading, Spinner, Dot, Confirm (AlertDialog), Mono
@@ -182,11 +184,13 @@ src/components/plugin-common.tsx  what both share: PluginIcon, PluginStateBadge,
                         as checkboxes → `optional`); a repository package: "Trust and add")
 src/components/plugin-settings.tsx  a plugin's options rendered from its manifest (GET /admin/plugins/{id}/settings, key
                         ['admin-plugin-settings', id]): PluginServerSettings (its page's Settings) and PluginProfiles (its Profiles:
-                        a profile picker, "Use it for <profile>" (PUT …/profiles {shown}), "What it may do for <profile>": a switch per
+                        "Treat as adults" (pages/plugin.tsx TreatAsAdults, above it: PATCH /admin/plugins/{id} {adults}; on and locked for a
+                        plugin whose manifest declares adults; not for developer copies), a profile picker, "Use it for <profile>" (PUT …/profiles {shown}), "What it may do for <profile>": a switch per
                         personal permission (PUT …/grants), then its profile settings); groups, "Show advanced", visibleIf / enabledIf
-                        against the draft, switch / choice / slider / number / text / url (a monospace address field; `grantsHost`: a line saying it lets the plugin reach that host) / secret (never shown: "Set") / action (POST
+                        against the draft, switch / choice / slider / number / text / url (a monospace address field; `grantsHost`: a line saying it lets the plugin reach that host) / list (plugin API 1.5: `EntryList`, collapsible cards of an entry's fields with ↑ / ↓ / Remove + Undo, "Add <itemLabel>" up to `maxItems`; `ValueList`, chips and a field) / secret (never shown: "Set") / action (POST
                         …/settings/{key}/run, its toasts shown); edits are a draft per scope saved together (PUT; a refusal's
                         `errors` per field: ApiError.fields)
+                        Stremio add-ons (docs/stremio-bridge-plan.md): Install a plugin's "Stremio add-on" tab (pages/plugins.tsx SourceStep, `?install=stremio` opens it: the Overview's sources notice links there) → POST /admin/plugins/managed/stremio/inspect → PackagePreview with `StremioSummary` (components/plugin-common.tsx: what it adds, where each catalog shows, what isn't used, Configure on <host>); a managed plugin's preview says "Made by Playpex" instead of Unsigned; `originOf` / `isStremio` ("Stremio add-on" badge and Origin); the plugin page's Versions tab: Change configuration (PUT /admin/plugins/{id}/managed with a new address) beside Check for updates; catalog placements are its plain Settings (choices).
 src/components/plugin-accounts.tsx  PluginAccounts (its Accounts): each link's accounts (GET /admin/plugins/{id}/links, key
                         ['admin-plugin-links', id]), Link → a dialog (POST …/start: a code + its URL, polled every 3 s with …/progress;
                         or a custom link's form → …/submit), Unlink (Confirm)

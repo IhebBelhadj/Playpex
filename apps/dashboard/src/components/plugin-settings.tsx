@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, RotateCcw } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, QueryError } from '@/components/common'
@@ -16,8 +16,10 @@ import { ApiError, api, errorMessage, unwrap, type Schemas } from '@/lib/api'
 // personal permissions, its profile-scope settings). Groups, "Show advanced"
 // for `level: advanced`, `visibleIf` / `enabledIf` against the values being
 // edited, secrets entered but never shown, `action` buttons that call the
-// plugin and show its toasts. Edits are a draft per tab, saved together
-// (the server takes all or nothing and answers per field what it refused).
+// plugin and show its toasts, `list` settings (plugin API 1.5) as entries the
+// admin adds, reorders and removes (or chips for a list of plain values).
+// Edits are a draft per tab, saved together (the server takes all or nothing
+// and answers per field what it refused).
 
 type PluginSettings = Schemas['PluginSettings']
 type Definition = Schemas['PluginSettingDefinition']
@@ -308,6 +310,29 @@ function Field({
     return <ActionField definition={d} plugin={plugin} disabled={disabled} />
   }
 
+  if (d.type === 'list') {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label>
+            {d.label} {changed && <span className="text-xs text-warning">(changed)</span>}
+          </Label>
+          {Array.isArray(value) && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {value.length} / {d.maxItems}
+            </span>
+          )}
+        </div>
+        {d.fields ? (
+          <EntryList definition={d} value={Array.isArray(value) ? (value as Values[]) : []} disabled={disabled} plugin={plugin} onChange={onChange} />
+        ) : (
+          <ValueList definition={d} value={Array.isArray(value) ? value : []} disabled={disabled} onChange={onChange} />
+        )}
+        {note}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -417,6 +442,226 @@ function Field({
         />
       )}
       {note}
+    </div>
+  )
+}
+
+/** A field's value in a new entry, or when reset */
+function fieldDefault(f: Definition): unknown {
+  if (f.default !== undefined) return f.default
+  return f.type === 'text' || f.type === 'url' ? '' : f.type === 'switch' ? false : null
+}
+
+/** A list of entries: each a card of its fields, reordered with ↑ / ↓, removed with an Undo */
+function EntryList({
+  definition: d,
+  value,
+  disabled,
+  plugin,
+  onChange,
+}: {
+  definition: Definition
+  value: Values[]
+  disabled: boolean
+  plugin: string
+  onChange: (value: unknown) => void
+}) {
+  const fields = d.fields ?? []
+  // collapsed entries, by id (new ones, without an id yet, by their place)
+  const [closed, setClosed] = useState<Record<string, boolean>>({})
+  const keyOf = (entry: Values, i: number) => (typeof entry.id === 'string' ? entry.id : `new-${i}`)
+  const titleOf = (entry: Values, i: number) => {
+    const named = d.titleField ? entry[d.titleField] : null
+    return typeof named === 'string' && named.trim() ? named : `${d.itemLabel ?? 'Entry'} ${i + 1}`
+  }
+  const summaryOf = (entry: Values) =>
+    fields
+      .filter((f) => f.type === 'url' && typeof entry[f.key] === 'string' && entry[f.key])
+      .map((f) => {
+        try {
+          return new URL(String(entry[f.key])).host
+        } catch {
+          return String(entry[f.key])
+        }
+      })
+      .join(' · ')
+  const update = (i: number, key: string, v: unknown) =>
+    onChange(value.map((e, j) => (j === i ? { ...e, [key]: v === null ? fieldDefault(fields.find((f) => f.key === key)!) : v } : e)))
+  const move = (i: number, by: number) => {
+    const next = value.slice()
+    const [entry] = next.splice(i, 1)
+    next.splice(i + by, 0, entry)
+    onChange(next)
+  }
+  const remove = (i: number) => {
+    const before = value
+    onChange(value.filter((_, j) => j !== i))
+    toast(`${titleOf(value[i], i)} removed`, { description: 'Save to keep it removed.', action: { label: 'Undo', onClick: () => onChange(before) } })
+  }
+  const add = () => {
+    const entry: Values = {}
+    for (const f of fields) entry[f.key] = fieldDefault(f)
+    onChange([...value, entry])
+  }
+
+  return (
+    <div className="space-y-2">
+      {value.length === 0 && <p className="text-sm text-muted-foreground">None yet.</p>}
+      {value.map((entry, i) => {
+        const key = keyOf(entry, i)
+        const open = !closed[key]
+        const meets = (c?: { key?: string; equals?: unknown }) => !c?.key || entry[c.key] === c.equals
+        return (
+          <div key={key} className="rounded-2xl bg-muted p-3">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium"
+                aria-expanded={open}
+                onClick={() => setClosed((c) => ({ ...c, [key]: open }))}
+              >
+                {open ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
+                <span className="truncate">{titleOf(entry, i)}</span>
+                {!open && <span className="truncate font-mono text-xs font-normal text-muted-foreground">{summaryOf(entry)}</span>}
+              </button>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Move up" disabled={disabled || i === 0} onClick={() => move(i, -1)}>
+                <ChevronUp />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Move down"
+                disabled={disabled || i === value.length - 1}
+                onClick={() => move(i, 1)}
+              >
+                <ChevronDown />
+              </Button>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${titleOf(entry, i)}`} disabled={disabled} onClick={() => remove(i)}>
+                <Trash2 />
+              </Button>
+            </div>
+            {open && (
+              <div className="mt-3 space-y-4 px-1">
+                {fields
+                  .filter((f) => meets(f.visibleIf))
+                  .map((f) => (
+                    <Field
+                      key={f.key}
+                      definition={{ ...f, key: `${d.key}-${key}-${f.key}` }}
+                      value={entry[f.key]}
+                      secretSet={false}
+                      changed={false}
+                      disabled={disabled || !meets(f.enabledIf)}
+                      plugin={plugin}
+                      onChange={(v) => update(i, f.key, v)}
+                    />
+                  ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      <Button type="button" variant="outline" size="sm" disabled={disabled || value.length >= (d.maxItems ?? Infinity)} onClick={add}>
+        <Plus /> Add {(d.itemLabel ?? 'entry').toLowerCase()}
+      </Button>
+    </div>
+  )
+}
+
+/** A list of plain values: chips, a field to add one (Enter) */
+function ValueList({
+  definition: d,
+  value,
+  disabled,
+  onChange,
+}: {
+  definition: Definition
+  value: unknown[]
+  disabled: boolean
+  onChange: (value: unknown) => void
+}) {
+  const item = d.item
+  const [text, setText] = useState('')
+  const full = value.length >= (d.maxItems ?? Infinity)
+  const add = (raw: unknown) => {
+    if (raw === '' || raw === null || raw === undefined || full) return
+    if (d.unique && value.some((v) => String(v).toLowerCase() === String(raw).toLowerCase())) return setText('')
+    onChange([...value, raw])
+    setText('')
+  }
+  const label = (v: unknown) => item?.options?.find((o) => o.value === v)?.label ?? String(v)
+  const long = value.some((v) => String(v).length > 30)
+
+  return (
+    <div className="space-y-2">
+      {value.length > 0 && (
+        <div className={long ? 'space-y-1' : 'flex flex-wrap gap-1.5'}>
+          {value.map((v, i) => (
+            <span
+              key={`${String(v)}-${i}`}
+              className={
+                long
+                  ? 'flex items-center justify-between gap-2 rounded-full bg-muted py-1 pr-1 pl-3 text-sm'
+                  : 'inline-flex items-center gap-1 rounded-full bg-muted py-1 pr-1 pl-3 text-sm'
+              }
+            >
+              <span className={item?.type === 'url' ? 'truncate font-mono text-xs' : 'truncate'}>{label(v)}</span>
+              <button
+                type="button"
+                className="rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                aria-label={`Remove ${label(v)}`}
+                disabled={disabled}
+                onClick={() => onChange(value.filter((_, j) => j !== i))}
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {item?.type === 'choice' ? (
+        <Select value="" disabled={disabled || full} onValueChange={(v) => add(v)}>
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue placeholder={`Add ${(d.itemLabel ?? 'a value').toLowerCase()}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {(item.options ?? [])
+              .filter((o) => !value.includes(o.value))
+              .map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="flex gap-2">
+          <Input
+            type={item?.type === 'number' ? 'number' : item?.type === 'url' ? 'url' : 'text'}
+            className={item?.type === 'url' ? 'font-mono' : undefined}
+            maxLength={item?.maxLength}
+            placeholder={item?.placeholder ?? `Add ${(d.itemLabel ?? 'a value').toLowerCase()}, then Enter`}
+            value={text}
+            disabled={disabled || full}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                add(item?.type === 'number' ? (text === '' ? null : Number(text)) : text.trim())
+              }
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled || full || !text.trim()}
+            onClick={() => add(item?.type === 'number' ? Number(text) : text.trim())}
+          >
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

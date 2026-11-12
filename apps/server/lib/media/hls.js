@@ -139,7 +139,7 @@ function pluginOf(entry) {
   if (!plugin || plugin.state !== 'enabled') {
     return null;
   }
-  return entry.open ? Object.assign(Object.create(plugin), { openStream: true }) : plugin;
+  return entry.open || plugin.openStreams ? Object.assign(Object.create(plugin), { openStream: true }) : plugin;
 }
 
 function entryOf(ref) {

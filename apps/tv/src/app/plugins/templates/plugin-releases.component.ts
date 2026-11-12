@@ -93,7 +93,7 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit {
         let first = page == 1;
         this.set({
           data: first ? data : { ...this.state.data, ...data, releases: [] },
-          releases: first ? data.releases : this.state.releases.concat(data.releases),
+          releases: (first ? [] : this.state.releases).concat(data.releases.map(r => 'image' in r && r.image ? { ...r, image: this.client.asset(this.scope.id, r.image) } : r)),
           page, last: !!data.last || !data.releases.length, loaded: true,
         });
         if (first) {

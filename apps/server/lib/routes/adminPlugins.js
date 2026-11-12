@@ -25,7 +25,8 @@
 //   POST   /admin/plugins/updates/apply         "Update all": those asking for no new permissions → { results }
 //   DELETE /admin/plugins/kept/:id              forget what is kept for a plugin that isn't installed (GET's `kept`)
 //   GET    /admin/plugins/:id                   one plugin, with its listing, requires, exports, changelog
-//   PATCH  /admin/plugins/:id                   { enabled?, updatePolicy? } (an installed plugin)
+//   PATCH  /admin/plugins/:id                   { enabled?, updatePolicy?, adults? } (an installed plugin; adults: the admin's
+//                                               "Treat as adults", stricter only: refused off for a declared adults plugin)
 //   POST   /admin/plugins/:id/rollback          the version kept by the last update → a preview, installed by its token
 //   POST   /admin/plugins/:id/clear             forget everything it kept (storage, secrets, accounts, settings, grants)
 //   POST   /admin/plugins/:id/reload            a developer copy, from its folder again
@@ -33,6 +34,11 @@
 //                                               plugins requiring it: 409 with `dependents`, unless force
 //   GET    /admin/plugins/:id/settings          its options (lib/plugins/settings.js): definitions, server values,
 //                                               which secrets are set, the profiles' values
+//   GET    /admin/plugins/managed               { providers: [{ name, label }] }: what can make managed plugins (§9 of
+//                                               docs/plugin-layer-plan.md)
+//   POST   /admin/plugins/managed/:provider/inspect { input } → a staged preview (+ summary): install it by its token
+//   PUT    /admin/plugins/:id/managed           { input } → a staged preview of that plugin built from a new input
+//   POST   /admin/plugins/:id/managed/check     → a staged preview of a new build, or { upToDate: true }
 //   PUT    /admin/plugins/:id/settings          { profile?, values: { key: value | null } } → the same
 //   POST   /admin/plugins/:id/settings/:key/run an `action` setting → { data, effects }
 //   PUT    /admin/plugins/:id/grants            { profile, permission, granted } a personal permission → its settings
@@ -44,6 +50,7 @@
 //   DELETE /admin/plugins/:id/links/:name?profile=  unlink
 
 var express = require('express'),
+  managed = require('../plugins/managed'),
   fs = require('fs'),
   path = require('path'),
   multipart = require('connect-multiparty'),
@@ -217,6 +224,24 @@ router.post('/plugins/updates/apply', function (req, res) {
 
 // ── one plugin ──────────────────────────────────────────────────────────────
 
+// managed plugins (docs/plugin-layer-plan.md §9): built by a provider of the core from what the admin gives;
+// every answer but the list is a staged preview, installed with POST /plugins/packages/:token/install
+router.get('/plugins/managed', function (req, res) {
+  answer(res, function () { return Promise.resolve({ providers: managed.providers() }); });
+});
+
+router.post('/plugins/managed/:provider/inspect', function (req, res) {
+  answer(res, function () { return managed.inspect(req.params.provider, req.body ? req.body.input : undefined); });
+});
+
+router.put('/plugins/:id/managed', function (req, res) {
+  answer(res, function () { return managed.reconfigure(req.params.id, req.body ? req.body.input : undefined); });
+});
+
+router.post('/plugins/:id/managed/check', function (req, res) {
+  answer(res, function () { return managed.check(req.params.id); });
+});
+
 router.delete('/plugins/kept/:keptId', function (req, res) {
   answer(res, function () { return install.forget(req.params.keptId); });
 });
@@ -228,8 +253,8 @@ router.get('/plugins/:id', function (req, res) {
 router.patch('/plugins/:id', function (req, res) {
   answer(res, function () {
     var body = req.body || {};
-    if (body.enabled === undefined && body.updatePolicy === undefined) {
-      throw Object.assign(new Error('enabled (true or false) or updatePolicy (auto, notify, never or null)'), { code: 'INVALID' });
+    if (body.enabled === undefined && body.updatePolicy === undefined && body.adults === undefined) {
+      throw Object.assign(new Error('enabled (true or false), updatePolicy (auto, notify, never or null) or adults (true or false)'), { code: 'INVALID' });
     }
     if (body.enabled !== undefined && typeof body.enabled !== 'boolean') {
       throw Object.assign(new Error('enabled must be true or false'), { code: 'INVALID' });
@@ -237,6 +262,8 @@ router.patch('/plugins/:id', function (req, res) {
     var first = body.updatePolicy === undefined ? Promise.resolve() :
       install.setUpdatePolicy(req.params.id, body.updatePolicy);
     return first.then(function (v) {
+      return body.adults === undefined ? v : install.setAdults(req.params.id, body.adults);
+    }).then(function (v) {
       return body.enabled === undefined ? v : install.setEnabled(req.params.id, body.enabled);
     });
   });

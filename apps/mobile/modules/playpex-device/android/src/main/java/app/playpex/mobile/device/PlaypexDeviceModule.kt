@@ -2,6 +2,9 @@ package app.playpex.mobile.device
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import android.media.MediaCodecList
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -52,13 +55,16 @@ class PlaypexDeviceModule : Module() {
     Name("PlaypexDevice")
     Events("server", "share")
 
-    /** The text shared to the app when it opened (once: the intent is emptied), else null */
-    Function("takeSharedText") { takeShared(appContext.currentActivity?.intent) }
+    /** What was shared to the app when it opened ({ text, shortcut }: once, the intent is emptied), else null */
+    Function("takeShared") { takeShared(appContext.currentActivity?.intent) }
 
     /** A share while the app runs (singleTask: the same activity gets the new intent) */
     OnNewIntent { intent ->
-      takeShared(intent)?.let { sendEvent("share", mapOf("text" to it)) }
+      takeShared(intent)?.let { sendEvent("share", it) }
     }
+
+    /** The direct share targets: one sharing shortcut per screen ({ id, label }), replacing the last ones */
+    Function("setShareTargets") { targets: List<Map<String, String>> -> setShareTargets(targets) }
 
     Function("startDiscovery") { start() }
     Function("stopDiscovery") { stopAll() }
@@ -81,13 +87,41 @@ class PlaypexDeviceModule : Module() {
     OnDestroy { stopAll() }
   }
 
-  private fun takeShared(intent: Intent?): String? {
+  private fun takeShared(intent: Intent?): Map<String, String?>? {
     if (intent == null || intent.action != Intent.ACTION_SEND) return null
     val text = (intent.getCharSequenceExtra(Intent.EXTRA_TEXT) ?: intent.getStringExtra(Intent.EXTRA_SUBJECT))?.toString()?.trim()
+    // the screen's direct share target, when it came through one
+    val shortcut = intent.getStringExtra(ShortcutManagerCompat.EXTRA_SHORTCUT_ID)
+      ?: intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
     // read once: an activity recreated later (rotation) must not share it again
     intent.removeExtra(Intent.EXTRA_TEXT)
     intent.action = Intent.ACTION_MAIN
-    return if (text.isNullOrEmpty()) null else text.take(8192)
+    return if (text.isNullOrEmpty()) null else mapOf("text" to text.take(8192), "shortcut" to shortcut)
+  }
+
+  private fun setShareTargets(targets: List<Map<String, String>>) {
+    val context = appContext.reactContext ?: return
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+    val icon = IconCompat.createWithResource(context, context.applicationInfo.icon)
+    val ids = mutableListOf<String>()
+    targets.take(4).forEachIndexed { i, t ->
+      val id = t["id"] ?: return@forEachIndexed
+      val label = (t["label"] ?: id).take(40)
+      ids.add(id)
+      val info = ShortcutInfoCompat.Builder(context, id)
+        .setShortLabel(label)
+        .setLongLabel(label + " · Playpex")
+        .setIcon(icon)
+        .setRank(i)
+        .setLongLived(true)
+        .setCategories(setOf(SHARE_CATEGORY))
+        .setIntent(Intent(launch).setAction(Intent.ACTION_VIEW))
+        .build()
+      ShortcutManagerCompat.pushDynamicShortcut(context, info)
+    }
+    // the ones of screens no longer offered go
+    val gone = ShortcutManagerCompat.getDynamicShortcuts(context).map { it.id }.filter { it !in ids }
+    if (gone.isNotEmpty()) ShortcutManagerCompat.removeDynamicShortcuts(context, gone)
   }
 
   private val context: Context
@@ -280,6 +314,8 @@ class PlaypexDeviceModule : Module() {
   class NotAServer : CodedException("It isn’t a Playpex server, or it didn’t answer.")
 
   companion object {
+    // plugins/with-share-targets.js declares the share target of this category
+    const val SHARE_CATEGORY = "app.playpex.mobile.category.SHARE_TARGET"
     private const val TAG = "PlaypexDevice"
     private const val SERVICE_TYPE = "_playpex._tcp."
     private const val DEFAULT_PORT = 28470

@@ -57,7 +57,7 @@ function item(plugin, result, q) {
       year: or(result.year),
       season: or(result.season),
       episode: or(result.episode),
-      poster: or(result.poster),
+      poster: or(require('../plugins/images').apiPath(plugin, result.poster)),
       size: src.size || null,
       quality: src.quality || described.quality,
       codec: src.codec || described.codec,

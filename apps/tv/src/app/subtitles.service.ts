@@ -31,9 +31,11 @@ export class SubtitlesService {
   }
 
   // query: movie or show IMDb id, plus season/episode for TV
-  search(provider:string , query:{imdbId:string, season?:number, episode?:number} , languages = "en,ar,de,es,fr,it")
+  // ref: the media ref playing, so providers can match that exact release (its name, size, hash)
+  search(provider:string , query:{imdbId:string, season?:number, episode?:number, ref?:string} , languages = "en,ar,de,es,fr,it")
     :Observable<{provider:string, subtitles:Subtitle[], unsupported?:boolean}> {
     let params: any = { provider, imdb_id: query.imdbId, languages };
+    if (query.ref) params.ref = query.ref;
     if (query.season) {
       params.season = query.season;
       params.episode = query.episode;

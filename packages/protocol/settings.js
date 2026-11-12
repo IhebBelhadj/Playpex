@@ -37,7 +37,10 @@ var SETTINGS = {
   // The admin may drive this device's UI from the dashboard (docs/remote-control-plan.md §2.6)
   'remote.allowed': { scope: 'device', type: 'boolean', default: true },
   // Phones, the dashboard and other screens may start playback here (docs/cast-plan.md §4.2)
-  'cast.allowed': { scope: 'device', type: 'boolean', default: true }
+  'cast.allowed': { scope: 'device', type: 'boolean', default: true },
+  // Share to Playpex (docs/cast-plan.md §5): the screen (its device id) a link shared to this
+  // device plays on at once; null: ask each time
+  'cast.shareTo': { scope: 'device', type: 'string', nullable: true, pattern: '^[A-Za-z0-9:._-]{1,128}$', default: null }
 };
 
 var SCOPES = ['device', 'profile'];

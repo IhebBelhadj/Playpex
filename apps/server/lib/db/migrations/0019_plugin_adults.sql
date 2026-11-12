@@ -1,0 +1,1 @@
+ALTER TABLE `plugins` ADD `adults` integer DEFAULT false NOT NULL;

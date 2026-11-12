@@ -119,6 +119,18 @@ function runningOn(deviceId) {
   return found;
 }
 
+// What a screen is called: its paired name, else what it is
+function nameOf(id, d) {
+  return d && d.name || (id.indexOf('dashboard-') === 0 ? 'Dashboard' : 'Playpex on ' + require('os').hostname());
+}
+
+/** A screen's name (the YouTube app's Cast list names each screen) */
+function screenName(deviceId) {
+  return require('../auth').listDevices().catch(function () { return []; }).then(function (devices) {
+    return nameOf(deviceId, devices.filter(function (d) { return d.id === deviceId; })[0]);
+  });
+}
+
 /** The screens a sender may cast to: online devices that take casts, `self` marked */
 function screens(req) {
   sweep();
@@ -137,7 +149,7 @@ function screens(req) {
       var control = events.deviceControl(id), d = named[id], c = runningOn(id), s = playing[id];
       return {
         deviceId: id,
-        name: d && d.name || (id.indexOf('dashboard-') === 0 ? 'Dashboard' : 'Playpex on ' + require('os').hostname()),
+        name: nameOf(id, d),
         kind: kindOf(control.client || (d && d.client ? protocol.parseClientHeader(d.client) || { name: d.client } : null)),
         self: id === me,
         online: true,
@@ -364,9 +376,10 @@ function end(c, state, error) {
  * Sends a CastRequest to a screen.
  * @returns {Promise<{ castId: string, delivered: number }>}
  */
-function play(req, screenId, body) {
+function play(req, screenId, body, as) {
   sweep();
-  var request, from = senderOf(req);
+  // `as`: a sender inside the server (the YouTube receiver, lib/cast/youtube.js): { from }
+  var request, from = as ? as.from : senderOf(req);
   try {
     request = normalize(body);
   } catch (err) {
@@ -382,7 +395,8 @@ function play(req, screenId, body) {
   if (control.accepts.indexOf(sourceKind(request.source)) < 0) {
     return Promise.reject(failure('UNSUPPORTED', 'That screen can’t play this kind of source'));
   }
-  var profileId = body.profileId == null ? null : body.profileId;
+  // a sender inside the server names no profile: the screen plays as its own
+  var profileId = as || body.profileId == null ? null : body.profileId;
   return Promise.all([checkProfile(req, request, profileId, body.pin), adultsSource(request)]).then(function (r) {
     var profile = r[0], adults = r[1];
     if (!adults) {
@@ -533,16 +547,17 @@ function mayDrive(req, c) {
 }
 
 /** Pause, resume, toggle, seek, seekBy or stop a cast: the sender, its screen or the admin */
-function command(req, castId, body) {
+function command(req, castId, body, as) {
   var c = find(castId);
   if (!c) {
     throw failure('NOT_FOUND', 'No such cast');
   }
-  if (!mayDrive(req, c)) {
+  // `as`: the sender inside the server that cast it (the YouTube receiver)
+  if (as ? as.from.deviceId !== c.from.deviceId : !mayDrive(req, c)) {
     throw failure('FORBIDDEN', 'Only who cast it drives it');
   }
   body = body || {};
-  var action = body.action, cmd = { action: action }, by = senderOf(req).name;
+  var action = body.action, cmd = { action: action }, by = as ? as.from.name : senderOf(req).name;
   if (protocol.REMOTE.SESSION_COMMANDS.indexOf(action) < 0) {
     throw failure('INVALID', 'action must be one of ' + protocol.REMOTE.SESSION_COMMANDS.join(', '));
   }
@@ -603,6 +618,8 @@ module.exports = {
   },
   report: report,
   link: link,
+  /** A screen's name, as GET /cast/screens says it */
+  screenName: screenName,
   command: command,
   maySend: maySend,
   unlocked: function (deviceId, profileId) {

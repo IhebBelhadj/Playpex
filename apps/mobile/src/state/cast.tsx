@@ -10,6 +10,19 @@ import { useToast } from '../ui/toast'
 // Casting for the screens (core/cast/caster.ts): its state, the hand-off that
 // sends Play to the chosen screen, and Continue on phone.
 
+// The top bar's "Play on" sheet: opened by its button, drawn at the root (features/cast CastBar), since
+// a sheet inside the top bar's own box would be clipped to it
+const picker = new Store<boolean>(false)
+export function openCastPicker(): void {
+  picker.set(true)
+}
+export function closeCastPicker(): void {
+  picker.set(false)
+}
+export function useCastPickerOpen(): boolean {
+  return useStore(picker)
+}
+
 const EMPTY = new Store<CasterState>({ screens: [], loaded: false, target: null, cast: null, casted: null, sending: false })
 
 /** The caster's state (an empty one before a server is connected) */

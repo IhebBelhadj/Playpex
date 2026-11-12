@@ -100,7 +100,13 @@ var server = createBox(serverKey, function () {
   }
 });
 
+/** A key of its own for `label` (an HMAC of it with secrets.key): stable across restarts, never the key itself */
+function derive(label) {
+  return crypto.createHmac('sha256', serverKey()).update('playpex:' + label).digest();
+}
+
 module.exports = {
+  derive: derive,
   seal: server.seal,
   open: server.open,
   sealed: server.sealed,

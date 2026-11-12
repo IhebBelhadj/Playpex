@@ -20,14 +20,18 @@ export type FoundServer = {
 /** What the phone's decoders take, in ffprobe's names (docs/api/auth.md#4-describe-the-device) */
 export type Codecs = { video: string[]; audio: string[]; maxHeight: number }
 
-type Events = { server: (server: FoundServer) => void; share: (event: { text: string }) => void }
+/** Text shared to the app; `shortcut`: the direct share target it came through (a screen's) */
+export type Shared = { text: string; shortcut: string | null }
+
+type Events = { server: (server: FoundServer) => void; share: (event: Shared) => void }
 
 declare class PlaypexDeviceModule extends NativeModule<Events> {
   startDiscovery(): void
   stopDiscovery(): void
   probe(address: string): Promise<FoundServer>
   codecs(): Codecs
-  takeSharedText(): string | null
+  takeShared(): Shared | null
+  setShareTargets(targets: { id: string; label: string }[]): void
 }
 
 const native = requireOptionalNativeModule<PlaypexDeviceModule>('PlaypexDevice')
@@ -78,14 +82,20 @@ export function toUrl(address: string): string {
   return `${match[1].toLowerCase()}://${host}:${match[3] ?? '28470'}`
 }
 
-/** Share to Playpex (docs/cast-plan.md §5): the text that opened the app, once; null without one */
-export function takeSharedText(): string | null {
-  return native?.takeSharedText() ?? null
+/** Share to Playpex (docs/cast-plan.md §5): what was shared when the app opened, once; null without it */
+export function takeShared(): Shared | null {
+  const s = native?.takeShared() ?? null
+  return s ? { text: s.text, shortcut: s.shortcut ?? null } : null
 }
 
-/** Texts shared to the app while it runs */
-export function onShare(listener: (text: string) => void): () => void {
+/** What is shared to the app while it runs */
+export function onShare(listener: (shared: Shared) => void): () => void {
   if (!native) return () => {}
-  const subscription = native.addListener('share', (e) => listener(e.text))
+  const subscription = native.addListener('share', (e) => listener({ text: e.text, shortcut: e.shortcut ?? null }))
   return () => subscription.remove()
+}
+
+/** The Share sheet's direct share targets: one per screen (≤ 4), the others removed */
+export function setShareTargets(targets: { id: string; label: string }[]): void {
+  native?.setShareTargets(targets)
 }

@@ -36,6 +36,13 @@
             [on]="settings.value('cast.allowed')"
             (pxSelect)="settings.set('cast.allowed', !settings.value('cast.allowed'))"></px-switch>
         </section>
+
+        <!-- YouTube's "Link with TV code": a phone on another network casts here (the server's YouTube receiver) -->
+        <section class="setting" pxStackItem *ngIf="settings.value('cast.allowed') !== false">
+          <header class="head"><h2 class="label">YouTube</h2><span class="scope">On this device</span></header>
+          <p class="help">Phones on this network find this screen in the YouTube app’s Cast list. A phone elsewhere links with a code.</p>
+          <px-button key="youtubeCode" [label]="youtubeCodeBusy ? 'Asking YouTube…' : 'Link with TV code'" (pxSelect)="showYouTubeCode()"></px-button>
+        </section>
       </ng-container>
 
       <ng-container *ngIf="group == 'playback'">

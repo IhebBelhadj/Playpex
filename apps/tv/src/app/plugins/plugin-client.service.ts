@@ -173,6 +173,8 @@ export class PluginClient {
   asset(plugin:string, path:string | null | undefined):string | null {
     if (!path) return null;
     if (/^assets\/[\w./-]+$/.test(path) && !path.includes('..')) return `${this.server.api}/plugins/${plugin}/${path}`;
+    // a picture the server fetches for the plugin (plugin API 1.5: clients never load a plugin's hosts)
+    if (/^images\/[\w-]+\.[\w-]+$/.test(path)) return `${this.server.api}/plugins/${plugin}/${path}`;
     if (/^https:\/\//.test(path)) return path;
     return null;
   }

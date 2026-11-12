@@ -144,6 +144,12 @@ module.exports = String.raw`(function (host, register, log) {
         return call('iptv.xmltv', { url: url, channels: options.channels, from: iso(options.from), to: iso(options.to) });
       }
     },
+    // core-only calls: refused unless this is code the server ships (docs/plugin-layer-plan.md §8)
+    core: {
+      call: function (name, args) {
+        return call('core.call', { name: name, args: args === undefined ? null : args });
+      }
+    },
     log: { info: line('info'), warn: line('warn'), error: line('error') },
     hooks: { on: function (name, fn) { add('hook', name, fn); } },
     events: { on: function (name, fn) { add('event', name, fn); } },

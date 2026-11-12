@@ -12,14 +12,15 @@ Your `server.js` is **one bundled file** (esbuild, `--format=iife` or plain scri
 
 Every handler gets a context: `{ profile: { id, kids } | null, device: { id, name } | null, locale }`. No tokens, no names of other profiles. Requests of kids profiles never reach an `audience: adults` plugin.
 
-## Host API (`SERVER_PLUGIN_API` 1.4)
+## Host API (`SERVER_PLUGIN_API` 1.5)
 
 | Call | Needs | Notes |
 |---|---|---|
 | `playpex.http.request({ url, method?, headers?, body?, responseType?, timeoutMs? })` → `{ status, headers, body }` | `network` | HTTPS only, host in `network` (or the admin's host of a `url` setting with `grantsHost`: http and its port too); a non-2xx answer is returned with its `status` (only refusals, network failures and timeouts throw, with `err.code`); resolved addresses must be public (checked after DNS and on every redirect, ≤ 5); 10 s timeout (`timeoutMs`: a shorter one, ≥ 1000: a hook asking several sites keeps one slow site from sinking the others), 8 MB answer cap, no shared cookies. `responseType` `text` (default) · `json` · `bytes` (`Uint8Array`). **Rate limited** per host (2/s, burst 10, 4 in flight; stricter with `permissions.rateLimit`): over it the call waits, past 10 s it fails `RATE_LIMITED` |
 | `playpex.store.get(key)` / `set(key, value)` / `delete(key)` / `list(prefix)` | `storage` | JSON values, your quota |
 | `playpex.secrets.get(name)` | `secrets` | what the admin entered, or null |
-| `playpex.settings.get(key, ctx)` | | your `contributes.settings`, for the context's profile / device |
+| `playpex.settings.get(key, ctx)` | | your `contributes.settings`, for the context's profile / device (a `list` setting: its array, `[{ id, …fields }]` or `[value, …]`) |
+| `playpex.core.call(name, args)` | | **core-only calls** (API 1.5): refused (`PERMISSION_DENIED`) to every plugin but code the server ships, run as a managed plugin ([security.md](security.md)) |
 | `playpex.tmdb.*` | | TMDB through the server ([below](#core-data-tmdb-imdb-library)): no key or `network` entry of your own |
 | `playpex.imdb.title(id)` / `episodes(id)` | | IMDb ratings (`{ id, rating, votes }`; `episodes`: `seasons[]` with each episode's), cached 6 h |
 | `playpex.library.find(titleRef, ctx)` | `library` | what's on this server for a title, as the context's profile may see it (below); counts, never paths |
@@ -126,7 +127,7 @@ playpex.hooks.on('play.collect', async function (input, ctx) {
 | `play.before` (1 s) | `{ title, source: RankedSource }` → `{ action: 'continue' }` · `{ action: 'ask', question, yes?, no? }` · `{ action: 'refuse', reason }` |
 | `releases.providers` (10 s) | `{ kind, title?, query?, filters?, page }` → `{ releases: Release[] (≤ 500), last }`. `kind`: `movie` / `show` / `episode` for the core's Find releases, or your own screens' kinds; `title` when the list is about one title (`{ kind, imdbId }`: a show's own torrents) |
 | `sources.search` (15 s) | `{ query, kind: movie \| show \| any, page }` → `{ results: [{ source, title?, year?, season?, episode?, poster? }] (≤ 100), last }`: your streams and files (or torrents) for keywords, for the dashboard's Search. `query` comes as plain words (`Breaking.Bad` → `Breaking Bad`); `poster` an https image. Each `source` is checked like `play.collect`'s (a kind in `sources`, a host in `network`) and given to the client as a ref. Needs `permissions.sources`. Not for `audience: adults` plugins |
-| `subtitles.providers` (8 s) | `{ title, languages, fileName?, size? }` → `Subtitle[]`; the core fetches each `url` (a declared host) and converts it to WebVTT |
+| `subtitles.providers` (8 s) | `{ title, languages, fileName?, size?, hash? }` (`hash`, API 1.5: the file's OpenSubtitles hash, 16 hex digits, when the server has its bytes on disk: match the exact release by it) → `Subtitle[]`; the core fetches each `url` (a declared host) and converts it to WebVTT |
 | `metadata.details` (5 s) | `{ title, details: { title, originalTitle?, year?, imdbId?, genres, runtime? } }` → `{ ratings?: [{ source, value, max, votes?, url? }] (≤ 3), tags?: [string] (≤ 10), links?: [{ label, url }] (≤ 5), lines?: MetaItem[] (≤ 3) }`: a **metadata provider**'s additions to a movie's / show's page (your rating, tags, links to your site, meta-line items). Additions only: the core's details are never overridden |
 | `metadata.title` (3 s) | `{ title }` → `{ meta?: MetaItem[] }` (≤ 3: another score, a tag). **Kept through API 2**: new plugins use `metadata.details` (its `lines`); a plugin with both is asked only `metadata.details` |
 | `player.markers` (3 s) | `{ title, duration, fileName?, size? }` → `Marker[]`: `{ kind: intro \| recap \| credits \| chapter, start, end?, label? }` in seconds. Intro / recap: the player's "Skip"; credits: Up next starts there |

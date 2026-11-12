@@ -29,6 +29,26 @@ router.get('/screens', function (req, res) {
   answer(res, function () { return cast.screens(req); });
 });
 
+// The YouTube app's Cast list (lib/cast/youtube.js): the receivers running, admin only
+router.get('/youtube', function (req, res) {
+  answer(res, function () {
+    if (!(req.auth && req.auth.kind === 'admin')) {
+      throw Object.assign(new Error('The admin only'), { code: 'ADMIN_REQUIRED' });
+    }
+    var youtube = require('../cast/youtube');
+    return { enabled: youtube.wanted(), receivers: youtube.status() };
+  });
+});
+
+// "Link with TV code" for the calling screen: { code } (null while it isn't in the Cast list)
+router.get('/youtube/code', function (req, res) {
+  answer(res, function () {
+    return require('../cast/youtube').code(require('../sessions').device(req).id).then(function (code) {
+      return { code: code };
+    });
+  });
+});
+
 // CastRequest → 202 { castId, delivered }
 router.post('/screens/:deviceId/play', function (req, res) {
   answer(res, function () { return cast.play(req, String(req.params.deviceId), req.body); }, 202);

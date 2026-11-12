@@ -6,6 +6,8 @@
 
 Playpex is an educational project; streaming copyrighted content via torrents may be illegal where you live. Plugins inherit that framing.
 
+**Stremio add-ons** need no plugin of yours: the server installs them by address, each as a plugin of its own ([stremio.md](stremio.md)).
+
 ## What a plugin is
 
 A **package** `<id>-<version>.ppx`: a zip with

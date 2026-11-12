@@ -31,6 +31,8 @@ export type AssetPath = string;
 
 export interface PluginPermissions {
   network?: string[];
+  /** hosts its pictures may come from besides `network` (API 1.5; the server fetches them for clients) */
+  images?: string[];
   rateLimit?: { perSecond?: number; burst?: number; inFlight?: number };
   /** <n>KB | <n>MB */
   storage?: string;
@@ -91,7 +93,29 @@ export type PluginSetting =
    *  streamHosts: so do, for streams only, the hosts the document at that address lists (iptv.m3u) */
   | SettingBase & { type: 'url'; maxLength?: number; placeholder?: string; schemes?: ('https' | 'http')[]; grantsHost?: boolean; streamHosts?: boolean; default?: string }
   /** a button in the dashboard calling a data handler */
-  | SettingBase & { type: 'action'; data: string; confirm?: string };
+  | SettingBase & { type: 'action'; data: string; confirm?: string }
+  /** a list the admin grows (API 1.5): entries with `fields` ([{ id, ...fields }], ids made and kept by the server),
+   *  or plain values (`item`) */
+  | SettingBase & {
+      type: 'list'; maxItems: number; minItems?: number; itemLabel?: string; titleField?: string; unique?: boolean;
+      fields?: ListField[]; item?: Omit<ListField, 'key' | 'label' | 'visibleIf' | 'enabledIf' | 'grantsHost' | 'streamHosts'>;
+      default?: unknown[];
+    };
+
+/** A field of a list's entries: a setting without scope, group or level; visibleIf / enabledIf name fields of the entry */
+export interface ListField {
+  key: string;
+  type: 'switch' | 'choice' | 'slider' | 'number' | 'text' | 'url';
+  label: string;
+  description?: string;
+  visibleIf?: { key: string; equals: string | number | boolean };
+  enabledIf?: { key: string; equals: string | number | boolean };
+  options?: [value: string, label: string][];
+  min?: number; max?: number; step?: number; integer?: boolean; unit?: string;
+  maxLength?: number; placeholder?: string; pattern?: string;
+  schemes?: ('https' | 'http')[]; grantsHost?: boolean; streamHosts?: boolean;
+  default?: string | number | boolean;
+}
 
 /**
  * How a phone draws a screen's top: plain (default: Back on a dark strip, the title in the content), fold (the title large in
@@ -103,6 +127,8 @@ export interface ScreenMobile {
 }
 
 export interface PluginContributes {
+  /** API 1.5: the data handler called once after an update with the old version's values ({ fromVersion, server, profiles }) → { data: { server?, profiles? } } */
+  migrate?: string;
   sections?: { screen: string; menu: { label: string; icon: AssetPath; order?: number } }[];
   screens?: { name: string; template: TemplateName; data?: string; title?: string; params?: string[]; mobile?: ScreenMobile }[];
   slots?: { slot: PluginSlot; data: string; order?: number }[];

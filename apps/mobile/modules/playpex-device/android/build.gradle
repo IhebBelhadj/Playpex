@@ -6,6 +6,11 @@ plugins {
 group = 'app.playpex.mobile.device'
 version = '0.1.0'
 
+dependencies {
+  // sharing shortcuts (Share to Playpex's direct share)
+  implementation 'androidx.core:core:1.13.1'
+}
+
 android {
   namespace "app.playpex.mobile.device"
   defaultConfig {

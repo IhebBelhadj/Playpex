@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import type { CastScreen } from '../../core/cast/caster'
-import { useCast, useContinueOnPhone } from '../../state/cast'
+import { closeCastPicker, openCastPicker, useCast, useCastPickerOpen, useContinueOnPhone } from '../../state/cast'
 import { useBackPress } from '../../state/hooks'
 import { TAB_BAR_HEIGHT } from '../../ui/chrome'
 import { Button, ProgressBar, type IconName } from '../../ui/components'
@@ -80,40 +80,45 @@ export function ScreenSheet({ title, here, chosen, onPick, onClose }: { title: s
   )
 }
 
-/** The top bar's cast button: gold while Play sends to a screen */
+/** The top bar's cast button: gold while Play sends to a screen (its sheet: CastPicker, at the root) */
 export function CastButton() {
   const { caster, state } = useCast()
-  const [open, setOpen] = useState(false)
   if (!caster) return null
   const on = !!state.target && state.screens.some((s) => s.deviceId === state.target!.deviceId)
   return (
-    <>
-      <Press
-        onPress={() => {
-          void caster.refresh()
-          setOpen(true)
-        }}
-        hitSlop={10}
-        scale={0.9}
-        accessibilityRole="button"
-        accessibilityLabel={on ? `Playing on ${state.target!.name}` : 'Play on a screen'}
-        style={styles.castButton}
-      >
-        <Ionicons name={on ? 'tv' : 'tv-outline'} size={21} color={on ? color.accent : color.text} />
-      </Press>
-      {open ? (
-        <ScreenSheet
-          title="Play on"
-          here
-          chosen={on ? state.target!.deviceId : null}
-          onClose={() => setOpen(false)}
-          onPick={(s) => {
-            caster.choose(s)
-            setOpen(false)
-          }}
-        />
-      ) : null}
-    </>
+    <Press
+      onPress={() => {
+        void caster.refresh()
+        openCastPicker()
+      }}
+      hitSlop={10}
+      scale={0.9}
+      accessibilityRole="button"
+      accessibilityLabel={on ? `Playing on ${state.target!.name}` : 'Play on a screen'}
+      style={styles.castButton}
+    >
+      <Ionicons name={on ? 'tv' : 'tv-outline'} size={21} color={on ? color.accent : color.text} />
+    </Press>
+  )
+}
+
+/** The "Play on" sheet of the cast button, over the whole screen */
+function CastPicker() {
+  const { caster, state } = useCast()
+  const open = useCastPickerOpen()
+  if (!caster || !open) return null
+  const on = !!state.target && state.screens.some((s) => s.deviceId === state.target!.deviceId)
+  return (
+    <ScreenSheet
+      title="Play on"
+      here
+      chosen={on ? state.target!.deviceId : null}
+      onClose={closeCastPicker}
+      onPick={(s) => {
+        caster.choose(s)
+        closeCastPicker()
+      }}
+    />
   )
 }
 
@@ -127,7 +132,8 @@ export function CastBar() {
   const insets = useSafeAreaInsets()
   const [remote, setRemote] = useState(false)
   const cast = state.cast
-  if (!caster || !cast || HIDDEN.some((p) => pathname.startsWith(p))) return null
+  if (!caster) return null
+  if (!cast || HIDDEN.some((p) => pathname.startsWith(p))) return <CastPicker />
   const screen = state.screens.find((s) => s.deviceId === cast.deviceId)
   const paused = cast.state === 'paused'
   const ratio = cast.durationS && cast.positionS != null ? cast.positionS / cast.durationS : 0
@@ -154,6 +160,7 @@ export function CastBar() {
         {ratio > 0 ? <ProgressBar ratio={ratio} style={styles.barProgress} /> : null}
       </Animated.View>
       {remote ? <CastRemote onClose={() => setRemote(false)} /> : null}
+      <CastPicker />
     </>
   )
 }

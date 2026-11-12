@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Loading, PageHeader, QueryError, Spinner } from '@/components/common'
 import { DesktopCard, useHost } from '@/components/desktop'
 import { DlnaPanel } from '@/components/dlna'
+import { YouTubeCastPanel } from '@/components/youtube-cast'
 import { MetadataProviders } from '@/components/metadata-providers'
 import { useOverview } from '@/components/layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -75,6 +76,7 @@ const GROUPS: { id: string; title: string; description: string; fields: Field[] 
     description: 'Phones, this dashboard and other screens start playback on a Playpex screen (Playpex TV, later Playpex Mobile). Each screen can refuse casts in its own Settings; a locked profile needs its PIN, and nothing from an adults plugin is cast to a kids profile.',
     fields: [
       { key: 'cast.enabled', label: 'Let devices cast to Playpex screens', kind: 'switch', help: 'Off: every cast is refused (CAST_REFUSED). Applied when you save.' },
+      { key: 'cast.youtube', label: 'Show Playpex screens in the YouTube app’s Cast list', kind: 'switch', help: 'Each Playpex screen appears as “Playpex – <screen>” when phones on this network tap Cast in YouTube. It uses YouTube’s own, unofficial casting protocol: a YouTube update can break it until Playpex is updated. Needs sharing on the local network. Applied when you save.' },
     ],
   },
   {
@@ -668,6 +670,7 @@ export function SettingsPage() {
             </Button>
           </div>
           {group.id === 'dlna' && <DlnaPanel />}
+          {group.id === 'cast' && <YouTubeCastPanel />}
           {group.id === 'metadata' && <MetadataProviders />}
         </form>
       ) : (

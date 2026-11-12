@@ -208,7 +208,7 @@ test('settings: definitions, defaults, secrets and profiles', function () {
     var layout = s.definitions.filter(function (d) { return d.key === 'layout'; })[0];
     assert.deepEqual(layout.options[1], { value: 'still', label: 'Wide pictures' });
     assert.equal(s.definitions.filter(function (d) { return d.key === 'minRating'; })[0].level, 'advanced');
-    assert.deepEqual(s.server, { greeting: 'Hello', shout: false, rowSize: 12, minRating: 0 });
+    assert.deepEqual(s.server, { greeting: 'Hello', shout: false, rowSize: 12, minRating: 0, shelves: [], favourites: [] });
     assert.deepEqual(s.secrets, { apiToken: false });
     assert.equal(s.profiles.length, 1);
     assert.deepEqual(s.profiles[0].values, { layout: 'poster', showReleases: true, nickname: null });
@@ -272,7 +272,7 @@ test('settings: an action runs its handler; unknown ones 404', function () {
     return call('GET', '/admin/plugins');
   }).then(function (r) {
     var hello = r.json.plugins.filter(function (p) { return p.id === 'hello'; })[0];
-    assert.equal(hello.settings, 9);
+    assert.equal(hello.settings, 11);
   });
 });
 

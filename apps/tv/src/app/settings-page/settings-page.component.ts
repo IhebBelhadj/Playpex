@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, OnDestroy } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import type { SettingValues } from '@playpex/protocol/settings';
 import { FocusEngine } from '../movement/movement';
@@ -8,7 +9,8 @@ import { RemotePlugins } from '../plugins/remote';
 import { ProfilesService } from '../profiles.service';
 import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
-import { TabModel } from '../ui/public-api';
+import { Dialogs, TabModel } from '../ui/public-api';
+import { ServerService } from '../server.service';
 
 type Group = 'display' | 'playback' | 'about';
 
@@ -67,6 +69,29 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   readonly edgesText = (f:number) => f ? (Math.round(f * 1000) / 10) + ' %' : 'None';
 
   private subs:Subscription[] = [];
+  private http = inject(HttpClient);
+  private server = inject(ServerService);
+  private dialogs = inject(Dialogs);
+  youtubeCodeBusy = false;
+
+  /** YouTube's "Link with TV code" for this screen (GET /cast/youtube/code), in a dialog */
+  showYouTubeCode() {
+    if (this.youtubeCodeBusy) return;
+    this.youtubeCodeBusy = true;
+    this.http.get<{ code:string | null }>(`${this.server.api}/cast/youtube/code`, { params: this.server.deviceParams() }).subscribe({
+      next: answer => {
+        this.youtubeCodeBusy = false;
+        let code = answer?.code ? answer.code.replace(/(\d{3})(?=\d)/g, '$1 ') : null;
+        this.subs.push(this.dialogs.alert(code
+          ? { title: code, subtitle: 'Link with TV code', text: 'In the YouTube app: Settings › Watch on TV › Enter TV code. The code changes every 5 minutes.' }
+          : { title: 'Not in the YouTube app yet', text: 'The server’s admin turns it on in the dashboard: Settings › Casting › Show Playpex screens in the YouTube app’s Cast list.' }).subscribe());
+      },
+      error: () => {
+        this.youtubeCodeBusy = false;
+        this.subs.push(this.dialogs.alert({ title: 'No code', text: 'The server couldn’t get a code from YouTube. Try again in a moment.' }).subscribe());
+      },
+    });
+  }
 
   constructor(
     private navigation:NavigationService,

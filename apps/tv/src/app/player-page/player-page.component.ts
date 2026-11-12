@@ -1957,7 +1957,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       return;
     }
 
-    let query = { imdbId: this.playback.imdbId, season: this.playback.season, episode: this.playback.episode };
+    // the file playing: providers match that release by its name, size and hash
+    let query = { imdbId: this.playback.imdbId, season: this.playback.season, episode: this.playback.episode, ref: this.ref || undefined };
     this.subtitlesService.search(provider , query).subscribe(result => {
       if (provider != this.subtitleProvider) return;
       this.subtitles = result.subtitles;

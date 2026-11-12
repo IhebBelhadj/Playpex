@@ -1340,7 +1340,9 @@ paths:
       description: |
         Off stops it and hides it from clients (its data stays); plugins requiring it go off too, held for it, and come back
         when it's on again. On is refused (409) for a version its repository marked broken, or while a plugin it requires
-        is off or missing. `updatePolicy` null = the server's `plugins.updates`.
+        is off or missing. `updatePolicy` null = the server's `plugins.updates`. `adults` (plugin API 1.5): the admin
+        treats it as an `audience: adults` plugin (no kids profile, nothing it plays tracked, no writes but downloads);
+        only stricter: switching it off for a plugin whose manifest declares adults is refused (409).
       security:
         - adminSession: []
       requestBody:
@@ -1352,6 +1354,7 @@ paths:
               properties:
                 enabled: { type: boolean }
                 updatePolicy: { type: [string, 'null'], enum: [auto, notify, never, null] }
+                adults: { type: boolean, description: 'Treat it as an adults plugin (the admin''s choice)' }
       responses:
         '200':
           description: The plugin
@@ -1592,6 +1595,91 @@ paths:
               schema: { $ref: '#/components/schemas/PluginSettings' }
         '400': { $ref: '#/components/responses/Invalid' }
         '401': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/managed:
+    get:
+      tags: [plugins]
+      operationId: listManagedPluginProviders
+      summary: What can make managed plugins (docs/plugin-layer-plan.md §9)
+      security:
+        - adminSession: []
+      responses:
+        '200':
+          description: The providers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers]
+                properties:
+                  providers: { type: array, items: { type: object, required: [name, label], properties: { name: { type: string }, label: { type: string } } } }
+  /admin/plugins/managed/{provider}/inspect:
+    post:
+      tags: [plugins]
+      operationId: inspectManagedPlugin
+      summary: Build a managed plugin from what the admin gives, staged for its preview
+      description: |
+        The provider reads the input (an add-on's URL for the Stremio bridge), builds a manifest around code the server
+        ships, and stages it like a package: the preview (its permissions in words, `summary` = what the provider read)
+        is installed with `POST /admin/plugins/packages/{token}/install`. Its kids default starts hidden.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { input: { description: 'What the provider needs (its own shape)' } } }
+      responses:
+        '200':
+          description: The staged plugin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginPackagePreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/managed:
+    put:
+      tags: [plugins]
+      operationId: reconfigureManagedPlugin
+      summary: Build a managed plugin again from a new input (its configuration changed)
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { input: {} } }
+      responses:
+        '200':
+          description: The staged plugin (the same id), installed by its token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PluginPackagePreview' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/plugins/{pluginId}/managed/check:
+    post:
+      tags: [plugins]
+      operationId: checkManagedPlugin
+      summary: Whether a managed plugin's provider builds something new (the service's new version, other shipped code)
+      description: The server also checks once a day and installs a new build that asks for nothing more.
+      security:
+        - adminSession: []
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 'A staged preview of the new build, or { upToDate: true }'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/PluginPackagePreview' }
+                  - { type: object, required: [upToDate], properties: { upToDate: { const: true }, id: { type: string } } }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/plugins/{pluginId}/profiles:
     put:
@@ -3092,6 +3180,36 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/CastScreen' } }
         '401': { $ref: '#/components/responses/PairingRequired' }
+  /cast/youtube:
+    get:
+      tags: [cast]
+      operationId: castYouTube
+      summary: The screens in the YouTube app's Cast list (admin)
+      description: 'While `cast.youtube` is on: one receiver per screen that plays embeds (docs/cast-plan.md §6), and the phones connected to it.'
+      responses:
+        '200':
+          description: The receivers
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CastYouTube' }
+        '401': { $ref: '#/components/responses/Error' }
+  /cast/youtube/code:
+    get:
+      tags: [cast]
+      operationId: castYouTubeCode
+      summary: The calling screen's "Link with TV code"
+      description: 'The code a phone types in the YouTube app (Settings › Watch on TV) to cast to this screen from another network; it changes every 5 minutes. `null` while this screen isn''t in the Cast list (`cast.youtube` off, not a screen that plays embeds, YouTube not answering).'
+      responses:
+        '200':
+          description: The code
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: [string, 'null'], description: '12 digits' }
+        '401': { $ref: '#/components/responses/PairingRequired' }
   /cast/screens/{deviceId}/play:
     parameters:
       - { name: deviceId, in: path, required: true, schema: { type: string } }
@@ -3827,6 +3945,9 @@ paths:
         screens (core templates), slot contributions, accent. Never permissions, settings, links or states: setup
         is the dashboard's. A kids profile (`?profile=`) gets no `audience: adults` plugin. Refetch on the
         `plugin.changed` event. Asset paths in a plugin (`assets/…`) are served at `<api>{assets}<path under assets/>`.
+        Since plugin API 1.5 (`imagesProxied`) a plugin's pictures come as `images/<token>`, a path of the plugin
+        like `assets/…`: `<api>/plugins/{pluginId}/images/{token}` (the server fetches them; clients never load a
+        plugin's hosts).
       parameters:
         - $ref: '#/components/parameters/Profile'
       responses:
@@ -3841,6 +3962,9 @@ paths:
                   plugins:
                     type: array
                     items: { $ref: '#/components/schemas/ClientPlugin' }
+                  imagesProxied:
+                    type: boolean
+                    description: 'Plugin pictures are `images/<token>` paths served by GET /plugins/{pluginId}/images/{token} (plugin API 1.5); older servers send https URLs'
                   capabilities:
                     type: object
                     description: 'What the profile''s plugins provide (docs/providers-plan.md §5.3): hide Find releases without `releases`'
@@ -3904,6 +4028,28 @@ paths:
             image/jpeg: {}
             image/webp: {}
         '404': { $ref: '#/components/responses/NotFound' }
+  /plugins/{pluginId}/images/{token}:
+    get:
+      tags: [plugins]
+      operationId: getPluginImage
+      summary: A picture a plugin's answer named (docs/plugin-layer-plan.md §3)
+      description: |
+        Fetched by the server as the plugin (its network and image hosts, image.tmdb.org, hosts the admin granted
+        it; public addresses only), checked by its bytes to be a JPEG, PNG, WebP, GIF or AVIF (never SVG), at most
+        5 MB, kept 24 h. Anything else answers 404 with no body (show a placeholder). The token is opaque.
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The picture
+          content:
+            image/jpeg: {}
+            image/png: {}
+            image/webp: {}
+            image/gif: {}
+            image/avif: {}
+        '404': { description: 'Unknown token, plugin off, or the picture refused' }
   /library/home:
     get:
       tags: [media-library]
@@ -4187,6 +4333,7 @@ paths:
         - { name: imdb_id, in: query, required: true, schema: { type: string, pattern: '^tt\d+$' } }
         - { name: season, in: query, schema: { type: integer } }
         - { name: episode, in: query, schema: { type: integer } }
+        - { name: ref, in: query, description: 'The media ref playing (plugin API 1.5): its name, size and OpenSubtitles hash (when on disk) go to the providers, which match that release', schema: { type: string } }
         - { name: languages, in: query, description: 'Comma-separated ISO 639-1 codes, e.g. en,ar', schema: { type: string } }
       responses:
         '200':
@@ -5183,6 +5330,21 @@ components:
         profileId: { type: [string, 'null'] }
         error: { type: [string, 'null'] }
         startedAt: { type: string, format: date-time }
+    CastYouTube:
+      type: object
+      required: [enabled, receivers]
+      properties:
+        enabled: { type: boolean, description: '`cast.youtube` and `cast.enabled` on, the server on the LAN, not recovery mode' }
+        receivers:
+          type: array
+          items:
+            type: object
+            required: [deviceId, name, port, senders]
+            properties:
+              deviceId: { type: string, description: 'The screen' }
+              name: { type: string, description: 'What the Cast list shows: "Playpex – <screen>"' }
+              port: { type: integer, description: 'Its DIAL port (28473 and up)' }
+              senders: { type: array, items: { type: string }, description: 'The phones connected to it now' }
     CastScreen:
       type: object
       required: [deviceId, name, kind, self, online, accepts, playing]
@@ -6060,9 +6222,11 @@ components:
         version: { type: string }
         description: { type: [string, 'null'] }
         publisher: { type: ['object', 'null'], properties: { name: { type: string }, url: { type: string } } }
-        audience: { type: [string, 'null'], enum: [everyone, adults, null] }
+        audience: { type: [string, 'null'], enum: [everyone, adults, null], description: 'What applies: `adults` also when the admin treats it as one (`adultsByAdmin`)' }
+        declaredAudience: { type: [string, 'null'], enum: [everyone, adults, null], description: 'What its manifest says' }
+        adultsByAdmin: { type: boolean, description: 'The admin''s "Treat as adults" (an installed plugin; plugin API 1.5)' }
         icon: { type: [string, 'null'], description: 'Under the API prefix: /plugins/<id>/assets/…' }
-        origin: { type: string, enum: [upload, url, repository, dev], description: 'dev: a developer copy from <config>/plugins-dev/' }
+        origin: { type: string, enum: [upload, url, repository, managed, dev], description: 'dev: a developer copy from <config>/plugins-dev/; managed: built by a core provider (`source` = the provider; docs/plugin-layer-plan.md §9)' }
         source: { type: [string, 'null'], description: 'The uploaded file''s name, the URL, or the developer folder' }
         signer: { type: [string, 'null'], description: 'The trusted publisher key''s fingerprint; null = unsigned' }
         enabled: { type: boolean }
@@ -6141,7 +6305,7 @@ components:
       properties:
         key: { type: string }
         scope: { type: string, enum: [server, profile] }
-        type: { type: string, enum: [switch, choice, slider, number, text, url, secret, action] }
+        type: { type: string, enum: [switch, choice, slider, number, text, url, secret, action, list] }
         label: { type: string }
         description: { type: string }
         group: { type: string }
@@ -6162,6 +6326,18 @@ components:
         streamHosts: { type: boolean, description: 'A url: and the stream hosts the document there lists' }
         confirm: { type: string, description: 'An action: asked before it runs' }
         default: {}
+        itemLabel: { type: string, description: 'A list: what one entry is called' }
+        titleField: { type: string, description: 'A list of entries: the field naming an entry' }
+        minItems: { type: integer }
+        maxItems: { type: integer, description: 'A list: how many entries it holds at most' }
+        unique: { type: boolean, description: 'A list of values: no value twice' }
+        fields:
+          type: array
+          description: 'A list of entries (plugin API 1.5): its fields, each like a setting (`visibleIf` / `enabledIf` name fields of the entry). Values are `[{id, ...fields}]`; a new entry is sent without `id` (the server gives one and keeps it)'
+          items: { $ref: '#/components/schemas/PluginSettingDefinition' }
+        item:
+          description: 'A list of plain values (plugin API 1.5): what each value is'
+          allOf: [{ $ref: '#/components/schemas/PluginSettingDefinition' }]
     PluginSettings:
       type: object
       required: [plugin, state, definitions, server, secrets, personal, profiles]
@@ -6349,8 +6525,10 @@ components:
         icon: { type: [string, 'null'], description: 'A data: URL of its icon (≤ 256 KB)' }
         permissions: { type: array, items: { $ref: '#/components/schemas/PluginPermission' } }
         hooks: { type: array, items: { type: string } }
-        origin: { type: string, enum: [upload, url, repository] }
+        origin: { type: string, enum: [upload, url, repository, managed] }
         source: { type: string }
+        managed: { type: [object, 'null'], properties: { provider: { type: string } }, description: 'A managed plugin (plugin API 1.5): the provider that built it' }
+        summary: { description: 'A managed plugin''s provider: what it read (its own shape)' }
         resolved: { type: [string, 'null'], description: 'What a URL led to (a GitHub release asset, a source zip)' }
         root: { type: [string, 'null'], description: 'The folder of the zip the plugin was found in' }
         size: { type: integer }
@@ -7527,6 +7705,12 @@ components:
           properties:
             enabled: { type: boolean, description: 'The DLNA / UPnP AV media server (no authentication: read-only, DLNA folders of audience everyone, LAN addresses only); only with network.lanSharing. Applied at once' }
             port: { type: integer, minimum: 1024, maximum: 65535, description: 'Its own HTTP listener (default 28472); applied at once' }
+        cast:
+          type: object
+          required: [enabled, youtube]
+          properties:
+            enabled: { type: boolean, description: 'Devices may cast to Playpex screens (docs/cast-plan.md); off: casts answer CAST_REFUSED' }
+            youtube: { type: boolean, description: 'Each Playpex screen shows in the YouTube app''s Cast list (a DIAL / Lounge receiver per screen, YouTube''s unofficial protocol; only with network.lanSharing). Applied at once' }
         plugins:
           type: object
           required: [developerMode, publisherKeys, updates, sourcesNotice]

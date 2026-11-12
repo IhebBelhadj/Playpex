@@ -706,7 +706,29 @@ v1.get('/subtitles/search', function (req, res) {
     query.episode = parseInt(req.query.episode, 10);
   }
 
-  subtitles.search(req.query.provider, query, req.query.languages)
+  // ?ref=: the file playing (docs/plugin-layer-plan.md §6): its name and size, and its OpenSubtitles hash when
+  // its bytes are on disk (a library file, a finished download), so providers match that exact release
+  var ref = String(req.query.ref || '');
+  var facts = !ref ? Promise.resolve() : require('./media').resolve(ref).then(function (m) {
+    if (m.kind !== 'file' && m.kind !== 'torrent') {
+      return;
+    }
+    query.fileName = path.basename(String(m.name || m.path || '')).slice(0, 500) || undefined;
+    query.size = typeof m.size === 'number' ? m.size : undefined;
+    var disk = m.kind === 'file' ? Promise.resolve(m.fullPath) : torrents.diskPath(m.infoHash, m.path);
+    return disk.then(function (full) {
+      return full ? require('./subtitles/hash').ofFile(full) : null;
+    }).then(function (h) {
+      if (h) {
+        query.hash = h.hash;
+        query.size = h.size;
+      }
+    });
+  }).catch(function () { /* an unknown ref: searched by the title alone */ });
+
+  facts.then(function () {
+    return subtitles.search(req.query.provider, query, req.query.languages);
+  })
     .then(function (result) {
       res.json(result);
     })

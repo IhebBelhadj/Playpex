@@ -198,6 +198,13 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/host" }
         },
+        "images": {
+          "description": "Hosts its pictures (cards, backdrops, a release's picture, a programme's) may come from besides its network hosts (API 1.5): the server fetches them for clients (/plugins/{id}/images/{token}); image.tmdb.org needs no entry",
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/host" }
+        },
         "rateLimit": {
           "description": "Stricter limits than the host's defaults, per host (never looser)",
           "type": "object",
@@ -293,6 +300,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "migrate": {
+          "description": "API 1.5: the data handler the core calls once after an update, with the old version's setting values ({ fromVersion, server, profiles: { <profile id>: values } }); it answers { data: { server?, profiles? } } with values for this version's settings (checked like a save on the dashboard, unknown keys dropped). Failing keeps the old values",
+          "$ref": "#/$defs/name"
+        },
         "sections": {
           "description": "Menu entries opening one of its screens",
           "type": "array",
@@ -389,13 +400,80 @@
         "bar": { "enum": ["plain", "fold", "app", "overlay"] }
       }
     },
+    "listField": {
+      "description": "A field of a list's entries: a setting without scope, group or level (no secret, action or list); visibleIf / enabledIf name fields of the same entry",
+      "type": "object",
+      "required": ["key", "type", "label"],
+      "properties": {
+        "key": { "$ref": "#/$defs/name" },
+        "type": { "enum": ["switch", "choice", "slider", "number", "text", "url"] },
+        "label": { "$ref": "#/$defs/label" },
+        "description": { "type": "string", "maxLength": 200 },
+        "visibleIf": { "$ref": "#/$defs/condition" },
+        "enabledIf": { "$ref": "#/$defs/condition" },
+        "options": { "$ref": "#/$defs/listOptions" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "integer": { "type": "boolean" },
+        "unit": { "type": "string", "maxLength": 10 },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 2048 },
+        "placeholder": { "type": "string", "maxLength": 100 },
+        "pattern": { "type": "string", "maxLength": 200 },
+        "schemes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["https", "http"] } },
+        "grantsHost": { "description": "url fields: each entry's address grants its host (decision J)", "type": "boolean" },
+        "streamHosts": { "type": "boolean" },
+        "default": { "type": ["string", "number", "boolean"] }
+      },
+      "dependentRequired": { "streamHosts": ["grantsHost"] },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "switch" } } }, "then": { "required": ["default"], "properties": { "default": { "type": "boolean" } } } },
+        { "if": { "properties": { "type": { "const": "choice" } } }, "then": { "required": ["options", "default"], "properties": { "default": { "type": "string" } } } },
+        { "if": { "properties": { "type": { "const": "slider" } } }, "then": { "required": ["min", "max", "default"] } },
+        { "if": { "properties": { "type": { "not": { "const": "url" } } } }, "then": { "properties": { "grantsHost": false, "streamHosts": false, "schemes": false } } },
+        { "if": { "properties": { "type": { "not": { "enum": ["text", "url"] } } } }, "then": { "properties": { "maxLength": false, "placeholder": false } } }
+      ],
+      "additionalProperties": false
+    },
+    "listItem": {
+      "description": "The value of each entry of an `item` list",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["choice", "number", "text", "url"] },
+        "options": { "$ref": "#/$defs/listOptions" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "integer": { "type": "boolean" },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 2048 },
+        "placeholder": { "type": "string", "maxLength": 100 },
+        "pattern": { "type": "string", "maxLength": 200 },
+        "schemes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["https", "http"] } }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "choice" } } }, "then": { "required": ["options"] } },
+        { "if": { "properties": { "type": { "not": { "enum": ["text", "url"] } } } }, "then": { "properties": { "maxLength": false, "placeholder": false } } }
+      ],
+      "additionalProperties": false
+    },
+    "listOptions": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 20,
+      "items": {
+        "type": "array",
+        "prefixItems": [{ "type": "string", "minLength": 1, "maxLength": 40 }, { "$ref": "#/$defs/label" }],
+        "items": false,
+        "minItems": 2
+      }
+    },
     "setting": {
       "type": "object",
       "required": ["key", "scope", "type", "label"],
       "properties": {
         "key": { "$ref": "#/$defs/name" },
         "scope": { "enum": ["profile", "server"] },
-        "type": { "enum": ["switch", "choice", "slider", "number", "text", "url", "secret", "action"] },
+        "type": { "enum": ["switch", "choice", "slider", "number", "text", "url", "secret", "action", "list"] },
         "label": { "$ref": "#/$defs/label" },
         "description": { "type": "string", "maxLength": 200 },
         "group": { "description": "Settings of a group are shown together under its title", "$ref": "#/$defs/label" },
@@ -485,6 +563,24 @@
             "default": { "type": "string", "maxLength": 2048 }
           },
           "dependentRequired": { "streamHosts": ["grantsHost"] },
+          "additionalProperties": false
+        },
+        {
+          "description": "A list the admin grows (API 1.5, docs/plugin-layer-plan.md §4): entries with fields (a playlist with its guide), or plain values (`item`: words, hosts). Each `fields` entry gets a stable `id` from the server. maxItems ≤ 100 for `fields`, ≤ 1000 for `item` lists",
+          "properties": {
+            "key": true, "scope": true, "label": true, "description": true, "group": true, "level": true, "visibleIf": true, "enabledIf": true,
+            "type": { "const": "list" },
+            "itemLabel": { "description": "What one entry is called (\"Playlist\")", "$ref": "#/$defs/label" },
+            "titleField": { "description": "fields lists: the text field naming an entry on the dashboard", "$ref": "#/$defs/name" },
+            "minItems": { "type": "integer", "minimum": 0, "maximum": 1000 },
+            "maxItems": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "unique": { "description": "item lists: no value twice", "type": "boolean" },
+            "fields": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "$ref": "#/$defs/listField" } },
+            "item": { "$ref": "#/$defs/listItem" },
+            "default": { "type": "array", "maxItems": 1000 }
+          },
+          "required": ["maxItems"],
+          "oneOf": [{ "required": ["fields"], "not": { "required": ["item"] } }, { "required": ["item"], "not": { "required": ["fields"] } }],
           "additionalProperties": false
         },
         {

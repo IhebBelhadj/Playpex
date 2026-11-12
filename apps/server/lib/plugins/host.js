@@ -200,6 +200,14 @@ function createHost(plugin, services) {
       });
     },
 
+    // core-only calls (./corecalls.js): the server's own shipped code only (plugin.trusted, ./builtin)
+    'core.call': function (args, bytes) {
+      count(plugin.stats, 'core ' + String(args.name || '?').slice(0, 40));
+      return require('./corecalls').call(plugin, args.name, args.args, bytes).then(function (value) {
+        return { value: value === undefined ? null : value };
+      });
+    },
+
     'i18n.t': function (args) {
       var key = String(args.key || ''),
         tables = [plugin.strings(args.locale), plugin.strings('en')],

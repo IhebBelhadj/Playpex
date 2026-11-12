@@ -91,8 +91,12 @@ function linkOf(request) {
  */
 module.exports = function writes(plugin, services) {
   var p = plugin.permissions,
-    by = 'plugin:' + plugin.id,
-    adults = plugin.manifest.audience === 'adults';
+    by = 'plugin:' + plugin.id;
+
+  // read at each call: the admin's "Treat as adults" applies at once (lib/plugins/index.js#refreshAudience)
+  function adultsNow() {
+    return plugin.manifest.audience === 'adults';
+  }
 
   function count(key) {
     plugin.stats.host[key] = (plugin.stats.host[key] || 0) + 1;
@@ -103,7 +107,7 @@ module.exports = function writes(plugin, services) {
     if ((p.write || []).indexOf(scope) === -1) {
       return denied('writing ' + scope + ' needs write: [\'' + scope + '\']');
     }
-    if (adults) {
+    if (adultsNow()) {
       return denied('an adults plugin only writes downloads');
     }
     if (typeof profileId !== 'string' || !profileId) {
@@ -136,7 +140,7 @@ module.exports = function writes(plugin, services) {
         return {
           value: r[0].filter(function (pr) {
             var g = granted[pr.id] || [];
-            return !(adults && pr.isKid) && (permission ? g.indexOf(permission) !== -1 : g.length > 0);
+            return !(adultsNow() && pr.isKid) && (permission ? g.indexOf(permission) !== -1 : g.length > 0);
           }).map(function (pr) { return { id: pr.id, kids: !!pr.isKid }; })
         };
       });

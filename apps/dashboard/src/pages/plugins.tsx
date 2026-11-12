@@ -5,7 +5,7 @@ import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, PageHeader, QueryError, Spinner } from '@/components/common'
 import {
-  ORIGIN,
+  originOf,
   PackagePreview,
   PluginIcon,
   PluginStateBadge,
@@ -47,7 +47,8 @@ export function PluginsPage() {
   const [params, setParams] = useSearchParams()
   const tab: Tab = (TABS as readonly string[]).includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'installed'
   const setTab = (t: string) => setParams(t === 'installed' ? {} : { tab: t }, { replace: true })
-  const [installing, setInstalling] = useState(false)
+  // ?install=stremio (the Overview's notice): the install dialog open on a Stremio add-on's address
+  const [installing, setInstalling] = useState(params.get('install') === 'stremio')
   if (plugins.isPending) return <Loading />
   if (plugins.error) return <QueryError error={plugins.error} />
   const view = plugins.data
@@ -60,7 +61,7 @@ export function PluginsPage() {
         description="What this server runs. Clients show what plugins add; you set them up here."
         actions={
           <Button onClick={() => setInstalling(true)}>
-            <Plus /> Install from a file or link
+            <Plus /> Install a plugin
           </Button>
         }
       />
@@ -102,7 +103,15 @@ export function PluginsPage() {
           <TrustCard developerMode={view.developerMode} keys={view.publisherKeys} devDir={view.devDir} />
         </TabsContent>
       </Tabs>
-      <InstallDialog open={installing} onOpenChange={setInstalling} developerMode={view.developerMode} />
+      <InstallDialog
+        open={installing}
+        onOpenChange={(o) => {
+          setInstalling(o)
+          if (!o && params.get('install')) setParams({}, { replace: true })
+        }}
+        developerMode={view.developerMode}
+        initial={params.get('install') === 'stremio' ? 'stremio' : 'file'}
+      />
     </>
   )
 }
@@ -170,11 +179,12 @@ function PluginRow({ plugin: p }: { plugin: AdminPlugin }) {
           </Link>
           <span className="font-mono text-xs text-muted-foreground">{p.version}</span>
           <PluginStateBadge plugin={p} />
-          <Badge variant="outline">{p.repository ? p.repository.name : ORIGIN[p.origin]}</Badge>
+          <Badge variant="outline">{p.repository ? p.repository.name : originOf(p)}</Badge>
           {p.update && <Badge>{p.update.needsConsent ? `${p.update.version} waits for you` : `Update ${p.update.version}`}</Badge>}
           {p.lifecycle?.state === 'deprecated' && <Badge variant="outline">Deprecated</Badge>}
           {!dev &&
             !p.repository &&
+            p.origin !== 'managed' &&
             (p.signer ? (
               <Badge variant="outline" title={`Publisher key ${p.signer}`}>
                 <BadgeCheck /> Signed
@@ -270,27 +280,39 @@ function KeptCard({ kept }: { kept: Schemas['AdminPlugins']['kept'] }) {
 
 // ── installing ────────────────────────────────────────────────────────────────
 
-function InstallDialog({ open, onOpenChange, developerMode }: { open: boolean; onOpenChange: (open: boolean) => void; developerMode: boolean }) {
+type SourceMode = 'file' | 'url' | 'stremio'
+
+function InstallDialog({
+  open,
+  onOpenChange,
+  developerMode,
+  initial,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  developerMode: boolean
+  initial: SourceMode
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
-        {open && <InstallFlow developerMode={developerMode} onDone={() => onOpenChange(false)} />}
+        {open && <InstallFlow developerMode={developerMode} initial={initial} onDone={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
   )
 }
 
-function InstallFlow({ developerMode, onDone }: { developerMode: boolean; onDone: () => void }) {
+function InstallFlow({ developerMode, initial, onDone }: { developerMode: boolean; initial: SourceMode; onDone: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null)
   return preview ? (
     <PackagePreview preview={preview} developerMode={developerMode} onBack={() => setPreview(null)} onDone={onDone} onChange={setPreview} />
   ) : (
-    <SourceStep onRead={setPreview} />
+    <SourceStep initial={initial} onRead={setPreview} />
   )
 }
 
-function SourceStep({ onRead }: { onRead: (p: Preview) => void }) {
-  const [mode, setMode] = useState<'file' | 'url'>('file')
+function SourceStep({ initial, onRead }: { initial: SourceMode; onRead: (p: Preview) => void }) {
+  const [mode, setMode] = useState<SourceMode>(initial)
   const [file, setFile] = useState<File | null>(null)
   const [url, setUrl] = useState('')
   const read = useMutation({
@@ -300,12 +322,18 @@ function SourceStep({ onRead }: { onRead: (p: Preview) => void }) {
         form.append('file', file)
         return unwrap(api.POST('/admin/plugins/packages', { body: form as never, bodySerializer: (b: unknown) => b as FormData }))
       }
+      if (mode === 'stremio') {
+        // a Stremio add-on (docs/stremio-bridge-plan.md §5.1): the server reads its manifest and builds its plugin
+        return unwrap(
+          api.POST('/admin/plugins/managed/{provider}/inspect', { params: { path: { provider: 'stremio' } }, body: { input: { url: url.trim() } } }),
+        ) as Promise<Preview>
+      }
       return unwrap(api.POST('/admin/plugins/packages', { body: { url: url.trim() } }))
     },
     onSuccess: onRead,
     onError: (err) => toast.error(errorMessage(err)),
   })
-  const ready = mode === 'file' ? !!file : /^https?:\/\/\S+$/.test(url.trim())
+  const ready = mode === 'file' ? !!file : mode === 'stremio' ? /^(https?|stremio):\/\/\S+$/.test(url.trim()) : /^https?:\/\/\S+$/.test(url.trim())
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (ready) read.mutate()
@@ -315,9 +343,11 @@ function SourceStep({ onRead }: { onRead: (p: Preview) => void }) {
     <form onSubmit={submit} className="contents">
       <DialogHeader>
         <DialogTitle>Install a plugin</DialogTitle>
-        <DialogDescription>A package (.ppx or .zip), or a link to one. You see what it is and what it may do before it's installed.</DialogDescription>
+        <DialogDescription>
+          A package (.ppx or .zip), a link to one, or a Stremio add-on's address. You see what it is and what it may do before it's installed.
+        </DialogDescription>
       </DialogHeader>
-      <Tabs value={mode} onValueChange={(v) => setMode(v as 'file' | 'url')}>
+      <Tabs value={mode} onValueChange={(v) => setMode(v as SourceMode)}>
         <TabsList>
           <TabsTrigger value="file">
             <Upload /> Upload a file
@@ -325,9 +355,27 @@ function SourceStep({ onRead }: { onRead: (p: Preview) => void }) {
           <TabsTrigger value="url">
             <LinkIcon /> From a link
           </TabsTrigger>
+          <TabsTrigger value="stremio">
+            <Puzzle /> Stremio add-on
+          </TabsTrigger>
         </TabsList>
       </Tabs>
-      {mode === 'file' ? (
+      {mode === 'stremio' ? (
+        <div className="space-y-2">
+          <Label htmlFor="stremio-url">Add-on address</Label>
+          <Input
+            id="stremio-url"
+            placeholder="https://…/manifest.json"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Its manifest URL (https://… or stremio://…). A configured add-on's address holds its settings, sometimes a key: Playpex keeps it as a
+            secret and never shows it again.
+          </p>
+        </div>
+      ) : mode === 'file' ? (
         <div className="space-y-2">
           <Label htmlFor="plugin-file">Package</Label>
           <Input id="plugin-file" type="file" accept=".ppx,.zip,application/zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -350,7 +398,7 @@ function SourceStep({ onRead }: { onRead: (p: Preview) => void }) {
       )}
       <DialogFooter>
         <Button type="submit" disabled={!ready || read.isPending}>
-          {read.isPending ? <Spinner /> : <Download />} {mode === 'url' ? 'Download and check' : 'Check package'}
+          {read.isPending ? <Spinner /> : <Download />} {mode === 'stremio' ? 'Read the add-on' : mode === 'url' ? 'Download and check' : 'Check package'}
         </Button>
       </DialogFooter>
     </form>

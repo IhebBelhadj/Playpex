@@ -385,8 +385,10 @@ function m3u(plugin, args) {
       return parseM3u(text);
     }).then(function (list) {
       // the admin's address listed these: they may be streamed from (streamHosts)
-      var learned = grants.learn(plugin, args.url, list.entries.map(function (e) { return e.url; })
-        .concat(list.entries.map(function (e) { return e.logo; }), list.epg));
+      var logos = list.entries.map(function (e) { return e.logo; }),
+        learned = grants.learn(plugin, args.url, list.entries.map(function (e) { return e.url; }).concat(logos, list.epg));
+      // the logos are pictures too (lib/plugins/images.js): clients get them through the server
+      grants.learn(plugin, args.url, logos, { scope: 'image' });
       if (learned) {
         log.info('[' + plugin.id + '] ' + learned + ' stream hosts from its playlist', { plugin: plugin.id });
       }

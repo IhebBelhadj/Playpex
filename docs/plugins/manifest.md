@@ -59,6 +59,7 @@ Each is shown to the admin in words at install (`describePermissions`); a new ve
 
 | Permission | Grants | Shown as |
 |---|---|---|
+| `images: [hosts]` (API 1.5) | the hosts your pictures (a card's `image`, a `backdrop`, a release's picture, a programme's) come from besides your `network` hosts: the server fetches every picture for clients ([tv.md](tv.md#models)); `image.tmdb.org` needs no entry. Same rules as `network` | "Shows pictures from i.ytimg.com" |
 | `network: [hosts]` | `http.request` to those hosts (HTTPS, port 443): exact names, or `*.domain` for its sub-domains. No IP addresses, no `localhost` / `.local` / `.lan` / `.internal`…, no wildcard over a TLD. Hosts you can't know when you pack (the admin's IPTV provider, a self-hosted service) come from a `url` setting with `grantsHost` ([Settings](#settings)) | "Talks to api.trakt.tv" |
 | `rateLimit: { perSecond, burst, inFlight }` | stricter request limits than the host's (2/s, burst 10, 4 in flight per host); never looser | |
 | `storage: "<n>KB\|MB"` | its own key / value store (≤ 100 MB) | "Keeps up to 5 MB of its own data" |
@@ -130,6 +131,18 @@ Rendered by the dashboard from the manifest (a plugin's page: its **Settings** t
 | `url` | `maxLength?` (≤ 2048), `placeholder?`, `schemes?` (`["https", "http"]` by default), `grantsHost?`, `streamHosts?`, `default?` | a web address (no user name or password in it). **`grantsHost`** (scope `server`, no default): saving it lets you reach that host, on that port, over https **or plain http**, and even a (public) IP address: an IPTV subscription, a self-hosted service; the admin sees "Talks to <host>" in your permissions. **`streamHosts`** (with `grantsHost`): the hosts of the streams, logos and guide the document at that address lists (`iptv.m3u`) may be **streamed** from too (your sources, never your own `http.request`). Addresses must still be public: a LAN server can't be reached |
 | `secret` | `maxLength?`, `placeholder?` | **scope `server`**, its key listed in `permissions.secrets`: the admin enters it (never shown again, only "set"), you read it with `secrets.get`. While the admin entered none, the server's environment may provide it: `PLAYPEX_PLUGIN_<ID>_<NAME>` (upper case, camelCase and `-` → `_`: youtube `apiKey` → `PLAYPEX_PLUGIN_YOUTUBE_API_KEY`), so a server can ship credentials nobody else has to make (a link's client id and secret too) |
 | `action` | `data` (a handler), `confirm?` | a button ("Sync now", "Test connection"): the dashboard calls the handler and shows its answer's toast |
+| `list` (API 1.5) | `maxItems` (≤ 100; ≤ 1000 for a list of `text`), `minItems?`, `itemLabel?`, and either **`fields`** (≤ 10 field definitions: `key`, `type` `switch` · `choice` · `slider` · `number` · `text` · `url`, `label`, and that type's own fields; `visibleIf` / `enabledIf` name fields of the same entry; `titleField?`: the text field naming an entry) or **`item`** (one definition without `key` / `label`: `choice` · `number` · `text` · `url`; `unique?`), `default?` (an array) | a list the admin grows instead of fixed keys (`playlist`, `playlist2`…): entries the dashboard adds, reorders and removes. A `fields` list's value is `[{ id, …fields }]`: the server gives each new entry an `id` (`e_…`) and keeps it when the entry is edited or moved, so tie your own state to it; missing fields get their default. An `item` list's value is `[value, …]`. A `url` field with `grantsHost` grants **each entry's** host (scope `server`); `streamHosts` works per entry too. No `secret` fields yet: a list's values are settings, never secrets |
+
+```json
+{ "key": "playlists", "scope": "server", "type": "list", "label": "Playlists", "itemLabel": "Playlist", "titleField": "name", "maxItems": 20,
+  "fields": [
+    { "key": "name", "type": "text", "label": "Name", "maxLength": 60 },
+    { "key": "url", "type": "url", "label": "Playlist (M3U)", "grantsHost": true, "streamHosts": true },
+    { "key": "on", "type": "switch", "label": "Use it", "default": true }
+  ] }
+```
+
+**Carrying settings across an update** (API 1.5): `contributes.migrate: "<data handler>"`. After an update is installed, the core calls it once with `{ fromVersion, toVersion, server, profiles: { <profile id>: values } }`: every value stored for you, also keys your new manifest no longer declares. Answer `{ data: { server?, profiles? } }` with values for this version's settings: they're saved as a save on the dashboard would (checked, all or nothing per scope; keys you don't declare dropped). The old rows stay, so a rollback finds them; a handler that fails changes nothing (the plugin starts on its defaults, the log says why). `plugins/m3u` 2.0 uses it to turn 1.x's five fixed playlist pairs into its list.
 
 All have `key`, `scope` (`profile` · `server`), `label`, `description?`, and, from Kodi's settings: `group` (shown together under that title), `level` (`basic` · `advanced`: behind "Show advanced"), `visibleIf` / `enabledIf: { key, equals }` (another setting with a value, of the same scope or `server`).
 

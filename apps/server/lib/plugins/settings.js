@@ -83,7 +83,117 @@ function present(src, d, locale) {
   if (d.options) {
     out.options = d.options.map(function (o) { return { value: o[0], label: t(o[1]) }; });
   }
+  if (d.type === 'list') {
+    ['minItems', 'maxItems', 'unique', 'titleField'].forEach(function (k) {
+      if (d[k] !== undefined) {
+        out[k] = d[k];
+      }
+    });
+    if (d.itemLabel !== undefined) {
+      out.itemLabel = t(d.itemLabel);
+    }
+    if (d.fields) {
+      out.fields = d.fields.map(function (f) { return present(src, Object.assign({ scope: d.scope }, f), locale); });
+    }
+    if (d.item) {
+      out.item = present(src, Object.assign({ key: 'item', scope: d.scope, label: d.label }, d.item), locale);
+    }
+  }
   return out;
+}
+
+var ENTRY_ID = /^e_[a-z2-7]{8}$/;
+
+function entryId() {
+  var alphabet = 'abcdefghijklmnopqrstuvwxyz234567', bytes = require('crypto').randomBytes(8), out = 'e_';
+  for (var i = 0; i < 8; i++) {
+    out += alphabet[bytes[i] & 31];
+  }
+  return out;
+}
+
+/** A field's value when an entry leaves it out */
+function fieldDefault(f) {
+  if (f.default !== undefined) {
+    return f.default;
+  }
+  return f.type === 'text' || f.type === 'url' ? '' : f.type === 'switch' ? false : null;
+}
+
+/**
+ * A list's value as it will be saved: a fields list's entries keep their id
+ * (or get one) and every field (missing ones at their default); an item list
+ * as it is. Anything not an array or an object is left for problem() to refuse.
+ */
+function normalizeList(d, value) {
+  if (!Array.isArray(value) || !d.fields) {
+    return value;
+  }
+  return value.map(function (entry) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return entry;
+    }
+    var out = { id: typeof entry.id === 'string' && ENTRY_ID.test(entry.id) ? entry.id : entryId() };
+    d.fields.forEach(function (f) {
+      out[f.key] = entry[f.key] === undefined || entry[f.key] === null ? fieldDefault(f) : entry[f.key];
+    });
+    Object.keys(entry).forEach(function (k) {
+      if (k !== 'id' && !d.fields.some(function (f) { return f.key === k; })) {
+        out[k] = entry[k];   // an unknown field: refused by problem()
+      }
+    });
+    return out;
+  });
+}
+
+/** Why a list's (normalized) value can't be saved, or null; problems name their entry (`[2].url …`) */
+function listProblem(d, value) {
+  if (!Array.isArray(value)) {
+    return 'must be a list';
+  }
+  if (value.length > d.maxItems) {
+    return 'holds at most ' + d.maxItems;
+  }
+  if (value.length < (d.minItems || 0)) {
+    return 'needs at least ' + d.minItems;
+  }
+  if (d.item) {
+    for (var i = 0; i < value.length; i++) {
+      var why = value[i] === null || value[i] === undefined ? 'is empty' : problem(d.item, value[i]);
+      if (why) {
+        return '[' + i + '] ' + why;
+      }
+    }
+    if (d.unique && new Set(value.map(function (v) { return typeof v === 'string' ? v.toLowerCase() : v; })).size !== value.length) {
+      return 'holds a value twice';
+    }
+    return null;
+  }
+  var ids = {};
+  for (var j = 0; j < value.length; j++) {
+    var entry = value[j];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return '[' + j + '] must be an entry';
+    }
+    if (ids[entry.id]) {
+      return '[' + j + '] has the id of another entry';
+    }
+    ids[entry.id] = true;
+    var unknown = Object.keys(entry).filter(function (k) {
+      return k !== 'id' && !d.fields.some(function (f) { return f.key === k; });
+    });
+    if (unknown.length) {
+      return '[' + j + '] has no field ' + unknown[0];
+    }
+    for (var k = 0; k < d.fields.length; k++) {
+      var f = d.fields[k], v = entry[f.key],
+        fwhy = v === null && (f.type === 'number' || f.type === 'choice') ? null : problem(f, v);
+      if (fwhy) {
+        return '[' + j + '].' + f.key + ' ' + fwhy;
+      }
+    }
+  }
+  return null;
 }
 
 /** Why `value` can't be this setting's, or null */
@@ -126,15 +236,21 @@ function problem(d, value) {
         return 'is longer than ' + (d.maxLength || 2048) + ' characters';
       }
       return value === '' ? null : protocol.urlProblem(value, d.schemes);
+    case 'list':
+      return listProblem(d, value);
     default:
       return 'can\'t be set';
   }
 }
 
 function profilesFor(src) {
-  return services().then(function (s) { return s.profiles.list(); }).then(function (answer) {
-    return (answer.profiles || answer).filter(function (p) {
-      return !(p.isKid && src.manifest.audience === 'adults');
+  return services().then(function (s) {
+    return Promise.all([s.profiles.list(), s.plugins.installed.get(src.id)]);
+  }).then(function (r) {
+    // an adults plugin (its manifest, or the admin's "Treat as adults") serves no kids profile
+    var adults = src.manifest.audience === 'adults' || !!(r[1] && r[1].adults);
+    return (r[0].profiles || r[0]).filter(function (p) {
+      return !(p.isKid && adults);
     });
   });
 }
@@ -194,6 +310,9 @@ function update(id, body, locale) {
     var defs = {}, errors = [];
     definitionsOf(src).forEach(function (d) { defs[d.key] = d; });
     Object.keys(values).forEach(function (key) {
+      if (defs[key] && defs[key].type === 'list' && values[key] !== null) {
+        values[key] = normalizeList(defs[key], values[key]);
+      }
       var d = defs[key], value = values[key];
       if (!d || d.type === 'action') {
         errors.push({ key: key, message: 'isn\'t one of its settings' });
@@ -305,5 +424,6 @@ module.exports = {
   grant: grant,
   show: show,
   run: run,
-  problem: problem
+  problem: problem,
+  normalizeList: normalizeList
 };

@@ -998,7 +998,9 @@ export interface paths {
          * Switch an installed plugin on or off, or set its update policy
          * @description Off stops it and hides it from clients (its data stays); plugins requiring it go off too, held for it, and come back
          *     when it's on again. On is refused (409) for a version its repository marked broken, or while a plugin it requires
-         *     is off or missing. `updatePolicy` null = the server's `plugins.updates`.
+         *     is off or missing. `updatePolicy` null = the server's `plugins.updates`. `adults` (plugin API 1.5): the admin
+         *     treats it as an `audience: adults` plugin (no kids profile, nothing it plays tracked, no writes but downloads);
+         *     only stricter: switching it off for a plugin whose manifest declares adults is refused (409).
          */
         patch: operations["updateAdminPlugin"];
         trace?: never;
@@ -1163,6 +1165,82 @@ export interface paths {
          */
         put: operations["grantAdminPluginPermission"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/managed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What can make managed plugins (docs/plugin-layer-plan.md §9) */
+        get: operations["listManagedPluginProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/managed/{provider}/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a managed plugin from what the admin gives, staged for its preview
+         * @description The provider reads the input (an add-on's URL for the Stremio bridge), builds a manifest around code the server
+         *     ships, and stages it like a package: the preview (its permissions in words, `summary` = what the provider read)
+         *     is installed with `POST /admin/plugins/packages/{token}/install`. Its kids default starts hidden.
+         */
+        post: operations["inspectManagedPlugin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/managed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Build a managed plugin again from a new input (its configuration changed) */
+        put: operations["reconfigureManagedPlugin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plugins/{pluginId}/managed/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Whether a managed plugin's provider builds something new (the service's new version, other shipped code)
+         * @description The server also checks once a day and installs a new build that asks for nothing more.
+         */
+        post: operations["checkManagedPlugin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2657,6 +2735,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cast/youtube": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The screens in the YouTube app's Cast list (admin)
+         * @description While `cast.youtube` is on: one receiver per screen that plays embeds (docs/cast-plan.md §6), and the phones connected to it.
+         */
+        get: operations["castYouTube"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cast/youtube/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The calling screen's "Link with TV code"
+         * @description The code a phone types in the YouTube app (Settings › Watch on TV) to cast to this screen from another network; it changes every 5 minutes. `null` while this screen isn't in the Cast list (`cast.youtube` off, not a screen that plays embeds, YouTube not answering).
+         */
+        get: operations["castYouTubeCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cast/screens/{deviceId}/play": {
         parameters: {
             query?: never;
@@ -3388,6 +3506,9 @@ export interface paths {
          *     screens (core templates), slot contributions, accent. Never permissions, settings, links or states: setup
          *     is the dashboard's. A kids profile (`?profile=`) gets no `audience: adults` plugin. Refetch on the
          *     `plugin.changed` event. Asset paths in a plugin (`assets/…`) are served at `<api>{assets}<path under assets/>`.
+         *     Since plugin API 1.5 (`imagesProxied`) a plugin's pictures come as `images/<token>`, a path of the plugin
+         *     like `assets/…`: `<api>/plugins/{pluginId}/images/{token}` (the server fetches them; clients never load a
+         *     plugin's hosts).
          */
         get: operations["listPlugins"];
         put?: never;
@@ -3435,6 +3556,28 @@ export interface paths {
          * @description SVG, PNG, JPEG or WebP only, `X-Content-Type-Options nosniff`, a CSP that runs no script.
          */
         get: operations["getPluginAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/{pluginId}/images/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A picture a plugin's answer named (docs/plugin-layer-plan.md §3)
+         * @description Fetched by the server as the plugin (its network and image hosts, image.tmdb.org, hosts the admin granted
+         *     it; public addresses only), checked by its bytes to be a JPEG, PNG, WebP, GIF or AVIF (never SVG), at most
+         *     5 MB, kept 24 h. Anything else answers 404 with no body (show a placeholder). The token is opaque.
+         */
+        get: operations["getPluginImage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4376,6 +4519,20 @@ export interface components {
             /** Format: date-time */
             startedAt: string;
         };
+        CastYouTube: {
+            /** @description `cast.youtube` and `cast.enabled` on, the server on the LAN, not recovery mode */
+            enabled: boolean;
+            receivers: {
+                /** @description The screen */
+                deviceId: string;
+                /** @description What the Cast list shows: "Playpex – <screen>" */
+                name: string;
+                /** @description Its DIAL port (28473 and up) */
+                port: number;
+                /** @description The phones connected to it now */
+                senders: string[];
+            }[];
+        };
         CastScreen: {
             deviceId: string;
             name: string;
@@ -5211,15 +5368,25 @@ export interface components {
                 name?: string;
                 url?: string;
             } | null;
-            /** @enum {string|null} */
+            /**
+             * @description What applies: `adults` also when the admin treats it as one (`adultsByAdmin`)
+             * @enum {string|null}
+             */
             audience?: "everyone" | "adults" | null;
+            /**
+             * @description What its manifest says
+             * @enum {string|null}
+             */
+            declaredAudience?: "everyone" | "adults" | null;
+            /** @description The admin's "Treat as adults" (an installed plugin; plugin API 1.5) */
+            adultsByAdmin?: boolean;
             /** @description Under the API prefix: /plugins/<id>/assets/… */
             icon?: string | null;
             /**
-             * @description dev: a developer copy from <config>/plugins-dev/
+             * @description dev: a developer copy from <config>/plugins-dev/; managed: built by a core provider (`source` = the provider; docs/plugin-layer-plan.md §9)
              * @enum {string}
              */
-            origin: "upload" | "url" | "repository" | "dev";
+            origin: "upload" | "url" | "repository" | "managed" | "dev";
             /** @description The uploaded file's name, the URL, or the developer folder */
             source?: string | null;
             /** @description The trusted publisher key's fingerprint; null = unsigned */
@@ -5323,7 +5490,7 @@ export interface components {
             /** @enum {string} */
             scope: "server" | "profile";
             /** @enum {string} */
-            type: "switch" | "choice" | "slider" | "number" | "text" | "url" | "secret" | "action";
+            type: "switch" | "choice" | "slider" | "number" | "text" | "url" | "secret" | "action" | "list";
             label: string;
             description?: string;
             group?: string;
@@ -5358,6 +5525,19 @@ export interface components {
             /** @description An action: asked before it runs */
             confirm?: string;
             default?: unknown;
+            /** @description A list: what one entry is called */
+            itemLabel?: string;
+            /** @description A list of entries: the field naming an entry */
+            titleField?: string;
+            minItems?: number;
+            /** @description A list: how many entries it holds at most */
+            maxItems?: number;
+            /** @description A list of values: no value twice */
+            unique?: boolean;
+            /** @description A list of entries (plugin API 1.5): its fields, each like a setting (`visibleIf` / `enabledIf` name fields of the entry). Values are `[{id, ...fields}]`; a new entry is sent without `id` (the server gives one and keeps it) */
+            fields?: components["schemas"]["PluginSettingDefinition"][];
+            /** @description A list of plain values (plugin API 1.5): what each value is */
+            item?: components["schemas"]["PluginSettingDefinition"];
         };
         PluginSettings: {
             plugin: string;
@@ -5555,8 +5735,14 @@ export interface components {
             permissions: components["schemas"]["PluginPermission"][];
             hooks: string[];
             /** @enum {string} */
-            origin: "upload" | "url" | "repository";
+            origin: "upload" | "url" | "repository" | "managed";
             source: string;
+            /** @description A managed plugin (plugin API 1.5): the provider that built it */
+            managed?: {
+                provider?: string;
+            } | null;
+            /** @description A managed plugin's provider: what it read (its own shape) */
+            summary?: unknown;
             /** @description What a URL led to (a GitHub release asset, a source zip) */
             resolved?: string | null;
             /** @description The folder of the zip the plugin was found in */
@@ -6720,6 +6906,12 @@ export interface components {
                 enabled: boolean;
                 /** @description Its own HTTP listener (default 28472); applied at once */
                 port: number;
+            };
+            cast?: {
+                /** @description Devices may cast to Playpex screens (docs/cast-plan.md); off: casts answer CAST_REFUSED */
+                enabled: boolean;
+                /** @description Each Playpex screen shows in the YouTube app's Cast list (a DIAL / Lounge receiver per screen, YouTube's unofficial protocol; only with network.lanSharing). Applied at once */
+                youtube: boolean;
             };
             plugins: {
                 /** @description Unsigned plugin packages install (at once), and the folders of <config>/plugins-dev/ load (after a restart) */
@@ -8829,6 +9021,8 @@ export interface operations {
                     enabled?: boolean;
                     /** @enum {string|null} */
                     updatePolicy?: "auto" | "notify" | "never" | null;
+                    /** @description Treat it as an adults plugin (the admin's choice) */
+                    adults?: boolean;
                 };
             };
         };
@@ -9086,6 +9280,119 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             401: components["responses"]["AdminRequired"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listManagedPluginProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        providers: {
+                            name: string;
+                            label: string;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    inspectManagedPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description What the provider needs (its own shape) */
+                    input?: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description The staged plugin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    reconfigureManagedPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    input?: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description The staged plugin (the same id), installed by its token */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkManagedPlugin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A staged preview of the new build, or { upToDate: true } */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginPackagePreview"] | {
+                        /** @constant */
+                        upToDate: true;
+                        id?: string;
+                    };
+                };
+            };
             404: components["responses"]["NotFound"];
         };
     };
@@ -11272,6 +11579,51 @@ export interface operations {
             401: components["responses"]["PairingRequired"];
         };
     };
+    castYouTube: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receivers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CastYouTube"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    castYouTubeCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The code */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description 12 digits */
+                        code: string | null;
+                    };
+                };
+            };
+            401: components["responses"]["PairingRequired"];
+        };
+    };
     castPlay: {
         parameters: {
             query?: never;
@@ -12257,6 +12609,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         plugins: components["schemas"]["ClientPlugin"][];
+                        /** @description Plugin pictures are `images/<token>` paths served by GET /plugins/{pluginId}/images/{token} (plugin API 1.5); older servers send https URLs */
+                        imagesProxied?: boolean;
                         /** @description What the profile's plugins provide (docs/providers-plan.md §5.3): hide Find releases without `releases` */
                         capabilities?: {
                             /** @description Some plugin lists releases (`releases.providers`) */
@@ -12338,6 +12692,40 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    getPluginImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pluginId: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The picture */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/webp": unknown;
+                    "image/gif": unknown;
+                    "image/avif": unknown;
+                };
+            };
+            /** @description Unknown token, plugin off, or the picture refused */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getServerLibrary: {
@@ -12736,6 +13124,8 @@ export interface operations {
                 imdb_id: string;
                 season?: number;
                 episode?: number;
+                /** @description The media ref playing (plugin API 1.5): its name, size and OpenSubtitles hash (when on disk) go to the providers, which match that release */
+                ref?: string;
                 /** @description Comma-separated ISO 639-1 codes, e.g. en,ar */
                 languages?: string;
             };

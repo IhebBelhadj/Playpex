@@ -1,12 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, ArrowLeft, BadgeCheck, Eraser, ExternalLink, History, MoreHorizontal, RotateCw, Trash2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, ArrowLeft, BadgeCheck, Eraser, ExternalLink, History, MoreHorizontal, RefreshCw, RotateCw, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Confirm, Empty, Loading, Mono, QueryError, Spinner, Stat } from '@/components/common'
 import { PluginAccounts } from '@/components/plugin-accounts'
 import {
-  ORIGIN,
+  isStremio,
+  originOf,
   PackagePreview,
   PluginIcon,
   PluginStateBadge,
@@ -41,7 +42,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { API_PREFIX, ApiError, api, errorMessage, unwrap } from '@/lib/api'
 import { ago, dateTime, time } from '@/lib/format'
@@ -149,6 +152,7 @@ export function PluginPage() {
                 : 'For each profile: whether it uses this plugin, what the plugin may do for it and its own settings.'
             }
           >
+            {p.origin !== 'dev' && <TreatAsAdults plugin={p} />}
             <PluginProfiles plugin={p.id} />
           </Panel>
         </TabsContent>
@@ -169,6 +173,40 @@ export function PluginPage() {
           <Versions plugin={p} developerMode={!!list.data?.developerMode} />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+// The admin's "Treat as adults" (plugin API 1.5): every rule of an adults plugin, at once; stricter only
+function TreatAsAdults({ plugin: p }: { plugin: AdminPlugin }) {
+  const refresh = useRefreshPlugins()
+  const client = useQueryClient()
+  const set = useMutation({
+    mutationFn: (adults: boolean) => unwrap(api.PATCH('/admin/plugins/{pluginId}', { params: { path: { pluginId: p.id } }, body: { adults } })),
+    onSuccess: (_, adults) => {
+      toast.success(adults ? `${p.name} is treated as an adults plugin` : `${p.name} is no longer treated as an adults plugin`)
+      refresh()
+      client.invalidateQueries({ queryKey: ['admin-plugin-settings', p.id] })
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  const declared = p.declaredAudience === 'adults'
+  return (
+    <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="space-y-1">
+        <Label htmlFor="plugin-adults">Treat as adults</Label>
+        <p className="text-xs text-muted-foreground">
+          {declared
+            ? 'Its own manifest says it is for adults: kids profiles never get it, and what it plays is never saved.'
+            : 'Kids profiles never get it, what it plays isn’t saved to watch history or resume points, and it can’t change anyone’s watch list or ratings.'}
+        </p>
+      </div>
+      <Switch
+        id="plugin-adults"
+        checked={declared || !!p.adultsByAdmin}
+        disabled={declared || set.isPending}
+        onCheckedChange={(on) => set.mutate(on)}
+      />
     </div>
   )
 }
@@ -353,8 +391,8 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
         <dl className="divide-y">
           <Row label="Publisher">{p.publisher?.name ?? '—'}</Row>
           <Row label="Origin">
-            {p.repository ? `The repository ${p.repository.name}` : ORIGIN[p.origin]}
-            {p.source && (
+            {p.repository ? `The repository ${p.repository.name}` : originOf(p)}
+            {p.source && p.origin !== 'managed' && (
               <span className="block text-xs break-all text-muted-foreground" title={p.source}>
                 {p.source}
               </span>
@@ -362,7 +400,11 @@ function Overview({ plugin: p }: { plugin: AdminPlugin }) {
           </Row>
           {p.origin !== 'dev' && (
             <Row label="Signature">
-              {p.signer ? (
+              {p.origin === 'managed' ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <BadgeCheck className="size-4" /> None needed: Playpex builds it from code that ships with this server
+                </span>
+              ) : p.signer ? (
                 <span className="inline-flex items-center gap-1.5">
                   <BadgeCheck className="size-4" /> A trusted publisher key <Mono className="text-xs">{p.signer}</Mono>
                 </span>
@@ -604,6 +646,23 @@ function Versions({ plugin: p, developerMode }: { plugin: AdminPlugin; developer
     onSuccess: setPreview,
     onError: (err) => toast.error(errorMessage(err)),
   })
+  // a managed plugin (docs/plugin-layer-plan.md §9): its provider builds it again; a new build shows as a preview
+  const check = useMutation({
+    mutationFn: () => unwrap(api.POST('/admin/plugins/{pluginId}/managed/check', { params: { path: { pluginId: p.id } } })),
+    onSuccess: (r) => ('upToDate' in r ? toast.success(`${p.name} is up to date`) : setPreview(r as Preview)),
+    onError: (err) => toast.error(errorMessage(err)),
+  })
+  // a Stremio add-on's new address (its configuration changed): the same plugin, built again
+  const [address, setAddress] = useState('')
+  const reconfigure = useMutation({
+    mutationFn: () =>
+      unwrap(api.PUT('/admin/plugins/{pluginId}/managed', { params: { path: { pluginId: p.id } }, body: { input: { url: address.trim() } } })) as Promise<Preview>,
+    onSuccess: (r) => {
+      setAddress('')
+      setPreview(r)
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  })
   const policy = useMutation({
     mutationFn: (v: string) =>
       unwrap(
@@ -627,6 +686,35 @@ function Versions({ plugin: p, developerMode }: { plugin: AdminPlugin; developer
   const listed = catalog.data?.plugins.find((x) => x.id === p.id && x.repository.id === p.repository?.id)
   return (
     <div className="space-y-6">
+      {p.origin === 'managed' && (
+        <Panel
+          title="Updates"
+          description={`Playpex builds ${p.name} itself (${p.source ?? 'a built-in provider'}): once a day it builds it again and installs what asks for nothing more.`}
+        >
+          <Button variant="outline" size="sm" disabled={check.isPending} onClick={() => check.mutate()}>
+            {check.isPending ? <Spinner /> : <History />} Check for updates
+          </Button>
+        </Panel>
+      )}
+      {isStremio(p) && (
+        <Panel
+          title="Change configuration"
+          description="Configured the add-on again on its own page? Paste the address it gave you: the same plugin keeps its settings and data. Its current address stays hidden."
+        >
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (/^(https?|stremio):\/\/\S+$/.test(address.trim())) reconfigure.mutate()
+            }}
+          >
+            <Input className="min-w-64 flex-1" placeholder="https://…/manifest.json" value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" />
+            <Button type="submit" variant="outline" size="sm" disabled={reconfigure.isPending || !/^(https?|stremio):\/\/\S+$/.test(address.trim())}>
+              {reconfigure.isPending ? <Spinner /> : <RefreshCw />} Read it
+            </Button>
+          </form>
+        </Panel>
+      )}
       {p.repository && (
         <Panel title="Updates" description={`From ${p.repository.name} only: another repository offering ${p.name} doesn't update it.`}>
           <div className="flex flex-wrap items-center justify-between gap-3">

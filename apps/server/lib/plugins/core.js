@@ -92,7 +92,8 @@ function tmdbParams(params, adults) {
  */
 module.exports = function core(plugin, services) {
   var p = plugin.permissions,
-    adults = plugin.manifest.audience === 'adults';
+    // what its manifest declares: the admin's "Treat as adults" restricts it, never gives it adult titles
+    adults = (plugin.declaredAudience !== undefined ? plugin.declaredAudience : plugin.manifest.audience) === 'adults';
 
   function count(key) {
     plugin.stats.host[key] = (plugin.stats.host[key] || 0) + 1;

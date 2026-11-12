@@ -20,7 +20,7 @@
 // pictures, `image` / `imageVariant`; 1.3: `embed` sources; 1.4: a filter group's
 // own toolbar button, `button`), asked with
 // `^1.1` / `>=1.1` (servers before 1.1 refuse such a range: they can't run it)
-var SERVER_PLUGIN_API = '1.4';
+var SERVER_PLUGIN_API = '1.5';
 
 var ID = /^[a-z][a-z0-9-]{1,31}$/;
 
@@ -66,7 +66,7 @@ var EFFECTS = ['open', 'play', 'toast', 'refresh', 'confirm', 'download'];
 // guide: its channels and their programmes, drawn from live.channels / live.guide (its data handler optional)
 var TEMPLATES = ['catalog', 'title', 'releases', 'list', 'guide'];
 // url: an address the admin types; with grantsHost its host joins the plugin's network permission (decision J)
-var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'url', 'secret', 'action'];
+var SETTING_TYPES = ['switch', 'choice', 'slider', 'number', 'text', 'url', 'secret', 'action', 'list'];
 var LISTING_CATEGORIES = ['catalog', 'sources', 'streams', 'live', 'resolvers', 'subtitles', 'metadata', 'library', 'tracking', 'notifications', 'tools'];
 
 // Slots of core screens a packaged plugin may contribute to (the TV's slot
@@ -242,11 +242,79 @@ function hostOf(url) {
   return m ? m[1].toLowerCase() : null;
 }
 
-/** The url settings whose host the admin's value grants (decision J) */
+/**
+ * The url settings whose host the admin's value grants (decision J), and the
+ * url fields of list settings that do (API 1.5): those come as
+ * { key, label, streamHosts, list: true, field, fieldLabel }, each entry's value granting its host
+ */
 function grantingSettings(manifest) {
-  return ((manifest.contributes && manifest.contributes.settings) || []).filter(function (s) {
-    return s.type === 'url' && s.grantsHost;
+  var out = [];
+  ((manifest.contributes && manifest.contributes.settings) || []).forEach(function (s) {
+    if (s.type === 'url' && s.grantsHost) {
+      out.push(s);
+    } else if (s.type === 'list' && s.fields) {
+      s.fields.forEach(function (f) {
+        if (f.type === 'url' && f.grantsHost) {
+          out.push({ key: s.key, label: s.label, scope: s.scope, type: 'list', list: true, field: f.key, fieldLabel: f.label, streamHosts: !!f.streamHosts });
+        }
+      });
+    }
   });
+  return out;
+}
+
+/** A list setting's own rules (API 1.5): what JSON Schema can't say */
+function listProblems(s, at, problem) {
+  var fields = s.fields || [], fieldKeys = names(fields, 'key'), byField = {};
+  fields.forEach(function (f) { byField[f.key] = f; });
+  if (s.fields && s.maxItems > 100) {
+    problem(at + '/maxItems', 'a list of entries holds at most 100');
+  }
+  if (s.item && s.item.type !== 'text' && s.maxItems > 100) {
+    problem(at + '/maxItems', 'only a list of text holds more than 100');
+  }
+  if (s.minItems !== undefined && s.minItems > s.maxItems) {
+    problem(at + '/minItems', 'more than maxItems');
+  }
+  if (s.unique && !s.item) {
+    problem(at + '/unique', 'only item lists are unique');
+  }
+  if ((s.default || []).length > s.maxItems || (s.default || []).length < (s.minItems || 0)) {
+    problem(at + '/default', 'outside minItems / maxItems');
+  }
+  duplicates(fieldKeys).forEach(function (k) { problem(at + '/fields', 'field ' + k + ' declared twice'); });
+  if (fieldKeys.indexOf('id') !== -1) {
+    problem(at + '/fields', 'id is the entry\'s own (made by the server)');
+  }
+  if (s.titleField !== undefined && (!byField[s.titleField] || byField[s.titleField].type !== 'text')) {
+    problem(at + '/titleField', 'must name a text field');
+  }
+  fields.forEach(function (f, i) {
+    var fat = at + '/fields/' + i;
+    ['visibleIf', 'enabledIf'].forEach(function (k) {
+      if (f[k] && (!byField[f[k].key] || byField[f[k].key] === f)) {
+        problem(fat + '/' + k, 'must name another field of the entry');
+      }
+    });
+    if (f.type === 'choice' && (f.options || []).map(function (o) { return o[0]; }).indexOf(f.default) === -1) {
+      problem(fat + '/default', 'not one of the options');
+    }
+    if (f.type === 'slider' && !(f.min < f.max && f.default >= f.min && f.default <= f.max)) {
+      problem(fat, 'needs min < max and the default between them');
+    }
+    if (f.pattern !== undefined && f.type !== 'text') {
+      problem(fat + '/pattern', 'only text fields have a pattern');
+    }
+    if (f.grantsHost && s.scope !== 'server') {
+      problem(at + '/scope', 'a url that grants its host is the admin\'s: scope server');
+    }
+    if (f.grantsHost && f.default) {
+      problem(fat + '/default', 'a url that grants its host has no default: the admin types it');
+    }
+  });
+  if (s.item && s.item.pattern !== undefined && s.item.type !== 'text') {
+    problem(at + '/item/pattern', 'only text items have a pattern');
+  }
 }
 
 function names(list, field) {
@@ -299,6 +367,12 @@ function checkManifest(manifest, options) {
     var why = hostProblem(host);
     if (why) {
       problem('/permissions/network/' + i, host + ' is ' + why);
+    }
+  });
+  (p.images || []).forEach(function (host, i) {
+    var why = hostProblem(host);
+    if (why) {
+      problem('/permissions/images/' + i, host + ' is ' + why);
     }
   });
   if (p.rateLimit) {
@@ -485,6 +559,9 @@ function checkManifest(manifest, options) {
         problem(at + '/default', 'a url that grants its host has no default: the admin types it');
       }
     }
+    if (s.type === 'list') {
+      listProblems(s, at, problem);
+    }
     if (s.type === 'secret') {
       if (s.scope !== 'server') {
         problem(at + '/scope', 'a secret is entered by the admin: scope server');
@@ -601,7 +678,15 @@ function describePermissions(manifest) {
   if (p.network && p.network.length) {
     add('network', 'Talks to ' + p.network.join(', '));
   }
+  if (p.images && p.images.length) {
+    add('images', 'Shows pictures from ' + p.images.join(', '));
+  }
   grantingSettings(m).forEach(function (s) {
+    if (s.list) {
+      add('network.' + s.key + '.' + s.field, 'Talks to the addresses you give in its list ' + JSON.stringify(s.label) +
+        ' (' + JSON.stringify(s.fieldLabel) + ')' + (s.streamHosts ? ', and the stream hosts those addresses list' : ''));
+      return;
+    }
     add('network.' + s.key, 'Talks to the address you give in its setting ' + JSON.stringify(s.label) +
       (s.streamHosts ? ', and the stream hosts that address lists' : ''));
   });

@@ -2,13 +2,13 @@
   "$schema": "../../packages/protocol/plugin.schema.json",
   "id": "m3u",
   "name": "Live TV (M3U)",
-  "description": "Your own IPTV channels from M3U playlists (up to 5), with their programme guides from XMLTV.",
-  "version": "1.1.0",
+  "description": "Your own IPTV channels from M3U playlists (as many as you have, up to 20), with their programme guides from XMLTV.",
+  "version": "2.0.0",
   "publisher": {
     "name": "Playpex"
   },
   "api": {
-    "server": "^1",
+    "server": "^1.5",
     "nav": "^1",
     "ui": "^1"
   },
@@ -16,7 +16,7 @@
   "icon": "assets/live.svg",
   "listing": {
     "summary": "Watch the channels of your M3U playlists (IPTV subscriptions, public lists) with a programme guide.",
-    "description": "Paste the address of an M3U playlist in its settings, and optionally of an XMLTV guide (else the one the playlist names); up to 5 playlists, their channels shown together. The channels show in a Live TV section with their programmes; the server plays HLS and MPEG-TS streams. The plugin carries no list of its own.",
+    "description": "Paste the address of an M3U playlist in its settings, and optionally of an XMLTV guide (else the one the playlist names); up to 20 playlists, their channels shown together. The channels show in a Live TV section with their programmes; the server plays HLS and MPEG-TS streams. The plugin carries no list of its own.",
     "disclaimer": "Only add playlists you are allowed to watch. Playpex is an educational project.",
     "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
@@ -55,109 +55,47 @@
     ],
     "settings": [
       {
-        "key": "playlist",
+        "key": "playlists",
         "scope": "server",
-        "type": "url",
-        "label": "Playlist (M3U)",
-        "description": "The address of your M3U playlist: http or https, as your provider gives it.",
-        "placeholder": "https://provider.example/playlist.m3u",
-        "grantsHost": true,
-        "streamHosts": true,
-        "group": "Playlist 1"
-      },
-      {
-        "key": "guide",
-        "scope": "server",
-        "type": "url",
-        "label": "Programme guide (XMLTV)",
-        "description": "Optional: an XMLTV file (.xml or .xml.gz). Empty: the guide the playlist names, if any.",
-        "placeholder": "https://provider.example/guide.xml.gz",
-        "grantsHost": true,
-        "group": "Playlist 1"
-      },
-      {
-        "key": "playlist2",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 2",
-        "label": "Playlist (M3U)",
-        "description": "Optional: another M3U playlist; its channels join the others.",
-        "placeholder": "https://provider.example/playlist.m3u",
-        "grantsHost": true,
-        "streamHosts": true
-      },
-      {
-        "key": "guide2",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 2",
-        "label": "Programme guide (XMLTV)",
-        "description": "Optional: this playlist's XMLTV file. Empty: the guide it names, if any.",
-        "placeholder": "https://provider.example/guide.xml.gz",
-        "grantsHost": true
-      },
-      {
-        "key": "playlist3",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 3",
-        "label": "Playlist (M3U)",
-        "description": "Optional: another M3U playlist; its channels join the others.",
-        "placeholder": "https://provider.example/playlist.m3u",
-        "grantsHost": true,
-        "streamHosts": true
-      },
-      {
-        "key": "guide3",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 3",
-        "label": "Programme guide (XMLTV)",
-        "description": "Optional: this playlist's XMLTV file. Empty: the guide it names, if any.",
-        "placeholder": "https://provider.example/guide.xml.gz",
-        "grantsHost": true
-      },
-      {
-        "key": "playlist4",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 4",
-        "label": "Playlist (M3U)",
-        "description": "Optional: another M3U playlist; its channels join the others.",
-        "placeholder": "https://provider.example/playlist.m3u",
-        "grantsHost": true,
-        "streamHosts": true
-      },
-      {
-        "key": "guide4",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 4",
-        "label": "Programme guide (XMLTV)",
-        "description": "Optional: this playlist's XMLTV file. Empty: the guide it names, if any.",
-        "placeholder": "https://provider.example/guide.xml.gz",
-        "grantsHost": true
-      },
-      {
-        "key": "playlist5",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 5",
-        "label": "Playlist (M3U)",
-        "description": "Optional: another M3U playlist; its channels join the others.",
-        "placeholder": "https://provider.example/playlist.m3u",
-        "grantsHost": true,
-        "streamHosts": true
-      },
-      {
-        "key": "guide5",
-        "scope": "server",
-        "type": "url",
-        "group": "Playlist 5",
-        "label": "Programme guide (XMLTV)",
-        "description": "Optional: this playlist's XMLTV file. Empty: the guide it names, if any.",
-        "placeholder": "https://provider.example/guide.xml.gz",
-        "grantsHost": true
+        "type": "list",
+        "label": "Playlists",
+        "description": "Each playlist's channels are added to the lineup, in this order. Add as many as you have, up to 20.",
+        "itemLabel": "Playlist",
+        "titleField": "name",
+        "maxItems": 20,
+        "fields": [
+          {
+            "key": "name",
+            "type": "text",
+            "label": "Name",
+            "maxLength": 60,
+            "placeholder": "My provider"
+          },
+          {
+            "key": "url",
+            "type": "url",
+            "label": "Playlist (M3U)",
+            "description": "The address of your M3U playlist: http or https, as your provider gives it.",
+            "placeholder": "https://provider.example/playlist.m3u",
+            "grantsHost": true,
+            "streamHosts": true
+          },
+          {
+            "key": "guide",
+            "type": "url",
+            "label": "Programme guide (XMLTV)",
+            "description": "Optional: an XMLTV file (.xml or .xml.gz). Empty: the guide the playlist names, if any.",
+            "placeholder": "https://provider.example/guide.xml.gz",
+            "grantsHost": true
+          },
+          {
+            "key": "on",
+            "type": "switch",
+            "label": "Use it",
+            "description": "Off: its channels leave the lineup, its addresses stay here.",
+            "default": true
+          }
+        ]
       },
       {
         "key": "playlistGuide",
@@ -170,12 +108,19 @@
       {
         "key": "groups",
         "scope": "server",
-        "type": "text",
+        "type": "list",
         "label": "Only these groups",
-        "description": "Group names, separated by commas, from any of the playlists. Empty: every channel.",
-        "maxLength": 500,
-        "level": "advanced"
+        "description": "Group names from any of the playlists. None: every channel.",
+        "item": {
+          "type": "text",
+          "maxLength": 60
+        },
+        "maxItems": 200,
+        "unique": true,
+        "level": "advanced",
+        "itemLabel": "Group"
       }
-    ]
+    ],
+    "migrate": "migrate"
   }
 }

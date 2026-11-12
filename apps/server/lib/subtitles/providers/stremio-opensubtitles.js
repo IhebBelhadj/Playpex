@@ -8,9 +8,20 @@ var axios = require('axios').default;
 var BASE = 'https://opensubtitles-v3.strem.io';
 
 function search(query) {
-  var path = query.season
-    ? '/subtitles/series/' + query.imdbId + ':' + query.season + ':' + query.episode + '.json'
-    : '/subtitles/movie/' + query.imdbId + '.json';
+  // the file playing, when known: the add-on matches its exact release by hash (Stremio's `extra`)
+  var extra = [];
+  if (query.hash) {
+    extra.push('videoHash=' + encodeURIComponent(query.hash));
+  }
+  if (query.size) {
+    extra.push('videoSize=' + encodeURIComponent(String(query.size)));
+  }
+  if (query.fileName) {
+    extra.push('filename=' + encodeURIComponent(query.fileName));
+  }
+  var path = (query.season
+    ? '/subtitles/series/' + query.imdbId + ':' + query.season + ':' + query.episode
+    : '/subtitles/movie/' + query.imdbId) + (extra.length ? '/' + extra.join('&') : '') + '.json';
 
   return axios.get(BASE + path, { timeout: 15000 }).then(function (res) {
     return (res.data.subtitles || []).map(function (s) {

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, ArrowRightLeft, BadgeCheck, Library, Puzzle, ShieldAlert, X } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, BadgeCheck, ExternalLink, Library, Puzzle, ShieldAlert, X } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -20,10 +20,21 @@ import { bytes } from '@/lib/format'
 export type AdminPlugin = Schemas['AdminPlugin']
 export type Preview = Schemas['PluginPackagePreview']
 
+/** A bridged Stremio add-on (docs/stremio-bridge-plan.md): a managed plugin of the provider `stremio` */
+export function isStremio(p: { origin?: string; source?: string | null; managed?: { provider?: string } | null }): boolean {
+  return p.origin === 'managed' && (p.source === 'stremio' || p.managed?.provider === 'stremio')
+}
+
+/** Where a plugin came from, in words (a bridged add-on says so) */
+export function originOf(p: AdminPlugin): string {
+  return isStremio(p) ? 'Stremio add-on' : ORIGIN[p.origin]
+}
+
 export const ORIGIN: Record<AdminPlugin['origin'], string> = {
   upload: 'Uploaded',
   url: 'From a URL',
   repository: 'From a repository',
+  managed: 'Made by Playpex',
   dev: 'Developer copy',
 }
 
@@ -197,6 +208,10 @@ export function PackagePreview({
             <Badge variant="secondary">
               <Library /> From {p.repository.name}: its signed index vouches for it
             </Badge>
+          ) : p.managed ? (
+            <Badge variant="secondary">
+              <BadgeCheck /> Made by Playpex: its code ships with this server
+            </Badge>
           ) : p.signer ? (
             p.signer.trusted ? (
               <Badge variant="secondary">
@@ -229,7 +244,8 @@ export function PackagePreview({
             </AlertDescription>
           </Alert>
         )}
-        {!p.rollback && !p.repository && (
+        {isStremio(p) && <StremioSummary summary={p.summary as StremioPreview | undefined} />}
+        {!p.rollback && !p.repository && !p.managed && (
           <div className="space-y-1 text-xs text-muted-foreground">
             <div className="break-all">From {p.source}</div>
             {p.resolved && <div className="break-all">Downloaded: {p.resolved}</div>}
@@ -395,5 +411,89 @@ function RepositoryPackage({
         </Button>
       </DialogFooter>
     </>
+  )
+}
+
+// ── a Stremio add-on's preview (docs/stremio-bridge-plan.md §5.1) ─────────────
+
+type StremioPreview = {
+  addon: { id: string; name: string; version: string; description: string | null }
+  host: string
+  configured: boolean
+  configureUrl: string | null
+  configurationRequired: boolean
+  audience: 'adults' | 'everyone'
+  p2p: boolean
+  offers: {
+    play: boolean
+    ownStreams: boolean
+    subtitles: boolean
+    titles: boolean
+    catalogs: { name: string; type: string; show: string }[]
+  }
+  unused: string[]
+}
+
+const SHOWS_IN: Record<string, string> = {
+  movies: 'rows in Movies',
+  shows: 'rows in TV shows',
+  section: 'its own section',
+  search: 'the search page',
+  hidden: 'hidden',
+}
+
+export function StremioSummary({ summary: s }: { summary: StremioPreview | undefined }) {
+  if (!s) return null
+  const offers = [
+    s.offers.play && 'Play sources for movies and episodes (torrents and links)',
+    s.offers.ownStreams && 'Videos of its own, played from its pages',
+    s.offers.subtitles && 'Subtitles in the player',
+    s.offers.titles && 'Title pages for what it lists',
+  ].filter(Boolean) as string[]
+  return (
+    <div className="space-y-3 rounded-md border p-3 text-sm">
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline">Stremio add-on at {s.host}</Badge>
+        {s.configured && <Badge variant="outline">Configured (its address is kept as a secret)</Badge>}
+        {s.p2p && <Badge variant="outline">Peer-to-peer</Badge>}
+        {s.audience === 'adults' && <Badge variant="outline">Adults only</Badge>}
+      </div>
+      {s.configurationRequired && (
+        <Alert>
+          <AlertTriangle />
+          <AlertTitle>It needs configuring first</AlertTitle>
+          <AlertDescription>
+            Open its configuration page, set it up there, then paste the address it gives you instead of this one.
+          </AlertDescription>
+        </Alert>
+      )}
+      <div>
+        <div className="mb-1 font-medium">What it adds</div>
+        <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+          {offers.map((o) => (
+            <li key={o}>{o}</li>
+          ))}
+          {s.offers.catalogs.map((c) => (
+            <li key={c.type + c.name}>
+              {c.name} <span className="text-xs">({c.type})</span>: {SHOWS_IN[c.show] ?? c.show}
+            </li>
+          ))}
+        </ul>
+        {s.offers.catalogs.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Where each catalog shows can be changed in its Settings.</p>}
+      </div>
+      {s.unused.length > 0 && (
+        <p className="text-xs text-muted-foreground">Playpex doesn't use: {s.unused.join(', ')}.</p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {s.host} sees this server's address and the titles you look for. Playpex runs none of its code: it reads its answers and checks them.
+      </p>
+      {s.configureUrl && (
+        <Button variant="outline" size="sm" asChild>
+          <a href={s.configureUrl} target="_blank" rel="noreferrer noopener">
+            <ExternalLink /> Configure on {s.host}
+          </a>
+        </Button>
+      )}
+    </div>
   )
 }

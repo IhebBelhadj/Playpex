@@ -32,6 +32,7 @@ process.env.PLAYPEX_DISCOVERY = '0';
 var server = require('..'),
   plugins = require('../lib/plugins'),
   pluginSettings = require('../lib/plugins/settings'),
+  userData = require('../lib/userData'),
   pluginHttp = require('../lib/plugins/http'),
   iptv = require('../lib/plugins/iptv'),
   protocol = require('@playpex/protocol/plugins'),
@@ -185,7 +186,7 @@ test('manifest rules: live hooks together, guide screens, url settings that gran
   says(manifest({ permissions: { sources: ['hls'], hooks: ['play.collect'], network: ['a.example.org'] },
     contributes: { screens: [{ name: 'g', template: 'guide' }] } }), /guide screen/);
   var words = protocol.describePermissions(m3u).map(function (x) { return x.text; }).join(' | ');
-  assert.match(words, /address you give in its setting "Playlist \(M3U\)", and the stream hosts that address lists/);
+  assert.match(words, /addresses you give in its list "Playlists" \("Playlist \(M3U\)"\), and the stream hosts those addresses list/);
   assert.match(words, /Adds TV channels/);
   assert.deepEqual(protocol.grantOf('http://Box.Example.com:25461/get.php?u=1'), { host: 'box.example.com', port: 25461, scheme: 'http' });
   assert.equal(protocol.grantOf('ftp://x.example.com/'), null);
@@ -262,17 +263,20 @@ test('the admin\'s addresses: url settings checked, their hosts granted (http, t
     return;
   }
   var plugin = plugins.get('m3u');
-  return pluginSettings.update('m3u', { values: { playlist: 'ftp://iptv.playpex-test.dev/list' } }).then(function () {
+  return pluginSettings.update('m3u', { values: { playlists: [{ url: 'ftp://iptv.playpex-test.dev/list' }] } }).then(function () {
     assert.fail('ftp accepted');
   }, function (err) {
     assert.equal(err.code, 'INVALID');
     assert.match(err.errors[0].message, /https:\/\/ or http:\/\//);
-    return pluginSettings.update('m3u', { values: { playlist: web.playlist, guide: web.guide } });
+    return pluginSettings.update('m3u', { values: { playlists: [{ name: 'Test IPTV', url: web.playlist, guide: web.guide }] } });
   }).then(function (view) {
-    assert.equal(view.server.playlist, web.playlist);
-    var def = view.definitions.filter(function (d) { return d.key === 'playlist'; })[0];
-    assert.equal(def.type, 'url');
-    assert.equal(def.grantsHost, true);
+    assert.equal(view.server.playlists[0].url, web.playlist);
+    assert.match(view.server.playlists[0].id, /^e_/);
+    first = view.server.playlists[0];
+    var def = view.definitions.filter(function (d) { return d.key === 'playlists'; })[0];
+    assert.equal(def.type, 'list');
+    assert.equal(def.fields[1].type, 'url');
+    assert.equal(def.fields[1].grantsHost, true);
     assert.ok(pluginHttp.target(plugin, web.playlist).granted);
     // the port and plain http are the granted host's only
     assert.throws(function () { pluginHttp.target(plugin, 'http://iptv.playpex-test.dev:1/x'); }, /only port 443|https/);
@@ -282,7 +286,8 @@ test('the admin\'s addresses: url settings checked, their hosts granted (http, t
   });
 });
 
-var channels = null;
+var channels = null,
+  first = null;   // the first playlist's entry
 
 test('300 channels: numbered, grouped, their logos through the server; the playlist\'s hosts learned for streams only', function (t) {
   if (skip(t)) {
@@ -431,7 +436,10 @@ test('several playlists: their channels together (the others\' ids prefixed, num
     return;
   }
   var from = new Date(Math.floor(Date.now() / 1800000) * 1800000), to = new Date(from.getTime() + 3600000), both;
-  return pluginSettings.update('m3u', { values: { playlist3: web.playlist, guide3: web.guide } }).then(function () {
+  var second = null;
+  return pluginSettings.update('m3u', { values: { playlists: [first, { name: 'Again', url: web.playlist, guide: web.guide }] } }).then(function (view) {
+    second = view.server.playlists[1];
+    assert.equal(view.server.playlists[0].id, first.id, 'the first entry keeps its id');
     return call('GET', '/live/m3u/channels');
   }).then(function (r) {
     assert.equal(r.status, 200, r.text);
@@ -439,8 +447,8 @@ test('several playlists: their channels together (the others\' ids prefixed, num
     var list = r.json.channels;
     assert.equal(list.length, web.channels * 2);
     assert.deepEqual(list.slice(0, web.channels).map(function (c) { return c.id; }), channels.map(function (c) { return c.id; }), 'the first playlist\'s ids unchanged');
-    var other = list.filter(function (c) { return c.id === '3:' + channels[0].id; })[0];
-    assert.ok(other, 'the third playlist\'s channels prefixed 3:');
+    var other = list.filter(function (c) { return c.id === second.id + ':' + channels[0].id; })[0];
+    assert.ok(other, 'the second playlist\'s channels prefixed with its entry id');
     assert.equal(other.name, channels[0].name);
     assert.equal(new Set(list.map(function (c) { return c.id; })).size, list.length);
     assert.equal(new Set(list.map(function (c) { return c.number; })).size, list.length, 'one number per channel');
@@ -455,7 +463,7 @@ test('several playlists: their channels together (the others\' ids prefixed, num
     assert.equal(r.status, 200, r.text);
     assert.equal(r.json.channel.id, both[1]);
     assert.match(r.json.source.ref, /^[lh]_[0-9a-f]{32}$/);
-    return pluginSettings.update('m3u', { values: { playlist3: null, guide3: null } });
+    return pluginSettings.update('m3u', { values: { playlists: [first] } });
   }).then(function () {
     return call('GET', '/live/m3u/channels');
   }).then(function (r) {
@@ -472,17 +480,43 @@ test('the admin: channels with their status, Refresh; a new address drops the ol
   assert.equal(status.channels, web.channels);
   assert.ok(status.durationMs >= 0);
   var before = web.stats.requests['http /get.php'];
-  return pluginSettings.update('m3u', { values: { groups: 'news, kids' } }).then(function () {
+  return pluginSettings.update('m3u', { values: { groups: ['news', 'kids'] } }).then(function () {
     assert.equal(adminChannels.status('m3u').channels, null, 'forgotten after a settings change');
     return call('GET', '/live/m3u/channels');
   }).then(function (r) {
     assert.equal(r.json.channels.length, (web.channels / 5) * 2);
     assert.equal(web.stats.requests['http /get.php'], before, 'the playlist came from the disk cache');
-    return pluginSettings.update('m3u', { values: { groups: null, playlist: null } });
+    return pluginSettings.update('m3u', { values: { groups: null, playlists: null } });
   }).then(function () {
     return call('GET', '/live/m3u/channels');
   }).then(function (r) {
     assert.deepEqual(r.json.channels, []);
     assert.throws(function () { pluginHttp.target(plugins.get('m3u'), web.playlist); });
+  });
+});
+
+test('2.0 carries 1.x settings over: the five fixed pairs into the list, the groups text into the list of groups', function (t) {
+  if (skip(t)) {
+    return;
+  }
+  var stored = { playlist: web.playlist, guide: web.guide, playlist3: 'https://two.playpex-test.dev/list.m3u', groups: 'News, kids, news, ' };
+  return userData.services().then(function (s) {
+    return Promise.all(Object.keys(stored).map(function (k) { return s.plugins.settings.set('m3u', 'server', null, k, stored[k]); }));
+  }).then(function () {
+    return require('../lib/plugins/migrate').run('m3u', '1.1.0');
+  }).then(function (r) {
+    assert.deepEqual(r, { migrated: true });
+    return pluginSettings.view('m3u', 'en');
+  }).then(function (view) {
+    var list = view.server.playlists;
+    assert.equal(list.length, 2);
+    assert.deepEqual(list.map(function (e) { return [e.name, e.url, e.guide, e.on]; }), [
+      ['iptv.playpex-test.dev', web.playlist, web.guide, true],
+      ['two.playpex-test.dev', 'https://two.playpex-test.dev/list.m3u', '', true]
+    ]);
+    list.forEach(function (e) { assert.match(e.id, /^e_/); });
+    assert.deepEqual(view.server.groups, ['News', 'kids']);
+    assert.ok(pluginHttp.target(plugins.get('m3u'), web.playlist).granted, 'its host granted again');
+    return pluginSettings.update('m3u', { values: { playlists: null, groups: null } });
   });
 });

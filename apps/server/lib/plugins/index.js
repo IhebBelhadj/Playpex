@@ -140,10 +140,20 @@ function load(dir, origin) {
     if (fs.statSync(codeFile).size > CODE_MAX) {
       throw failure('INVALID', 'server.js is larger than 5 MB');
     }
+    var code = fs.readFileSync(codeFile, 'utf8'),
+      // a managed plugin runs code the server ships (docs/plugin-layer-plan.md §8): byte for byte, or not at all
+      trusted = origin === 'managed' ? require('./builtin').trusted(code) : null;
+    if (origin === 'managed' && !trusted) {
+      throw failure('INVALID', 'a managed plugin\'s server.js must be code this server ships (it was changed on disk, or comes from another version)');
+    }
     plugin = {
       id: manifest.id,
       dir: dir,
       origin: origin || 'dev',
+      // the name of the shipped code it runs: core-only host calls (./corecalls.js) are its
+      trusted: trusted,
+      // shipped code whose streams may go on to any public host (./builtin options; the Stremio bridge)
+      openStreams: trusted ? require('./builtin').options(trusted).openStreams : false,
       manifest: manifest,
       // what the admin granted: the manifest's, until install / consent exist (step P4)
       permissions: manifest.permissions,
@@ -161,7 +171,7 @@ function load(dir, origin) {
     var tagged = logger.child('plugins');
     plugin.sandbox = new Sandbox({
       id: plugin.id,
-      code: fs.readFileSync(codeFile, 'utf8'),
+      code: code,
       permissions: plugin.permissions,
       limits: SANDBOX_LIMITS,
       host: createHost(plugin, userData.services),
@@ -181,7 +191,7 @@ function load(dir, origin) {
         publish(plugin);
       }
     });
-    return Promise.all([plugin.sandbox.start(), refreshHidden(plugin.id), require('./grants').refresh(plugin)]).then(function (r) { return r[0]; });
+    return Promise.all([plugin.sandbox.start(), refreshHidden(plugin.id), refreshAudience(plugin.id), require('./grants').refresh(plugin)]).then(function (r) { return r[0]; });
   }).then(function (registered) {
     plugin.registered = registered;
     plugin.state = 'enabled';
@@ -217,6 +227,7 @@ function unload(id) {
   require('./remote').forget(id);
   require('../media/hls').forget(id);
   require('../live').forget(id);
+  require('./stremio').forget(id);
   plugin.state = 'removed';
   publish(plugin);
   return true;
@@ -225,6 +236,8 @@ function unload(id) {
 function start(options) {
   options = options || {};
   started = true;
+  // the managed providers the server ships (the Stremio add-on bridge: provider and core calls)
+  require('./stremio').register();
   if (options.http) {
     http.configure(options.http);
   }
@@ -250,6 +263,13 @@ function start(options) {
   }
   var installed = options.installed === false ? Promise.resolve() : require('./install').loadInstalled();
   return installed.then(function () {
+    // managed plugins (./managed): rebuilt when this server ships other code for them, then once a day
+    if (options.managed === false) {
+      return null;
+    }
+    require('./managed').start(options.managed);
+    return require('./managed').refresh().catch(function () {});
+  }).then(function () {
     // their indexes from the cache now, fetched a few minutes later (P4b)
     return options.repositories === false ? null : require('./repositories').start(options.repositories);
   }).then(function () {
@@ -263,6 +283,7 @@ function stop() {
   started = false;
   require('./scheduler').stopAll();
   require('./repositories').stop();
+  require('./managed').stop();
   Array.from(plugins.keys()).forEach(function (id) {
     var plugin = plugins.get(id);
     plugins.delete(id);
@@ -287,6 +308,30 @@ function blocked(plugin, ctx) {
   }
   return (plugin.manifest.audience === 'adults' && !!profile.kids) ||
     (!!profile.id && !!hiddenFrom[plugin.id] && hiddenFrom[plugin.id].indexOf(profile.id) !== -1);
+}
+
+/**
+ * Applies the admin's "Treat as adults" (an installed plugin's `adults`): the
+ * loaded manifest then says `audience: 'adults'`, so every rule of adults
+ * plugins holds (no kids profile, nothing tracked, no writes but downloads).
+ * `declaredAudience` keeps what the manifest says: what an adults plugin may
+ * get more (TMDB's adult titles, ./core.js) follows it, never the admin's switch.
+ */
+function refreshAudience(id) {
+  return userData.services().then(function (s) {
+    return s.plugins.installed.get(id);
+  }).then(function (row) {
+    var plugin = plugins.get(id);
+    if (!plugin) {
+      return;
+    }
+    if (plugin.declaredAudience === undefined) {
+      plugin.declaredAudience = plugin.manifest.audience;
+    }
+    plugin.manifest.audience = row && row.adults ? 'adults' : plugin.declaredAudience;
+  }, function (err) {
+    log.warn('plugin ' + id + ': its audience not read: ' + err.message, { plugin: id });
+  });
 }
 
 /** Reads again which profiles a plugin is hidden from (load, and the admin's change) */
@@ -489,6 +534,7 @@ module.exports = {
   clientView: clientView,
   blocked: blocked,
   refreshHidden: refreshHidden,
+  refreshAudience: refreshAudience,
   localize: localize,
   publish: publish,
   list: list,

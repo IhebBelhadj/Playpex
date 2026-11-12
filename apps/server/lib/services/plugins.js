@@ -13,7 +13,7 @@ var KEY_MAX = 200,
   LIST_MAX = 1000,
   SCOPES = ['server', 'profile'],
   HIDDEN = 'hidden',
-  ORIGINS = ['upload', 'url', 'repository'],
+  ORIGINS = ['upload', 'url', 'repository', 'managed'],
   POLICIES = ['auto', 'notify', 'never'];
 
 function checkKey(key) {
@@ -35,7 +35,7 @@ module.exports = function pluginsService(repositories, options) {
       var values = {};
       (definitions || []).forEach(function (d) {
         if (d.scope === scope && d.type !== 'action' && d.type !== 'secret') {
-          values[d.key] = d.default === undefined ? null : d.default;
+          values[d.key] = d.default === undefined ? (d.type === 'list' ? [] : null) : d.default;
         }
       });
       rows.forEach(function (r) {
@@ -77,10 +77,21 @@ module.exports = function pluginsService(repositories, options) {
             repository: row.repository || null,
             updatePolicy: old ? old.updatePolicy : null,
             held: row.held || null,
+            // the admin's "Treat as adults": kept across updates
+            adults: old ? !!old.adults : false,
             enabled: row.enabled === undefined ? (old ? old.enabled : true) : !!row.enabled,
             installedAt: old ? old.installedAt : at,
             updatedAt: at
           });
+        });
+      },
+      /** The admin treats it as an adults plugin (or no longer): never looser than its manifest */
+      setAdults: function (id, adults) {
+        return repo.installedGet(id).then(function (old) {
+          if (!old) {
+            throw errors.notFound('No installed plugin ' + id);
+          }
+          return repo.installedSave(Object.assign({}, old, { adults: !!adults, updatedAt: now() }));
         });
       },
       /** On or off; `held` = why the server switched it off (null: the admin did, or it's on) */
@@ -182,6 +193,10 @@ module.exports = function pluginsService(repositories, options) {
           settingsOf(pluginId, definitions, 'server', ''),
           profileId ? settingsOf(pluginId, definitions, 'profile', profileId) : null
         ]).then(function (r) { return { server: r[0], profile: r[1] }; });
+      },
+      /** The rows as stored, whatever the manifest declares now: [{ key, value }] (a migration reads an older version's) */
+      rows: function (pluginId, scope, ownerId) {
+        return repo.settingsList(pluginId, scope, scope === 'server' ? '' : ownerId);
       },
       /** One setting's value (null resets it to the default) */
       set: function (pluginId, scope, ownerId, key, value) {

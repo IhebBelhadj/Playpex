@@ -1,3 +1,4 @@
-// The playpex-device module's share receiver (Kotlin: ACTION_SEND text/plain, app.json's intent
-// filter), for state/share.tsx: Share to Playpex (docs/cast-plan.md §5)
-export { onShare, takeSharedText } from '../../modules/playpex-device'
+// The playpex-device module's Share to Playpex (Kotlin: ACTION_SEND text/plain, app.json's intent
+// filter; sharing shortcuts per screen, plugins/with-share-targets.js), for state/share.tsx
+// (docs/cast-plan.md §5)
+export { onShare, setShareTargets, takeShared, type Shared } from '../../modules/playpex-device'

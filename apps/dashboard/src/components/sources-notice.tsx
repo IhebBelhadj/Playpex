@@ -30,7 +30,7 @@ export function SourcesNotice() {
         <p>
           Playpex Media Server comes with no content sources. Until you add one, Play only finds the files in your library and your downloads.
           Sources are plugins: add the repository of the ones you want (its publisher gives the address of its index), then install them from
-          Browse.
+          Browse. A Stremio add-on's address works too: each add-on becomes a plugin.
         </p>
         <p className="mt-1 text-xs">Educational project: streaming copyrighted content via torrents may be illegal where you live.</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -39,6 +39,9 @@ export function SourcesNotice() {
           </Button>
           <Button size="sm" variant="outline" asChild>
             <Link to="/plugins?tab=browse">Browse plugins</Link>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/plugins?install=stremio">Add a Stremio add-on</Link>
           </Button>
           <Button size="sm" variant="ghost" disabled={dismiss.isPending} onClick={() => dismiss.mutate()}>
             {dismiss.isPending && <Spinner />} Don&apos;t show again

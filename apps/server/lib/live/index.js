@@ -22,6 +22,7 @@
 // adults plugin), PLUGIN_FAILED (it failed and nothing is kept), INVALID.
 
 var crypto = require('crypto'),
+  images = require('../plugins/images'),
   protocol = require('@playpex/protocol/plugins'),
   plugins = require('../plugins'),
   http = require('../plugins/http'),
@@ -106,8 +107,9 @@ function presentLogo(plugin, logo) {
   try {
     http.target(plugin, logo, { stream: true });
   } catch (e) {
-    // a host it can't reach: https ones are the client's to load (like a card's image), the rest dropped
-    return /^https:\/\//.test(logo) ? logo : null;
+    // a host it can't reach as a stream: a picture through the server (lib/plugins/images.js decides,
+    // with its image hosts), never the client's to load from the plugin's hosts
+    return images.apiPath(plugin, logo);
   }
   return '/live/' + plugin.id + '/logos/' + logoToken(plugin, logo);
 }
@@ -322,6 +324,9 @@ function guide(pluginId, ids, from, to, ctx) {
         return asked.has(p.channel) && isFinite(a) && isFinite(b) && b > a && b > start && a < end;
       }).sort(function (a, b) {
         return a.channel < b.channel ? -1 : a.channel > b.channel ? 1 : Date.parse(a.start) - Date.parse(b.start);
+      }).map(function (p) {
+        // a programme's picture through the server (docs/plugin-layer-plan.md §3)
+        return p.image ? Object.assign({}, p, { image: images.apiPath(plugin, p.image) || undefined }) : p;
       });
     guides.set(key, { at: Date.now(), programmes: programmes });
     while (guides.size > GUIDE_KEPT) {

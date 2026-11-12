@@ -8,7 +8,7 @@
     "name": "Playpex"
   },
   "api": {
-    "server": "^1",
+    "server": "^1.5",
     "nav": "^1",
     "ui": "^1"
   },
@@ -150,6 +150,33 @@
         "step": 0.5,
         "default": 0,
         "level": "advanced"
+      },
+      {
+        "key": "shelves",
+        "scope": "server",
+        "type": "list",
+        "label": "Extra shelves",
+        "description": "A list setting (plugin API 1.5): each shelf is a row of its own on the Hello screen. Add as many as you like, up to 8.",
+        "group": "Catalog",
+        "itemLabel": "Shelf",
+        "titleField": "name",
+        "maxItems": 8,
+        "fields": [
+          { "key": "name", "type": "text", "label": "Name", "maxLength": 40, "placeholder": "Weekend picks" },
+          { "key": "size", "type": "number", "label": "Titles", "min": 1, "max": 30, "integer": true, "default": 10 },
+          { "key": "wide", "type": "switch", "label": "Wide pictures", "default": false }
+        ]
+      },
+      {
+        "key": "favourites",
+        "scope": "server",
+        "type": "list",
+        "label": "Favourite words",
+        "description": "A list of plain values: titles with one of these words come first.",
+        "group": "Catalog",
+        "item": { "type": "text", "maxLength": 30 },
+        "maxItems": 20,
+        "unique": true
       },
       {
         "key": "apiToken",

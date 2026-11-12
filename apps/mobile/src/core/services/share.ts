@@ -1,5 +1,5 @@
-import type { CastRequest } from '../cast/caster'
-import type { LinkItem } from './search'
+import type { Caster, CastRequest, CastScreen } from '../cast/caster'
+import { linkSource, looseTitle, type LinkItem } from './search'
 
 // Share to Playpex (docs/cast-plan.md §5): another app shares text (often
 // "A title https://…" or a bare link); the link in it is read by the server
@@ -54,4 +54,38 @@ export function embedRequest(item: LinkItem, profileId: string | null): CastRequ
     // a video from a link is no title of the catalog: nothing saved for it
     tracking: 'none',
   }
+}
+
+// ── straight to a screen (a direct share target, or the phone's cast.shareTo) ──
+
+const SHORTCUT = 'screen:'
+
+/** The direct share target of a screen (modules/playpex-device setShareTargets) */
+export function shortcutOf(deviceId: string): string {
+  return SHORTCUT + deviceId
+}
+
+/** The screen a direct share target stands for, else null */
+export function screenOfShortcut(id: string | null | undefined): string | null {
+  return id && id.startsWith(SHORTCUT) ? id.slice(SHORTCUT.length) || null : null
+}
+
+/** Whether a screen plays this kind of item */
+export function takes(screen: CastScreen, item: LinkItem): boolean {
+  if (item.kind === 'youtube') return screen.accepts.embed
+  if (item.kind === 'magnet' || item.kind === 'torrent') return screen.accepts.magnet
+  return screen.accepts.media
+}
+
+/** What a shared link plays on that screen without asking: its one thing, or a page's first the screen takes */
+export function pickFor(items: LinkItem[], screen: CastScreen): LinkItem | null {
+  return items.find((i) => takes(screen, i)) ?? null
+}
+
+/** Casts a found item to a screen: a YouTube video as the core embed, anything else as a source; nothing saved */
+export function castShared(caster: Caster, item: LinkItem, screen: { deviceId: string; name: string }, profileId: string | null): Promise<string> {
+  const embed = embedRequest(item, profileId)
+  return embed
+    ? caster.send(embed, null, screen)
+    : caster.play({ title: looseTitle(item.label), source: linkSource(item), tracking: 'none' }, { profileId, screen })
 }

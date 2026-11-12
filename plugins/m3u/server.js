@@ -1,32 +1,32 @@
-// Live TV (M3U): the channels of the admin's M3U playlists (up to PLAYLISTS,
-// shown together), their programmes from XMLTV guides, played by the server
-// (HLS, or MPEG-TS remuxed). The host parses both files (playpex.iptv.*):
-// they can be big.
+// Live TV (M3U): the channels of the admin's M3U playlists (a list setting:
+// as many as they have, up to 20, shown together in its order), their
+// programmes from XMLTV guides, played by the server (HLS, or MPEG-TS
+// remuxed). The host parses both files (playpex.iptv.*): they can be big.
 //
 // Channel ids: the first playlist's as the host makes them (so they stay what
-// they were before there were several), the others' prefixed `<n>:`.
-
-const PLAYLISTS = 5;
-
-function suffix(n) {
-  return n === 1 ? '' : String(n);
-}
+// they were with one playlist), the others' prefixed `<entry id>:` (the
+// entry's id is kept by the server when playlists are renamed or moved).
+//
+// 2.0 (plugin API 1.5): the five fixed pairs of 1.x (`playlist` / `guide`,
+// `playlist2` / `guide2` … `playlist5` / `guide5`) and the comma-separated
+// `groups` became the lists `playlists` and `groups`; `migrate` carries an
+// admin's 1.x values over on the update.
 
 async function settings() {
-  const playlists = [];
-  for (let n = 1; n <= PLAYLISTS; n++) {
-    const url = await playpex.settings.get('playlist' + suffix(n));
-    if (url) playlists.push({ n, url, guide: await playpex.settings.get('guide' + suffix(n)) });
-  }
+  const list = await playpex.settings.get('playlists');
+  const groups = await playpex.settings.get('groups');
+  const playlists = (Array.isArray(list) ? list : [])
+    .filter(p => p && p.url && p.on !== false)
+    .map((p, i) => ({ n: i + 1, key: i === 0 ? null : p.id, name: p.name || 'Playlist ' + (i + 1), url: p.url, guide: p.guide || null }));
   return {
     playlists,
     playlistGuide: await playpex.settings.get('playlistGuide'),
-    groups: String(await playpex.settings.get('groups') || '').split(',').map(g => g.trim().toLowerCase()).filter(Boolean)
+    groups: (Array.isArray(groups) ? groups : []).map(g => String(g).trim().toLowerCase()).filter(Boolean)
   };
 }
 
-function idOf(n, id) {
-  return n === 1 ? id : (n + ':' + id).slice(0, 100);
+function idOf(p, id) {
+  return p.key ? (p.key + ':' + id).slice(0, 100) : id;
 }
 
 // Every playlist's entries the admin wants (its groups), each with its
@@ -34,7 +34,7 @@ function idOf(n, id) {
 async function entries() {
   const s = await settings();
   const answers = await Promise.all(s.playlists.map(p => playpex.iptv.m3u(p.url).then(answer => ({ p, answer }), err => {
-    playpex.log.warn('playlist ' + p.n + ' not read: ' + (err && err.message));
+    playpex.log.warn('playlist ' + p.name + ' not read: ' + (err && err.message));
     return null;
   })));
   const list = [], seen = new Set(), numbers = new Set(), guides = [];
@@ -43,7 +43,7 @@ async function entries() {
     if (guide) guides.push({ n: p.n, url: guide });
     answer.channels.forEach(e => {
       if (s.groups.length && !(e.group && s.groups.includes(e.group.toLowerCase()))) return;
-      const id = idOf(p.n, e.id);
+      const id = idOf(p, e.id);
       if (seen.has(id)) return;
       seen.add(id);
       // a number an earlier playlist took: the server numbers it after the highest
@@ -109,4 +109,35 @@ playpex.data('guide', async () => {
       empty: s.playlists.length ? 'The playlists have no channels (or none in the groups chosen).' : 'No playlist yet: the server\'s admin adds one on the dashboard (Plugins › Live TV (M3U) › Settings).'
     }
   };
+});
+
+// 1.x → 2.0: the five fixed pairs into the list, in their order (named after
+// their host), the comma-separated groups into the list of groups
+playpex.data('migrate', async (args) => {
+  const old = (args && args.server) || {};
+  const server = {};
+  if (!Array.isArray(old.playlists)) {
+    const playlists = [];
+    for (let n = 1; n <= 5; n++) {
+      const suffix = n === 1 ? '' : String(n);
+      const url = old['playlist' + suffix];
+      if (typeof url !== 'string' || !url) continue;
+      // its host (the sandbox has no URL)
+      const host = /^[a-z][a-z0-9+.-]*:\/\/(?:[^@\/?#]*@)?(\[[^\]]+\]|[^:\/?#]+)/i.exec(url);
+      const name = host ? host[1].toLowerCase().slice(0, 60) : 'Playlist ' + n;
+      const guide = old['guide' + suffix];
+      playlists.push({ name, url, guide: typeof guide === 'string' ? guide : '', on: true });
+    }
+    if (playlists.length) server.playlists = playlists;
+  }
+  if (typeof old.groups === 'string') {
+    const seen = new Set();
+    server.groups = old.groups.split(',').map(g => g.trim().slice(0, 60)).filter(g => {
+      const k = g.toLowerCase();
+      if (!g || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).slice(0, 200);
+  }
+  return { data: { server } };
 });

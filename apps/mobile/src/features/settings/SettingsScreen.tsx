@@ -12,6 +12,7 @@ import { useThisDevice } from '../../state/device'
 import { useLeave } from '../../state/hooks'
 import { useArrivingTag } from '../../state/boundary'
 import { queries } from '../../state/queries'
+import { useCast } from '../../state/cast'
 import { useChangeSetting, useSettings, type SettingChange } from '../../state/settings'
 import { Avatar } from '../../ui/avatar'
 import { Button, IconButton, Message } from '../../ui/components'
@@ -126,12 +127,31 @@ function Preferences({ settings }: { settings: Settings }) {
         <ToggleRow label="Prefer files on the server" detail="Before any other source of the same release" on={p['player.preferLocalFiles'] !== false} onChange={(v) => set('player.preferLocalFiles', v)} />
         <ChoiceRow label="When you press Play" value={p['player.autoplayKind'] ?? 'ask'} choices={play} onChoose={(v) => set('player.autoplayKind', v)} />
       </SettingsGroup>
+      <CastingGroup value={(d['cast.shareTo'] as string | null | undefined) ?? null} onChoose={(v) => set('cast.shareTo', v)} />
       <SettingsGroup title="Subtitles on this phone" why="How big they are here; the TV keeps its own">
         <SubtitlePreview scale={SUBTITLE_SCALE[size]} />
         <Segmented choices={SIZES} value={size} onChoose={(v) => set('subtitles.size', v)} />
       </SettingsGroup>
       {change.isError ? <Text style={[text.small, styles.error]}>{change.error.message}</Text> : null}
     </>
+  )
+}
+
+// Share to Playpex: where a link shared from another app plays (cast.shareTo, this phone's)
+function CastingGroup({ value, onChoose }: { value: string | null; onChoose: (deviceId: string | null) => void }) {
+  const { state } = useCast()
+  const ASK = 'ask'
+  const known = state.screens.some((s) => s.deviceId === value)
+  const choices: Choice<string>[] = [
+    { value: ASK, label: 'Ask each time', detail: 'Choose the screen when you share' },
+    ...state.screens.map((s) => ({ value: s.deviceId, label: s.name, detail: s.kind === 'tv' ? 'Plays at once on this TV' : 'Plays at once there' })),
+    // the one chosen, while it isn't on: kept, it plays there again once it is
+    ...(value && !known ? [{ value, label: 'The screen chosen before', detail: 'Not on right now: you’re asked meanwhile' }] : []),
+  ]
+  return (
+    <SettingsGroup title="Casting" why="Share a link from YouTube or any app to Playpex">
+      <ChoiceRow first label="Send shared links to" value={value ?? ASK} choices={choices} onChoose={(v) => onChoose(v === ASK ? null : v)} />
+    </SettingsGroup>
   )
 }
 

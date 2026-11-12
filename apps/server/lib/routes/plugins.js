@@ -6,6 +6,7 @@
 //   GET  /plugins?profile=                  { plugins }: enabled plugins for that profile (kids: no adults plugins)
 //   POST /plugins/:id/data/:name?profile=   body { args?, profile? } → { data, effects }: a data handler's answer
 //   GET  /plugins/:id/assets/*              a file of the package's assets/ (fixed types, nosniff, SVG without scripts)
+//   GET  /plugins/:id/images/:token         a picture its answers named (lib/plugins/images.js: fetched as the plugin, cached)
 //   POST /plugins/meta?profile=             body { title: TitleRef } → { meta: [{ plugin, name, items: MetaItem[] }] }:
 //                                           what metadata.title handlers add to a title page (≤ 3 items each)
 //   GET  /plugins/notifications?profile=    { notifications }: the profile's plugin notifications this device
@@ -19,6 +20,7 @@ var express = require('express'),
   sessions = require('../sessions'),
   userData = require('../userData'),
   notifications = require('../plugins/notifications'),
+  images = require('../plugins/images'),
   fail = require('../errors').fail;
 
 var router = express.Router(),
@@ -62,6 +64,8 @@ router.get('/', function (req, res) {
       plugins: plugins.clientView(profile, localeOf(req)),
       // what the profile's plugins provide (docs/providers-plan.md §5.3): Find
       // releases shows only with a release provider
+      // plugin pictures come as images/<token> paths (docs/plugin-layer-plan.md §3)
+      imagesProxied: true,
       capabilities: {
         releases: plugins.withHook('releases.providers', ctx).length > 0,
         sources: plugins.withHook('play.collect', ctx).length > 0,
@@ -126,13 +130,21 @@ router.post('/:id/data/:name', function (req, res) {
     });
   }).then(function (answer) {
     release();
-    res.json(answer);
+    // its picture URLs become images/<token>: clients never fetch from a plugin's hosts
+    res.json(images.rewrite(plugins.get(req.params.id), answer));
   }, function (err) {
     if (release) {
       release();
     }
     answerError(res, err);
   });
+});
+
+router.get('/:id/images/:token', function (req, res) {
+  if (!/^[a-z][a-z0-9-]{1,31}$/.test(req.params.id)) {
+    return res.status(404).end();
+  }
+  images.serve(req, res, req.params.id, req.params.token);
 });
 
 router.get('/:id/assets/*', function (req, res) {

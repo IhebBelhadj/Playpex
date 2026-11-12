@@ -94,7 +94,11 @@ function defaults() {
     cast: {
       // Playpex screens take casts from phones, the dashboard and other
       // screens (docs/cast-plan.md §4.4); off: POST /cast/… answers CAST_REFUSED
-      enabled: true
+      enabled: true,
+      // each Playpex screen shows in the YouTube app's Cast list (docs/cast-plan.md §6:
+      // lib/cast/youtube.js, a DIAL / Lounge receiver per screen; YouTube's unofficial
+      // protocol, so off until the admin turns it on); only with LAN sharing
+      youtube: false
     },
     plugins: {
       // unsigned plugin packages install (at once), and the folders of

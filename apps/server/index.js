@@ -160,6 +160,10 @@ function start(options) {
     discovery.start(info, { lan: host !== '127.0.0.1', udpPort: options.discoveryPort });
     // the DLNA server (off by default; its own port; option dlna: { port, ssdpPort } for tests)
     dlna.start(info, Object.assign({ lan: host !== '127.0.0.1' }, options.dlna));
+    // Playpex screens in the YouTube app's Cast list (cast.youtube, off by default; LAN only)
+    if (options.youtubeCast !== false) {
+      require('./lib/cast/youtube').start(info, { lan: host !== '127.0.0.1' });
+    }
     // plugins (docs/plugins-plan.md): each in its own sandbox; none in recovery mode
     if (!recovery && options.plugins !== false) {
       plugins.start(Object.assign({ developerMode: settings.get('plugins.developerMode') }, options.plugins));
@@ -228,6 +232,8 @@ function stop() {
     return plugins.stop();
   }).then(function () {
     return library.stop();
+  }).then(function () {
+    return require('./lib/cast/youtube').stop();
   }).then(function () {
     return dlna.stop();
   }).then(function () {

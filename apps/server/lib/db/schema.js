@@ -445,12 +445,13 @@ var devices = sqliteTable('devices', {
 var plugins = sqliteTable('plugins', {
   id: text('id').primaryKey(),
   version: text('version').notNull(),
-  origin: text('origin', { enum: ['upload', 'url', 'repository'] }).notNull(),
+  origin: text('origin', { enum: ['upload', 'url', 'repository', 'managed'] }).notNull(),   // managed: built by a core provider (docs/plugin-layer-plan.md §9)
   source: text('source'),                          // the file's name, or the URL it came from
   signer: text('signer'),                          // the trusted publisher key's fingerprint, null = unsigned
   repository: text('repository'),                  // origin `repository`: its id; updates come only from there
   updatePolicy: text('update_policy', { enum: ['auto', 'notify', 'never'] }),   // null: the server's plugins.updates
   held: text('held'),                              // why the server switched it off (a broken version, a missing dependency)
+  adults: integer('adults', { mode: 'boolean' }).notNull().default(false),   // the admin treats it as `audience: adults` (stricter only)
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   installedAt: timestamp('installed_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()

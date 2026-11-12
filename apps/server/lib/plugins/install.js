@@ -343,8 +343,9 @@ function stageFiles(found, from, size) {
       var current = r[0], dependencies = r[1];
       var loaded = plugins.get(manifest.id),
         token = crypto.randomBytes(16).toString('hex'),
-        // a repository's package: trusted by its signed index and sha256 (./repositories.js)
-        trust = from.origin === 'repository' ? { signer: signer, trusted: true, installable: true, reason: null } : trustOf(signer),
+        // a repository's package: trusted by its signed index and sha256 (./repositories.js); a managed
+        // plugin: built by the core from shipped code (./managed, docs/plugin-layer-plan.md §9)
+        trust = from.origin === 'repository' || from.origin === 'managed' ? { signer: signer, trusted: true, installable: true, reason: null } : trustOf(signer),
         moves = movesOf(current, from),
         missing = dependencies.filter(function (d) { return d.missing && !d.optional; }),
         icon = manifest.icon && byPath[manifest.icon],
@@ -374,6 +375,7 @@ function stageFiles(found, from, size) {
         removed: changes.removed,
         rollback: !!from.rollback,
         kind: 'plugin',
+        managed: from.origin === 'managed' ? { provider: from.managed ? from.managed.provider : from.source } : null,
         repository: from.repository ? { id: from.repository, name: from.repositoryName || repositories().nameOf(from.repository) || from.repository } : null,
         lifecycle: from.expect && from.expect.lifecycle !== 'stable' ? { state: from.expect.lifecycle, reason: from.expect.reason } : null,
         moves: moves,
@@ -429,6 +431,20 @@ function stagePrevious(id) {
   } catch (e) { /* kept before .install.json existed */ }
   var files = readTree(dir).filter(function (f) { return KEEP.test(f.path); }),
     size = files.reduce(function (n, f) { return n + f.bytes.length; }, 0);
+  if (info.origin === 'managed') {
+    // a managed plugin's earlier build: its record as it was (an input kept as a secret stays where it is)
+    var record = {};
+    try {
+      record = JSON.parse(fs.readFileSync(path.join(dir, 'managed.json'), 'utf8'));
+    } catch (e) { /* none */ }
+    return stageFiles({ root: '', files: files }, {
+      origin: 'managed', source: info.source || record.provider, rollback: true,
+      managed: { provider: record.provider || info.source, codeHash: record.codeHash, secretInput: !!record.secretInput, input: record.input }
+    }, size).then(function (preview) {
+      preview.root = null;
+      return preview;
+    });
+  }
   return stageFiles({ root: '', files: files }, {
     origin: ['url', 'repository'].indexOf(info.origin) !== -1 && (info.origin !== 'repository' || info.repository) ? info.origin : 'upload',
     repository: info.origin === 'repository' ? info.repository : null,
@@ -504,7 +520,7 @@ function commit(token, options) {
     return Promise.reject(failure('NOT_FOUND', 'This package is no longer waiting: upload it again'));
   }
   var p = entry.preview,
-    trust = p.origin === 'repository' ? { signer: null, trusted: true, installable: true } :
+    trust = p.origin === 'repository' || p.origin === 'managed' ? { signer: null, trusted: true, installable: true } :
       trustOf(entry.preview.signer && entry.preview.signer.key);
   if (p.kind === 'repository') {
     staged.delete(token);
@@ -577,15 +593,16 @@ function installStaged(entry, p, trust) {
     }
     fs.renameSync(incoming, target);
     var broken = p.lifecycle && p.lifecycle.state === 'broken',
+      recorded = p.origin === 'managed' && entry.from && entry.from.managed ? require('./managed').record(id, entry.from) : null,
       // switched off by the server for a broken version: a fixed one turns it back on
       unheld = !broken && !!(old && old.held && /^broken/.test(old.held));
-    return s.plugins.installed.save({
+    return Promise.resolve(recorded).then(function () { return s.plugins.installed.save({
       id: id, version: p.version, origin: p.origin, source: p.source,
       repository: p.origin === 'repository' ? p.repository.id : null,
       signer: trust.trusted && trust.signer ? signing.fingerprint(trust.signer) : null,
       enabled: broken ? false : unheld ? true : undefined,
       held: broken ? 'broken: ' + (p.lifecycle.reason || 'its repository marked this version broken') : unheld ? null : old && old.held
-    });
+    }); });
   }).then(function () {
     // a replacement takes the settings of what it replaces (migratesFrom), on its first install
     return old ? null : Promise.all((entry.manifest.migratesFrom || []).map(function (from) {
@@ -606,6 +623,9 @@ function installStaged(entry, p, trust) {
       return view(id);
     }
     return plugins.load(target, p.origin).then(function () {
+      // an update: its settings carried over by its own migration (contributes.migrate, API 1.5)
+      return old && !p.rollback && old.version !== p.version ? require('./migrate').run(id, old.version) : null;
+    }).then(function () {
       // plugins held for it come back on (it was off, or they needed this version)
       return enableDependents(id).then(function () { return view(id); });
     }, function (err) {
@@ -784,6 +804,32 @@ function setUpdatePolicy(id, policy) {
   }).then(function () { return view(id); });
 }
 
+/**
+ * The admin's "Treat as adults" (an installed plugin): it then follows every
+ * rule of `audience: adults` plugins at once. Only stricter: a plugin whose
+ * manifest declares adults stays one.
+ */
+function setAdults(id, on) {
+  if (typeof on !== 'boolean') {
+    return Promise.reject(failure('INVALID', 'adults must be true or false'));
+  }
+  var loaded = plugins.get(id), m = installedManifest(id),
+    declared = loaded && loaded.declaredAudience !== undefined ? loaded.declaredAudience : m && m.audience;
+  if (!on && declared === 'adults') {
+    return Promise.reject(failure('CONFLICT', id + '\'s manifest declares it an adults plugin: it stays one'));
+  }
+  return services().then(function (s) {
+    return s.plugins.installed.setAdults(id, on);
+  }).then(function () {
+    return plugins.refreshAudience(id);
+  }).then(function () {
+    loaded = plugins.get(id);
+    log.info('plugin ' + id + (on ? ' treated as an adults plugin' : ' no longer treated as an adults plugin') + ' (the admin)', { plugin: id });
+    plugins.publish({ id: id, state: loaded ? loaded.state : 'disabled', reason: 'audience' });
+    return view(id);
+  });
+}
+
 /** Loads a developer copy again from its folder (after the author changed it) */
 function reload(id) {
   var plugin = plugins.get(id);
@@ -859,7 +905,10 @@ function describe(row, loaded, rows) {
     version: row ? row.version : m.version,
     description: m ? m.description || (m.listing && m.listing.summary) || null : null,
     publisher: m ? m.publisher || null : null,
-    audience: m ? m.audience : null,
+    // what applies: an installed plugin the admin treats as adults is one, whatever its manifest says
+    audience: row && row.adults ? 'adults' : m ? m.audience : null,
+    declaredAudience: loaded && loaded.declaredAudience !== undefined ? loaded.declaredAudience : m ? m.audience : null,
+    adultsByAdmin: !!(row && row.adults),
     // served by the assets route, which only knows running plugins
     icon: loaded && m.icon ? '/plugins/' + m.id + '/assets/' + m.icon.replace(/^assets\//, '') : null,
     origin: row ? row.origin : 'dev',
@@ -1040,6 +1089,7 @@ module.exports = {
   remove: remove,
   setEnabled: setEnabled,
   setUpdatePolicy: setUpdatePolicy,
+  setAdults: setAdults,
   hold: hold,
   installedManifest: installedManifest,
   permissionChanges: permissionChanges,
@@ -1050,6 +1100,7 @@ module.exports = {
   forget: forget,
   view: view,
   dirOf: dirOf,
+  stageFiles: stageFiles,
   // tests
   unzip: unzip,
   rootOf: rootOf,

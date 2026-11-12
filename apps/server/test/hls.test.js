@@ -292,7 +292,8 @@ test('a token can\'t be forged or used for another ref', function (t) {
       payload = Buffer.from('shttps://web.playpex-test.dev:' + web.port + '/vod/ts/seg1.ts').toString('base64url');
     return Promise.all([
       call('GET', root + 'r/' + payload + token.slice(token.indexOf('.')) + '/seg1.ts'),
-      call('GET', root + 'r/' + token.slice(0, -2) + 'AA/index.m3u8'),
+      // the MAC's last two characters changed (never to what they were: 1 time in 4096 they were 'AA')
+      call('GET', root + 'r/' + token.slice(0, -2) + (token.slice(-2) === 'AA' ? 'BB' : 'AA') + '/index.m3u8'),
       call('GET', '/media/h_' + '0'.repeat(32) + '/r/' + token + '/index.m3u8')
     ]);
   }).then(function (answers) {

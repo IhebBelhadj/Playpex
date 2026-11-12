@@ -223,7 +223,11 @@ router.put('/settings', function (req, res) {
   if (result.changed.some(function (k) { return k.indexOf('dlna.') === 0 || k === 'general.serverName'; })) {
     dlna.refresh();
   }
-  // limits, seeding rules, "pause all": the torrent client applies them now
+  // the YouTube receivers: on / off, the names in the Cast list
+  if (result.changed.some(function (k) { return k.indexOf('cast.') === 0 || k === 'general.serverName'; })) {
+    require('../cast/youtube').refresh();
+  }
+    // limits, seeding rules, "pause all": the torrent client applies them now
   torrents.settingsChanged(result.changed);
   log.info('settings changed: ' + result.changed.join(', '));
   res.json(Object.assign({}, result, { settings: settingsView() }));

@@ -99,6 +99,7 @@
       ],
       "./modules/expo-mpv/app.plugin.js",
       "./plugins/with-architectures.js",
+      "./plugins/with-share-targets.js",
       "./plugins/with-release-signing.js"
     ],
     "experiments": {

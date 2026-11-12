@@ -13,7 +13,9 @@
 // admin's document lists, and an `openStream` plugin view (lib/media/hls.js:
 // the parts of a stream the admin's address gave) from any public host.
 //
-//   request(plugin, options) → Promise<{ value: { status, headers, url, body }, bytes? }>
+//   request(plugin, options, bytes, scope) → Promise<{ value: { status, headers, url, body }, bytes? }>
+//     scope (the core's callers only, never a plugin's own request): 'stream' lets learned stream hosts count (a
+//     subtitle file a bridged add-on's answer named)
 //     plugin: { id, permissions, anyHost? }; options: { url, method?, headers?, body?, responseType?: text|json|bytes,
 //     timeoutMs?: a shorter wait than the 10 s (≥ 1 s): a slow site never sinks a hook that asks several }
 //   stream(plugin, { url, headers, method, range }) → Promise<{ status, headers, body, url, abort }>
@@ -139,7 +141,7 @@ function target(plugin, url, options) {
   if (!granted && !plugin.anyHost && !protocol.hostAllowed((plugin.permissions && plugin.permissions.network) || [], host)) {
     throw failure('HOST_NOT_ALLOWED', host + ' isn\'t in permissions.network');
   }
-  return { url: u, host: host, port: port, granted: granted, stream: !!(options && options.stream) };
+  return { url: u, host: host, port: port, granted: granted, stream: !!(options && options.stream), image: !!(options && options.image) };
 }
 
 function headersOf(given) {
@@ -315,7 +317,7 @@ var limiter = new RateLimiter();
  * @param {object} options from the sandbox ({ url, method, headers, body, responseType })
  * @param {Buffer|null} bytes the body, when the plugin sent bytes
  */
-function request(plugin, options, bytes) {
+function request(plugin, options, bytes, scope) {
   options = options || {};
   var method = String(options.method || 'GET').toUpperCase(),
     responseType = options.responseType || 'text',
@@ -330,7 +332,7 @@ function request(plugin, options, bytes) {
     if (options.timeoutMs !== undefined && !(typeof options.timeoutMs === 'number' && options.timeoutMs >= 1000)) {
       throw failure('INVALID', 'timeoutMs: at least 1000 (ms)');
     }
-    first = target(plugin, options.url);
+    first = target(plugin, options.url, scope === 'stream' ? { stream: true } : undefined);
     headers = headersOf(options.headers);
     body = bodyOf(options, bytes, headers);
   } catch (err) {
@@ -388,7 +390,9 @@ function request(plugin, options, bytes) {
 
 /** The next hop of a redirect, checked again; Authorization and Cookie stay with their host */
 function redirected(plugin, t, location, headers) {
-  var next = target(plugin, new URL(location, t.url).toString(), { stream: t.stream }),
+  // a stream of shipped code that may go on anywhere (./builtin options: a debrid link's CDN), public addresses only
+  var who = t.stream && plugin.openStreams && !plugin.openStream ? Object.assign(Object.create(plugin), { openStream: true }) : plugin,
+    next = target(who, new URL(location, t.url).toString(), { stream: t.stream, image: t.image }),
     nextHeaders = Object.assign({}, headers);
   if (next.host !== t.host) {
     delete nextHeaders.authorization;
@@ -413,7 +417,8 @@ function stream(plugin, options) {
   options = options || {};
   var first, headers, redirects = 0;
   try {
-    first = target(plugin, options.url, { stream: true });
+    // a picture (lib/plugins/images.js): learned picture hosts count instead of stream hosts
+    first = target(plugin, options.url, options.scope === 'image' ? { image: true } : { stream: true });
     headers = headersOf(options.headers);
   } catch (err) {
     return Promise.reject(err);

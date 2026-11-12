@@ -17,6 +17,7 @@
 //
 //   inspect(url) → Promise<{ url, kind, title, items, truncated }>
 //   youtubeOf(url) → { id, startS } | null
+//   youtubeInfo(id) → Promise<{ title?, author? }> (the YouTube receiver names what it casts)
 //   LINKS: the principal (also the direct downloads' for links)
 
 var http = require('../plugins/http'),
@@ -288,26 +289,35 @@ function youtubeOf(text) {
   return { id: id, startS: seconds(u.searchParams.get('t') || u.searchParams.get('start')) };
 }
 
-// The video's title and picture from YouTube's oEmbed (no key); none when it doesn't answer in time
-function youtubeItem(url, video) {
-  var watch = 'https://www.youtube.com/watch?v=' + video.id;
-  var item = { kind: 'youtube', label: 'YouTube video', url: watch, embed: { provider: 'youtube', id: video.id },
-    startS: video.startS || 0, image: 'https://i.ytimg.com/vi/' + video.id + '/hqdefault.jpg', size: null, contentType: null };
+// A video's title and channel from YouTube's oEmbed (no key); {} when it doesn't answer in time
+function youtubeInfo(id) {
+  var watch = 'https://www.youtube.com/watch?v=' + id;
   return http.request(LINKS, { url: 'https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(watch), responseType: 'json', timeoutMs: 5000 })
     .then(function (answer) {
-      var v = answer && answer.value, b = v && v.status === 200 ? v.body : null;
+      var v = answer && answer.value, b = v && v.status === 200 ? v.body : null, info = {};
       if (b && typeof b.title === 'string' && b.title.trim()) {
-        item.label = b.title.trim().slice(0, 300);
+        info.title = b.title.trim().slice(0, 300);
       }
-      if (b && typeof b.author_name === 'string') {
-        item.author = b.author_name.slice(0, 200);
+      if (b && typeof b.author_name === 'string' && b.author_name.trim()) {
+        info.author = b.author_name.trim().slice(0, 200);
       }
-      return item;
+      return info;
     }, function () {
-      return item;
-    }).then(function (found) {
-      return { url: url, kind: 'youtube', title: found.label === 'YouTube video' ? null : found.label, items: [found], truncated: false };
+      return {};
     });
+}
+
+// The `youtube` item of a link: the video, where it starts, its title and picture
+function youtubeItem(url, video) {
+  return youtubeInfo(video.id).then(function (info) {
+    var item = { kind: 'youtube', label: info.title || 'YouTube video', url: 'https://www.youtube.com/watch?v=' + video.id,
+      embed: { provider: 'youtube', id: video.id }, startS: video.startS || 0,
+      image: 'https://i.ytimg.com/vi/' + video.id + '/hqdefault.jpg', size: null, contentType: null };
+    if (info.author) {
+      item.author = info.author;
+    }
+    return { url: url, kind: 'youtube', title: info.title || null, items: [item], truncated: false };
+  });
 }
 
 function inspect(given) {
@@ -376,6 +386,7 @@ function inspect(given) {
 module.exports = {
   inspect: inspect,
   youtubeOf: youtubeOf,
+  youtubeInfo: youtubeInfo,
   scrape: scrape,
   LINKS: LINKS
 };
