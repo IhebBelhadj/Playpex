@@ -3,7 +3,7 @@
   "id": "velvet",
   "name": "Velvet",
   "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of the sites (xHamster, Sex-Empire, TheSexTube). Never in the official repository.",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "publisher": {
     "name": "Playpex"
   },
@@ -15,7 +15,7 @@
   "audience": "adults",
   "icon": "assets/seal.svg",
   "listing": {
-    "summary": "Adult films: TMDB studios or ThePornDB, torrents ranked by seeders, films from Sex-Empire and studio videos from TheSexTube.",
+    "summary": "Adult films: TMDB studios or ThePornDB, torrents ranked by seeders, films from Sex-Empire and videos from TheSexTube.",
     "disclaimer": "Adult content. Hidden from kids profiles and never shared over DLNA. Streaming copyrighted content via torrents or unlicensed streaming sites may be illegal where you live.",
     "license": "PolyForm-Noncommercial-1.0.0",
     "categories": [
@@ -38,6 +38,7 @@
       "*.dramiyos-cdn.com",
       "*.cloudatacdn.com",
       "thesextube.net",
+      "luluvid.com",
       "luluvido.com",
       "luluvdoo.com",
       "luluvdo.com",
@@ -47,7 +48,11 @@
       "xhamster.com",
       "*.xhcdn.com"
     ],
-    "images": ["sex-empire.org", "*.metadataapi.net", "*.theporndb.net"],
+    "images": [
+      "sex-empire.org",
+      "*.metadataapi.net",
+      "*.theporndb.net"
+    ],
     "storage": "1MB",
     "secrets": [
       "tmdbApiKey",
