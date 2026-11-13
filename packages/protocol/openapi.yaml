@@ -3648,6 +3648,9 @@ paths:
       tags: [catalog]
       operationId: getCatalogSimilar
       summary: Titles like this one
+      description: >-
+        Movies: TMDB's similar titles. Shows: TMDB's recommendations (what
+        people who watched it watched), else its similar titles.
       responses:
         '200':
           description: A page of titles

@@ -322,10 +322,21 @@ function credits(kind, tmdbId) {
   });
 }
 
+// Titles like this one. Shows: TMDB's recommendations (what people who watched
+// it watched: Better Call Saul for Breaking Bad), its "similar" list matching
+// on genres and keywords only (anything with a crime and a drama); that list
+// when there are none. Movies: the similar list, as before.
 function similar(kind, tmdbId, query) {
   kind = mediaType(kind);
-  return ask('/' + kind + '/' + id(tmdbId, 'tmdbId') + '/similar', { page: pageNumber(query.page) }, LIST_TTL)
-    .then(function (data) { return page(data, function (r) { return title(kind, r); }); });
+  var base = '/' + kind + '/' + id(tmdbId, 'tmdbId');
+  var params = { page: pageNumber(query.page) };
+  var load = function (list) { return ask(base + '/' + list, params, LIST_TTL); };
+  var found = kind === 'tv'
+    ? load('recommendations').then(function (data) {
+      return data && data.results && data.results.length ? data : load('similar');
+    })
+    : load('similar');
+  return found.then(function (data) { return page(data, function (r) { return title(kind, r); }); });
 }
 
 function season(tmdbId, number) {
