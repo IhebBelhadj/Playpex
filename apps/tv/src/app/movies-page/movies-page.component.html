@@ -2,15 +2,12 @@
      rows (the list's translated rows, a detail page's buttons and rows) -->
 <px-detail-layout class="pageContainer" pxStack>
   <!-- List page: search and filter this section (their rows stand in for the section's) -->
-  <!-- (Home: no search or filters, only its rows' editor) -->
-  <div class="sectionToolbar" *ngIf="onList && (!home || canEditRows)" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
-    <ng-container *ngIf="!home">
-      <px-search-field key="search" [query]="catalog.query" [placeholder]="searchHint" (pxSelect)="catalog.typing = true"></px-search-field>
-      <px-button key="filters" variant="toolbar" icon="opts" [label]="filterLabel" [active]="filtered"
-        (pxSelect)="catalog.filtering = true"></px-button>
-      <px-button *ngIf="catalog.search" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearSearch()"></px-button>
-    </ng-container>
-    <px-button *ngIf="canEditRows" key="rows" variant="toolbar" icon="rows" label="Rows" (pxSelect)="editRows()"></px-button>
+  <!-- (Home: none; the rows themselves are set in Settings › Rows) -->
+  <div class="sectionToolbar" *ngIf="onList && !home" pxSection="sectionToolbar" [leaveFor]="toolbarExits">
+    <px-search-field key="search" [query]="catalog.query" [placeholder]="searchHint" (pxSelect)="catalog.typing = true"></px-search-field>
+    <px-button key="filters" variant="toolbar" icon="opts" [label]="filterLabel" [active]="filtered"
+      (pxSelect)="catalog.filtering = true"></px-button>
+    <px-button *ngIf="catalog.search" key="clear" variant="toolbar" [quiet]="true" label="Clear" (pxSelect)="clearSearch()"></px-button>
   </div>
   <!-- an episode page shows its own title block -->
   <!-- (nor while a search / filters show nothing: it would describe an earlier title) -->
@@ -37,9 +34,3 @@
   (applied)="onFiltersApplied($event)"
   (cancelled)="closeFilters()">
 </catalog-filter-panel>
-
-<rows-editor *ngIf="catalog.editing"
-  [section]="catalog.section"
-  [focusRow]="catalog.editing.row"
-  (closed)="onRowsEdited($event)">
-</rows-editor>

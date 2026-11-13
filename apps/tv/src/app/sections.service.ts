@@ -62,7 +62,7 @@ const FALLBACK:{ [section in SectionId]:{ title:string, query:CatalogQuery }[] }
 // GET /sections/{section}/rows?profile= gives them in order, each row's items
 // come with it (personal rows, the library) or page by page from
 // GET /sections/{section}/rows/{id}/items. The TV defines no rows of its own:
-// the admin's default layout, or the profile's (edited with <rows-editor>).
+// the admin's default layout, or the profile's (edited in Settings › Rows, <rows-editor>).
 //
 // Asked again when the profile changes, on `rows.changed` (a layout edited:
 // this profile's, or the default), `plugin.changed` and after something was
@@ -119,8 +119,13 @@ export class SectionRowsService {
 
   /** Whether the current profile may change its rows here (not a kids profile's: the admin's, on the dashboard) */
   canEdit(catalog:Catalog):boolean {
+    return catalog.serverRows && this.canEditRows();
+  }
+
+  /** The same, for Settings › Rows: a server with layouts and a profile that isn't a kids one */
+  canEditRows():boolean {
     let profile = this.profiles.current.value;
-    return !!profile && !profile.isKid && catalog.serverRows && this.remote.capabilities$.value.rows === true;
+    return !!profile && !profile.isKid && this.remote.capabilities$.value.rows === true;
   }
 
   /** The section shows: its rows, asked for when it has none, they're for another profile or stale */
@@ -133,7 +138,7 @@ export class SectionRowsService {
   private invalidate(catalog:Catalog) {
     if (!catalog.rows.length && !catalog.search) return;
     catalog.stale = true;
-    if (catalog.visible && !catalog.search && !catalog.typing && !catalog.filtering && !catalog.editing) this.load(catalog);
+    if (catalog.visible && !catalog.search && !catalog.typing && !catalog.filtering) this.load(catalog);
   }
 
   /** The section's rows again: rows it still has keep their items (and their place), personal ones are filled again */

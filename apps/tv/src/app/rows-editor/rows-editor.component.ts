@@ -1,65 +1,82 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy } from '@angular/core';
+import { Subject, Subscription, concatMap, debounceTime, filter } from 'rxjs';
 import { SectionId } from '../catalog';
 import { FocusEngine } from '../movement/movement';
 import { RowEntry, SectionRowsService } from '../sections.service';
 import { Toasts } from '../ui/public-api';
 
-const NAMES:{ [section in SectionId]:string } = { home: 'Home', movies: 'Movies', shows: 'TV shows' };
+export const SECTION_NAMES:{ [section in SectionId]:string } = { home: 'Home', movies: 'Movies', shows: 'TV shows' };
 
 type Entry = RowEntry & { label?:string, new?:boolean };
 
-// The profile's rows of a section (docs/rows-plan.md §8): every entry of its
-// layout (its own, else the admin's default, plugins that joined since
-// included) with Move up / Move down / Hide (Show), and Reset to default.
-// Saved once, on Done or Back, when something changed (PUT
-// /sections/{section}/layout); Reset asks the server at once. On the
-// <px-panel> frame: a layer of the nav system, trapping its section
-// `rowsEditor`; the entries are one pxGrid of three buttons a line.
+// The profile's rows of a section (docs/rows-plan.md §8), in Settings › Rows:
+// every entry of its layout (its own, else the admin's default, plugins that
+// joined since included) as a line of its own (a pxStackItem holding a pxGrid
+// of Up / Down / Hide (Show)), and Reset to default. Like every setting, a
+// change is saved by itself (PUT /sections/{section}/layout, half a second
+// after the last one); the server's `rows.changed` makes the section ask for
+// its rows again. Reset asks the server at once.
 @Component({
   selector: 'rows-editor',
   templateUrl: './rows-editor.component.html',
   styleUrls: ['./rows-editor.component.scss']
 })
-export class RowsEditorComponent implements OnInit {
+export class RowsEditorComponent implements OnChanges, OnDestroy {
 
-  @Input() section:SectionId = 'movies';
-  // the entry to start on (the row the options key was pressed on)
+  @Input() section:SectionId = 'home';
+  // the entry to start on (Edit rows… on a row's menu)
   @Input() focusRow:string | null = null;
-  // true: the rows changed (the section asks for them again)
-  @Output() closed = new EventEmitter<boolean>();
 
   entries:Entry[] | null = null;
   known:string[] = [];
   own = false;
   failed = false;
-  private changed = false;
-  private saving = false;
+  private saves = new Subject<SectionId>();
+  private subs:Subscription[] = [];
+  private loadSub:Subscription | null = null;
 
   constructor(
     private sections:SectionRowsService,
     private engine:FocusEngine,
     private toasts:Toasts,
-  ) { }
-
-  get title():string {
-    return `Rows on ${NAMES[this.section]}`;
+  ) {
+    // one PUT per pause, in order (the answer's `known` goes with the next one)
+    this.subs.push(this.saves.pipe(
+      debounceTime(500),
+      filter(section => section == this.section && !!this.entries),
+      concatMap(section => this.sections.saveLayout(section, this.entries.map(({ label, new: added, ...entry }) => entry as RowEntry), this.known)),
+    ).subscribe({
+      next: layout => {
+        this.known = layout.known;
+        this.own = layout.own;
+      },
+      error: () => this.toasts.show({ text: 'Couldn\'t save the rows', tone: 'error', key: 'rows' }),
+    }));
   }
 
-  get focus():string {
-    return this.focusRow ? `[data-px-key="hide:${this.focusRow}"]` : '[data-px-key^="hide:"]';
+  get name():string {
+    return SECTION_NAMES[this.section];
   }
 
-  ngOnInit(): void {
-    this.sections.layout(this.section).subscribe({
-      next: layout => this.take(layout),
+  ngOnChanges(): void {
+    this.entries = null;
+    this.failed = false;
+    this.loadSub?.unsubscribe();
+    this.loadSub = this.sections.layout(this.section).subscribe({
+      next: layout => {
+        this.entries = layout.rows;
+        this.known = layout.known;
+        this.own = layout.own;
+        if (this.focusRow) this.refocus(`hide:${this.focusRow}`);
+        this.focusRow = null;
+      },
       error: () => this.failed = true,
     });
   }
 
-  private take(layout:{ rows:Entry[], known:string[], own:boolean }) {
-    this.entries = layout.rows;
-    this.known = layout.known;
-    this.own = layout.own;
+  ngOnDestroy(): void {
+    this.loadSub?.unsubscribe();
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   byId(i:number, e:Entry) {
@@ -73,54 +90,35 @@ export class RowsEditorComponent implements OnInit {
     if (to < 0 || to >= list.length) return;
     list.splice(at, 1);
     list.splice(to, 0, entry);
-    this.changed = true;
+    this.saves.next(this.section);
     this.refocus(`${step < 0 ? 'up' : 'down'}:${entry.id}`);
   }
 
   toggle(entry:Entry) {
     let at = this.entries.indexOf(entry);
     this.entries[at] = { ...entry, hidden: !entry.hidden };
-    this.changed = true;
+    this.saves.next(this.section);
     this.refocus(`hide:${entry.id}`);
   }
 
   // the moved / changed entry's button keeps the focus (and the list scrolls to it)
   private refocus(key:string) {
     setTimeout(() => {
-      let el = document.querySelector(`#rowsEditor [data-px-key="${CSS.escape(key)}"]`) as HTMLElement;
+      let el = document.querySelector(`.rowsEditor [data-px-key="${CSS.escape(key)}"]`) as HTMLElement;
       if (el) this.engine.focus(el, 'key');
     });
   }
 
-  done() {
-    if (this.saving) return;
-    if (!this.changed || !this.entries) {
-      this.closed.emit(false);
-      return;
-    }
-    this.saving = true;
-    let rows = this.entries.map(({ label, new: added, ...entry }) => entry as RowEntry);
-    this.sections.saveLayout(this.section, rows, this.known).subscribe({
-      next: () => this.closed.emit(true),
-      error: () => {
-        this.saving = false;
-        this.toasts.show({ text: 'Couldn\'t save the rows', tone: 'error', key: 'rows' });
-      },
-    });
-  }
-
   reset() {
-    if (this.saving) return;
-    this.saving = true;
     this.sections.resetLayout(this.section).subscribe({
-      next: () => {
-        this.toasts.show({ text: `${NAMES[this.section]} has the usual rows again`, key: 'rows' });
-        this.closed.emit(true);
+      next: layout => {
+        this.toasts.show({ text: `${this.name} has the usual rows again`, key: 'rows' });
+        this.entries = layout.rows;
+        this.known = layout.known;
+        this.own = false;
+        this.refocus(this.entries.length ? `hide:${this.entries[0].id}` : '');
       },
-      error: () => {
-        this.saving = false;
-        this.toasts.show({ text: 'Couldn\'t reset the rows', tone: 'error', key: 'rows' });
-      },
+      error: () => this.toasts.show({ text: 'Couldn\'t reset the rows', tone: 'error', key: 'rows' }),
     });
   }
 }

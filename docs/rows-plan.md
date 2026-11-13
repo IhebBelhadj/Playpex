@@ -190,7 +190,7 @@ The plugin slot routes stay: clients already call them, and old clients keep wor
 ## 8. Clients and dashboard
 - **TV**: Movies and TV shows read `GET /sections/…/rows`. `categories.ts` and the slot's "after the categories" placement go. A plugin row is drawn where its layout entry is.
   - A **Home** section, first in the menu, opens on start (§9 B).
-  - **Edit rows** (built differently, see the status): the toolbar's Rows button opens a panel (Up, Down, Hide / Show per row, Reset to default); the menu key on a card: Move row up, Move row down, Hide row, Edit rows…
+  - **Edit rows**: Settings › Rows (Home / Movies / TV shows, then each row with Up, Down, Hide / Show, saved as they change; Reset to the usual rows); the menu key on a card: Move row up, Move row down, Hide row, Edit rows… (Settings › Rows on that section and row; Back returns to the section)
 - **Phone**: Home, Movies and Shows read the same. `ROWS` and `lib/recommend.ts` go. Long-press a row's title: Move, Hide. Settings › Rows.
 - **Dashboard**:
   - Settings › Rows: the default layout per section, drag to order, **Add row** (a TMDB list, a discover query built with the Browse filters, a personal row, a plugin's row), rename, variant.
@@ -216,7 +216,7 @@ The plugin slot routes stay: clients already call them, and old clients keep wor
 
 1. **Protocol**: `rows.js` (sources, params, validation), the layout and row schemas, `contributes.rows` and `rowFill` (plugin API 1.6), the routes in `openapi.yaml`, types; `docs/api/rows.md`.
 2. **Server, layouts**: `row_layouts`, `profile_row_layouts`, the default layouts (today's TV and phone rows), the resolver (`plugin.all` joining and expanding, dropping, `core.because` expanding, `hideWatched`), `/sections/*`, `/rows/*`, `/admin/sections/*`. The existing recommendations service backs `core.forYou` / `core.because` for now. The Stremio adapter's offers (§4.2: one per catalog, params from extras, the 4-row cap gone). Tests, the bridge's included.
-3. **TV** (built): the sections on the resolved rows, `categories.ts` gone, the Home section, Edit rows (the Rows panel and the menu key; hidden rows listed there rather than in Settings › Rows). Checked with the scenario `sections.js` (and `rows.js`, `catalog.js`, `menu.js`) against a server with layouts and, for `rows.js`, one without.
+3. **TV** (built): the sections on the resolved rows, `categories.ts` gone, the Home section, Edit rows (Settings › Rows and the menu key's row menu; hidden rows stay listed there). Checked with the scenario `sections.js` (and `rows.js`, `catalog.js`, `menu.js`) against a server with layouts and, for `rows.js`, one without.
 4. **Dashboard**: Settings › Rows, Profiles › Rows, the Stremio tab's placement.
 5. **Phone**: the tabs on the resolved rows, `ROWS` / `recommend.ts` gone, row editing.
 6. **Engine v2** (§5): taste vectors, candidate pools, scoring, diversity, explanations, the cache and its background builds, New episodes, Genre for you; the recorded-profile tests and the hit-rate report.

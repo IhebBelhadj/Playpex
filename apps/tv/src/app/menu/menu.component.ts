@@ -10,7 +10,7 @@ import { dp, iconUrl } from '../ui/public-api';
 // The left menu: the sections declared with a menu entry (src/app/nav/screens.ts),
 // the server in use and who's watching. Enter on a section → that section
 // alone in the history (Navigator.switchSection); the active item is the
-// section at the bottom of the history. Hidden on screens whose chrome says
+// section at the bottom of the history (or a section opened above it). Hidden on screens whose chrome says
 // so (`chrome.menu: 'hidden'`); pages expand / collapse it as focus moves.
 @Component({
   selector: 'menu',
@@ -48,7 +48,8 @@ export class MenuComponent implements OnInit , OnDestroy {
       }),
 
       this.navigator.current$.subscribe(entry => {
-        let root = this.navigator.root;
+        // a section opened over another (Settings from a row's menu) is the one shown
+        let root = entry?.screen.kind == 'section' ? entry : this.navigator.root;
         if (root) this.activeSection = root.screen.section || root.screen.id;
         if (entry) entry.screen.chrome?.menu == 'hidden' ? this.hideMenu() : this.showMenu();
       }),

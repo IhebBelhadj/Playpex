@@ -11,8 +11,18 @@ import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
 import { Dialogs, TabModel } from '../ui/public-api';
 import { ServerService } from '../server.service';
+import { SectionId } from '../catalog';
+import { SectionRowsService } from '../sections.service';
+import { SECTION_NAMES } from '../rows-editor/rows-editor.component';
 
-type Group = 'display' | 'playback' | 'about';
+type Group = 'display' | 'playback' | 'rows' | 'about';
+
+// what opens Settings on a group (a row's menu: Edit rows… → Rows, on that section and row)
+export interface SettingsTarget {
+  group?:Group;
+  section?:SectionId;
+  row?:string | null;
+}
 
 const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
   { key: 'small', label: 'Small' }, { key: 'medium', label: 'Medium' }, { key: 'large', label: 'Large' }, { key: 'largest', label: 'Largest' },
@@ -47,7 +57,7 @@ import { connection } from '../server-config';
 })
 export class SettingsPageComponent implements AfterViewInit, OnDestroy {
 
-  private screen = useScreen();
+  private screen = useScreen<Record<string, string>, SettingsTarget>();
 
   group:Group = 'display';
   groups:TabModel[] = [];
@@ -73,6 +83,15 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   private server = inject(ServerService);
   private dialogs = inject(Dialogs);
   youtubeCodeBusy = false;
+
+  // Rows: which section's rows, and the row to start on
+  rowsSection:SectionId = 'home';
+  rowsFocus:string | null = null;
+  readonly rowSections = (['home', 'movies', 'shows'] as SectionId[]).map(key => ({ key, label: SECTION_NAMES[key] }));
+
+  get rowSectionName():string {
+    return SECTION_NAMES[this.rowsSection];
+  }
 
   /** YouTube's "Link with TV code" for this screen (GET /cast/youtube/code), in a dialog */
   showYouTubeCode() {
@@ -100,6 +119,7 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     profiles:ProfilesService,
     subtitles:SubtitlesService,
     plugins:RemotePlugins,
+    sections:SectionRowsService,
   ) {
     this.subs.push(plugins.capabilities$.subscribe(c => this.autoplayKinds = c.sources
       ? AUTOPLAY_KINDS : AUTOPLAY_KINDS.filter(k => k.key != 'stream' || this.settings.value('player.autoplayKind') == 'stream')));
@@ -108,8 +128,18 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     this.groups = [
       { key: 'display', label: 'Display' },
       { key: 'playback', label: 'Playback' },
+      // a server with layouts, a profile that isn't a kids one (their rows are the admin's)
+      ...(sections.canEditRows() ? [{ key: 'rows', label: 'Rows' }] : []),
       { key: 'about', label: 'About' },
     ];
+    // opened on a group (Edit rows… on a row's menu), also when the page is shown again
+    this.subs.push(this.screen.entry$.subscribe(entry => {
+      let target = entry?.payload as SettingsTarget | undefined;
+      if (!target?.group || !this.groups.some(g => g.key == target.group)) return;
+      this.group = target.group;
+      if (target.section) this.rowsSection = target.section;
+      this.rowsFocus = target.row || null;
+    }));
     this.subs.push(subtitles.getProviders().subscribe({ next: list => this.subtitleProviders = list.filter(p => p.enabled), error: () => { } }));
   }
 

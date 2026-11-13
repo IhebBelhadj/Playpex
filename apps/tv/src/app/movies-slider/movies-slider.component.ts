@@ -93,7 +93,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     // The options key on a card: its row's menu
     this.keyListener = (e:KeyboardEvent) => {
       if (actionForKey(e) != 'options' || !this.screen.active || this.dialogs.open$.value.length) return;
-      if (this.catalog.typing || this.catalog.filtering || this.catalog.editing || this.catalog.search) return;
+      if (this.catalog.typing || this.catalog.filtering || this.catalog.search) return;
       let node = (document.activeElement as HTMLElement)?.closest('.sliderContainer [data-section]') as HTMLElement;
       let row = node && this.catalog.findRow(node.dataset['section']);
       if (!row) return;
@@ -235,18 +235,18 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     let choices = [
       index > 0 ? { key: 'up', label: 'Move row up', value: 'up' } : null,
       index < this.catalog.rows.length - 1 ? { key: 'down', label: 'Move row down', value: 'down' } : null,
-      { key: 'hide', label: 'Hide row', detail: 'Rows brings it back', value: 'hide' },
+      { key: 'hide', label: 'Hide row', detail: 'Settings › Rows brings it back', value: 'hide' },
       { key: 'edit', label: 'Edit rows…', value: 'edit' },
     ].filter(Boolean) as { key:string, label:string, detail?:string, value:'up' | 'down' | 'hide' | 'edit' }[];
     this.dialogs.choose({ title: row.title, choices }).subscribe(choice => {
       if (choice == 'edit') {
-        this.catalog.editing = { row: row.entry };
+        this.navigator.open({ screen: 'core.settings', payload: { group: 'rows', section: this.catalog.section, row: row.entry } });
         return;
       }
       this.sections.editEntry(this.catalog.section, row.entry, choice).subscribe({
         next: () => {
           this.sections.load(this.catalog);
-          if (choice == 'hide') this.toasts.show({ text: `“${row.title}” hidden`, detail: 'Rows, at the top of the section, shows it again', key: 'rows' });
+          if (choice == 'hide') this.toasts.show({ text: `“${row.title}” hidden`, detail: 'Settings › Rows shows it again', key: 'rows' });
           this.refocus(choice == 'hide' ? null : row.key, cardKey);
         },
         error: () => this.toasts.show({ text: 'Couldn\'t change the rows', tone: 'error', key: 'rows' }),
@@ -280,7 +280,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   }
 
   get emptyNote():string {
-    return this.sections.canEdit(this.catalog) ? 'No rows to show here. Rows, above, brings hidden ones back.' : 'Nothing to show here yet.';
+    return this.sections.canEdit(this.catalog) ? 'No rows to show here. Settings › Rows brings hidden ones back.' : 'Nothing to show here yet.';
   }
 
   // every row of the search / filters is empty (still loading, or nothing found)

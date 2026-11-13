@@ -5,8 +5,8 @@
 // Movies the same; a Home card opens its title (a show in the TV shows frame)
 // and Back comes to the same card; the options key on a card: the row's menu,
 // Move row down (the server's layout changes, the row moves, the card keeps
-// the focus), Hide row; Rows on the toolbar: the editor lists it hidden, Show
-// brings it back, Reset to default. Leaves the profile's layouts as they were
+// the focus), Hide row; Edit rows… opens Settings › Rows: it lists it hidden,
+// Show brings it back, Up moves it (saved by itself), Reset. Leaves the profile's layouts as they were
 // (reset at the end). Run against a test server: it edits the profile's rows.
 
 module.exports = async function (t) {
@@ -94,35 +94,34 @@ module.exports = async function (t) {
   t.check('Hide row: the server has it hidden', await t.until(`(async () => (await fetch(${JSON.stringify(api)} + '/sections/movies/layout?profile=${pid}').then(r => r.json())).rows.some(e => e.hidden))()`, 6000));
   t.check('Hide row: gone', await t.until(`!Array.from(document.querySelectorAll('movies-slider px-card-row .px-row-title')).some(e => e.textContent.trim() == ${JSON.stringify(firstRow)})`, 8000));
 
-  // the editor: hidden there, Show, Done
+  // Edit rows… on the row menu: Settings › Rows on Movies, the row hidden there, Show, Up
   await t.wait(800);
-  await t.js("document.querySelector('.sectionToolbar [data-px-key=\"rows\"]')?.focus()");
+  await t.js("window.SpatialNavigation.focus(document.querySelector('movies-slider px-card-row .px-card'))");
+  await t.wait(400);
+  await t.js("document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, cancelable: true }))");
+  await t.until("!!document.querySelector('px-dialog [data-px-key=\"edit\"]')", 4000);
+  await t.js("document.querySelector('px-dialog [data-px-key=\"edit\"]').focus()");
   await t.key('Return');
-  t.check('Rows opens the editor', await t.until("!!document.querySelector('#rowsEditor .entries')", 5000));
+  t.check('Edit rows… opens Settings › Rows', await t.until("!!document.querySelector('app-settings-page .rowsEditor .entry')", 6000));
+  t.check('on Movies', await t.js("document.querySelector('app-settings-page .rows .label')?.textContent.trim() == 'Rows on Movies'"));
   await t.wait(500);
-  t.check('it lists the row as hidden', await t.js(`Array.from(document.querySelectorAll('#rowsEditor .label.hidden .name')).some(e => e.textContent.trim() == ${JSON.stringify(firstRow)})`));
-  await t.shot('editor');
-  const hiddenKey = await t.js(`(() => { let l = Array.from(document.querySelectorAll('#rowsEditor .label')).find(e => e.querySelector('.name').textContent.trim() == ${JSON.stringify(firstRow)}); let b = l; while (b && !(b.matches && b.matches('px-button') && b.querySelector('[data-px-key^="hide:"]'))) b = b.nextElementSibling; return b?.querySelector('[data-px-key]')?.dataset.pxKey; })()`);
-  await t.js(`document.querySelector('#rowsEditor [data-px-key="${hiddenKey}"]').focus()`);
+  t.check('it lists the row as hidden', await t.js(`Array.from(document.querySelectorAll('.rowsEditor .entry.hidden .name')).some(e => e.textContent.trim() == ${JSON.stringify(firstRow)})`));
+  const hiddenKey = await t.js(`Array.from(document.querySelectorAll('.rowsEditor .entry')).find(e => e.querySelector('.name').textContent.trim() == ${JSON.stringify(firstRow)})?.querySelector('[data-px-key^="hide:"]')?.dataset.pxKey`);
+  await t.js(`document.querySelector('.rowsEditor [data-px-key="${hiddenKey}"]').focus()`);
   await t.key('Return');
-  t.check('Show: no longer hidden', await t.until(`document.querySelector('#rowsEditor [data-px-key="${hiddenKey}"]')?.textContent.includes('Hide')`, 3000));
+  t.check('Show: no longer hidden', await t.until(`document.querySelector('.rowsEditor [data-px-key="${hiddenKey}"]')?.textContent.includes('Hide')`, 3000));
   t.check('the focus stays on it', (await t.focused())?.key == hiddenKey, await t.focused());
-  // Up moves it
   const upKey = hiddenKey.replace('hide:', 'up:');
-  await t.js(`document.querySelector('#rowsEditor [data-px-key="${upKey}"]').focus()`);
+  await t.js(`document.querySelector('.rowsEditor [data-px-key="${upKey}"]').focus()`);
   await t.key('Return');
-  t.check('Up: first again in the editor', await t.until(`document.querySelector('#rowsEditor .label .name')?.textContent.trim() == ${JSON.stringify(firstRow)}`, 3000));
-  await t.js("document.querySelector('#rowsEditor [data-px-key=\"done\"]').focus()");
-  await t.key('Return');
-  t.check('Done: the row is back, first', await t.until(`document.querySelector('movies-slider px-card-row .px-row-title')?.textContent.trim() == ${JSON.stringify(firstRow)}`, 8000));
+  t.check('Up: first again', await t.until(`document.querySelector('.rowsEditor .entry .name')?.textContent.trim() == ${JSON.stringify(firstRow)}`, 3000));
+  t.check('saved by itself: the server has it first and shown', await t.until(`(async () => { let l = await fetch(${JSON.stringify(api)} + '/sections/movies/rows?profile=${pid}').then(r => r.json()); return l.rows[0]?.title == ${JSON.stringify(firstRow)}; })()`, 6000));
+  await t.shot('settings-rows');
 
-  // Reset to default
-  await t.wait(800);
-  await t.js("document.querySelector('.sectionToolbar [data-px-key=\"rows\"]')?.focus()");
-  await t.key('Return');
-  await t.until("!!document.querySelector('#rowsEditor [data-px-key=\"reset\"]')", 5000);
-  await t.js("document.querySelector('#rowsEditor [data-px-key=\"reset\"]').focus()");
+  // Reset to the usual rows
+  await t.until("!!document.querySelector('.rowsEditor [data-px-key=\"reset\"]')", 5000);
+  await t.js("document.querySelector('.rowsEditor [data-px-key=\"reset\"]').focus()");
   await t.key('Return');
   t.check('Reset: the profile has no layout of its own', await t.until(`(async () => !(await fetch(${JSON.stringify(api)} + '/sections/movies/layout?profile=${pid}').then(r => r.json())).own)()`, 6000));
-  await t.js(`fetch(${JSON.stringify(api)} + '/sections/home/layout?profile=${pid}', { method: 'DELETE' })`);
+  t.check('and the reset button goes', await t.until("!document.querySelector('.rowsEditor [data-px-key=\"reset\"]')", 3000));
 };

@@ -118,6 +118,23 @@
         </section>
       </ng-container>
 
+      <!-- the profile's rows of Home, Movies and TV shows (docs/rows-plan.md §8) -->
+      <ng-container *ngIf="group == 'rows'">
+        <section class="setting" pxStackItem>
+          <header class="head"><h2 class="label">Section</h2><span class="scope">For {{ profileName }}</span></header>
+          <p class="help">Put the rows you watch most at the top and hide the ones you don't. Changes are saved as you make them.</p>
+          <div class="chips" pxGrid="rowsSection" enter="selected">
+            <px-chip *ngFor="let s of rowSections" [key]="'section:' + s.key" [label]="s.label"
+              [selected]="s.key == rowsSection" (pxSelect)="rowsSection = s.key"></px-chip>
+          </div>
+        </section>
+
+        <section class="setting rows">
+          <header class="head"><h2 class="label">Rows on {{ rowSectionName }}</h2></header>
+          <rows-editor [section]="rowsSection" [focusRow]="rowsFocus"></rows-editor>
+        </section>
+      </ng-container>
+
       <ng-container *ngIf="group == 'about'">
         <section class="setting" pxStackItem>
           <header class="head"><h2 class="label">Playpex TV</h2><span class="scope" *ngIf="version">Version {{ version }}</span></header>

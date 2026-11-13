@@ -120,11 +120,10 @@ export class Catalog {
   // popular / top rated / newest rows. `pending`: rows whose first page
   // hasn't arrived yet.
   search: { query: string, filters: CatalogFilters, rows: string[], pending: number } | null = null;
-  // the search's on-screen keyboard, the filter panel or the rows editor is open
+  // the search's on-screen keyboard or the filter panel is open
   // (layers of the nav system: the rows get no select / back meanwhile)
   typing = false;
   filtering = false;
-  editing: { row: string | null } | null = null;
   private browsing: { rows: CatalogRow[], items: { [row: string]: RowItem[] }, reachedPages: { [row: string]: number }, last: { [row: string]: boolean } } | null = null;
 
   private pageRequests = new Subject<{ row: string }>();

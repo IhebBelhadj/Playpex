@@ -17,9 +17,8 @@ import { SectionRowsService } from '../sections.service';
 // toolbar above searches (the catalog's search: one row of results) and
 // filters (genre, period, score, language: popular / top rated / newest
 // discover rows, or a narrowed search) the section; their rows stand in for
-// the section's (Catalog.startSearch / endSearch) until Clear. "Rows" opens
-// <rows-editor> (the profile's own layout of the section). Home has no
-// search or filters. A frame of the nav system (src/app/nav): it hosts the
+// the section's (Catalog.startSearch / endSearch) until Clear. Home has no
+// search or filters; the profile's rows are set in Settings › Rows. A frame of the nav system (src/app/nav): it hosts the
 // section's list and title screens.
 @Component({
   selector: 'movies-page',
@@ -57,10 +56,6 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
 
   get filtered():boolean {
     return hasFilters(this.catalog.filters);
-  }
-
-  get canEditRows():boolean {
-    return this.sections.canEdit(this.catalog) && !this.catalog.search;
   }
 
   // the search / filters have no rows to show (loading, or nothing found)
@@ -127,7 +122,6 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     this.splashSub?.unsubscribe();
     this.catalog.typing = false;
     this.catalog.filtering = false;
-    this.catalog.editing = null;
   }
 
   // ── search and filters ──────────────────────────────────────────────────────────────
@@ -182,18 +176,6 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   private endSearch() {
     this.catalog.endSearch();
     if (this.catalog.stale) this.sections.load(this.catalog);
-  }
-
-  // ── rows editor ─────────────────────────────────────────────────────────────
-
-  editRows() {
-    this.catalog.editing = { row: null };
-  }
-
-  onRowsEdited(changed:boolean) {
-    this.catalog.editing = null;
-    if (changed) this.sections.load(this.catalog);
-    this.focusToolbar('[data-px-key="rows"]');
   }
 
   private focusToolbar(selector:string) {
