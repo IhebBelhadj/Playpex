@@ -64,7 +64,7 @@ module.exports = async function (t) {
   t.check('the filter panel', await t.until("document.querySelector('#pluginFilterPanel [data-px-key=\"view:list\"]')", 4000));
   await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"view:list\"]'))");
   await t.key('Return');
-  await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"apply\"]'))");
+  await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"done\"]'))");
   await t.key('Return');
   t.check('List: the release list in its place', await t.until("window.playpexDev.screen() == 'plugin.velvet.releases'", 8000));
   t.check('its releases, most seeded first', await t.until("document.querySelectorAll('.pluginReleases .release').length >= 10", 20000));

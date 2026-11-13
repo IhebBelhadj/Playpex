@@ -34,7 +34,7 @@ module.exports = async function (t) {
   await t.shot('catalog-filters');
   await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"decade:1980\"]'))");
   await t.key('Return');
-  await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"apply\"]'))");
+  await t.js("window.SpatialNavigation.focus(document.querySelector('#pluginFilterPanel [data-px-key=\"done\"]'))");
   await t.key('Return');
   t.check('filtered rows', await t.until("/1980s/.test(document.querySelector('.pluginCatalog px-card-row')?.innerText || '')", 6000));
 

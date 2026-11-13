@@ -44,7 +44,7 @@
   </div>
 </px-section-layout>
 
-<!-- Its filter groups, applied together; each choice asks the plugin for the groups that go with it (a site's categories) -->
+<!-- Its filter groups: each choice applies at once (the rows behind follow) and may bring other groups (a site's categories) -->
 <px-panel *ngIf="panel == 'filters'" class="filterPanel" id="pluginFilterPanel" title="Filter" align="start" [width]="1040"
   focus=".panelBody .selected" (closed)="closeFilters()">
   <div class="panelBody" pxStack>
@@ -58,14 +58,14 @@
     </ng-container>
 
     <div class="panelActions" pxGrid enter="nearest">
-      <px-button key="apply" variant="primary" label="Show" (pxSelect)="applyFilters()"></px-button>
+      <px-button key="done" variant="primary" label="Done" (pxSelect)="doneFilters()"></px-button>
       <px-button key="reset" label="Reset filters" (pxSelect)="resetFilters()"></px-button>
     </div>
   </div>
 </px-panel>
 
 <!-- A group's own panel (a `button` group): the plugin's options only (a view has no "All"; a multiple choice gets Any);
-     a single choice applies at once -->
+     a single choice applies and closes it, a multiple one applies at once and stays open -->
 <px-panel *ngIf="openGroup as g" class="filterPanel" id="pluginGroupPanel" [title]="g.label" align="start" [width]="1040"
   focus=".panelBody .selected" (closed)="closeGroupPanel()">
   <div class="panelBody" pxStack>
@@ -75,7 +75,7 @@
         (pxSelect)="pickInGroup(g, o.value)"></px-chip>
     </div>
     <div class="panelActions" pxGrid enter="nearest" *ngIf="g.multiple">
-      <px-button key="apply" variant="primary" label="Show" (pxSelect)="applyGroup(g)"></px-button>
+      <px-button key="done" variant="primary" label="Done" (pxSelect)="doneGroup()"></px-button>
     </div>
   </div>
 </px-panel>

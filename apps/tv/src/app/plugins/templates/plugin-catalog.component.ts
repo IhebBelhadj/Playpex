@@ -49,17 +49,17 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   panel:null | 'keyboard' | 'filters' | 'group' = null;
   // the group whose own panel is open (a `button` group)
   groupKey:string | null = null;
+  // the open panel's choices: shown at once, applied a moment later (a few presses in a row ask once)
   draft:Record<string, string[]> = {};
-  // the panel's groups: the plugin's for the draft (null = the screen's own)
-  draftGroups:PluginFilterGroup[] | null = null;
-  previewing = false;
   spot:CardModel | null = null;
 
   readonly loadAhead = LOAD_AHEAD;
   readonly stackId = `plugin:${this.scope.id}:${this.decl.name}`;
   private loadSub:Subscription;
-  private previewSub:Subscription;
-  private previewTimer:any;
+  private applyTimer:any;
+  private applyPending:(() => Record<string, string[]>) | null = null;
+  // the answer to a choice in a panel: choices its groups no longer offer are dropped (a site's categories)
+  private pruneNext = false;
   private focusListener;
 
   constructor(
@@ -80,9 +80,9 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     return this.state.data?.filters || [];
   }
 
-  /** The groups the panel shows: the plugin's for the draft, else the screen's; never the toolbar's or the buttons' */
+  /** The groups the panel shows: never the toolbar's or the buttons' */
   get panelGroups():PluginFilterGroup[] {
-    return (this.draftGroups || this.groups).filter(g => !g.toolbar && !g.button);
+    return this.filterGroups;
   }
 
   /** The screen's groups in the filters panel */
@@ -114,18 +114,20 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   }
 
   closeGroupPanel() {
+    this.flushApply();
     let key = this.groupKey;
     this.panel = null;
     this.groupKey = null;
     if (key) this.focusSelector(`.pluginCatalog [data-px-key="group:${CSS.escape(key)}"]`);
   }
 
-  // in a group's own panel: a single choice applies at once, a multiple one is drafted until Show
+  // in a group's own panel: a single choice applies and closes it, a multiple one applies and keeps it open
   pickInGroup(group:PluginFilterGroup, value:string | null) {
     if (group.multiple) {
       let chosen = this.draft[group.key] || [];
       chosen = value === null ? [] : chosen.includes(value) ? chosen.filter(v => v != value) : [...chosen, value];
       this.draft = { ...this.draft, [group.key]: chosen };
+      this.scheduleApply(() => ({ ...this.chosen(), [group.key]: this.draft[group.key] || [] }));
       return;
     }
     let before = this.chosen()[group.key] || [];
@@ -135,10 +137,9 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     this.change({ filters: { ...this.chosen(), [group.key]: next } });
   }
 
-  applyGroup(group:PluginFilterGroup) {
-    let next = this.draft[group.key] || [];
+  // a multiple group's Done: its choices are already applied
+  doneGroup() {
     this.closeGroupPanel();
-    this.change({ filters: { ...this.chosen(), [group.key]: next } });
   }
 
   /** The screen's groups in the toolbar (a view): chips applied at once */
@@ -201,7 +202,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   override ngOnDestroy(): void {
     super.ngOnDestroy();
     this.loadSub?.unsubscribe();
-    this.stopPreview();
+    clearTimeout(this.applyTimer);
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -228,6 +229,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
         let rows = (data.rows || []).map(r => this.client.row(this.scope, r)).map(model => this.rowState(model));
         if (!keepPositions) this.positions.clear(this.stackId);
         this.set({ data, rows, loaded: true });
+        if (this.pruneNext && this.afterPanelChoice()) return;
         rows.filter(r => !r.last).forEach(r => this.more(r));
         setTimeout(() => {
           let active = document.activeElement as HTMLElement;
@@ -238,6 +240,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
       },
       error: err => {
         this.loading = false;
+        this.pruneNext = false;
         this.loadError = err?.status == 429
           ? `${this.scope.name} is busy. Try again in a moment.`
           : `${this.scope.name} didn't answer. Try again, or check the plugin on the server's dashboard.`;
@@ -299,14 +302,12 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
 
   openFilters() {
     this.draft = JSON.parse(JSON.stringify(this.chosen()));
-    this.draftGroups = null;
     this.panel = 'filters';
   }
 
   closeFilters() {
+    this.flushApply();
     this.panel = null;
-    this.draftGroups = null;
-    this.stopPreview();
   }
 
   isOn(group:PluginFilterGroup, value:string | null):boolean {
@@ -320,7 +321,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     else if (group.multiple) chosen = chosen.includes(value) ? chosen.filter(v => v != value) : [...chosen, value];
     else chosen = [value];
     this.draft = { ...this.draft, [group.key]: chosen };
-    this.preview();
+    this.scheduleApply(() => this.panelFilters());
   }
 
   isChosen(group:PluginFilterGroup, value:string):boolean {
@@ -335,62 +336,64 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     this.change({ filters: { ...this.chosen(), [group.key]: next } });
   }
 
-  applyFilters() {
-    let filters = { ...this.toolbarChoices(), ...this.prune(this.draft, this.panelGroups) };
+  // the Filters panel's Done: its choices are already applied
+  doneFilters() {
     this.closeFilters();
-    this.change({ filters });
     this.focusSelector('.pluginCatalog [data-px-key="filters"]');
   }
 
   resetFilters() {
     this.draft = {};
-    this.preview();
+    this.scheduleApply(() => this.panelFilters());
   }
 
-  // The groups that go with the draft (filters depend on one another: a site
-  // has its own categories): the handler asked with `preview: true`, its
-  // answer's `filters` only (rows and effects ignored); choices the new groups
-  // don't offer are dropped. Debounced: a few presses in a row ask once.
-  private preview() {
-    clearTimeout(this.previewTimer);
-    this.previewTimer = setTimeout(() => {
-      this.previewSub?.unsubscribe();
-      this.previewing = true;
-      let draft = this.draft;
-      this.previewSub = this.client.data<CatalogData>(this.scope.id, this.decl.data, {
-        params: this.params, query: this.state.query, filters: draft, preview: true,
-      }).subscribe({
-        next: answer => {
-          this.previewing = false;
-          if (this.panel != 'filters' || draft != this.draft) return;
-          // no groups in the answer (a plugin that doesn't know previews may answer a screen switch): the panel stays as it is
-          let groups = answer.data?.filters;
-          if (!Array.isArray(groups) || !groups.some(g => !g.toolbar) || answer.effects?.length) return;
-          let active = document.activeElement as HTMLElement;
-          let key = active?.closest('[data-px-key]')?.getAttribute('data-px-key');
-          this.draftGroups = groups;
-          this.draft = this.prune(draft, groups);
-          // the focused chip may be gone (a group the new site hasn't): the chosen ones
-          setTimeout(() => {
-            if (this.panel != 'filters') return;
-            let panel = document.querySelector('#pluginFilterPanel');
-            let focused = document.activeElement;
-            if (panel && (!focused || !panel.contains(focused))) {
-              let same = key && panel.querySelector(`[data-px-key="${CSS.escape(key)}"]`) as HTMLElement;
-              (same || panel.querySelector('.panelBody .selected') as HTMLElement)?.focus({ preventScroll: true });
-            }
-          }, 0);
-        },
-        // the panel keeps the groups it has
-        error: () => { this.previewing = false; },
-      });
-    }, 150);
+  /** The Filters panel's choices with the toolbar's and the buttons' */
+  private panelFilters():Record<string, string[]> {
+    return { ...this.toolbarChoices(), ...this.prune(this.draft, this.panelGroups) };
   }
 
-  private stopPreview() {
-    clearTimeout(this.previewTimer);
-    this.previewSub?.unsubscribe();
-    this.previewing = false;
+  // A choice in a panel applies by itself: the rows behind it follow, the panel stays open.
+  // Debounced: a few presses in a row ask once.
+  private scheduleApply(filters:() => Record<string, string[]>) {
+    clearTimeout(this.applyTimer);
+    this.applyPending = filters;
+    this.applyTimer = setTimeout(() => this.flushApply(), 250);
+  }
+
+  private flushApply() {
+    clearTimeout(this.applyTimer);
+    let pending = this.applyPending;
+    this.applyPending = null;
+    if (!pending) return;
+    let filters = pending();
+    if (JSON.stringify(filters) == JSON.stringify(this.chosen())) return;
+    this.pruneNext = true;
+    this.change({ filters });
+  }
+
+  // The answer to a panel's choice: its groups may differ (another site, its own categories).
+  // Choices they no longer offer are dropped (asked again without them, true); an open panel
+  // shows what applies, and the focus stays on the chip it was on (else the chosen ones).
+  private afterPanelChoice():boolean {
+    this.pruneNext = false;
+    let chosen = this.chosen(), pruned = this.prune(chosen, this.groups);
+    if (this.state.filters && JSON.stringify(pruned) != JSON.stringify(chosen)) {
+      this.change({ filters: pruned });
+      return true;
+    }
+    if (!this.panel || this.panel == 'keyboard') return false;
+    let active = document.activeElement as HTMLElement;
+    let key = active?.closest('[data-px-key]')?.getAttribute('data-px-key');
+    if (!this.applyPending) this.draft = JSON.parse(JSON.stringify(chosen));
+    setTimeout(() => {
+      let panel = document.querySelector('#pluginFilterPanel, #pluginGroupPanel');
+      let focused = document.activeElement;
+      if (panel && (!focused || !panel.contains(focused))) {
+        let same = key && panel.querySelector(`[data-px-key="${CSS.escape(key)}"]`) as HTMLElement;
+        (same || panel.querySelector('.panelBody .selected') as HTMLElement)?.focus({ preventScroll: true });
+      }
+    }, 0);
+    return false;
   }
 
   /** The choices the groups offer (a group or a value they no longer have dropped) */
