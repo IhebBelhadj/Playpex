@@ -7,10 +7,13 @@
 //
 // Screens (catalog template):
 //   home       a View filter: For you (Playpex's own recommendations: YouTube's
-//              home feed isn't in its public API), Subscriptions, Liked videos,
-//              Your playlists, Trending; a Category filter narrowing them; a
-//              search → videos, channels, playlists
-//   channel    a channel's uploads (paged) and playlists         params { id }
+//              home feed isn't in its public API), Subscriptions, Channels
+//              (every subscription A to Z, the channels it watches here),
+//              Liked videos, Your playlists, Trending; a Category filter
+//              narrowing them; a search → videos, channels, playlists. The
+//              views of videos end with a row of their channels.
+//   channel    a channel's videos, Shorts and live streams (paged; YouTube's
+//              UULF / UUSH / UULV lists), playlists               params { id }
 //   playlist   a playlist's videos (paged)                       params { id }
 // Data handlers: home, channel, playlist, page (paged rows), play (a card's
 // call → a play effect), searchFilter (the search page's chip).
@@ -225,6 +228,16 @@ function longUploadsOf(channelId) {
   return 'UULF' + channelId.slice(2);
 }
 
+/** A channel's Shorts */
+function shortsOf(channelId) {
+  return 'UUSH' + channelId.slice(2);
+}
+
+/** A channel's live streams, past and upcoming */
+function streamsOf(channelId) {
+  return 'UULV' + channelId.slice(2);
+}
+
 /** playlistItems.list; a channel's long-videos list it doesn't have → its whole uploads */
 function playlistItems(params, token) {
   return yt('playlistItems', params, token).catch(function (err) {
@@ -328,10 +341,11 @@ function playlistCard(p) {
   };
 }
 
+/** A channels / search / subscriptions item → a channel (a subscription's own id is the subscription's: its channel is resourceId) */
 function channelOf(it) {
   var s = it.snippet || {};
   return {
-    id: typeof it.id === 'string' ? it.id : (it.id && it.id.channelId) || (s.resourceId && s.resourceId.channelId),
+    id: (s.resourceId && s.resourceId.channelId) || (typeof it.id === 'string' ? it.id : it.id && it.id.channelId),
     title: unescape(s.title),
     description: s.description || '',
     image: thumb(s.thumbnails, 'high'),
@@ -452,7 +466,10 @@ function playlistPage(id, page, ctx, token) {
   var key = 'pl:' + id, at = tokens[key] = tokens[key] || { 1: '' };
   if (page > 1 && at[page] === undefined) return Promise.resolve({ items: [], last: true });
   return cached('page:' + id + ':' + page + ':' + (token ? ctx.profile.id : ''), 10 * 60000, function () {
-    return playlistItems({ part: 'contentDetails', playlistId: id, maxResults: 50, pageToken: at[page] || undefined }, token).then(function (b) {
+    return playlistItems({ part: 'contentDetails', playlistId: id, maxResults: 50, pageToken: at[page] || undefined }, token).catch(function (err) {
+      if (err.reason === 'notFound' && /^UU(SH|LV)/.test(id)) return { items: [] };
+      throw err;
+    }).then(function (b) {
       if (b.nextPageToken) at[page + 1] = b.nextPageToken;
       var ids = (b.items || []).map(function (it) { return it.contentDetails && it.contentDetails.videoId; });
       return videos(ids, ctx, token).then(function (list) {
@@ -481,12 +498,74 @@ function feed(ctx, token) {
   });
 }
 
+var SUBS_PAGES = 10;
+
+/** Every channel the linked account subscribes to, A to Z (pages of 50, ≤ 500: 1 unit a page) */
 function subscriptions(ctx, token) {
   return cached('subs:' + ctx.profile.id, 30 * 60000, function () {
-    return yt('subscriptions', { part: 'snippet', mine: 'true', maxResults: 50, order: 'alphabetical' }, token).then(function (b) {
-      return (b.items || []).map(channelOf).filter(function (c) { return CHANNEL.test(c.id || ''); });
-    });
+    var all = [];
+    function more(pageToken, n) {
+      return yt('subscriptions', { part: 'snippet', mine: 'true', maxResults: 50, order: 'alphabetical', pageToken: pageToken }, token).then(function (b) {
+        all = all.concat((b.items || []).map(channelOf).filter(function (c) { return CHANNEL.test(c.id || ''); }));
+        return b.nextPageToken && n < SUBS_PAGES ? more(b.nextPageToken, n + 1) : all;
+      });
+    }
+    return more(undefined, 1);
   });
+}
+
+/** Channels by id (≤ 50 a call, 1 unit), with their subscriber counts, in that order */
+function channelsById(ids) {
+  ids = ids.filter(function (id, i) { return CHANNEL.test(id || '') && ids.indexOf(id) === i; }).slice(0, 100);
+  if (!ids.length) return Promise.resolve([]);
+  var batches = [];
+  for (var i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
+  return Promise.all(batches.map(function (b) {
+    return cached('channels:' + b.join(','), 6 * 3600000, function () {
+      return yt('channels', { part: 'snippet,statistics', id: b.join(','), maxResults: 50 }).then(function (r) { return r.items || []; });
+    });
+  })).then(function (lists) {
+    var byId = {};
+    [].concat.apply([], lists).forEach(function (it) { var c = channelOf(it); byId[c.id] = c; });
+    return ids.map(function (id) { return byId[id]; }).filter(Boolean);
+  });
+}
+
+/** The channels of the videos on a screen's rows (their cards' calls) and of `videos`, most seen first */
+function channelsOfRows(rows, videos) {
+  var seen = {};
+  function add(id) { if (CHANNEL.test(id || '')) seen[id] = (seen[id] || 0) + 1; }
+  rows.forEach(function (r) {
+    (r && r.items || []).forEach(function (c) { add(c.call && c.call.args && c.call.args.channelId); });
+  });
+  (videos || []).forEach(function (v) { add(v.channelId); });
+  return Object.keys(seen).sort(function (a, b) { return seen[b] - seen[a]; });
+}
+
+/** A row of the channels of a view's videos after them, a way to their pages (nothing when it fails: the videos are what matter) */
+function withChannels(rows, title, videos) {
+  var ids = channelsOfRows(rows, videos).slice(0, 30);
+  if (!ids.length) return Promise.resolve(rows);
+  return channelsById(ids).then(function (list) {
+    return list.length ? rows.concat([row('channels-here', title || 'Channels in these videos', list.map(channelCard), 'portrait')]) : rows;
+  }, function () { return rows; });
+}
+
+/** Channels in rows of 40, named by their first letters ("A – F") */
+function letterRows(key, list) {
+  var rows = [];
+  for (var i = 0; i < list.length; i += 40) {
+    var part = list.slice(i, i + 40);
+    var first = initial(part[0].title), last = initial(part[part.length - 1].title);
+    rows.push(row(key + '-' + (i / 40), list.length <= 40 ? 'Your subscriptions' : first === last ? first : first + ' – ' + last,
+      part.map(channelCard), 'portrait'));
+  }
+  return rows;
+}
+
+function initial(title) {
+  var c = String(title || '').trim().charAt(0).toUpperCase();
+  return /[A-Z]/.test(c) ? c : '#';
 }
 
 function myPlaylists(ctx, token) {
@@ -695,7 +774,7 @@ function forYou(ctx, token, s) {
 
 // ── views and categories ────────────────────────────────────────────────────
 
-var VIEWS = [['foryou', 'For you'], ['subscriptions', 'Subscriptions'], ['liked', 'Liked videos'], ['playlists', 'Your playlists'], ['trending', 'Trending']];
+var VIEWS = [['foryou', 'For you'], ['subscriptions', 'Subscriptions'], ['channels', 'Channels'], ['liked', 'Liked videos'], ['playlists', 'Your playlists'], ['trending', 'Trending']];
 
 function viewOf(args) {
   var v = args.filters && args.filters.view && args.filters.view[0];
@@ -733,8 +812,11 @@ function viewRows(view, category, ctx, token, s) {
       return Promise.resolve({ rows: [pagedRow('chart-' + category, 'Trending in ' + catName, { list: 'chart', category: category })],
         empty: 'Nothing trending in ' + catName + ' here.' });
     }
-    return chartRows(s.region, ctx).then(function (rows) { return { rows: rows, empty: 'YouTube has nothing trending here right now.' }; });
+    return chartRows(s.region, ctx).then(function (rows) { return withChannels(rows); }).then(function (rows) {
+      return { rows: rows, empty: 'YouTube has nothing trending here right now.' };
+    });
   }
+  if (view === 'channels') return channelRows(ctx, token);
   if (view !== 'foryou' && !token) return Promise.resolve({ rows: [], empty: NOT_LINKED });
   if (view === 'subscriptions') {
     return Promise.all([feed(ctx, token), subscriptions(ctx, token)]).then(function (r) {
@@ -757,6 +839,8 @@ function viewRows(view, category, ctx, token, s) {
         var mine = list.filter(function (v) { return v.categoryId === c[0]; });
         if (mine.length >= 3) rows.push(row('liked-' + c[0], c[1], mine.map(videoCard)));
       });
+      return withChannels(rows, 'Channels you like', list);
+    }).then(function (rows) {
       return { rows: rows, empty: 'You haven\'t liked any video yet.' };
     });
   }
@@ -772,12 +856,31 @@ function viewRows(view, category, ctx, token, s) {
   // for you (a profile's: without one, the charts)
   return (ctx.profile ? forYou(ctx, token, s) : Promise.resolve([])).then(function (made) {
     var rows = made.map(function (r) { return videoRow(r.key, r.title, r.videos, category); }).filter(Boolean);
-    if (rows.length) return { rows: rows, empty: '' };
+    if (rows.length) return withChannels(rows, 'Channels for you').then(function (all) { return { rows: all, empty: '' }; });
     // nothing to go on yet (or nothing in that category): the charts, saying how it learns
     return (category ? Promise.resolve([pagedRow('chart-' + category, 'Trending in ' + catName, { list: 'chart', category: category, noShorts: true })])
       : chartRows(s.region, ctx, { noShorts: true })).then(function (charts) {
       if (charts[0]) charts[0] = Object.assign({}, charts[0], { title: charts[0].title + ' · For you learns from what you watch' + (token ? ' and like' : '') });
       return { rows: charts, empty: 'Watch a few videos: For you is made from what you play.' };
+    });
+  });
+}
+
+/**
+ * The Channels view: the linked account's subscriptions A to Z, then the channels the profile
+ * watches here without subscribing (what it played, ≤ 30). Each card opens the channel's page.
+ */
+function channelRows(ctx, token) {
+  var subs = token ? subscriptions(ctx, token) : Promise.resolve([]);
+  return Promise.all([subs, ctx.profile ? history(ctx) : Promise.resolve([])]).then(function (r) {
+    var mine = r[0], subscribed = {};
+    mine.forEach(function (c) { subscribed[c.id] = true; });
+    var watched = affinities(r[1], []).channels.map(function (c) { return c[0]; })
+      .filter(function (id) { return CHANNEL.test(id) && !subscribed[id]; }).slice(0, 30);
+    return channelsById(watched).catch(function () { return []; }).then(function (seen) {
+      var rows = letterRows('subs-all', mine);
+      if (seen.length) rows.unshift(row('channels-watched', 'Channels you watch', seen.map(channelCard), 'portrait'));
+      return { rows: rows, empty: token ? 'You aren\'t subscribed to any channel yet, and haven\'t watched any here.' : NOT_LINKED };
     });
   });
 }
@@ -846,9 +949,16 @@ playpex.data('channel', function (args, ctx) {
       var it = (r[0].items || [])[0];
       if (!it) return { data: { title: 'YouTube', rows: [], empty: 'No such channel.' } };
       var c = channelOf(it), lists = r[1].map(playlistOf).filter(function (p) { return LIST.test(p.id || ''); });
-      var rows = [pagedRow('uploads', 'Latest from ' + clip(c.title, 80), { list: 'playlist', id: uploadsOf(id) })];
+      // its uploads in YouTube's own lists: videos (no Shorts or streams: all its uploads when it has no such list),
+      // Shorts, live streams (a list it doesn't have answers nothing: the row isn't drawn)
+      var rows = [
+        pagedRow('uploads', 'Videos', { list: 'playlist', id: longUploadsOf(id) }),
+        pagedRow('shorts', 'Shorts', { list: 'playlist', id: shortsOf(id) }),
+        pagedRow('streams', 'Live streams', { list: 'playlist', id: streamsOf(id) })
+      ];
       if (lists.length) rows.push(row('channel-playlists', 'Playlists', lists.map(playlistCard)));
-      return screen(clip(c.title || 'Channel', 200), rows, { empty: 'This channel has no videos.' });
+      var subs = c.subscribers != null ? count(c.subscribers, 'subscriber') : '';
+      return screen(clip(c.title || 'Channel', 160) + (subs ? ' · ' + subs : ''), rows, { empty: 'This channel has no videos.' });
     }, function (err) {
       return screen('YouTube', [], { empty: explain(err) });
     });
@@ -950,7 +1060,7 @@ playpex.data('searchFilter', function (args, ctx) {
 
 // tests (Node, not the sandbox): the pure parts
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { isShort: isShort, uploadsOf: uploadsOf, longUploadsOf: longUploadsOf, seconds: seconds, clock: clock, count: count, ago: ago, unescape: unescape, thumb: thumb, video: video,
+  module.exports = { isShort: isShort, uploadsOf: uploadsOf, longUploadsOf: longUploadsOf, shortsOf: shortsOf, streamsOf: streamsOf, channelOf: channelOf, letterRows: letterRows, seconds: seconds, clock: clock, count: count, ago: ago, unescape: unescape, thumb: thumb, video: video,
     searchWords: searchWords, affinities: affinities, interleave: interleave,
     videoCard: videoCard, channelCard: channelCard, playlistCard: playlistCard, explain: explain };
 }

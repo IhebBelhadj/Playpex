@@ -3,7 +3,7 @@
   "id": "youtube",
   "name": "YouTube",
   "description": "YouTube on the big screen: For you (made from what each profile watches and likes), subscriptions, liked videos, playlists, trending, categories and search. Videos play in YouTube's own player under Playpex's controls.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": {
     "name": "Playpex"
   },

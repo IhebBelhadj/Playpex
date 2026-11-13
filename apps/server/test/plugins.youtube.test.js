@@ -36,7 +36,7 @@ var server = require('..'),
   secretBox = require('../lib/secretBox');
 
 var DIR = path.join(__dirname, '..', '..', '..', 'plugins', 'youtube');
-var CHANNEL_A = 'UC' + 'a'.repeat(22), CHANNEL_B = 'UC' + 'b'.repeat(22);
+var CHANNEL_A = 'UC' + 'a'.repeat(22), CHANNEL_B = 'UC' + 'b'.repeat(22), CHANNEL_C = 'UC' + 'c'.repeat(22);
 
 // ── a made-up YouTube ───────────────────────────────────────────────────────
 
@@ -126,9 +126,12 @@ function fakeYoutube() {
         } };
       }
       if (p === 'subscriptions') {
-        return { status: 200, body: { items: [CHANNEL_A, CHANNEL_B].map(function (id) {
-          return { snippet: { title: id === CHANNEL_A ? 'Channel A' : 'Channel B', resourceId: { kind: 'youtube#channel', channelId: id },
-            thumbnails: { high: { url: 'https://yt3.ggpht.com/' + id + '.jpg' } } } };
+        // as YouTube answers: the item's own id is the subscription's, its channel is resourceId; a second page
+        var second = q.get('pageToken') === 's2';
+        return { status: 200, body: { nextPageToken: second ? undefined : 's2', items: (second ? [CHANNEL_C] : [CHANNEL_A, CHANNEL_B]).map(function (id) {
+          return { kind: 'youtube#subscription', id: 'sub-' + id.slice(2, 12) + 'xyzXYZ0123456789',
+            snippet: { title: 'Channel ' + id.charAt(2).toUpperCase(), resourceId: { kind: 'youtube#channel', channelId: id },
+              thumbnails: { high: { url: 'https://yt3.ggpht.com/' + id + '.jpg' } } } };
         }) } };
       }
       return { status: 404, body: { error: { code: 404, message: 'not here', errors: [{ reason: 'notFound' }] } } };
@@ -189,7 +192,9 @@ test('home, Trending view: trending and the categories that have a chart there, 
   var p = load();
   return p.handlers.home({ params: {}, query: '', filters: { view: ['trending'] } }, ANA).then(function (r) {
     valid('templates/properties/catalog', r.data);
-    assert.deepEqual(rowKeys(r.data), ['youtube:trending', 'youtube:cat10', 'youtube:cat20']);
+    // then the channels of those videos: a way to their pages
+    assert.deepEqual(rowKeys(r.data), ['youtube:trending', 'youtube:cat10', 'youtube:cat20', 'youtube:channels-here']);
+    assert.equal(r.data.rows[3].variant, 'portrait');
     var card = r.data.rows[0].items[0];
     assert.equal(card.variant, 'still');
     assert.equal(card.title, 'Video ' + vid(1) + ' & more');
@@ -205,7 +210,7 @@ test('home, Trending view: trending and the categories that have a chart there, 
     assert.equal(r.data.search, true);
     // the key as a header, the region asked
     assert.ok(p.yt.calls.every(function (c) { return c.key === 'key-123' && c.auth === null; }));
-    assert.ok(p.yt.calls.every(function (c) { return c.query.regionCode === 'US'; }));
+    assert.ok(p.yt.calls.every(function (c) { return c.path === 'channels' || c.query.regionCode === 'US'; }));
     // cached: the screen again asks nothing
     var before = p.yt.calls.length;
     return p.handlers.home({ params: {}, query: '', filters: { view: ['trending'] } }, ANA).then(function () {
@@ -228,7 +233,11 @@ test('views of a linked account: subscriptions (latest, channels, a row per chan
     assert.equal(feed[0], 'youtube:v:' + vid(712));
     assert.ok(feed.indexOf('youtube:v:' + vid(404)) === -1);
     assert.deepEqual(r[0].data.rows[1].items[0].intent, { screen: 'plugin.youtube.channel', params: { id: CHANNEL_A } });
-    assert.deepEqual(rowKeys(r[1].data), ['youtube:liked-all']);
+    // every subscription, the second page too, by the channel's id (never the subscription's)
+    assert.deepEqual(r[0].data.rows[1].items.map(function (c) { return c.key; }), [CHANNEL_A, CHANNEL_B, CHANNEL_C].map(function (id) { return 'youtube:c:' + id; }));
+    // liked: all of them, then their channels (a way to their pages)
+    assert.deepEqual(rowKeys(r[1].data), ['youtube:liked-all', 'youtube:channels-here']);
+    assert.deepEqual(r[1].data.rows[1].items.map(function (c) { return c.intent.params.id; }), [CHANNEL_A]);
     assert.deepEqual(r[1].data.rows[0].page, { data: 'page', args: { list: 'liked' } });
     assert.deepEqual(rowKeys(r[2].data), ['youtube:playlists', 'youtube:playlist-PLmine1']);
     return Promise.all([p.handlers.page({ list: 'liked', page: 1 }, ANA), p.handlers.page({ list: 'liked', page: 1, category: '20' }, ANA)]);
@@ -333,9 +342,11 @@ test('channel and playlist screens: uploads and a playlist page by page', functi
   var p = load();
   return p.handlers.channel({ params: { id: CHANNEL_A }, query: '' }, ANA).then(function (r) {
     valid('templates/properties/catalog', r.data);
-    assert.equal(r.data.title, 'Channel A');
-    assert.deepEqual(r.data.rows[0].page, { data: 'page', args: { list: 'playlist', id: 'UU' + CHANNEL_A.slice(2) } });
-    assert.equal(r.data.rows[1].key, 'youtube:channel-playlists');
+    assert.equal(r.data.title, 'Channel A · 2.5M subscribers');
+    // its videos together: long ones, Shorts, live streams (YouTube's own lists), then its playlists
+    assert.deepEqual(r.data.rows.map(function (x) { return x.page ? x.page.args.id : x.key; }),
+      ['UULF', 'UUSH', 'UULV'].map(function (pre) { return pre + CHANNEL_A.slice(2); }).concat(['youtube:channel-playlists']));
+    assert.deepEqual(r.data.rows.slice(0, 3).map(function (x) { return x.title; }), ['Videos', 'Shorts', 'Live streams']);
     return p.handlers.page({ list: 'playlist', id: 'UU' + CHANNEL_A.slice(2), page: 1 }, ANA);
   }).then(function (r) {
     valid('rowPage', r.data);
@@ -358,6 +369,42 @@ test('channel and playlist screens: uploads and a playlist page by page', functi
     assert.equal(r[0].data.title, 'My list');
     assert.deepEqual(r[1].data.rows, []);
     assert.deepEqual(r[2].data, { items: [], last: true });
+  });
+});
+
+test('Channels view: subscriptions A to Z, the channels the profile watches here; a list a channel lacks is an empty row', function () {
+  var hist = [{ id: vid(1), title: 'x', channelId: CHANNEL_B, categoryId: '10', at: new Date().toISOString() },
+    { id: vid(2), title: 'y', channelId: 'UC' + 'd'.repeat(22), categoryId: '10', at: new Date().toISOString() }];
+  var p = load({ links: { ana: 'token-ana' }, store: { 'history:ana': hist } });
+  return p.handlers.home({ query: '', filters: { view: ['channels'] } }, ANA).then(function (r) {
+    valid('templates/properties/catalog', r.data);
+    assert.equal(r.data.filters[0].options.filter(function (o) { return o.on; })[0].value, 'channels');
+    // watched without subscribing (B is a subscription: left out of that row), then every subscription
+    assert.deepEqual(rowKeys(r.data), ['youtube:channels-watched', 'youtube:subs-all-0']);
+    assert.deepEqual(r.data.rows[0].items.map(function (c) { return c.intent.params.id; }), ['UC' + 'd'.repeat(22)]);
+    assert.equal(r.data.rows[1].title, 'Your subscriptions');
+    assert.equal(r.data.rows[1].items.length, 3);
+    // without an account: only what it watched (none here), and how to link one
+    return p.handlers.home({ query: '', filters: { view: ['channels'] } }, { profile: { id: 'bob', kids: false }, locale: 'en' });
+  }).then(function (r) {
+    assert.deepEqual(r.data.rows, []);
+    assert.match(r.data.empty, /Link a Google account/);
+    // many subscriptions: rows of 40 named by letters
+    var sandbox = { module: { exports: {} }, playpex: { data: function () {} } };
+    vm.runInNewContext(fs.readFileSync(path.join(DIR, 'server.js'), 'utf8'), sandbox);
+    var y = sandbox.module.exports;
+    var many = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')).sort().map(function (l, i) {
+      return { id: 'UC' + String(i).padStart(22, '0'), title: l + ' channel' };
+    });
+    var rows = y.letterRows('subs-all', many);
+    assert.deepEqual(JSON.parse(JSON.stringify(rows.map(function (x) { return x.title + ':' + x.items.length; }))), ['A – T:40', 'U – Z:12']);
+    // a subscription item: its channel is resourceId, not its own id
+    assert.equal(y.channelOf({ id: 'subscription-id', snippet: { resourceId: { channelId: CHANNEL_A } } }).id, CHANNEL_A);
+    // a channel without Shorts: the row's page is empty, not a failure
+    p.yt.fail = { status: 404, reason: 'playlistNotFound' };
+    return p.handlers.page({ list: 'playlist', id: 'UUSH' + CHANNEL_B.slice(2), page: 1 }, ANA);
+  }).then(function (r) {
+    assert.deepEqual(r.data, { items: [], last: true });
   });
 });
 
