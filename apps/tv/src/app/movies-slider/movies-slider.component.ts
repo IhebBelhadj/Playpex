@@ -8,25 +8,30 @@ import { MoviesService } from '../movies.service';
 import { hasFilters } from '../catalog-filters';
 import { ActivatedRoute } from '@angular/router';
 import { gsap , Power2 } from 'gsap'
-import { Catalog } from '../catalog';
+import { Catalog, CatalogRow, ContinueAt, RowItem } from '../catalog';
+import { EpisodePlaybackService } from '../episode-playback.service';
+import { actionForKey } from '../keymap';
+import { SectionRowsService } from '../sections.service';
+import { Dialogs, Toasts } from '../ui/public-api';
 import { Subscription } from 'rxjs';
 import { SplashService } from '../splash.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
-import { Navigator, useScreen } from '../nav/public-api';
+import { Intent, Navigator, useScreen } from '../nav/public-api';
 import { dp } from '../ui/public-api';
-import { tmdbImageBase } from '../ui/public-api';
 
-const PAGE_SIZE = 20;          // TMDB results per page
-const LOAD_AHEAD = 10;         // next page this many posters before a row's end
+const LOAD_AHEAD = 10;         // next page this many cards before a row's end
 
-// The category rows of a section (movies or TV shows). Movement and
+// The rows of a section (Home, Movies or TV shows: the server's, in its
+// layout's order, SectionRowsService). Movement and
 // positioning are the movement system's (src/app/movement): a translated
 // pxStack of pxRows, positions remembered in PositionStore under
 // `catalog:<media>` (survives the player and the detail pages). This
-// component only feeds the rows, pages them and describes the focused poster.
-// The section's screen (core.movies / core.shows, src/app/nav): Enter on a
-// poster opens its title; Back steps out to the menu, then the power menu
-// (the section's back policy).
+// component only feeds the rows, pages them and describes the focused card.
+// The section's screen (core.home / core.movies / core.shows, src/app/nav):
+// Enter on a card opens its title (a plugin's card: its intent or call); the
+// options key (keymap `options`) on a card: Move the row up / down, Hide it,
+// Edit rows (the profile's layout); Back steps out to the menu, then the
+// power menu (the section's back policy).
 @Component({
   selector: 'movies-slider',
   templateUrl: './movies-slider.component.html',
@@ -36,7 +41,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
 
   private profiles = inject(ProfilesService);
   // plugins' rows of this section (ui/slots)
-  slotName:SlotName = 'core.movies.rows';
+  slotName:SlotName | null = 'core.movies.rows';
   slotContext:SectionContext | null = null;
 
   readonly loadAhead = LOAD_AHEAD;
@@ -46,7 +51,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   moviesSub:Subscription;
   sliderEventSub:Subscription;
   focusListener;
-  imgBaseUrl = tmdbImageBase('poster', 180);
+  keyListener;
   private screen = useScreen();
   private opening = false;
 
@@ -59,13 +64,18 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     private splashService:SplashService,
     private engine:FocusEngine,
     private positions:PositionStore,
+    private sections:SectionRowsService,
+    private dialogs:Dialogs,
+    private toasts:Toasts,
+    private episodePlayback:EpisodePlaybackService,
   ) { }
 
   ngOnInit(): void {
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
     this.stackId = `catalog:${this.catalog.media}`;
-    this.slotName = this.catalog.media == 'tv' ? 'core.shows.rows' : 'core.movies.rows';
-    this.slotContext = { section: this.catalog.media, profile: profileContext(this.profiles.current.value), query: '', filters: {} };
+    this.slotName = this.catalog.media == 'tv' ? 'core.shows.rows' : this.catalog.media == 'movie' ? 'core.movies.rows' : null;
+    if (this.catalog.mediaType) this.slotContext = { section: this.catalog.mediaType, profile: profileContext(this.profiles.current.value), query: '', filters: {} };
+    this.catalog.visible = true;
     this.movies = this.catalog.items.getValue();
 
     this.moviesSub = this.catalog.items.subscribe(data => this.movies = data);
@@ -79,6 +89,19 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       this.menuService.sendInstruction("collapse" , this);
     }
     window.addEventListener('sn:focused', this.focusListener);
+
+    // The options key on a card: its row's menu
+    this.keyListener = (e:KeyboardEvent) => {
+      if (actionForKey(e) != 'options' || !this.screen.active || this.dialogs.open$.value.length) return;
+      if (this.catalog.typing || this.catalog.filtering || this.catalog.editing || this.catalog.search) return;
+      let node = (document.activeElement as HTMLElement)?.closest('.sliderContainer [data-section]') as HTMLElement;
+      let row = node && this.catalog.findRow(node.dataset['section']);
+      if (!row) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.rowMenu(row, node.dataset['id']);
+    };
+    window.addEventListener('keydown', this.keyListener, true);
 
     // In-page steps; on the menu, Back leaves (the power menu)
     this.screen.onBack(() => {
@@ -102,6 +125,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   ngOnDestroy(): void {
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'})
     window.removeEventListener('sn:focused', this.focusListener);
+    window.removeEventListener('keydown', this.keyListener, true);
+    this.catalog.visible = false;
     this.moviesSub?.unsubscribe();
     this.sliderEventSub?.unsubscribe();
   }
@@ -143,37 +168,120 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     } , 100)
   }
 
-  // Enter on a poster: the rows slide out, then its title opens (the poster
-  // is remembered for the way back: movement system)
-  open(item){
+  // Enter on a card: a title → the rows slide out, then its page opens (the
+  // card is remembered for the way back: movement system); a show's Continue
+  // watching card → the episode to go back to (its page has Resume), or the
+  // one after a finished episode; a plugin's card: its intent or call
+  open(row:CatalogRow, card:RowItem){
+    if (this.opening) return;
+    let item = card.item;
+    if (!item) {
+      if (card.run) card.run();
+      else if (card.intent) this.navigator.open(card.intent);
+      return;
+    }
+    let at:ContinueAt | undefined = item.continue;
+    if (at && item.mediaType == 'tv') {
+      let episode = (season:number, number:number) => this.leaveTo({ screen: 'core.episode', params: { id: item.tmdbId, season, episode: number } });
+      if (at.kind == 'resume') episode(at.season, at.episode);
+      else if (at.nextEpisode) episode(at.nextSeason ?? at.season, at.nextEpisode);
+      else {
+        this.opening = true;
+        this.episodePlayback.next(item.tmdbId, at.season, at.episode).subscribe({
+          next: next => {
+            this.opening = false;
+            if (next) episode(next.season, next.episode.episodeNumber);
+            else this.openTitle(item);
+          },
+          error: () => {
+            this.opening = false;
+            this.openTitle(item);
+          },
+        });
+      }
+      return;
+    }
+    this.openTitle(item);
+  }
+
+  private openTitle(item){
+    // the focused one, enriched by movies-page (its page, IMDb rating)
+    let selected = this.moviesService.selectedmovie.value;
+    let payload = selected && selected.tmdbId == item.tmdbId && selected.mediaType == item.mediaType ? selected : item;
+    this.leaveTo({ screen: item.mediaType == 'tv' ? 'core.show' : 'core.movie', params: { id: item.tmdbId }, payload });
+  }
+
+  // the rows slide out, then the screen opens
+  private leaveTo(intent:Intent){
     if (this.opening) return;
     this.opening = true;
     this.navigation.updateNavigation('remove' , {sectionId : "menu"})
     this.navigation.updateNavigation('remove' , {sectionId : "slider"})
-    // the focused one, enriched by movies-page (its page, IMDb rating)
-    let selected = this.moviesService.selectedmovie.value;
-    let payload = selected && selected.tmdbId == item.tmdbId ? selected : item;
     gsap.timeline().to(".sliderContainer" , {opacity : 0 , y : dp(100) , duration : .2 , ease : Power2.easeOut , onComplete : () => {
-      this.navigator.open({ screen: this.catalog.detailScreen, params: { id: item.tmdbId }, payload });
+      this.navigator.open(intent);
     }});
   }
 
-  // A row's pxRow asks (focus or scroll near its end); movies-page fetches
-  // each page once
-  loadMore(category:string){
-    let count = (this.movies[category] || []).length;
-    this.catalog.requestPage(category , Math.floor(count / PAGE_SIZE) + 1);
+  // A row's pxRow asks (focus or scroll near its end): SectionRowsService fetches each page once
+  loadMore(row:string){
+    this.catalog.requestPage(row);
   }
 
-  trackById(index:Number, movie: { tmdbId: number; }) {
-    return movie?.tmdbId;
+  // ── a row's menu (the options key) ───────────────────────────────────────
+
+  private rowMenu(row:CatalogRow, cardKey:string) {
+    if (!this.sections.canEdit(this.catalog) || !row.entry) return;
+    let index = this.catalog.rows.indexOf(row);
+    let choices = [
+      index > 0 ? { key: 'up', label: 'Move row up', value: 'up' } : null,
+      index < this.catalog.rows.length - 1 ? { key: 'down', label: 'Move row down', value: 'down' } : null,
+      { key: 'hide', label: 'Hide row', detail: 'Rows brings it back', value: 'hide' },
+      { key: 'edit', label: 'Edit rows…', value: 'edit' },
+    ].filter(Boolean) as { key:string, label:string, detail?:string, value:'up' | 'down' | 'hide' | 'edit' }[];
+    this.dialogs.choose({ title: row.title, choices }).subscribe(choice => {
+      if (choice == 'edit') {
+        this.catalog.editing = { row: row.entry };
+        return;
+      }
+      this.sections.editEntry(this.catalog.section, row.entry, choice).subscribe({
+        next: () => {
+          this.sections.load(this.catalog);
+          if (choice == 'hide') this.toasts.show({ text: `“${row.title}” hidden`, detail: 'Rows, at the top of the section, shows it again', key: 'rows' });
+          this.refocus(choice == 'hide' ? null : row.key, cardKey);
+        },
+        error: () => this.toasts.show({ text: 'Couldn\'t change the rows', tone: 'error', key: 'rows' }),
+      });
+    });
   }
 
-  trackByCategory(index:Number , category: { key: any; }){
-    return category.key
+  // after the rows changed: the same card (its row moved), else where the stack remembers
+  private refocus(rowKey:string | null, cardKey:string, tries = 20) {
+    setTimeout(() => {
+      if (!this.screen.active) return;
+      let el = rowKey && document.querySelector(`.sliderContainer [data-section="${CSS.escape(rowKey)}"][data-id="${CSS.escape(cardKey)}"]`) as HTMLElement;
+      if (el) this.engine.focus(el, 'key');
+      else if (!rowKey && !this.catalog.loading) this.engine.restore(`stack:${this.stackId}`);
+      else if (tries > 0) this.refocus(rowKey, cardKey, tries - 1);
+    }, 100);
   }
 
-  unsorted(){ return 0; }
+  trackByKey(index:number, card:RowItem) {
+    return card.key;
+  }
+
+  trackByRow(index:number, row:CatalogRow){
+    return row.key;
+  }
+
+  // nothing to show at all (every row hidden, or none answered)
+  get sectionEmpty():boolean {
+    // (rows still waiting for their first page aren't nothing yet)
+    return !this.catalog.rows.some(r => (this.movies[r.key] || []).length) && this.catalog.rows.every(r => this.catalog.last[r.key]);
+  }
+
+  get emptyNote():string {
+    return this.sections.canEdit(this.catalog) ? 'No rows to show here. Rows, above, brings hidden ones back.' : 'Nothing to show here yet.';
+  }
 
   // every row of the search / filters is empty (still loading, or nothing found)
   get searchEmpty():boolean {

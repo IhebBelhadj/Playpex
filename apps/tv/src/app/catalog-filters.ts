@@ -1,5 +1,4 @@
-import { Category } from './categories';
-import { MediaType } from './catalog';
+import { CatalogRow, MediaType } from './catalog';
 import { CatalogTitle } from './movies.service';
 
 // Filters of a section's list page (movies or TV shows), picked in the filter
@@ -73,7 +72,7 @@ export function filtersLabel(f: CatalogFilters, genres: Genre[]): string {
 // The rows of a filtered section, named after what they hold ("Top rated
 // comedy from the 1990s"), so they never share a name (and a remembered
 // position) with the section's own rows
-export function filterCategories(media: MediaType, f: CatalogFilters, genres: Genre[]): Category[] {
+export function filterRows(media: MediaType, f: CatalogFilters, genres: Genre[]): CatalogRow[] {
   let genre = genres.find(g => g.id === f.genre)?.name;
   let noun = genre ? genre.toLowerCase().replace(/\btv\b/, 'TV') : media == 'tv' ? 'TV shows' : 'movies';
   let language = LANGUAGES.find(l => l.id === f.language && l.id);
@@ -90,9 +89,12 @@ export function filterCategories(media: MediaType, f: CatalogFilters, genres: Ge
     { name: title('Top rated'), sort: 'rating', votes: 300 },
     { name: title('Newest'), sort: 'newest', votes: 10 },
   ];
-  return rows.map(row => new Category(row.name, {
-    path: `discover/${media}`,
-    params: discoverParams(media, f, { sort: row.sort, minVotes: row.votes, to: today }),
+  return rows.map(row => ({
+    key: row.name,
+    title: row.name,
+    kind: 'query' as const,
+    variant: 'poster',
+    query: { path: `discover/${media}`, params: discoverParams(media, f, { sort: row.sort, minVotes: row.votes, to: today }) },
   }));
 }
 

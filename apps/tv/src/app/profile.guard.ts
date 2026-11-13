@@ -26,6 +26,6 @@ export class AdultsGuard implements CanActivate {
   canActivate():boolean | UrlTree {
     let profile = this.profiles.current.value;
     if (!profile) return this.router.parseUrl('/profiles');
-    return profile.isKid ? this.router.parseUrl('/movies/list') : true;
+    return profile.isKid ? this.router.parseUrl('/home/list') : true;
   }
 }

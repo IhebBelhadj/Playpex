@@ -160,6 +160,7 @@
   --px-gradient-rows-fade: linear-gradient(0deg, rgb(19, 19, 19) 0%, rgba(143, 143, 143, 0) 50%);
   --px-gradient-edge-back: linear-gradient(90deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
   --px-gradient-edge-forward: linear-gradient(270deg, var(--px-scrim-edge) 0%, rgba(19, 19, 19, 0) 100%);
+  --px-gradient-card-foot: linear-gradient(0deg, rgba(0, 0, 0, .85) 0%, rgba(0, 0, 0, .55) 55%, rgba(0, 0, 0, 0) 100%);   // px-card's overlay line
   --px-gradient-shimmer: linear-gradient(90deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .06) 50%, rgba(255, 255, 255, 0) 70%);   // px-skeleton
   --px-gradient-panel-end: linear-gradient(270deg, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 60%);   // a panel docked at the right edge
   --px-gradient-player-controls: linear-gradient(0deg, var(--px-black) 0%, rgba(0, 0, 0, .6) 49%, rgba(0, 0, 0, 0) 65%);

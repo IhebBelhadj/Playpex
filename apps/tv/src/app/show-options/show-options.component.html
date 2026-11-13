@@ -2,7 +2,7 @@
      seasons row, the episodes row -->
 <div class="showOptionsContainer" pxSection="showOptions" [leaveFor]="{ left: '@menu' }">
   <px-action-bar>
-    <px-action key="play" icon="play" [label]="'Play' + (selectedSeason ? ' S' + selectedSeason : '')" (pxSelect)="play()"></px-action>
+    <px-action key="play" icon="play" [label]="playLabel" [progress]="continueAt?.progress ?? null" (pxSelect)="play()"></px-action>
     <px-action key="trailer" icon="trailer" label="Trailer" (pxSelect)="playTrailer()"></px-action>
     <!-- every source's releases of this show: episodes and season packs -->
     <px-action *ngIf="releasesShown$ | async" key="releases" icon="search" label="Find releases" (pxSelect)="findReleases()"></px-action>

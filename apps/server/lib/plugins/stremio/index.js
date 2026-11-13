@@ -7,7 +7,7 @@
 // as a secret (it may hold a debrid key): the adapter never sees it. The
 // adapter reads the add-on only through these core-only host calls:
 //
-//   stremio.addon ()                     → { name, host, catalogs: [{ key, type, id, name, extra, search, show }], play, subtitles,
+//   stremio.addon ()                     → { name, host, catalogs: [{ key, type, id, name, search, show, genres, genreRequired, requires, paged }], play, subtitles,
 //                                            stream, meta }   (show: the admin's placement of each catalog)
 //   stremio.get ({ resource, type, id, extra? })   → the cleaned answer (@playpex/protocol/stremio#clean); a catalog's metas with
 //                                            tmdbId where TMDB knows their IMDb id
@@ -258,6 +258,8 @@ function addonCall(plugin) {
         return { key: c.key, type: c.type, id: c.id, name: c.name, search: c.search, show: c.placements.indexOf(show) !== -1 ? show : c.default,
           genres: ((c.extra.filter(function (e) { return e.name === 'genre'; })[0] || {}).options || []).slice(0, 40),
           genreRequired: c.extra.some(function (e) { return e.name === 'genre' && e.isRequired; }),
+          // what it can't be asked without (a row's params give them; the old slots leave such catalogs out)
+          requires: c.extra.filter(function (e) { return e.isRequired; }).map(function (e) { return e.name; }),
           paged: c.extra.some(function (e) { return e.name === 'skip'; }) };
       })
     };

@@ -13,6 +13,7 @@ import { DevHook } from './dev-hook.service';
 import { ServerLibraryService } from './server-library.service';
 import { PluginMetaService } from './plugin-meta.service';
 import { RemotePlugins } from './plugins/remote';
+import { SectionRowsService } from './sections.service';
 import { LiveService } from './live/live.service';
 import { RemoteControl } from './remote/remote-control.service';
 import { CastReceiver } from './cast/cast-receiver.service';
@@ -54,6 +55,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     pluginMeta:PluginMetaService,
     // the server's plugins: their screens, menu entries and contributions (plugins/remote.ts)
     remotePlugins:RemotePlugins,
+    sectionRows:SectionRowsService,
     // live TV: its plugins' chips on the search page (live/live.service.ts)
     liveTv:LiveService,
     // remote control from the server's dashboard (remote/remote-control.service.ts)
@@ -66,6 +68,7 @@ export class AppComponent implements AfterViewInit , OnInit{
     // development builds: window.playpexDev (scripts/screens.js)
     devHook.install();
     remotePlugins.start();
+    sectionRows.start();
     liveTv.start();
     remoteControl.start();
     castReceiver.start();

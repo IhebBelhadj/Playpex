@@ -70,6 +70,34 @@ router.use(require('./adminLibrary'));
 // Installed plugins: install from an upload or a URL, enable, remove (lib/routes/adminPlugins.js)
 router.use(require('./adminPlugins'));
 
+// ── rows (docs/rows-plan.md §4): the default layout of each section ─────────
+
+function adminLayout(section) {
+  return require('../rows').editable(section, { profile: null, device: { id: 'dashboard', name: 'Dashboard' }, locale: 'en' });
+}
+
+router.get('/sections/:section/layout', function (req, res) {
+  answer(res, adminLayout(req.params.section));
+});
+
+router.put('/sections/:section/layout', function (req, res) {
+  answer(res, userData.services().then(function (s) {
+    return s.layouts.setDefault(req.params.section, require('./rows').body(req));
+  }).then(function () {
+    require('./rows').changed(req.params.section, null);
+    return adminLayout(req.params.section);
+  }));
+});
+
+router.delete('/sections/:section/layout', function (req, res) {
+  answer(res, userData.services().then(function (s) {
+    return s.layouts.resetDefault(req.params.section);
+  }).then(function () {
+    require('./rows').changed(req.params.section, null);
+    return adminLayout(req.params.section);
+  }));
+});
+
 // body: { currentPassword, newPassword }. Signs out every admin session.
 router.put('/password', function (req, res) {
   var body = req.body || {};

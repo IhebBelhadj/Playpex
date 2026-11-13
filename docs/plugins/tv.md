@@ -64,6 +64,27 @@ The TV ignores it.
 
 At most 3 contributions per slot and plugin; one that fails or answers out of schema shows nothing.
 
+## Rows in section layouts (API 1.6)
+
+Home, Movies and TV shows are layouts the admin and each profile arrange (`docs/rows-plan.md`). To put rows there, **offer** them in `contributes.rows` rather than answering `core.movies.rows` / `core.shows.rows` (those keep working for older clients, and their rows only move as a whole):
+
+```json
+"rows": [{
+  "key": "trending", "title": "Trending on Trakt",
+  "sections": ["home", "movies"], "joins": ["movies"],
+  "data": "row", "args": { "list": "trending" },
+  "params": [{ "key": "genre", "label": "Genre", "options": [["action", "Action"], ["comedy", "Comedy"]] }],
+  "personal": true, "candidates": true
+}]
+```
+
+- `key` must stay the same across versions: layouts keep it. A row whose key is gone drops out of them.
+- `sections`: where it may be placed; `joins`: where it shows by default (the plugin joins those sections as one entry, at their end); or `joinsSetting`: a server choice setting whose value names that section.
+- The handler gets `args` + `{ key, values, page }` (`values`: the params the admin picked) and answers a **`rowFill`**: `{ items: Card[] ≤ 100, last, title? }`, one page at a time.
+- `personal`: the answer depends on the profile (cached per profile; titles the profile watched are left out). `candidates`: its titles may feed For you when the admin says so.
+- The server fills rows itself (`GET /sections/{section}/rows/{id}/items`): pictures go through its image proxy as usual.
+- A plugin that offers rows has its `core.movies.rows` / `core.shows.rows` slot rows left out where layouts exist (keep the slot for older servers and clients). Playpex TV describes a card whose intent opens `core.movie` / `core.show` like the core's titles, and another by its `info`; Enter opens its intent or calls its `call`. `plugins/hello` offers one (`decade`, joining Home and Movies).
+
 ## Effects
 
 What a handler asks the core to do after answering (`effects: [...]`, ≤ 4):

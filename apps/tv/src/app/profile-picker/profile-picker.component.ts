@@ -146,7 +146,7 @@ export class ProfilePickerComponent implements OnInit, AfterViewInit, OnDestroy 
           opacity: 0, scale: 1.08, duration: .35, ease: Power2.easeIn,
           onComplete: () => {
             this.pinProfile = null;
-            this.navigator.reset({ screen: 'core.movies' });
+            this.navigator.reset({ screen: 'core.home' });
           }
         });
       },

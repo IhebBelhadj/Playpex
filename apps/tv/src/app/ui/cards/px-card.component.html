@@ -5,12 +5,13 @@
   <span class="art" [class.loading]="showImage && !loaded">
     <img *ngIf="showImage; else fallback" #img [src]="image" alt="" [class.loaded]="loaded" (load)="onLoad(img)" (error)="onError()">
     <!-- marks on the artwork: one view, only when there are any -->
-    <ng-container *ngIf="badges?.length || progress || busy">
+    <ng-container *ngIf="badges?.length || progress || busy || overlay">
       <span class="badges" *ngIf="badges?.length">
         <span *ngFor="let b of badges" class="badge" [ngClass]="'b-' + badgeKind(b)">
           <img *ngIf="b == 'watched'" src="assets/icons/tick.svg" alt=""><img *ngIf="b == 'server'" src="assets/icons/server.svg" alt="">{{ badgeText(b) }}
         </span>
       </span>
+      <span class="foot" *ngIf="overlay">{{ overlay }}</span>
       <px-progress *ngIf="progress" class="progress" [value]="progress"></px-progress>
       <span class="busyCover" *ngIf="busy"><px-spinner [label]="busyLabel"></px-spinner></span>
     </ng-container>

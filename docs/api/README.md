@@ -14,6 +14,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | [Pairing and auth](auth.md) | the RFC 8628 device flow, tokens, clients on the server machine, re-pairing |
 | [The catalog](catalog.md) | movies, shows, seasons, people and search from the server (`/catalog/*`: TMDB behind the server, no key in the client), images |
 | [Playing a torrent](playback.md) | catalog sources, what's on this server (the media library), adding a torrent, choosing a file, streaming, audio transcoding, subtitles, keepalive and leases, downloads the server keeps |
+| [Rows](rows.md) | each section's rows (Home, Movies, TV shows) per profile, laid out on the server; a row's items; editing a profile's rows |
 | [Profiles and the library](profiles.md) | "Who's watching?", PINs, watch list, resume points |
 | [Settings](settings.md) | per-device and per-profile settings, the key registry, effective values, your own keys |
 | [Search, links and direct downloads](search.md) | plugins' streams and files by keywords (`/search/*`), how names are matched, reading a pasted link (`/admin/links/inspect`), files downloaded over HTTP (`/downloads/direct`) |

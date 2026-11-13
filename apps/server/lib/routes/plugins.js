@@ -70,7 +70,9 @@ router.get('/', function (req, res) {
         releases: plugins.withHook('releases.providers', ctx).length > 0,
         sources: plugins.withHook('play.collect', ctx).length > 0,
         // live TV (docs/providers-plan.md §8): GET /live lists them
-        live: plugins.withHook('live.channels', ctx).length > 0
+        live: plugins.withHook('live.channels', ctx).length > 0,
+        // sections' rows are the server's (docs/rows-plan.md §7): GET /sections/{section}/rows
+        rows: true
       }
     });
   }).catch(function (err) { answerError(res, err); });

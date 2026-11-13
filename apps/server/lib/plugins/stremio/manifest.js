@@ -66,8 +66,11 @@ var KNOWN_EXTRA = ['search', 'genre', 'skip'];
 function placementsOf(c) {
   var required = c.extra.filter(function (e) { return e.isRequired; }).map(function (e) { return e.name; }),
     search = c.extra.some(function (e) { return e.name === 'search'; });
-  if (required.some(function (n) { return KNOWN_EXTRA.indexOf(n) === -1; })) {
-    return null;   // it needs something the bridge doesn't know how to give
+  if (required.some(function (n) {
+    var e = c.extra.filter(function (x) { return x.name === n; })[0];
+    return KNOWN_EXTRA.indexOf(n) === -1 && !(e && e.options.length);
+  })) {
+    return null;   // it needs something the bridge doesn't know how to give (a value with no options to pick from)
   }
   if (required.indexOf('search') !== -1) {
     return { placements: ['search', 'hidden'], default: 'search', search: true };
@@ -76,6 +79,59 @@ function placementsOf(c) {
   var places = c.type === 'movie' ? ['movies', 'section', 'hidden'] : c.type === 'series' ? ['shows', 'section', 'hidden'] :
     c.type === 'anime' ? ['section', 'shows', 'hidden'] : ['section', 'hidden'];
   return { placements: places, default: places[0], search: search };
+}
+
+// Where its rows may go in section layouts (docs/rows-plan.md §4.2)
+var ROW_SECTIONS = { movie: ['home', 'movies'], series: ['home', 'shows'], anime: ['home', 'shows'] };
+
+/** A catalog's extras with options (a genre, a year…) as a row's params: [{ key, label, options, required }], and key → extra name */
+function paramsOf(c) {
+  var params = [], names = {};
+  c.extra.forEach(function (e) {
+    if (e.name === 'search' || e.name === 'skip' || !e.options.length || params.length >= 4) {
+      return;
+    }
+    var key = String(e.name).replace(/[^A-Za-z0-9]/g, '').replace(/^[^a-zA-Z]+/, '').slice(0, 40);
+    key = key && key.charAt(0).toLowerCase() + key.slice(1);
+    if (!key || names[key]) {
+      return;
+    }
+    var seen = {}, options = [];
+    e.options.forEach(function (o) {
+      if (!seen[o] && options.length < 200) {
+        seen[o] = true;
+        options.push([o, text(o, 60) || o.slice(0, 60)]);
+      }
+    });
+    names[key] = e.name;
+    params.push({ key: key, label: text(e.name.charAt(0).toUpperCase() + e.name.slice(1), 40), options: options, required: e.isRequired });
+  });
+  return { params: params, names: names };
+}
+
+/**
+ * Its catalogs as rows offered to layouts: one per catalog that isn't search-only, joining the section its
+ * "Show in" setting names (joinsSetting); a configured add-on's rows are personal (an account in its address)
+ */
+function offersOf(catalogs, address) {
+  return catalogs.filter(function (c) {
+    return c.placements.some(function (p) { return p !== 'search' && p !== 'hidden'; });
+  }).slice(0, 200).map(function (c) {
+    var p = paramsOf(c), offer = {
+      key: c.key,
+      title: text(c.name, 60),
+      sections: ROW_SECTIONS[c.type] || ['home'],
+      joinsSetting: c.key,
+      data: 'row',
+      args: { catalog: c.key, extras: p.names },
+      personal: !!address.configured,
+      candidates: true
+    };
+    if (p.params.length) {
+      offer.params = p.params;
+    }
+    return offer;
+  });
 }
 
 var PLACE_LABEL = { movies: 'Movies', shows: 'TV shows', section: 'Its own section', search: 'Search only', hidden: 'Hidden' };
@@ -163,6 +219,7 @@ function synthesize(addon, address, options) {
   if (catalogs.some(function (c) { return c.search; })) {
     slots.push({ slot: 'core.search.filters', data: 'searchChip', order: 50 });
   }
+  var rows = offersOf(catalogs, address);
 
   var permissions = {};
   if (plays || titles) {
@@ -199,6 +256,9 @@ function synthesize(addon, address, options) {
   if (slots.length) {
     contributes.slots = slots;
   }
+  if (rows.length) {
+    contributes.rows = rows;
+  }
   if (settings.length) {
     contributes.settings = settings;
   }
@@ -209,7 +269,7 @@ function synthesize(addon, address, options) {
     description: text(addon.description || 'A Stremio add-on', 300),
     version: versionOf(addon.version),
     publisher: { name: text(address.host + ' (Stremio add-on)', 60) },
-    api: { server: '^1.5' },
+    api: { server: '^1.6' },
     audience: addon.behaviorHints.adults ? 'adults' : 'everyone',
     icon: icon,
     listing: {

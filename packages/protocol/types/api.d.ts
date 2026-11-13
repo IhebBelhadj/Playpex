@@ -410,6 +410,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/sections/{section}/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The default layout of a section (every profile without its own)
+         * @description `custom: false` while it is the built-in one. Plugins that joined since are `plugin.all` entries marked `new`.
+         */
+        get: operations["getDefaultLayout"];
+        /** Set the default layout of a section */
+        put: operations["setDefaultLayout"];
+        post?: never;
+        /** Back to the built-in default layout */
+        delete: operations["resetDefaultLayout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/settings": {
         parameters: {
             query?: never;
@@ -1622,7 +1646,7 @@ export interface paths {
          * @description Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
          *     `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
          *     `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
-         *     at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
+         *     at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`), `rows.changed` (`RowsChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
          *     `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`),
          *     `remote.updated` (`RemoteTarget`, a device's remote control changed). To one device only:
          *     `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`);
@@ -4070,6 +4094,118 @@ export interface paths {
         patch: operations["updateProfileSettings"];
         trace?: never;
     };
+    "/sections/{section}/rows": {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A profile's rows of a section, in order
+         * @description The profile's layout (its own, else the admin's default) resolved: expanding entries made into their rows
+         *     (`core.because` one per seed, `plugin.all` a plugin's rows), plugins that joined since the layout was saved
+         *     at the end (`new`), and left out: personal rows with nothing in them, rows of plugins the profile can't see,
+         *     plugin rows whose offer is gone. Rows that came with their items (personal ones, the library, old slot rows)
+         *     carry them; the others are fetched with GET …/rows/{rowId}/items. Without `profile`: the default layout,
+         *     personal rows left out. Refetch on `plugin.changed` and when the profile's history changes.
+         */
+        get: operations["getSectionRows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sections/{section}/rows/{rowId}/items": {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                page?: number;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+                /** @description A row's `id` from GET /sections/{section}/rows (its entry's id, `~` and a part for an expansion) */
+                rowId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * One row's page, whatever fills it
+         * @description `titles`: catalog titles (`CatalogTitle`, with `because` in personal rows); `progress`: Continue watching
+         *     (`ContinueWatchingItem`); `library`: titles on this server; `cards`: a plugin's cards (`$defs/card` of
+         *     @playpex/protocol plugin-api.schema.json), pictures as the plugin's `images/<token>` paths. Titles the
+         *     profile watched are left out when the row hides them (`hideWatched`). Rows that come whole answer on
+         *     page 1, `last: true`.
+         */
+        get: operations["getRowItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sections/{section}/layout": {
+        parameters: {
+            query: {
+                profile: string;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A profile's layout of a section, to edit
+         * @description Its own (`own: true`), else the default, with plugins that joined since as `plugin.all` entries marked
+         *     `new`, and `known` including them: send it back as it is (PUT) and a plugin taken out won't join again.
+         */
+        get: operations["getProfileLayout"];
+        /**
+         * The profile's own layout of a section (a full list)
+         * @description Checked by @playpex/protocol rows.js (`checkLayout`). A kids profile's rows are only the admin's to change (`FORBIDDEN`).
+         */
+        put: operations["setProfileLayout"];
+        post?: never;
+        /** Back to the default layout */
+        delete: operations["resetProfileLayout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rows/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the row editors can add
+         * @description The core's sources with their params, and the rows each plugin the profile sees offers (`contributes.rows`), or, for a plugin of before layouts, the sections its slots put rows in.
+         */
+        get: operations["getRowSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -6132,6 +6268,12 @@ export interface components {
         LibraryChangedEvent: {
             folderId: string | null;
         };
+        /** @description `data` of `rows.changed` (everyone): a section's layout changed; clients showing it to that profile (or, `profileId` null, to any profile without its own layout) refetch its rows */
+        RowsChangedEvent: {
+            /** @enum {string} */
+            section: "home" | "movies" | "shows";
+            profileId: string | null;
+        };
         ReleaseProvider: {
             id: string;
             name: string;
@@ -6555,6 +6697,117 @@ export interface components {
             posterPath?: string | null;
             backdropPath?: string | null;
             genreIds?: number[];
+        };
+        /** @description One row of a layout: what fills it (`source`, `params`; @playpex/protocol rows.js SOURCES) and how it shows */
+        RowEntry: {
+            id: string;
+            /** @enum {string} */
+            source: "core.list" | "core.discover" | "core.continue" | "core.watchlist" | "core.forYou" | "core.because" | "core.library" | "plugin" | "plugin.all";
+            params?: {
+                [key: string]: unknown;
+            };
+            title?: string;
+            /** @enum {string} */
+            variant?: "poster" | "landscape" | "top10";
+            /** @description Leave out what the profile watched (default: on for For you, Because you watched and personal plugin rows) */
+            hideWatched?: boolean;
+            /** @description A plugin row's titles also feed For you */
+            candidates?: boolean;
+            /** @description Kept in the layout but not shown (an editor's Hide; Show brings it back where it was) */
+            hidden?: boolean;
+            /** @description Answers only: a plugin that joined since the layout was saved */
+            new?: boolean;
+            /** @description Answers only: what an editor calls the entry (its title, the offer's, the plugin's name) */
+            label?: string;
+        };
+        SectionLayoutInput: {
+            rows: components["schemas"]["RowEntry"][];
+            /** @description Plugins already offered to this layout (they don't join it again) */
+            known?: string[];
+        };
+        SectionLayout: {
+            /** @enum {string} */
+            section: "home" | "movies" | "shows";
+            /** @description The profile's own (else the default) */
+            own: boolean;
+            /** @description Changed by someone (else the built-in default) */
+            custom: boolean;
+            /** Format: date-time */
+            updatedAt?: string | null;
+            rows: components["schemas"]["RowEntry"][];
+            known: string[];
+        };
+        ResolvedRow: {
+            /** @description For GET …/rows/{rowId}/items */
+            id: string;
+            source: string;
+            title: string;
+            /** @description poster | landscape | top10, or a plugin card variant */
+            variant: string;
+            /** @enum {string} */
+            kind: "titles" | "progress" | "library" | "cards";
+            personal: boolean;
+            /** @description cards: the plugin (its images/<token> paths and card intents are its own) */
+            plugin?: string;
+            /** @description core.because: the seed { mediaType, tmdbId, title } */
+            because?: Record<string, never>;
+            new?: boolean;
+            /** @description When they came with the row (then `last` too) */
+            items?: Record<string, never>[];
+            last?: boolean;
+        };
+        SectionRows: {
+            /** @enum {string} */
+            section: "home" | "movies" | "shows";
+            own: boolean;
+            rows: components["schemas"]["ResolvedRow"][];
+        };
+        RowPage: {
+            id: string;
+            /** @enum {string} */
+            kind: "titles" | "progress" | "library" | "cards";
+            items: Record<string, never>[];
+            last: boolean;
+            /** @description A plugin row's own title for now (an add-on naming its seed) */
+            title?: string;
+            plugin?: string;
+        };
+        RowSources: {
+            sections: string[];
+            lists: {
+                [key: string]: string[];
+            };
+            variants: string[];
+            core: {
+                source: string;
+                label: string;
+                personal: boolean;
+                expands: boolean;
+                params: {
+                    [key: string]: Record<string, never>;
+                };
+            }[];
+            plugins: {
+                plugin: string;
+                name: string;
+                rows: {
+                    key: string;
+                    title: string;
+                    sections: string[];
+                    joins: string[];
+                    personal: boolean;
+                    candidates: boolean;
+                    variant?: string;
+                    params?: {
+                        key: string;
+                        label: string;
+                        options: string[][];
+                        required: boolean;
+                    }[];
+                }[];
+                /** @description Sections an old plugin's slots put rows in (only as a whole: plugin.all) */
+                slots: string[];
+            }[];
         };
         WatchlistItem: {
             profileId: string;
@@ -7473,6 +7726,7 @@ export interface components {
         /** @description The file's `path`, URL-encoded (it may contain slashes) */
         FilePath: string;
         ImdbId: string;
+        Section: "home" | "movies" | "shows";
         ProfileId: string;
         MediaType: components["schemas"]["MediaType"];
         TmdbId: number;
@@ -8104,6 +8358,82 @@ export interface operations {
             409: components["responses"]["Error"];
             500: components["responses"]["Error"];
             501: components["responses"]["Error"];
+        };
+    };
+    getDefaultLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    setDefaultLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SectionLayoutInput"];
+            };
+        };
+        responses: {
+            /** @description The layout now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
+        };
+    };
+    resetDefaultLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["AdminRequired"];
         };
     };
     getSettings: {
@@ -12803,6 +13133,8 @@ export interface operations {
                             sources: boolean;
                             /** @description Some plugin has TV channels (`live.channels`): GET /live lists them */
                             live?: boolean;
+                            /** @description Sections' rows are the server's (docs/rows-plan.md): GET /sections/{section}/rows. Older servers: clients keep their own rows */
+                            rows?: boolean;
                         };
                     };
                 };
@@ -13597,6 +13929,172 @@ export interface operations {
             };
             400: components["responses"]["Invalid"];
             403: components["responses"]["Error"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSectionRows: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionRows"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRowItems: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+                page?: number;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+                /** @description A row's `id` from GET /sections/{section}/rows (its entry's id, `~` and a part for an expansion) */
+                rowId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the row */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RowPage"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getProfileLayout: {
+        parameters: {
+            query: {
+                profile: string;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setProfileLayout: {
+        parameters: {
+            query: {
+                profile: string;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SectionLayoutInput"];
+            };
+        };
+        responses: {
+            /** @description The layout now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    resetProfileLayout: {
+        parameters: {
+            query: {
+                profile: string;
+            };
+            header?: never;
+            path: {
+                section: components["parameters"]["Section"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout now (the default) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionLayout"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRowSources: {
+        parameters: {
+            query?: {
+                /** @description The profile watching (files of adults-only library folders are refused to kids profiles) */
+                profile?: components["parameters"]["Profile"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sources */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RowSources"];
+                };
+            };
             404: components["responses"]["NotFound"];
         };
     };

@@ -39,6 +39,9 @@ export class PxCardComponent implements OnChanges, AfterViewInit {
   @Input() meta:string[] | null = null;
   @Input() badges:Badge[] | null = null;
   @Input() progress:number | null = null;
+  // a short line on the artwork's foot, over a shade, above the progress line
+  // (Continue watching: "S2 E5 · 20 min left"); every variant
+  @Input() overlay = '';
   @Input() busy = false;
   @Input() busyLabel = '';
   @Input() dim = false;

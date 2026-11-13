@@ -10,7 +10,11 @@
 //   releases  releases  { params: { id }, query, filters, page }
 //   menu      list      { params }
 //   wave / more                                 actions' and cards' calls: effects only
-//   movieAction, moviesRow, titleMeta, searchFilter   slots: { slot, context }
+//   movieAction, moviesRow, titleMeta, searchFilter   slots: { slot, context } (moviesRow: for clients and servers
+//                                               of before section layouts; a plugin offering rows has its slot
+//                                               rows left out by newer servers)
+//   row                                         a row it offers (contributes.rows, plugin API 1.6): { key, values, page }
+//                                               → { items, last, title? }, one page at a time
 //   testConnection                              the dashboard's action setting
 //   addToList, whoami                           calls: a write to the watch list, the linked account
 //   linkStart, linkSubmit                       the "Hello account" link (custom: a form on the dashboard)
@@ -243,6 +247,20 @@ playpex.data('addToList', async function (args, ctx) {
 playpex.data('moviesRow', function (args, ctx) {
   return settingsOf(ctx).then(function (s) {
     return { data: [{ key: 'hello:picks', title: 'Hello picks (example plugin)', page: { data: 'page', args: {} } }] };
+  });
+});
+
+// The row it offers to Home and Movies (contributes.rows): the admin or a
+// profile may place it and pick a decade (`values.decade`), which names it
+playpex.data('row', function (args, ctx) {
+  return settingsOf(ctx).then(function (s) {
+    var decade = args.values && args.values.decade, size = s.rowSize || 12, page = args.page || 1;
+    var list = shown(s, decade);
+    var out = { items: list.slice((page - 1) * size, page * size).map(function (t) { return card(t, s); }), last: page * size >= list.length };
+    if (decade) {
+      out.title = 'Hello: made-up titles of the ' + decade + 's';
+    }
+    return { data: out };
   });
 });
 

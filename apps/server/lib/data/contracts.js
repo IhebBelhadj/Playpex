@@ -254,6 +254,15 @@
  * @property {function(string, string, Date): Promise<number>} settingsCopy                     a plugin's settings rows to another
  * @property {function(string): Promise<void>} removeAll                                      store, secrets, settings, grants (and `hidden` rows)
  *
+ * @typedef {object} RowsRepository
+ *   section layouts (docs/rows-plan.md §4); a layout is { rows: object[], known: string[] }
+ * @property {function(string): Promise<{ layout: object, updatedAt: Date }|null>} getDefault
+ * @property {function(string, object, Date): Promise<void>} setDefault
+ * @property {function(string): Promise<boolean>} removeDefault
+ * @property {function(string, string): Promise<{ layout: object, updatedAt: Date }|null>} getProfile    (profileId, section)
+ * @property {function(string, string, object, Date): Promise<void>} setProfile
+ * @property {function(string, string): Promise<boolean>} removeProfile
+ *
  * @typedef {object} Repositories
  * @property {ProfilesRepository} profiles
  * @property {WatchlistRepository} watchlist
@@ -261,6 +270,7 @@
  * @property {HistoryRepository} history
  * @property {RatingsRepository} ratings
  * @property {SettingsRepository} settings
+ * @property {RowsRepository} rows
  * @property {DownloadsRepository} downloads
  * @property {DirectDownloadsRepository} directDownloads
  * @property {LibraryRepository} library

@@ -789,6 +789,8 @@ v1.use('/catalog', require('./routes/catalog'));
 // The media library as clients browse it (lib/library/view.js)
 v1.use('/library', require('./routes/mediaLibrary'));
 v1.use('/profiles/:profileId', require('./routes/library'));
+// Each section's rows, per profile (docs/rows-plan.md, lib/rows)
+v1.use(require('./routes/rows'));
 
 v1.use(function (req, res) {
   fail(res, 'NOT_FOUND', 'No route ' + req.method + ' ' + protocol.API_PREFIX + req.path);

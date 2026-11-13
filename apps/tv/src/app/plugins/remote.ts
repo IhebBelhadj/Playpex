@@ -146,7 +146,7 @@ export class RemotePlugins {
     // a screen of a plugin that changed or left: start over where it was
     let gone = (id:string) => !this.navigator.registry.has(id);
     if (this.navigator.stack.some(e => e.screen.id.startsWith('plugin.') && gone(e.screen.id))) {
-      this.navigator.reset({ screen: 'core.movies' });
+      this.navigator.reset({ screen: 'core.home' });
     }
   }
 

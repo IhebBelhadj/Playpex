@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http'
 import { BehaviorSubject, Observable, of, map, catchError, shareReplay } from 'rxjs';
 import type { Schema } from '@playpex/protocol';
-import { Catalog, MediaType } from './catalog';
-import { CatalogQuery, categories, showCategories } from './categories';
+import { Catalog, CatalogQuery, MediaType } from './catalog';
 import { ServerService } from './server.service';
 
 // The server's catalog (GET /catalog/*: TMDB behind the server, in its own
@@ -70,14 +69,18 @@ export class MoviesService {
   //Description of thes observable subjects is in the
   //method definitions below
 
-  // Browsable sections; the home page/slider pick one via route data `media`
-  catalogs: { [media in MediaType]: Catalog } = {
-    movie: new Catalog('movie', categories, 'core.movies', 'core.movie'),
-    tv: new Catalog('tv', showCategories, 'core.shows', 'core.show'),
+  // Browsable sections (their rows: the server's, SectionRowsService); the
+  // section page / slider pick one via route data `media`
+  catalogs: { [media in 'home' | MediaType]: Catalog } = {
+    home: new Catalog('home', 'core.home', null),
+    movie: new Catalog('movie', 'core.movies', 'core.movie'),
+    tv: new Catalog('tv', 'core.shows', 'core.show'),
   };
 
-  // Item shown in <movie-description>: a movie or a show (mediaType), {} = none
+  // Item shown in <movie-description>: a movie or a show (mediaType), {} = none;
+  // `selectedIn`: the section it was focused in
   selectedmovie = new BehaviorSubject<Partial<TitleItem>>({});
+  selectedIn: string | null = null;
   searchData = new BehaviorSubject<SearchState>(EMPTY_SEARCH);
 
   constructor(
@@ -105,7 +108,7 @@ export class MoviesService {
     return this.genres$[kind];
   }
 
-  // A row's page: a list, discover or search (categories.ts)
+  // A catalog query's page: a list, discover or search (a section's search / filter rows)
   getMovies(query:CatalogQuery):Observable<CatalogPage> {
     return this.http.get<CatalogPage>(`${this.base}/${query.path}`, { params: query.params as any });
   }

@@ -29,6 +29,7 @@ import { EpisodePageComponent } from './episode-page/episode-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
 import { RowArrowsComponent } from './row-arrows/row-arrows.component';
 import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filter-panel.component';
+import { RowsEditorComponent } from './rows-editor/rows-editor.component';
 import { SearchRefinePanelComponent } from './search-refine-panel/search-refine-panel.component';
 import { RouteReuseStrategy, RouterModule } from "@angular/router";
 
@@ -58,6 +59,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     SeasonCurveComponent,
     RowArrowsComponent,
     CatalogFilterPanelComponent,
+    RowsEditorComponent,
     SearchRefinePanelComponent,
     MenuComponent,
     MovieDescriptionComponent,

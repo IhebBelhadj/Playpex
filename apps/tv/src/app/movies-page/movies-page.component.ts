@@ -1,24 +1,26 @@
 import { SplashService } from './../splash.service';
 import { NavigationService } from './../navigation.service';
-import { CatalogPage, CatalogTitle, MoviesService, TitleItem } from './../movies.service';
+import { MoviesService, TitleItem } from './../movies.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { switchMap, Subscription, map, Observable } from 'rxjs';
-import { Catalog } from '../catalog';
-import { Category } from '../categories';
+import { switchMap, Subscription, map, merge, Observable, of, catchError } from 'rxjs';
+import { Catalog, CatalogRow, ContinueAt } from '../catalog';
 import { FocusEngine, PositionStore } from '../movement/movement';
-import { CatalogFilters, Genre, filterCategories, filtersLabel, hasFilters, matchesFilters, sameFilters } from '../catalog-filters';
+import { CatalogFilters, Genre, filterRows, filtersLabel, hasFilters, sameFilters } from '../catalog-filters';
 import { ImdbService } from '../imdb.service';
 import { useFrame } from '../nav/public-api';
+import { SectionRowsService } from '../sections.service';
 
-// Home page of a section (movies or TV shows, from route data `media`):
-// loads the category rows into the section's Catalog and enriches the
-// focused item for <movie-description>. On the list page, a toolbar above
-// searches (the catalog's search: one row of results) and filters (genre, period,
-// score, language: popular / top rated / newest discover rows, or a
-// narrowed search) the section; their rows stand in for the section's
-// (Catalog.startSearch / endSearch) until Clear. A frame of the nav system
-// (src/app/nav): it hosts the section's list and title screens.
+// The frame of a section (Home, Movies or TV shows, from route data `media`):
+// shows its rows (the server's, SectionRowsService) through the slider and
+// enriches the focused title for <movie-description>. On the list page, a
+// toolbar above searches (the catalog's search: one row of results) and
+// filters (genre, period, score, language: popular / top rated / newest
+// discover rows, or a narrowed search) the section; their rows stand in for
+// the section's (Catalog.startSearch / endSearch) until Clear. "Rows" opens
+// <rows-editor> (the profile's own layout of the section). Home has no
+// search or filters. A frame of the nav system (src/app/nav): it hosts the
+// section's list and title screens.
 @Component({
   selector: 'movies-page',
   templateUrl: './movies-page.component.html',
@@ -31,12 +33,11 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   selectedMovieSub:Subscription;
   pageRequestSub:Subscription;
   routeSub:Subscription;
+  splashSub:Subscription;
   onList = false;
   onEpisode = false;
   toolbarExits = {};
   genres:Genre[] = [];
-  private inFlight = new Set<string>();     // rows with a page on the way
-  private lastPage:{ [category:string]:number } = {};
   private frame = useFrame();
 
   constructor(
@@ -47,10 +48,19 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
     private engine:FocusEngine,
     private imdb:ImdbService,
     private positions:PositionStore,
+    private sections:SectionRowsService,
   ) { }
+
+  get home():boolean {
+    return this.catalog.media == 'home';
+  }
 
   get filtered():boolean {
     return hasFilters(this.catalog.filters);
+  }
+
+  get canEditRows():boolean {
+    return this.sections.canEdit(this.catalog) && !this.catalog.search;
   }
 
   // the search / filters have no rows to show (loading, or nothing found)
@@ -71,7 +81,7 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   ngOnInit(): void {
     this.catalog = this.moviesService.catalogs[this.route.snapshot.data['media'] || 'movie'];
 
-    // the search bar: list page only; down → the rows (remembered poster)
+    // the toolbar: list page only; down → the rows (remembered card)
     this.toolbarExits = {
       left: '@menu',
       down: this.engine.target([`stack:catalog:${this.catalog.media}`, '@slider']),
@@ -83,27 +93,19 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
       this.onEpisode = entry.screen.id == 'core.episode';
     });
 
-    this.moviesService.getGenres(this.catalog.media).subscribe(genres => this.genres = genres);
+    let media = this.catalog.mediaType;
+    if (media) this.moviesService.getGenres(media).subscribe(genres => this.genres = genres);
 
-    // Coming from the other section: don't describe its last item here
-    let selected = this.moviesService.selectedmovie.value;
-    if (selected.mediaType && selected.mediaType !== this.catalog.media) {
+    // Coming from another section: don't describe its last title here
+    if (this.moviesService.selectedIn !== this.catalog.media) {
       this.moviesService.assignSelection({});
+      this.moviesService.selectedIn = this.catalog.media;
     }
 
-    if (Object.keys(this.catalog.items.value).length === 0) {
-
-      // Rows keep category order whatever order the requests finish in
-      let items = {};
-      this.catalog.categories.forEach(c => items[c.name] = []);
-      this.catalog.items.next(items);
-
-      this.catalog.categories.forEach(c => {
-        this.getMovies(c.name , c.query);
-        this.catalog.reachedPages[c.name] = 1;
-      })
-
-      this.splashService.splashExecuteCommand().subscribe(instruction=>{
+    let first = !this.catalog.rows.length;
+    this.sections.show(this.catalog);
+    if (first) {
+      this.splashSub = this.splashService.splashExecuteCommand().subscribe(instruction=>{
         if (instruction == "clearSplash") {
           setTimeout(()=>{
             this.navigation.sendMovieSliderEvent('focusFirst');
@@ -114,30 +116,18 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
 
     this.subscribeToSelections();
 
-    // Slider reached the end of a row: append the next page. A search /
-    // filter row isn't 20 posters per page (results are dropped), so it just
-    // reads its next page when none is on the way
-    this.pageRequestSub = this.catalog.onPageRequest().subscribe(request => {
-      let category = this.catalog.findCategory(request.category);
-      if (!category) return;
-      let query = category.query;
-      let reached = this.catalog.reachedPages[request.category];
-      let next = this.catalog.search ? reached + 1 : request.page;
-
-      if (next > reached && next <= (this.lastPage[request.category] || 500) && !this.inFlight.has(request.category)) {
-        query.params['page'] = next;
-        this.catalog.reachedPages[request.category] = next;
-        this.getMovies(request.category , query);
-      }
-    })
+    // Slider reached the end of a row: its next page
+    this.pageRequestSub = this.catalog.onPageRequest().subscribe(request => this.sections.more(this.catalog, request.row));
   }
 
   ngOnDestroy(): void {
     this.selectedMovieSub.unsubscribe();
     this.pageRequestSub.unsubscribe();
     this.routeSub?.unsubscribe();
+    this.splashSub?.unsubscribe();
     this.catalog.typing = false;
     this.catalog.filtering = false;
+    this.catalog.editing = null;
   }
 
   // ── search and filters ──────────────────────────────────────────────────────────────
@@ -169,42 +159,68 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
   // results (kept by the filters); filters alone → popular / top rated /
   // newest discover rows; neither → the section's own rows
   private show(query:string, filters:CatalogFilters) {
-    if (!query && !hasFilters(filters)) {
-      this.catalog.endSearch();
+    let media = this.catalog.mediaType;
+    if (!media || !query && !hasFilters(filters)) {
+      this.endSearch();
       return;
     }
-    let kind = this.catalog.media == 'tv' ? 'tv' : 'movie';
-    let categories = query
-      ? [new Category(`Results for “${query}”`, { path: `search/${kind}`, params: { q: query, page: 1 } })]
-      : filterCategories(this.catalog.media, filters, this.genres);
+    let rows:CatalogRow[] = query
+      ? [{ key: `Results for “${query}”`, title: `Results for “${query}”`, kind: 'query', variant: 'poster', query: { path: `search/${media}`, params: { q: query } } }]
+      : filterRows(media, filters, this.genres);
     // rows of an earlier view with the same name start over
-    categories.forEach(c => this.positions.clear(`catalog:${this.catalog.media}/${c.name}`));
-    this.catalog.startSearch(query, filters, categories);
-    categories.forEach(c => this.getMovies(c.name, c.query));
+    rows.forEach(r => this.positions.clear(`catalog:${this.catalog.media}/${r.key}`));
+    this.catalog.startSearch(query, filters, rows);
+    rows.forEach(r => this.sections.fetchPage(this.catalog, r, 1));
   }
 
   clearSearch() {
-    this.catalog.endSearch();
+    this.endSearch();
     this.focusToolbar('[data-px-key="search"]');
+  }
+
+  // the section's rows again, asked for when they changed meanwhile
+  private endSearch() {
+    this.catalog.endSearch();
+    if (this.catalog.stale) this.sections.load(this.catalog);
+  }
+
+  // ── rows editor ─────────────────────────────────────────────────────────────
+
+  editRows() {
+    this.catalog.editing = { row: null };
+  }
+
+  onRowsEdited(changed:boolean) {
+    this.catalog.editing = null;
+    if (changed) this.sections.load(this.catalog);
+    this.focusToolbar('[data-px-key="rows"]');
   }
 
   private focusToolbar(selector:string) {
     setTimeout(() => (document.querySelector(`.sectionToolbar ${selector}`) as HTMLElement)?.focus({ preventScroll: true }), 0);
   }
 
+  // ── the focused title ───────────────────────────────────────────────────────
+
   subscribeToSelections(){
     this.selectedMovieSub = this.catalog.onSelect()
     .pipe(
       switchMap(data => {
-        let item = this.catalog.items.value[data.category]?.[Number(data.index)];
-        if (item) {
-          this.selectedMovie = item;
-          this.moviesService.assignSelection(this.selectedMovie);
+        let card = this.catalog.items.value[data.row]?.[Number(data.index)];
+        let item = card?.item;
+        if (!item) {
+          // a plugin's card: its own info (movie-description shows it as it is)
+          this.selectedMovie = null;
+          if (card?.info) this.moviesService.assignSelection({ title: card.info.title, info: card.info } as any);
+          return of(null);
         }
-        return this.catalog.media == 'tv' ? this.enrichShow(data.id) : this.enrichMovie(data.id);
+        this.selectedMovie = item;
+        this.moviesService.selectedIn = this.catalog.media;
+        this.moviesService.assignSelection(this.selectedMovie);
+        return item.mediaType == 'tv' ? this.enrichShow(item.tmdbId) : this.enrichMovie(item.tmdbId);
       }))
       .subscribe(() => {
-        this.moviesService.assignSelection(this.selectedMovie);
+        if (this.selectedMovie) this.moviesService.assignSelection(this.selectedMovie);
       } , error => {
         console.log(error);
         this.subscribeToSelections();
@@ -230,48 +246,38 @@ export class MoviesPageComponent implements OnInit , OnDestroy {
         this.moviesService.assignSelection(item);
         return item.imdbId;
       }),
-      switchMap(imdbId => this.imdb.title(imdbId)),
-      map(rating => {
+      switchMap(imdbId => merge(this.imdb.title(imdbId).pipe(map(rating => {
         if (rating?.rating) item.rating = rating.rating;
-      })
+      })), this.episodeName(item))),
     )
   }
 
-  getMovies(category:string , query){
-    // the rows asked for: a page arriving after a search started (or ended)
-    // still lands in its own rows
-    let items = this.catalog.items.value;
-    let search = this.catalog.search;
-    let page = query['params']?.['page'] || 1;
-    this.inFlight.add(category);
-    this.moviesService.getMovies(query).subscribe((res:CatalogPage) => {
-      this.inFlight.delete(category);
-      this.lastPage[category] = res.totalPages || 500;
-      // append the new page to the row (or start it); results without a
-      // poster can't be shown in a row of posters; a search's results are
-      // narrowed by the filters here (TMDB search can't filter)
-      let results = (res.results || []) as CatalogTitle[];
-      if (search) results = results.filter(r => r.posterPath && (!search.query || matchesFilters(r, search.filters)));
-      let first = !(items[category] || []).length;
-      items[category] = (items[category] || []).concat(results);
-      if (items !== this.catalog.items.value) return;
-
-      // a filtered search can keep nothing of a page: read on (a few pages)
-      // rather than leave the row empty
-      if (search && first && !results.length && page < (res.totalPages || 0) && page < 6) {
-        this.catalog.reachedPages[category] = page + 1;
-        this.getMovies(category, { ...query, params: { ...query['params'], page: page + 1 } });
-        return;
-      }
-      if (search && first) search.pending = Math.max(0, search.pending - 1);
-      this.catalog.items.next(items);
-      // new results: the first one is described until a poster is focused
-      if (search && first && results.length && search.rows[0] == category) this.catalog.select(String(results[0].tmdbId), category, '0');
-    }, () => {
-      this.inFlight.delete(category);
-      if (search && !(items[category] || []).length) search.pending = Math.max(0, search.pending - 1);
-    })
+  // A show's Continue watching card: the name of the episode to go back to
+  // (resume: that one; next: the one after it, maybe the next season's first)
+  private episodeName(item:TitleItem):Observable<void> {
+    let at = (item as TitleItem & { continue?:ContinueAt }).continue;
+    if (!at || item.mediaType != 'tv' || at.episodeName) return of(undefined);
+    let id = item.tmdbId;
+    let wanted = at.kind == 'next' ? at.episode + 1 : at.episode;
+    return this.moviesService.getTvSeason(id, at.season).pipe(
+      switchMap(season => {
+        let ep = (season.episodes || []).find(e => e.episodeNumber == wanted);
+        if (ep || at.kind != 'next') return of({ ep, season: at.season });
+        return this.moviesService.getTvSeason(id, at.season + 1).pipe(
+          map(next => ({ ep: (next.episodes || []).find(e => e.episodeNumber == 1), season: at.season + 1 })),
+          catchError(() => of({ ep: undefined, season: at.season })),
+        );
+      }),
+      map(found => {
+        if (!found.ep) return;
+        at.episodeName = found.ep.name;
+        if (at.kind == 'next') {
+          at.nextSeason = found.season;
+          at.nextEpisode = found.ep.episodeNumber;
+        }
+        if (this.selectedMovie === item) this.moviesService.assignSelection(item);
+      }),
+      catchError(() => of(undefined)),
+    );
   }
-
-
 }

@@ -370,6 +370,47 @@ function rows0Key() {
   return manifests.catalogKey({ type: 'movie', id: 'top' });
 }
 
+test('catalogs in section layouts (docs/rows-plan.md §4.2): one offer each, joining where "Show in" says, values as extras', function (t) {
+  if (skip) {
+    return t.skip('no openssl');
+  }
+  var joined = require('../lib/rows').joinId(id), rowId = joined + '~' + rows0Key();
+  return call('GET', '/rows/sources').then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var mine = r.json.plugins.filter(function (p) { return p.plugin === id; })[0];
+    var top = mine.rows.filter(function (o) { return o.title === 'Top films'; })[0],
+      chans = mine.rows.filter(function (o) { return o.title === 'Channels'; })[0];
+    assert.deepEqual(top.sections, ['home', 'movies']);
+    assert.deepEqual(top.joins, ['movies'], 'its placement: Movies');
+    assert.deepEqual(top.params, [{ key: 'genre', label: 'Genre', options: [['Drama', 'Drama'], ['Comedy', 'Comedy']], required: false }]);
+    assert.equal(top.candidates, true);
+    assert.deepEqual(chans.sections, ['home']);
+    assert.deepEqual(chans.joins, [], 'its own section: offered, not joining');
+    assert.ok(!mine.rows.some(function (o) { return o.title === 'Needs a thing'; }), 'a required value with nothing to pick: no row');
+    return call('GET', '/sections/movies/rows');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    var mine = r.json.rows.filter(function (x) { return x.plugin === id; });
+    assert.deepEqual(mine.map(function (x) { return x.id; }), [rowId]);
+    assert.equal(mine[0].title, 'Top films');
+    return call('GET', '/sections/movies/rows/' + encodeURIComponent(rowId) + '/items?page=2');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.items.length, 10);
+    assert.equal(r.json.last, true);
+    // the admin puts its comedies on Home
+    return call('PUT', '/admin/sections/home/layout', { rows: [{ id: 'r_comedies01', source: 'plugin', params: { plugin: id, row: rows0Key(), values: { genre: 'Comedy' } } }] });
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    return call('GET', '/sections/home/rows/r_comedies01/items');
+  }).then(function (r) {
+    assert.equal(r.status, 200, r.text);
+    assert.match(r.json.items[0].title, /^Comedy /);
+    assert.match(r.json.items[0].image, /^images\//);
+    return call('DELETE', '/admin/sections/home/layout');
+  });
+});
+
 test('its section: other catalogs, genre, search; the search chip', function (t) {
   if (skip) {
     return t.skip('no openssl');
@@ -456,6 +497,9 @@ test('placements: the admin hides a catalog, it leaves Movies', function (t) {
     return data('movieRows', { slot: 'core.movies.rows', context: {} });
   }).then(function (r) {
     assert.deepEqual(r.json.data, []);
+    return call('GET', '/sections/movies/rows');
+  }).then(function (r) {
+    assert.equal(r.json.rows.filter(function (x) { return x.plugin === id; }).length, 0, 'hidden: it leaves the Movies layout too');
     var values = {};
     values[key] = 'section';
     return call('PUT', '/admin/plugins/' + id + '/settings', { values: values });

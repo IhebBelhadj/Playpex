@@ -606,6 +606,38 @@ test('no unversioned routes, no Origin: null (plan step 9)', function () {
   });
 });
 
+test('rows: a section\'s rows, a row\'s items, layouts (the profile\'s and the default), sources', function () {
+  var id, mine = [{ id: 'r_contract01', source: 'core.continue' }, { id: 'r_contract02', source: 'core.list', params: { mediaType: 'movie', list: 'popular' } }];
+  return call('POST', '/profiles', { name: 'Rowan' }, { expect: 201 }).then(function (res) {
+    id = res.body.id;
+    return Promise.all([
+      call('GET', '/sections/movies/rows?profile=' + id, undefined, { expect: 200 }),
+      call('GET', '/sections/home/rows', undefined, { expect: 200 }),
+      call('GET', '/sections/kids/rows', undefined, { expect: 400 }),
+      call('GET', '/sections/movies/rows/r_movcontinue/items?profile=' + id, undefined, { expect: 200 }),
+      call('GET', '/sections/movies/rows/r_nothing01/items', undefined, { expect: 404 }),
+      call('GET', '/sections/movies/layout?profile=' + id, undefined, { expect: 200 }),
+      call('GET', '/rows/sources?profile=' + id, undefined, { expect: 200 }),
+      call('GET', '/admin/sections/shows/layout', undefined, { admin: true, expect: 200 })
+    ]);
+  }).then(function (r) {
+    assert.equal(r[0].body.rows[0].id, 'r_movtrending', 'nothing personal yet');
+    assert.deepEqual(r[3].body.items, []);
+    return call('PUT', '/sections/movies/layout?profile=' + id, { rows: mine }, { expect: 200 });
+  }).then(function (res) {
+    assert.equal(res.body.own, true);
+    return Promise.all([
+      call('PUT', '/sections/movies/layout?profile=' + id, { rows: [{ id: 'x', source: 'core.forYou' }] }, { expect: 400 }),
+      call('DELETE', '/sections/movies/layout?profile=' + id, undefined, { expect: 200 }),
+      call('PUT', '/admin/sections/shows/layout', { rows: [{ id: 'r_contract03', source: 'core.continue' }] }, { admin: true, expect: 200 })
+    ]);
+  }).then(function () {
+    return call('DELETE', '/admin/sections/shows/layout', undefined, { admin: true, expect: 200 });
+  }).then(function (res) {
+    assert.equal(res.body.custom, false);
+  });
+});
+
 test('profiles', function () {
   var id;
   return call('POST', '/profiles', { name: 'Ann', avatar: 'avatar-01' }, { expect: 201 })
@@ -1078,7 +1110,7 @@ test('API 2: the routes of the torrent sites are gone (410), the plugins\' capab
       assert.equal(res.body.code, 'GONE');
     }),
     call('GET', '/plugins', undefined, { expect: 200 }).then(function (res) {
-      assert.deepEqual(res.body.capabilities, { releases: false, sources: false, live: false });
+      assert.deepEqual(res.body.capabilities, { releases: false, sources: false, live: false, rows: true });
     }),
     call('GET', '/admin/overview', undefined, { admin: true, expect: 200 }).then(function (res) {
       assert.deepEqual(res.body.sources, { plugins: [], notice: true });

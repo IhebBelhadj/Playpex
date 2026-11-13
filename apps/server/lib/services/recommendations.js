@@ -105,7 +105,61 @@ module.exports = function recommendationsService(repositories, options) {
     return ids.reduce(function (sum, id) { return sum + (genres.get(id) || 0); }, 0) / ids.length;
   }
 
+  function exclusions(data, built) {
+    var excluded = new Set(built.disliked);
+    data.watched.forEach(function (t) { excluded.add(key(t)); });
+    data.inProgress.forEach(function (p) { excluded.add(key(p)); });
+    built.allSeeds.forEach(function (s, k) { excluded.add(k); });
+    return excluded;
+  }
+
+  function keeps(profile, excluded, mediaType) {
+    return function (c) {
+      if (excluded.has(key(c)) || c.adult || (mediaType && c.mediaType !== mediaType)) {   // plugins-check: allow (a filter keeping adult titles out)
+        return false;
+      }
+      return !profile.isKid || (c.genreIds || []).some(function (g) { return KID_GENRES.indexOf(g) !== -1; });
+    };
+  }
+
   return {
+    KID_GENRES: KID_GENRES,
+
+    /**
+     * "Because you watched …" rows (docs/rows-plan.md §3 core.because): the
+     * profile's strongest seeds, each with the catalog's recommendations for it
+     * that the profile hasn't seen.
+     * @param {{ mediaType?: 'movie'|'tv', count?: number, limit?: number }} [filter]
+     * @returns {Promise<Array<{ seed: { mediaType, tmdbId, title }, items: object[] }>>}
+     */
+    because: function (profileId, filter) {
+      filter = filter || {};
+      return profiles.requireProfile(profileId).then(function (profile) {
+        var mediaType = filter.mediaType ? validate.mediaType(filter.mediaType) : null,
+          count = Math.max(1, Math.min(3, filter.count || 1)),
+          limit = validate.limit(filter.limit, 20, 100);
+        return load(profileId).then(function (data) {
+          var built = buildSeeds(data, mediaType),
+            keep = keeps(profile, exclusions(data, built), mediaType);
+          // the strongest seeds; a seed whose list is empty gives its place to the next one
+          var seeds = built.seeds.slice(0, count + 2);
+          return Promise.allSettled(seeds.map(function (seed) {
+            return catalog.recommendations({ mediaType: seed.mediaType, tmdbId: seed.tmdbId });
+          })).then(function (results) {
+            var out = [];
+            results.forEach(function (result, i) {
+              var items = result.status === 'fulfilled' ? (result.value || []).filter(keep).slice(0, limit) : [];
+              if (items.length && out.length < count) {
+                var seed = seeds[i];
+                out.push({ seed: { mediaType: seed.mediaType, tmdbId: seed.tmdbId, title: seed.title }, items: items });
+              }
+            });
+            return out;
+          });
+        });
+      });
+    },
+
     /**
      * @param {{ mediaType?: 'movie'|'tv', limit?: number }} [filter]
      * @returns {Promise<{ items: object[], seeds: number }>} items are catalog

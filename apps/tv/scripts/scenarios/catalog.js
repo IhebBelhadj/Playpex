@@ -65,7 +65,7 @@ module.exports = async function (t) {
     "['Popular comedy from the 1990s scoring 7+', 'Top rated comedy', 'Newest comedy'].every(n => Array.from(document.querySelectorAll('px-card-row')).some(r => r.innerText.includes(n)))", 10000),
     await t.js("Array.from(document.querySelectorAll('px-card-row')).map(r => r.querySelector('h2,h3')?.textContent.trim())"));
   t.check('… with posters', await t.until("document.querySelectorAll('px-card-row .px-card img').length > 10", 10000));
-  t.check('… of the 1990s', await t.js(`(() => { const c = ${component('movies-page')}.catalog; return Object.values(c.items.value).flat().every(m => m.year >= '1990' && m.year <= '1999'); })()`));
+  t.check('… of the 1990s', await t.js(`(() => { const c = ${component('movies-page')}.catalog; return Object.values(c.items.value).flat().every(r => (r.item || r).year >= '1990' && (r.item || r).year <= '1999'); })()`));
   await t.shot('catalog-filters');
   await t.js(`${component('movies-page')}.clearSearch()`);
 

@@ -27,14 +27,18 @@ module.exports = async function (t) {
   await t.key('Up');
   t.check('Up comes back to the remembered poster of that row', (await focusedKey()) == second.key);
 
-  // paging: far along the first row
+  // paging: far along the first row that pages (Continue watching and the
+  // other personal rows come whole: a profile with history has them first)
   await t.key('Up');
-  const before = await t.js("document.querySelector('px-card-row .px-row').querySelectorAll('.px-card').length");
-  const index = await t.js("Array.from(document.querySelector('px-card-row .px-row').querySelectorAll('.px-card')).indexOf(document.activeElement)");
+  const ROW = "document.activeElement.closest('.px-row')";
+  const whole = "ng.getComponent(document.querySelector('movies-page')).catalog.last[document.activeElement.dataset.section]";
+  for (let i = 0; i < 6 && await t.js(whole); i++) await t.key('Down');
+  const before = await t.js(`${ROW}.querySelectorAll('.px-card').length`);
+  const index = await t.js(`Array.from(${ROW}.querySelectorAll('.px-card')).indexOf(document.activeElement)`);
   t.keyGap = 90;
   await t.key('Right', Math.max(1, before - index - 4));
   t.keyGap = 180;
-  t.check('near the end, the row loads its next page', await t.until(`document.querySelector('px-card-row .px-row').querySelectorAll('.px-card').length > ${before}`, 8000));
+  t.check('near the end, the row loads its next page', await t.until(`${ROW}.querySelectorAll('.px-card').length > ${before}`, 8000));
   const deep = await focusedKey();
 
   // open and come back

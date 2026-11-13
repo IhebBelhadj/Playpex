@@ -18,9 +18,10 @@
 // "major.minor": a breaking change bumps the major; an addition a plugin may
 // need bumps the minor (1.1: direct links in releases screens; 1.2: their
 // pictures, `image` / `imageVariant`; 1.3: `embed` sources; 1.4: a filter group's
-// own toolbar button, `button`), asked with
+// own toolbar button, `button`; 1.5: list settings, migrations, images through
+// the server; 1.6: rows offered to section layouts, `contributes.rows`), asked with
 // `^1.1` / `>=1.1` (servers before 1.1 refuse such a range: they can't run it)
-var SERVER_PLUGIN_API = '1.5';
+var SERVER_PLUGIN_API = '1.6';
 
 var ID = /^[a-z][a-z0-9-]{1,31}$/;
 
@@ -499,6 +500,32 @@ function checkManifest(manifest, options) {
     if (perSlot[slot] > SLOT_MAX_PER_PLUGIN) {
       problem('/contributes/slots', 'at most ' + SLOT_MAX_PER_PLUGIN + ' contributions to ' + slot);
     }
+  });
+
+  // Rows offered to layouts (docs/rows-plan.md §4.1)
+  duplicates(names(c.rows, 'key')).forEach(function (k) { problem('/contributes/rows', 'row ' + k + ' declared twice'); });
+  (c.rows || []).forEach(function (r, i) {
+    var at = '/contributes/rows/' + i;
+    (r.joins || []).forEach(function (s) {
+      if (r.sections.indexOf(s) === -1) {
+        problem(at + '/joins', s + ' isn\'t one of its sections');
+      }
+    });
+    if (r.joinsSetting) {
+      var by = (c.settings || []).filter(function (x) { return x.key === r.joinsSetting; })[0];
+      if (!by || by.type !== 'choice' || by.scope !== 'server') {
+        problem(at + '/joinsSetting', 'must name a server choice setting');
+      }
+      if (r.joins) {
+        problem(at + '/joinsSetting', 'joins or joinsSetting, not both');
+      }
+    }
+    duplicates(names(r.params, 'key')).forEach(function (k) { problem(at + '/params', 'param ' + k + ' declared twice'); });
+    (r.params || []).forEach(function (p, j) {
+      if (duplicates(p.options.map(function (o) { return o[0]; })).length) {
+        problem(at + '/params/' + j + '/options', 'option values must be unique');
+      }
+    });
   });
 
   // Settings

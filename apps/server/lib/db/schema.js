@@ -171,6 +171,31 @@ var deviceSettings = sqliteTable('device_settings', {
   ];
 });
 
+// ── rows (docs/rows-plan.md §4) ─────────────────────────────────────────────
+// A section's layout (home | movies | shows): { rows: [entry], known: [plugin id] }
+// (@playpex/protocol rows.js). `known`: the plugins this layout has been offered
+// already, so a plugin the admin took out doesn't join again. No row = the
+// built-in default (lib/rows/defaults.js).
+
+// The admin's default for every profile
+var rowLayouts = sqliteTable('row_layouts', {
+  section: text('section').primaryKey(),
+  layout: text('layout', { mode: 'json' }).notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+});
+
+// A profile's own (a full list, not a diff); deleted with the profile
+var profileRowLayouts = sqliteTable('profile_row_layouts', {
+  profileId: profileId(),
+  section: text('section').notNull(),
+  layout: text('layout', { mode: 'json' }).notNull(),
+  updatedAt: timestamp('updated_at').notNull()
+}, function (table) {
+  return [
+    primaryKey({ columns: [table.profileId, table.section] })
+  ];
+});
+
 // ── downloads (lib/torrents, docs/media-server-plan.md §4.2) ─────────────────
 // Every torrent the server knows, running or not. Our record, whatever the
 // engine: with the cached .torrent (<config>/torrents/<hash>.torrent) it is
@@ -546,6 +571,8 @@ module.exports = {
   ratings: ratings,
   profileSettings: profileSettings,
   deviceSettings: deviceSettings,
+  rowLayouts: rowLayouts,
+  profileRowLayouts: profileRowLayouts,
   downloads: downloads,
   DIRECT_STATES: DIRECT_STATES,
   directDownloads: directDownloads,

@@ -32,6 +32,7 @@ Authorization: Bearer <token>          (or ?access_token=<token>)
 | `plugin.changed` | a plugin was loaded, stopped (it failed) or removed, or the admin changed its settings, grants or linked accounts ([plugins](plugins.md)): refetch `GET /plugins`, ask its open screens again | `{ id, state: 'enabled' \| 'failed' \| 'removed' \| …, reason?: 'settings' \| 'grants' \| 'link' }` |
 | `plugin.notification` | a plugin told a profile something: if it's the current profile, `GET /plugins/notifications?profile=` and show what comes back ([plugins](plugins.md#notifications)) | `{ profileId, plugin }` |
 | `library.changed` | what clients see of the media library changed: a scan found, changed or lost files, the admin fixed a match, ignored a file, changed or removed a folder ([what's on this server](playback.md#whats-on-this-server)) | `{ folderId }` (null: several) |
+| `rows.changed` | a section's layout changed: a profile's own, or the admin's default (`profileId` null) ([rows](rows.md)) | `{ section, profileId }`: refetch that section's rows when you show it to that profile, or (null) to a profile without its own layout |
 
 Payload schemas: `ServerStatusEvent` (`torrents` = running ones), `TorrentStatsEvent`, `Session`, `SessionEndedEvent`, `Download`, `DownloadRemovedEvent` in the spec. Note that `torrent.stats` is a short form: `/stats` answers a richer `TorrentStats` (`peers: {total, unchocked}`, `speed: {down, up}`…).
 

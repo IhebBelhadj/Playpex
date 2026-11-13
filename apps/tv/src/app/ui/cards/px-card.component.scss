@@ -108,6 +108,23 @@
   }
 }
 
+.foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: dp(28) dp(10) dp(10);
+  background: var(--px-gradient-card-foot);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text);
+  text-shadow: var(--px-shadow-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 .progress {
   position: absolute;
   left: 0;

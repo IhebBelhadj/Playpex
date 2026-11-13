@@ -1,0 +1,25 @@
+<px-panel id="rowsEditor" [title]="title" align="start" [width]="900" [focus]="focus" (back)="done()">
+  <div class="panelBody" pxStack align="nearest">
+    <p class="hint" *ngIf="entries">Move the rows you watch most to the top, hide the ones you don't. {{ own ? 'This is your own order.' : 'For now, the server\'s usual order.' }}</p>
+    <px-empty *ngIf="!entries && !failed" text="Reading the rows…"></px-empty>
+    <px-empty *ngIf="failed" text="The server didn't answer. Try again in a moment."></px-empty>
+
+    <div class="entries" *ngIf="entries" pxGrid columns="3" enter="nearest">
+      <ng-container *ngFor="let e of entries; let i = index; trackBy: byId">
+        <span class="label" [class.hidden]="e.hidden">
+          <span class="name">{{ e.label || e.title || e.source }}</span>
+          <span class="tag" *ngIf="e.hidden">Hidden</span>
+          <span class="tag" *ngIf="e.new && !e.hidden">New</span>
+        </span>
+        <px-button [key]="'up:' + e.id" variant="toolbar" label="Up" [quiet]="i == 0" (pxSelect)="move(e, -1)"></px-button>
+        <px-button [key]="'down:' + e.id" variant="toolbar" label="Down" [quiet]="i == entries.length - 1" (pxSelect)="move(e, 1)"></px-button>
+        <px-button [key]="'hide:' + e.id" variant="toolbar" [label]="e.hidden ? 'Show' : 'Hide'" [active]="!!e.hidden" (pxSelect)="toggle(e)"></px-button>
+      </ng-container>
+    </div>
+
+    <div class="panelActions" pxGrid enter="nearest">
+      <px-button key="done" variant="primary" label="Done" (pxSelect)="done()"></px-button>
+      <px-button *ngIf="own" key="reset" label="Reset to default" (pxSelect)="reset()"></px-button>
+    </div>
+  </div>
+</px-panel>

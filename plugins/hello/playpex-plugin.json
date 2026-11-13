@@ -3,12 +3,12 @@
   "id": "hello",
   "name": "Hello",
   "description": "The example plugin: every screen template, slot and kind of setting, events, a job, a write, a linked account and notifications, with made-up titles.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": {
     "name": "Playpex"
   },
   "api": {
-    "server": "^1.5",
+    "server": "^1.6",
     "nav": "^1",
     "ui": "^1"
   },
@@ -105,6 +105,18 @@
       {
         "slot": "core.search.filters",
         "data": "searchFilter"
+      }
+    ],
+    "rows": [
+      {
+        "key": "decade",
+        "title": "Hello: made-up titles",
+        "sections": ["home", "movies"],
+        "joins": ["home", "movies"],
+        "data": "row",
+        "params": [
+          { "key": "decade", "label": "Decade", "options": [["1960", "1960s"], ["1980", "1980s"], ["2000", "2000s"]] }
+        ]
       }
     ],
     "settings": [

@@ -3,7 +3,8 @@
 // binding (or a future input source like the cursor / a phone remote) only has
 // to be wired here. Values are `KeyboardEvent.key` names.
 
-export type NavInputAction = 'select' | 'back' | 'up' | 'down' | 'left' | 'right';
+// `options`: what can be done with the focused thing (a row's Move / Hide): a remote's menu key
+export type NavInputAction = 'select' | 'back' | 'up' | 'down' | 'left' | 'right' | 'options';
 
 // Remote and keyboard media keys (docs/ui-system-plan.md §13.2): the player
 // takes them (MediaKeys, and the Media Session for hardware keys Chromium
@@ -20,6 +21,7 @@ export const KEY_BINDINGS: Record<InputAction, string[]> = {
   down   : ['ArrowDown'],
   left   : ['ArrowLeft'],
   right  : ['ArrowRight'],
+  options: ['ContextMenu'],
   playPause : ['MediaPlayPause'],
   play      : ['MediaPlay'],
   pause     : ['MediaPause'],

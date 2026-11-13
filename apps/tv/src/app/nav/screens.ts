@@ -27,6 +27,7 @@ import { defineScreen } from './screen-registry';
 
 const MOVIES_FRAME = { path: 'movies', component: MoviesPageComponent, data: { media: 'movie' } };
 const SHOWS_FRAME = { path: 'shows', component: MoviesPageComponent, data: { media: 'tv' } };
+const HOME_FRAME = { path: 'home', component: MoviesPageComponent, data: { media: 'home' } };
 const FULL_SCREEN = { menu: 'hidden' as const };
 
 // ── roots ────────────────────────────────────────────────────────────────────
@@ -97,8 +98,22 @@ defineScreen({
   menu: { label: 'Search', icon: 'search', order: 10, push: true },
 });
 
-// The home page and slider serve both sections; the frame's `media` picks
-// the catalog (MoviesService.catalogs)
+// The section page and slider serve Home, Movies and TV shows; the frame's
+// `media` picks the catalog (MoviesService.catalogs), whose rows are the
+// server's (docs/rows-plan.md). Home: movies and shows together, where the
+// app opens after "Who's watching?"; its titles open in the Movies / TV shows
+// frames (Back returns to Home)
+defineScreen({
+  id: 'core.home',
+  path: 'home/list',
+  component: MoviesSliderComponent,
+  frame: HOME_FRAME,
+  data: { media: 'home' },
+  kind: 'section',
+  requires: ['profile'],
+  menu: { label: 'Home', icon: 'home', order: 15 },
+});
+
 defineScreen({
   id: 'core.movies',
   path: 'movies/list',

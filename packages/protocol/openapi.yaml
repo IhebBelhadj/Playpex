@@ -129,6 +129,8 @@ tags:
     description: 'What clients render of plugins (docs/plugins-plan.md §4.9): their screens and contributions, the answers of their data handlers, their assets. Setup is the dashboard''s'
   - name: live
     description: 'Live TV from plugins (docs/providers-plan.md §8): channels, their programme guide, a channel''s stream'
+  - name: rows
+    description: 'Each section''s rows (Home, Movies, TV shows) per profile, laid out on the server (docs/rows-plan.md, client guide docs/api/rows.md)'
 
 paths:
   /server:
@@ -600,6 +602,51 @@ paths:
         '409': { $ref: '#/components/responses/Error' }
         '500': { $ref: '#/components/responses/Error' }
         '501': { $ref: '#/components/responses/Error' }
+  /admin/sections/{section}/layout:
+    parameters:
+      - $ref: '#/components/parameters/Section'
+    get:
+      tags: [admin, rows]
+      operationId: getDefaultLayout
+      summary: The default layout of a section (every profile without its own)
+      description: '`custom: false` while it is the built-in one. Plugins that joined since are `plugin.all` entries marked `new`.'
+      responses:
+        '200':
+          description: The layout
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+    put:
+      tags: [admin, rows]
+      operationId: setDefaultLayout
+      summary: Set the default layout of a section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SectionLayoutInput' }
+      responses:
+        '200':
+          description: The layout now
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
+    delete:
+      tags: [admin, rows]
+      operationId: resetDefaultLayout
+      summary: Back to the built-in default layout
+      responses:
+        '200':
+          description: The layout now
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/AdminRequired' }
   /admin/settings:
     get:
       tags: [admin]
@@ -2188,7 +2235,7 @@ paths:
         Text messages, each an `Event`. Topics for everyone: `server.status` (on connect, then every 30 s),
         `torrent.stats` (every 2 s while torrents with a lease run), `session.started` / `session.updated` /
         `session.ended`, `download.added` / `download.updated` (a `Download`; state changes at once, progress
-        at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
+        at most every 2 s) / `download.removed`, `settings.changed`, `library.changed` (`LibraryChangedEvent`), `rows.changed` (`RowsChangedEvent`). Admin session only: `log`, `device.paired`, `device.revoked`,
         `pairing.requested`, `pairing.approved`, `pairing.denied`, `host.updated`, `library.scan` (`LibraryScanEvent`),
         `remote.updated` (`RemoteTarget`, a device's remote control changed). To one device only:
         `session.command` (`SessionCommandEvent`, to sockets opened with `?control=playback`);
@@ -4046,6 +4093,7 @@ paths:
                       releases: { type: boolean, description: 'Some plugin lists releases (`releases.providers`)' }
                       sources: { type: boolean, description: 'Some plugin finds a title''s sources (`play.collect`)' }
                       live: { type: boolean, description: 'Some plugin has TV channels (`live.channels`): GET /live lists them' }
+                      rows: { type: boolean, description: 'Sections'' rows are the server''s (docs/rows-plan.md): GET /sections/{section}/rows. Older servers: clients keep their own rows' }
         '404': { $ref: '#/components/responses/NotFound' }
   /plugins/{pluginId}/data/{name}:
     post:
@@ -4596,6 +4644,127 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ── settings ────────────────────────────────────────────────────────────────
+  /sections/{section}/rows:
+    parameters:
+      - $ref: '#/components/parameters/Section'
+      - $ref: '#/components/parameters/Profile'
+    get:
+      tags: [rows]
+      operationId: getSectionRows
+      summary: A profile's rows of a section, in order
+      description: |
+        The profile's layout (its own, else the admin's default) resolved: expanding entries made into their rows
+        (`core.because` one per seed, `plugin.all` a plugin's rows), plugins that joined since the layout was saved
+        at the end (`new`), and left out: personal rows with nothing in them, rows of plugins the profile can't see,
+        plugin rows whose offer is gone. Rows that came with their items (personal ones, the library, old slot rows)
+        carry them; the others are fetched with GET …/rows/{rowId}/items. Without `profile`: the default layout,
+        personal rows left out. Refetch on `plugin.changed` and when the profile's history changes.
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionRows' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /sections/{section}/rows/{rowId}/items:
+    parameters:
+      - $ref: '#/components/parameters/Section'
+      - name: rowId
+        in: path
+        required: true
+        description: A row's `id` from GET /sections/{section}/rows (its entry's id, `~` and a part for an expansion)
+        schema: { type: string, pattern: '^r_[a-z0-9]{6,16}(~[A-Za-z0-9._-]{1,40})?$' }
+      - $ref: '#/components/parameters/Profile'
+      - { name: page, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 1 } }
+    get:
+      tags: [rows]
+      operationId: getRowItems
+      summary: One row's page, whatever fills it
+      description: |
+        `titles`: catalog titles (`CatalogTitle`, with `because` in personal rows); `progress`: Continue watching
+        (`ContinueWatchingItem`); `library`: titles on this server; `cards`: a plugin's cards (`$defs/card` of
+        @playpex/protocol plugin-api.schema.json), pictures as the plugin's `images/<token>` paths. Titles the
+        profile watched are left out when the row hides them (`hideWatched`). Rows that come whole answer on
+        page 1, `last: true`.
+      responses:
+        '200':
+          description: A page of the row
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RowPage' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
+  /sections/{section}/layout:
+    parameters:
+      - $ref: '#/components/parameters/Section'
+      - name: profile
+        in: query
+        required: true
+        schema: { type: string }
+    get:
+      tags: [rows]
+      operationId: getProfileLayout
+      summary: A profile's layout of a section, to edit
+      description: |
+        Its own (`own: true`), else the default, with plugins that joined since as `plugin.all` entries marked
+        `new`, and `known` including them: send it back as it is (PUT) and a plugin taken out won't join again.
+      responses:
+        '200':
+          description: The layout
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [rows]
+      operationId: setProfileLayout
+      summary: The profile's own layout of a section (a full list)
+      description: Checked by @playpex/protocol rows.js (`checkLayout`). A kids profile's rows are only the admin's to change (`FORBIDDEN`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SectionLayoutInput' }
+      responses:
+        '200':
+          description: The layout now
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [rows]
+      operationId: resetProfileLayout
+      summary: Back to the default layout
+      responses:
+        '200':
+          description: The layout now (the default)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SectionLayout' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /rows/sources:
+    get:
+      tags: [rows]
+      operationId: getRowSources
+      summary: What the row editors can add
+      description: The core's sources with their params, and the rows each plugin the profile sees offers (`contributes.rows`), or, for a plugin of before layouts, the sections its slots put rows in.
+      parameters:
+        - $ref: '#/components/parameters/Profile'
+      responses:
+        '200':
+          description: Sources
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RowSources' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /settings:
     get:
       tags: [settings]
@@ -4924,6 +5093,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tt\d+$' }
+    Section:
+      name: section
+      in: path
+      required: true
+      schema: { type: string, enum: [home, movies, shows] }
     ProfileId:
       name: profileId
       in: path
@@ -6900,6 +7074,13 @@ components:
       required: [folderId]
       properties:
         folderId: { type: [string, 'null'] }
+    RowsChangedEvent:
+      description: '`data` of `rows.changed` (everyone): a section''s layout changed; clients showing it to that profile (or, `profileId` null, to any profile without its own layout) refetch its rows'
+      type: object
+      required: [section, profileId]
+      properties:
+        section: { type: string, enum: [home, movies, shows] }
+        profileId: { type: [string, 'null'] }
     ReleaseProvider:
       type: object
       required: [id, name, paged, default]
@@ -7361,6 +7542,120 @@ components:
         posterPath: { type: [string, 'null'] }
         backdropPath: { type: [string, 'null'] }
         genreIds: { type: array, items: { type: integer } }
+    RowEntry:
+      type: object
+      description: 'One row of a layout: what fills it (`source`, `params`; @playpex/protocol rows.js SOURCES) and how it shows'
+      additionalProperties: false
+      required: [id, source]
+      properties:
+        id: { type: string, pattern: '^r_[a-z0-9]{6,16}$' }
+        source: { type: string, enum: [core.list, core.discover, core.continue, core.watchlist, core.forYou, core.because, core.library, plugin, plugin.all] }
+        params: { type: object, additionalProperties: true }
+        title: { type: string, maxLength: 60 }
+        variant: { type: string, enum: [poster, landscape, top10] }
+        hideWatched: { type: boolean, description: 'Leave out what the profile watched (default: on for For you, Because you watched and personal plugin rows)' }
+        candidates: { type: boolean, description: 'A plugin row''s titles also feed For you' }
+        hidden: { type: boolean, description: 'Kept in the layout but not shown (an editor''s Hide; Show brings it back where it was)' }
+        new: { type: boolean, description: 'Answers only: a plugin that joined since the layout was saved' }
+        label: { type: string, description: 'Answers only: what an editor calls the entry (its title, the offer''s, the plugin''s name)' }
+    SectionLayoutInput:
+      type: object
+      required: [rows]
+      properties:
+        rows: { type: array, maxItems: 60, items: { $ref: '#/components/schemas/RowEntry' } }
+        known: { type: array, maxItems: 200, items: { type: string }, description: 'Plugins already offered to this layout (they don''t join it again)' }
+    SectionLayout:
+      type: object
+      required: [section, own, custom, rows, known]
+      properties:
+        section: { type: string, enum: [home, movies, shows] }
+        own: { type: boolean, description: 'The profile''s own (else the default)' }
+        custom: { type: boolean, description: 'Changed by someone (else the built-in default)' }
+        updatedAt: { type: [string, 'null'], format: date-time }
+        rows: { type: array, items: { $ref: '#/components/schemas/RowEntry' } }
+        known: { type: array, items: { type: string } }
+    ResolvedRow:
+      type: object
+      required: [id, source, title, variant, kind, personal]
+      properties:
+        id: { type: string, description: 'For GET …/rows/{rowId}/items' }
+        source: { type: string }
+        title: { type: string }
+        variant: { type: string, description: 'poster | landscape | top10, or a plugin card variant' }
+        kind: { type: string, enum: [titles, progress, library, cards] }
+        personal: { type: boolean }
+        plugin: { type: string, description: 'cards: the plugin (its images/<token> paths and card intents are its own)' }
+        because: { type: object, description: 'core.because: the seed { mediaType, tmdbId, title }' }
+        new: { type: boolean }
+        items: { type: array, items: { type: object }, description: 'When they came with the row (then `last` too)' }
+        last: { type: boolean }
+    SectionRows:
+      type: object
+      required: [section, own, rows]
+      properties:
+        section: { type: string, enum: [home, movies, shows] }
+        own: { type: boolean }
+        rows: { type: array, items: { $ref: '#/components/schemas/ResolvedRow' } }
+    RowPage:
+      type: object
+      required: [id, kind, items, last]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [titles, progress, library, cards] }
+        items: { type: array, maxItems: 200, items: { type: object } }
+        last: { type: boolean }
+        title: { type: string, description: 'A plugin row''s own title for now (an add-on naming its seed)' }
+        plugin: { type: string }
+    RowSources:
+      type: object
+      required: [sections, lists, variants, core, plugins]
+      properties:
+        sections: { type: array, items: { type: string } }
+        lists: { type: object, additionalProperties: { type: array, items: { type: string } } }
+        variants: { type: array, items: { type: string } }
+        core:
+          type: array
+          items:
+            type: object
+            required: [source, label, personal, expands, params]
+            properties:
+              source: { type: string }
+              label: { type: string }
+              personal: { type: boolean }
+              expands: { type: boolean }
+              params: { type: object, additionalProperties: { type: object } }
+        plugins:
+          type: array
+          items:
+            type: object
+            required: [plugin, name, rows, slots]
+            properties:
+              plugin: { type: string }
+              name: { type: string }
+              rows:
+                type: array
+                items:
+                  type: object
+                  required: [key, title, sections, joins, personal, candidates]
+                  properties:
+                    key: { type: string }
+                    title: { type: string }
+                    sections: { type: array, items: { type: string } }
+                    joins: { type: array, items: { type: string } }
+                    personal: { type: boolean }
+                    candidates: { type: boolean }
+                    variant: { type: string }
+                    params:
+                      type: array
+                      items:
+                        type: object
+                        required: [key, label, options, required]
+                        properties:
+                          key: { type: string }
+                          label: { type: string }
+                          options: { type: array, items: { type: array, items: { type: string } } }
+                          required: { type: boolean }
+              slots: { type: array, items: { type: string }, description: 'Sections an old plugin''s slots put rows in (only as a whole: plugin.all)' }
     WatchlistItem:
       type: object
       required: [profileId, mediaType, tmdbId, title, posterPath, backdropPath, addedAt]

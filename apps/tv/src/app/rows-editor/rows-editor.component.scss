@@ -1,0 +1,58 @@
+// The rows editor: a list of the section's rows, three buttons a line, on
+// the <px-panel> frame (ui/overlay), laid out like the filter panel
+@use 'px' as *;
+
+// a pxStack: scrolls when the rows don't fit; room for the buttons' zoom
+.panelBody {
+  min-height: 0;
+  margin: 0 dp(-10);
+  padding: 0 dp(10);
+}
+
+.hint {
+  margin: 0 0 dp(22);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-muted);
+}
+
+// one line per row: its name, Up, Down, Hide (the pxGrid's three columns)
+.entries {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  column-gap: dp(10);
+  row-gap: dp(8);
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: dp(10);
+  min-width: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  color: var(--px-color-text);
+
+  .name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &.hidden .name {
+    color: var(--px-color-text-dim);
+  }
+
+  .tag {
+    flex: none;
+    font-size: var(--px-text-small);
+    color: var(--px-color-text-muted);
+  }
+}
+
+.panelActions {
+  display: flex;
+  gap: dp(14);
+  margin-top: dp(30);
+}

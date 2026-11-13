@@ -12,7 +12,7 @@ import { EpisodeProgress, LibraryService } from '../library.service';
 import { FocusEngine } from '../movement/movement';
 import { Navigator, useScreen } from '../nav/public-api';
 import { ReleasesService } from '../releases.service';
-import { EpisodePlaybackService } from '../episode-playback.service';
+import { EpisodePlaybackService, EpisodeTarget } from '../episode-playback.service';
 import { ImdbSeries, ImdbService } from '../imdb.service';
 import { ServerLibraryService } from '../server-library.service';
 import { Badge, ShowContext, Toasts, tmdbImageBase } from '../ui/public-api';
@@ -219,7 +219,37 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     return this.episodePlayback.isResolving(this.show , this.selectedSeason , ep.episodeNumber);
   }
 
+  // Where the profile is in this show (its Continue watching entry): Play goes back there
+  continueAt:{ season:number, episode:number, label:string, progress:number | null, target?:EpisodeTarget } | null = null;
+
+  get playLabel():string {
+    return this.continueAt?.label || 'Play' + (this.selectedSeason ? ' S' + this.selectedSeason : '');
+  }
+
+  private loadContinue(){
+    let show = this.show;
+    this.continueAt = null;
+    this.library.library().subscribe({
+      next : lib => {
+        if (this.show !== show) return;
+        let at = (lib.continueWatching || []).find(c => c.mediaType == 'tv' && c.tmdbId == Number(show.tmdbId));
+        if (!at) return;
+        if (at.kind == 'resume') {
+          this.continueAt = { season : at.season , episode : at.episode , label : `Resume S${at.season} E${at.episode}` , progress : at.ratio };
+          return;
+        }
+        // finished an episode: the one after it
+        this.episodePlayback.next(Number(show.tmdbId) , at.season , at.episode , this.imdbId).subscribe(next => {
+          if (!next || this.show !== show) return;
+          this.continueAt = { season : next.season , episode : next.episode.episodeNumber , label : `Play S${next.season} E${next.episode.episodeNumber}` , progress : null , target : next };
+        });
+      },
+      error : () => {},
+    });
+  }
+
   loadLibraryState(){
+    this.loadContinue();
     this.inWatchlist = false;
     this.episodeProgress.clear();
     this.onServerSub?.unsubscribe();
@@ -268,9 +298,31 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     return trailer?.key;
   }
 
-  // Play: the season's first aired episode
+  // Play: where the profile is in the show (Resume asks resume / from the
+  // beginning), else the shown season's first aired episode
   play(){
     if (!this.show) return;
+    let at = this.continueAt;
+    if (at) {
+      if (at.target) {
+        this.episodePlayback.play({ show : this.show , imdbId : this.imdbId , season : at.season , episode : at.target.episode });
+        return;
+      }
+      let show = this.show;
+      this.moviesService.getTvSeason(show.tmdbId , at.season).subscribe({
+        next : season => {
+          let ep = (season.episodes || []).find(e => e.episodeNumber == at.episode);
+          if (ep) this.episodePlayback.play({ show , imdbId : this.imdbId , season : at.season , episode : ep });
+          else this.playSeasonStart();
+        },
+        error : () => this.playSeasonStart(),
+      });
+      return;
+    }
+    this.playSeasonStart();
+  }
+
+  private playSeasonStart(){
     let next = this.episodes.find(ep => !ep.upcoming);
     if (next) this.episodePlayback.play({ show : this.show , imdbId : this.imdbId , season : this.selectedSeason , episode : next });
     else this.notificationService.sendNotification("error" , "No aired episodes in this season yet");

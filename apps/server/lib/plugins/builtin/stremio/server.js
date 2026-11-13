@@ -7,8 +7,11 @@
 //   play.collect         stream/{movie|series}/{tt…[:s:e]} → magnet, http, hls sources (≤ 50: links first, then
 //                        torrents by seeders as the add-on says)
 //   subtitles.providers  subtitles/… with the file's hash, size and name when the server knows them
+//   data row             one catalog as a row of a section layout (contributes.rows, docs/rows-plan.md §4.2):
+//                        args { catalog, extras: { param → extra name }, values, page }
 //   data movieRows / showRows / searchChip / home / page / title / play
-//                        its catalogs as rows (where the admin placed them), its section, its title pages
+//                        its catalogs as rows (where the admin placed them: clients of before layouts), its section,
+//                        its title pages
 
 var MAX_SOURCES = 50,
   ROW_SIZE = 100,
@@ -412,28 +415,38 @@ function catalogRow(c, extra) {
 
 function rowsFor(place, extra, max) {
   return fresh().then(function (a) {
-    var cats = a.catalogs.filter(function (c) { return c.show === place && !c.genreRequired; });
+    var cats = a.catalogs.filter(function (c) { return c.show === place && !needs(c); });
     return Promise.all(cats.map(function (c) { return catalogRow(c, extra); }));
   }).then(function (rows) {
     return rows.filter(Boolean).slice(0, max);
   });
 }
 
+// A catalog that can't be asked without a value (a required genre, year…): only as a row with its params
+function needs(c) {
+  return (c.requires || []).length > 0 || c.genreRequired;
+}
+
 // Stremio's skip counts the items already shown: a catalog's page size is what its first page holds (Cinemeta 49,
 // others 20 or 100), learnt once per sandbox
 var pageSizes = {};
 
-function catalogPage(c, genre, page) {
-  var key = c.key + '\n' + (genre || '');
+function pageKey(c, filters) {
+  return c.key + '\n' + Object.keys(filters).sort().map(function (k) { return k + '=' + filters[k]; }).join('&');
+}
+
+/** filters: { extra name: value } (or a genre, as the old callers give it) */
+function catalogPage(c, filters, page) {
+  if (typeof filters === 'string' || !filters) {
+    filters = filters ? { genre: filters } : {};
+  }
+  var key = pageKey(c, filters);
   function ask(n, size) {
-    var extra = {};
-    if (genre) {
-      extra.genre = genre;
-    }
+    var extra = Object.assign({}, filters);
     if (n > 1) {
       extra.skip = (n - 1) * size;
     }
-    return get('catalog', c.type, c.id, extra).then(function (answer) { return answer.metas || []; });
+    return get('catalog', c.type, c.id, Object.keys(extra).length ? extra : null).then(function (answer) { return answer.metas || []; });
   }
   if (page === 1 || pageSizes[key]) {
     return ask(page, pageSizes[key] || 0).then(function (metas) {
@@ -457,8 +470,31 @@ playpex.data('page', function (args) {
     }
     var page = args.page || 1;
     return catalogPage(c, args.genre || '', page).then(function (metas) {
-      var size = pageSizes[c.key + '\n' + (args.genre || '')] || ROW_SIZE;
+      var size = pageSizes[pageKey(c, args.genre ? { genre: args.genre } : {})] || ROW_SIZE;
       // a short page (or an empty one) is the end; a catalog that doesn't page has one
+      return { data: { items: metas.slice(0, ROW_SIZE).map(card), last: !c.paged || !metas.length || (page > 1 && metas.length < size) } };
+    });
+  });
+});
+
+playpex.data('row', function (args) {
+  var page = args.page || 1;
+  return fresh().then(function (a) {
+    var c = a.catalogs.filter(function (x) { return x.key === args.catalog; })[0];
+    if (!c || c.show === 'hidden') {
+      return { data: { items: [], last: true } };
+    }
+    var filters = {}, names = args.extras || {}, values = args.values || {};
+    Object.keys(values).forEach(function (k) {
+      if (names[k] && values[k]) {
+        filters[names[k]] = String(values[k]).slice(0, 200);
+      }
+    });
+    if ((c.requires || []).some(function (n) { return !filters[n]; })) {
+      return { data: { items: [], last: true } };   // placed without the value it needs
+    }
+    return catalogPage(c, filters, page).then(function (metas) {
+      var size = pageSizes[pageKey(c, filters)] || ROW_SIZE;
       return { data: { items: metas.slice(0, ROW_SIZE).map(card), last: !c.paged || !metas.length || (page > 1 && metas.length < size) } };
     });
   });
@@ -511,7 +547,7 @@ playpex.data('home', function (args) {
       work = Promise.all(searchable.slice(0, 10).map(function (c) { return catalogRow(Object.assign({}, c, { paged: false }), { search: query.slice(0, 200) }); }));
     } else {
       work = Promise.all(cats.filter(function (c) {
-        return !genre ? !c.genreRequired : c.genres.indexOf(genre) !== -1;
+        return !genre ? !needs(c) : c.genres.indexOf(genre) !== -1 && (c.requires || []).every(function (n) { return n === 'genre'; });
       }).map(function (c) { return catalogRow(c, genre ? { genre: genre } : null); }));
     }
     return work.then(function (rows) {

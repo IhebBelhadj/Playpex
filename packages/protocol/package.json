@@ -10,6 +10,7 @@
     "index.d.ts",
     "settings.js",
     "settings.d.ts",
+    "rows.js",
     "plugins.js",
     "plugins.d.ts",
     "stremio.js",

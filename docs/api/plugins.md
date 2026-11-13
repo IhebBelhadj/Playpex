@@ -6,7 +6,7 @@ Status: all of this exists (plugins plan steps P1–P4): the sandbox and these r
 
 ## What's there
 
-`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin], capabilities: { releases, sources, live } }` (`capabilities`: what the profile's plugins provide: hide Find releases without `releases`; `live`: TV channels, [Live TV](live.md)): the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin, and no profile gets a plugin the admin hid from it on the dashboard), each with
+`GET /plugins?profile=<id>` → `{ plugins: [ClientPlugin], capabilities: { releases, sources, live, rows } }` (`capabilities`: what the profile's plugins provide: hide Find releases without `releases`; `live`: TV channels, [Live TV](live.md); `rows`: sections' rows are the server's, [Rows](rows.md)): the plugins enabled for that profile (a kids profile never gets an `audience: adults` plugin, and no profile gets a plugin the admin hid from it on the dashboard), each with
 
 | Field | Use |
 |---|---|

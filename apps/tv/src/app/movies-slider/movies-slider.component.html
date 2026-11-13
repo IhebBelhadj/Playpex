@@ -1,24 +1,26 @@
-<!-- Category rows: a pxStack of pxRows, translated (motion="transform"), see src/app/movement -->
+<!-- The section's rows: a pxStack of pxRows, translated (motion="transform"), see src/app/movement -->
 <div class="sliderContainer"
   pxSection="slider" [leaveFor]="{ left: '@menu', up: '@sectionToolbar' }"
   [pxStack]="stackId" align="row-top" motion="transform">
   <div class="overlay"></div>
   <!-- the section's search / filters (movies-page): while they load, or find nothing -->
   <px-empty class="searchNote" *ngIf="catalog.search && searchEmpty" [text]="searchNote"></px-empty>
+  <!-- no row at all (a layout with everything hidden, nothing answered) -->
+  <px-empty class="searchNote" *ngIf="!catalog.search && !catalog.loading && sectionEmpty" [text]="emptyNote"></px-empty>
   <div class="content" pxTrack>
-    <ng-container *ngFor="let category of movies | keyvalue:unsorted ; trackBy:trackByCategory ">
-    <!-- rows are created in category order; empty ones are still loading -->
-    <px-card-row class="section" *ngIf="category.value.length" pxStackItem [rowKey]="category.key" [title]="category.key"
-      [loadAhead]="loadAhead" (nearEnd)="loadMore(category.key)">
-      <ng-container *ngFor="let movie of category.value; let i = index; trackBy: trackById">
-        <px-card variant="poster" [key]="movie?.tmdbId" [image]="movie?.posterPath ? imgBaseUrl + movie.posterPath : null"
-          [title]="movie?.title || ''" [data]="{ id: movie?.tmdbId, section: category.key, index: i }"
-          (pxSelect)="open(movie)"></px-card>
+    <ng-container *ngFor="let row of catalog.rows; trackBy: trackByRow">
+    <!-- rows in the layout's order; empty ones are still loading (or have nothing) -->
+    <px-card-row class="section" *ngIf="movies[row.key]?.length" pxStackItem [rowKey]="row.key" [title]="row.title"
+      [variant]="movies[row.key][0].variant" [loadAhead]="loadAhead" (nearEnd)="loadMore(row.key)">
+      <ng-container *ngFor="let card of movies[row.key]; let i = index; trackBy: trackByKey">
+        <px-card [variant]="card.variant" [key]="card.key" [image]="card.image" [title]="card.title"
+          [subtitle]="card.subtitle || ''" [badges]="card.badges || null" [progress]="card.progress ?? null" [number]="card.number ?? null" [overlay]="card.overlay || ''"
+          [data]="{ id: card.key, section: row.key, index: i }" (pxSelect)="open(row, card)"></px-card>
       </ng-container>
     </px-card-row>
 
     </ng-container>
-    <!-- plugins' rows (ui/slots), after the section's; not while a search / filters stand in -->
-    <px-slot *ngIf="!catalog.search" [name]="slotName" [context]="slotContext"></px-slot>
+    <!-- an older server's rows: plugins' rows come through the section's slot; not while a search / filters stand in -->
+    <px-slot *ngIf="!catalog.search && !catalog.serverRows && slotName" [name]="slotName" [context]="slotContext"></px-slot>
   </div>
 </div>

@@ -604,7 +604,7 @@ test('a repository package adds a repository; an older listed version installs',
 
 test('API minor versions: the newest version this server can run; later ones listed, refused; a later syntax leaves the index valid', { skip: skip() }, function () {
   var versioned = { id: 'versioned', name: 'Versioned', versions: [
-    { version: '1.0.0' }, { version: '1.1.0', api: '^1.4' }, { version: '1.2.0', api: '^1.6' }, { version: '2.0.0', api: '~5 || ^9' }
+    { version: '1.0.0' }, { version: '1.1.0', api: '^1.6' }, { version: '1.2.0', api: '^1.7' }, { version: '2.0.0', api: '~5 || ^9' }
   ] };
   return publish(HOSTS[2], { id: 'minor', name: 'Minor versions' }, keys.minor, [versioned]).then(function (u) {
     return call('POST', '/admin/plugins/repositories', { url: u, key: keys.minor.publicKey });
@@ -613,7 +613,7 @@ test('API minor versions: the newest version this server can run; later ones lis
     return call('GET', '/admin/plugins/catalog?q=versioned');
   }).then(function (r) {
     var item = ok(r).plugins.filter(function (x) { return x.id === 'versioned'; })[0];
-    assert.equal(item.latest.version, '1.1.0', 'the newest one plugin API 1.5 runs');
+    assert.equal(item.latest.version, '1.1.0', 'the newest one plugin API 1.6 runs');
     assert.equal(item.incompatible, null);
     var compatible = {};
     item.versions.forEach(function (v) { compatible[v.version] = v.compatible; });

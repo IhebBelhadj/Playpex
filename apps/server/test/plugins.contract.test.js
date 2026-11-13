@@ -103,13 +103,13 @@ test('ids, versions and API ranges', function () {
   assert.notDeepEqual(problems(minimal({ api: { server: '^2' } })), [], 'a future host API');
   assert.notDeepEqual(problems(minimal({ api: { server: '~1.2' } })), [], 'an unknown range form');
   assert.deepEqual(problems(minimal({ api: { server: '>=1 <3' } })), []);
-  // minor versions (SERVER_PLUGIN_API 1.5): an addition, asked with ^1.5 / >=1.5
-  assert.equal(plugins.SERVER_PLUGIN_API, '1.5');
-  ['^1', '1', '1.x', '^1.1', '^1.2', '^1.3', '^1.4', '^1.5', '^1.0', '>=1.1', '>=1.2', '>=1.3', '>=1.4', '>=1.5', '>=1 <2', '*'].forEach(function (r) {
+  // minor versions (SERVER_PLUGIN_API 1.6): an addition, asked with ^1.6 / >=1.6
+  assert.equal(plugins.SERVER_PLUGIN_API, '1.6');
+  ['^1', '1', '1.x', '^1.1', '^1.2', '^1.3', '^1.4', '^1.5', '^1.6', '^1.0', '>=1.1', '>=1.2', '>=1.3', '>=1.4', '>=1.5', '>=1.6', '>=1 <2', '*'].forEach(function (r) {
     assert.deepEqual(problems(minimal({ api: { server: r } })), [], r);
   });
-  assert.match(problems(minimal({ api: { server: '^1.6' } })).join('\n'), /api\/server/, 'a later minor: refused');
-  assert.notDeepEqual(problems(minimal({ api: { server: '>=1.0 <1.5' } })), [], 'below this minor');
+  assert.match(problems(minimal({ api: { server: '^1.7' } })).join('\n'), /api\/server/, 'a later minor: refused');
+  assert.notDeepEqual(problems(minimal({ api: { server: '>=1.0 <1.6' } })), [], 'below this minor');
   assert.notDeepEqual(problems(minimal({ api: { server: '^1.1.0' } })), [], 'no patch numbers');
   [['^1', 1, true], ['^1.1', 1, false], ['^1.1', '1.1', true], ['^1.1', '1.2', true], ['^1.1', '2.0', false],
     ['>=1.1 <2', '1.5', true], ['>=1.1 <2', '2.0', false], ['~1.1', '1.1', false], ['^1', 'x', false]].forEach(function (c) {
@@ -217,6 +217,26 @@ test('screens, sections, slots and settings hold together', function () {
   assert.notDeepEqual(problems(minimal({ icon: 'assets/../server.js' })), [], 'an asset outside assets/');
   assert.notDeepEqual(problems(minimal({ icon: 'assets/x.svg' }), { files: ['playpex-plugin.json', 'server.js'] }), [], 'a missing asset');
   assert.deepEqual(problems(minimal({ icon: 'assets/x.svg' }), { files: ['assets/x.svg'] }), []);
+});
+
+test('rows offered to layouts (API 1.6): keys, joins, params', function () {
+  var row = { key: 'trending', title: 'Trending', sections: ['home', 'movies'], joins: ['movies'], data: 'row',
+    params: [{ key: 'genre', label: 'Genre', options: [['action', 'Action'], ['comedy', 'Comedy']], required: true }], personal: true, candidates: true };
+  assert.deepEqual(problems(minimal({ api: { server: '^1.6' }, contributes: { rows: [row] } })), []);
+  assert.match(problems(minimal({ contributes: { rows: [row, row] } })).join('\n'), /row trending declared twice/);
+  assert.match(problems(minimal({ contributes: { rows: [Object.assign({}, row, { joins: ['shows'] })] } })).join('\n'), /shows isn't one of its sections/);
+  assert.match(problems(minimal({ contributes: { rows: [Object.assign({}, row, { params: [Object.assign({}, row.params[0], { options: [['a', 'A'], ['a', 'B']] })] })] } })).join('\n'),
+    /option values must be unique/);
+  assert.notDeepEqual(problems(minimal({ contributes: { rows: [Object.assign({}, row, { key: 'Bad Key' })] } })), [], 'a key with spaces');
+  assert.notDeepEqual(problems(minimal({ contributes: { rows: [Object.assign({}, row, { sections: ['adults'] })] } })), [], 'an unknown section');
+  var place = { key: 'place', scope: 'server', type: 'choice', label: 'Place', options: [['movies', 'Movies'], ['hidden', 'Hidden']], default: 'movies' };
+  var bySetting = Object.assign({}, row, { joins: undefined, joinsSetting: 'place' });
+  delete bySetting.joins;
+  assert.deepEqual(problems(minimal({ contributes: { rows: [bySetting], settings: [place] } })), []);
+  assert.match(problems(minimal({ contributes: { rows: [bySetting] } })).join('\n'), /must name a server choice setting/);
+  assert.match(problems(minimal({ contributes: { rows: [Object.assign({}, bySetting, { joins: ['movies'] })], settings: [place] } })).join('\n'), /not both/);
+  assert.ok(api('rowFill')({ items: [], last: true, title: 'Because you watched Dune' }));
+  assert.ok(!api('rowFill')({ items: [] }), 'last is required');
 });
 
 test('permissions in plain words', function () {

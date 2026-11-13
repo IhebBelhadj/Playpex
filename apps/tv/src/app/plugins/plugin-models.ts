@@ -6,7 +6,7 @@ import type { Schema } from '@playpex/protocol';
 
 export type ClientPlugin = Schema<'ClientPlugin'>;
 /** GET /plugins `capabilities`: what the profile's plugins provide */
-export interface PluginCapabilities { releases:boolean; sources:boolean; live?:boolean; }
+export interface PluginCapabilities { releases:boolean; sources:boolean; live?:boolean; /** section rows laid out by the server (GET /sections/…, docs/api/rows.md) */ rows?:boolean; }
 export type PluginScreenDecl = ClientPlugin['screens'][number];
 
 export interface PluginIntent {

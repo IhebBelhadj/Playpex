@@ -6,6 +6,13 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
 import { MetaItem, TitleInfoModel, TitleMetaContext } from '../ui/public-api';
+import { ContinueAt, episodeCode, timeLeft } from '../catalog';
+
+// 1:05:12, 42:13
+function clock(seconds:number):string {
+  let s = Math.max(0, Math.floor(seconds)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
 import { profileContext } from '../slot-contexts';
 
 // The focused / opened title's info block (<px-title-info>): a movie's year,
@@ -73,6 +80,14 @@ export class MovieDescriptionComponent implements OnInit {
 
   dataUpdate(movie:Partial<TitleItem>){
     this.selectedMovie = movie;
+    // a plugin's card in a section's row: its own title info, as it is
+    let given = (movie as Partial<TitleItem> & { info?:TitleInfoModel }).info;
+    if (given) {
+      this.info = given;
+      this.slotContext = null;
+      if (given.backdrop) this.backgroundService.sendImage(given.backdrop);
+      return;
+    }
 
     this.shortDescription = (this.selectedMovie.overview || '').slice(0 , 255);
     this.genres = (movie.genres || []).map(g => g.name);
@@ -100,6 +115,23 @@ export class MovieDescriptionComponent implements OnInit {
       meta,
       genres: this.genres,
       overview: movie.overview || '',
+      ...this.resumeLine((movie as Partial<TitleItem> & { continue?:ContinueAt }).continue, movie.mediaType == 'tv'),
+    };
+  }
+
+  // A Continue watching card: where it is, with the amber line ("Resume S2 E5 “Name” · 20 min left")
+  private resumeLine(at:ContinueAt | undefined, tv:boolean):{ status?:string, progress?:number | null } {
+    if (!at) return {};
+    let name = at.episodeName ? ` “${at.episodeName}”` : '';
+    if (at.kind == 'next') {
+      if (!tv) return { status: 'Watched' };
+      let code = episodeCode(at.nextSeason ?? at.season, at.nextEpisode ?? at.episode + 1);
+      return { status: `Up next: ${code}${name}` };
+    }
+    let left = timeLeft(at.positionS, at.durationS);
+    return {
+      status: tv ? `Resume ${episodeCode(at.season, at.episode)}${name} · ${left}` : `Resume from ${clock(at.positionS)} · ${left}`,
+      progress: at.ratio,
     };
   }
 }

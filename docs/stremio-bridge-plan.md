@@ -177,6 +177,7 @@ Each catalog of the add-on (`{ type, id, name, extra }`) gets a server setting "
 | Search | a chip on the search page (`core.search.filters`) | catalogs with `extra: search` (also shown where they are placed) |
 | Hidden | nowhere | catalogs whose only use needs a required `extra` the bridge doesn't know |
 
+- **Section layouts** (`docs/rows-plan.md` §4.2, 2026-11-13): every catalog that isn't search-only is also offered as a row (`contributes.rows`, key = its `c<8 hex>`), joining the section its "Show in" names (`joinsSetting`), with its extras' options as params (a required genre or year becomes placeable). Clients on layouts get all of them; the slot rows below stay for older clients.
 - **Limits.** The slot rule allows at most 3 contributions per slot and plugin; the adapter answers all of its catalogs for a slot in one contribution (`Row[]`). Each row's key is `<plugin id>:<catalog id>`.
 - **Order:** the add-on's catalog order. The section's own rows come first.
 

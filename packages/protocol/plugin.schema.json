@@ -369,6 +369,60 @@
             }
           }
         },
+        "rows": {
+          "description": "Rows the plugin offers to section layouts (docs/rows-plan.md §4.1, API 1.6): each filled on its own by its data handler, which answers a rowFill for args + { key, values, page }",
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "title", "sections", "data"],
+            "properties": {
+              "key": { "description": "Stable: layouts keep it", "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,39}$" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "sections": {
+                "description": "Where it may go",
+                "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["home", "movies", "shows"] }
+              },
+              "joins": {
+                "description": "Where the plugin's rows entry (plugin.all) shows it by default; a subset of sections ([]: offered only)",
+                "type": "array", "uniqueItems": true, "items": { "enum": ["home", "movies", "shows"] }
+              },
+              "joinsSetting": {
+                "description": "A server choice setting whose value is the section it joins (home, movies or shows; any other value: none), instead of joins",
+                "$ref": "#/$defs/name"
+              },
+              "data": { "$ref": "#/$defs/name" },
+              "args": { "type": "object" },
+              "params": {
+                "description": "Values the admin picks when placing it (a genre…): args.values.<key>",
+                "type": "array",
+                "maxItems": 4,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["key", "label", "options"],
+                  "properties": {
+                    "key": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" },
+                    "label": { "$ref": "#/$defs/label" },
+                    "options": {
+                      "type": "array", "minItems": 1, "maxItems": 200,
+                      "items": {
+                        "type": "array", "minItems": 2,
+                        "prefixItems": [{ "type": "string", "minLength": 1, "maxLength": 200 }, { "type": "string", "minLength": 1, "maxLength": 60 }],
+                        "items": false
+                      }
+                    },
+                    "required": { "type": "boolean" }
+                  }
+                }
+              },
+              "personal": { "description": "Its answer depends on the profile (an account): cached per profile, what the profile watched left out", "type": "boolean" },
+              "candidates": { "description": "Its titles may feed the recommendations (For you) when the admin says so", "type": "boolean" },
+              "variant": { "enum": ["poster", "still", "portrait", "compact"] }
+            }
+          }
+        },
         "settings": {
           "description": "Options the dashboard renders (Plugins › <name>: Settings for server scope, Profiles for profile scope; clients never show them); keys plugin.<id>.<key>",
           "type": "array",

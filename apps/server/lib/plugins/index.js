@@ -420,6 +420,11 @@ function shapeOf(manifest, name) {
       out.push('slots/' + protocol.SLOTS[s.slot]);
     }
   });
+  (c.rows || []).forEach(function (r) {
+    if (r.data === name) {
+      out.push('rowFill');
+    }
+  });
   return out.filter(function (d, i) { return out.indexOf(d) === i; });
 }
 
