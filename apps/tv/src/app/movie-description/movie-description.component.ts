@@ -108,7 +108,8 @@ export class MovieDescriptionComponent implements OnInit {
     if (movie.mediaType == 'tv') {
       let seasons = movie.seasonCount;
       if (seasons) meta.push({ kind: 'chip', text: `${seasons} ${seasons == 1 ? 'season' : 'seasons'}` });
-      if (movie.voteAverage) meta.push({ kind: 'score', source: 'tmdb', value: movie.voteAverage });
+      // TMDB's score only when IMDb has none
+      if (movie.voteAverage && !movie.rating) meta.push({ kind: 'score', source: 'tmdb', value: movie.voteAverage });
     }
     return {
       title: displayTitle(movie),

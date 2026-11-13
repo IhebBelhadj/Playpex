@@ -112,21 +112,53 @@
   }
 }
 
-// the episode page: the show above, tighter
+// the episode page: the show and where the episode is above a smaller
+// title; one quiet meta line, a short overview, credits on one line (the
+// page's buttons and the season's episodes come right after)
 :host(.layout-episode) {
-  .eyebrow { opacity: 1; }
+  .eyebrow {
+    gap: dp(14);
+    font-size: var(--px-text-lead);
+    color: var(--px-color-text-muted);
+  }
 
   .px-title {
-    margin: dp(10) 0 dp(18);
+    margin: dp(6) 0 dp(12);
+    font-size: var(--px-text-large);
     line-height: 1.1;
   }
 
+  // the air date beside the scores: their size, not a heading's
   .meta {
     margin: 0;
-    --px-meta-gap: #{dp(8)} #{dp(12)};
+    --px-meta-gap: #{dp(6)} #{dp(10)};
+    --px-meta-small-size: var(--px-text-label);
   }
 
-  .overview { margin-top: dp(24); }
+  .overview {
+    max-width: dp(640);
+    margin-top: dp(16);
+    font-size: var(--px-text-lead);
+    line-height: 1.55;
+    letter-spacing: 0;
+    opacity: .72;
+  }
+
+  // "Directed by Vince Gilligan   Written by Vince Gilligan": one line
+  .credits {
+    gap: dp(32);
+    margin-top: dp(14);
+
+    div {
+      display: flex;
+      align-items: baseline;
+      gap: dp(8);
+    }
+
+    dt { margin: 0; }
+
+    dd { font-size: var(--px-text-small); }
+  }
 }
 
 // loading

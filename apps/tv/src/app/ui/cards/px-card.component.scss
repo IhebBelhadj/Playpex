@@ -101,11 +101,27 @@
     filter: var(--px-icon-light);
   }
 
-  // this page's own item
+  // this page's own item: a dark badge like the others (white is focus),
+  // led by a "you are here" dot
   &.b-current {
-    background: var(--px-color-focus);
-    color: var(--px-color-on-focus);
+    gap: dp(7);
+    padding: dp(5) dp(10) dp(5) dp(9);
+    font-size: var(--px-text-small);
+    letter-spacing: 0;
+
+    &::before {
+      content: '';
+      width: dp(8);
+      height: dp(8);
+      border-radius: 50%;
+      background: var(--px-color-text);
+    }
   }
+}
+
+// this page's own item: its name in bold (no ring: a ring reads as focus)
+.current .titleText {
+  font-family: var(--px-font-bold);
 }
 
 .foot {

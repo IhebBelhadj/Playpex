@@ -10,7 +10,7 @@ export type ScoreSource = 'imdb' | 'tmdb' | 'provider';
 
 export type CardVariant = 'poster' | 'still' | 'portrait' | 'compact';
 
-/** A small mark on a card: built-in kinds ('current': "On this page", white; 'server': a file of it is on
+/** A small mark on a card: built-in kinds ('current': "Shown above" (a larger badge led by a dot, its name bold); 'server': a file of it is on
  * the Playpex server), or any short text */
 export type Badge = 'tv' | 'watched' | 'upcoming' | 'current' | 'server' | { text:string };
 

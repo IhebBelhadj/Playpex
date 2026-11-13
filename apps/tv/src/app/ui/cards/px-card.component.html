@@ -1,5 +1,6 @@
 <button #button class="px-card focusable" pxItem [pxItemKey]="key" [class.v-poster]="variant == 'poster'"
   [class.v-compact]="variant == 'compact'" [class.v-portrait]="variant == 'portrait'" [class.v-still]="variant == 'still'" [class.dim]="dim"
+  [class.current]="isCurrent"
   [class.busy]="busy" [attr.aria-label]="title + (subtitle ? ', ' + subtitle : '')" [attr.aria-busy]="busy || null">
   <!-- loading: a CSS shimmer on the frame (no component per card: rows hold dozens) -->
   <span class="art" [class.loading]="showImage && !loaded">

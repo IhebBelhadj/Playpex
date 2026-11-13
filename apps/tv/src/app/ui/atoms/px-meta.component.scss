@@ -17,7 +17,8 @@
 
   &.small {
     margin: 0 dp(4);
-    font-size: var(--px-text-body);
+    // a page may set it (the episode page: its scores' size)
+    font-size: var(--px-meta-small-size, var(--px-text-body));
   }
 }
 
@@ -41,6 +42,9 @@
 
 .score {
   margin-left: dp(12);
+
+  // a line that starts with a score lines up with the title above
+  &:first-child { margin-left: 0; }
 }
 
 // the 18+ mark: an outline in the theme's accent

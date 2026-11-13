@@ -91,7 +91,12 @@ export class PxCardComponent implements OnChanges, AfterViewInit {
 
   badgeText(b:Badge):string {
     if (typeof b != 'string') return b.text;
-    return { tv: 'TV', watched: 'Watched', upcoming: 'Upcoming', current: 'On this page', server: 'On this server' }[b];
+    return { tv: 'TV', watched: 'Watched', upcoming: 'Upcoming', current: 'Shown above', server: 'On this server' }[b];
+  }
+
+  // the page's own item (the episode whose page this is): its name bold
+  get isCurrent():boolean {
+    return !!this.badges?.includes('current');
   }
 
   badgeKind(b:Badge):string {
