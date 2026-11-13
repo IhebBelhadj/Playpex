@@ -1,6 +1,7 @@
 // Flex item of .pageContainer: without min-width 0 it grows to the full width
 // of the episodes row and the rows can't scroll
 @use 'px' as *;
+@use '../show-options/season-chips' as chips;
 
 :host {
   display: block;
@@ -13,14 +14,64 @@
 
 // ── title block: the movie page's (movie-description) sizes ───────────────
 
-// the show's name above the title, then where this episode is
+// Above the title: the show (a button: its page) and where this episode is.
+// At rest it reads as the title's eyebrow; focused, it lifts into a white pill
+// with the show's poster, the way back up to the show
+.trail {
+  display: flex;
+  align-items: center;
+  gap: dp(16);
+  padding-top: dp(18);
+  font-size: var(--px-text-lead);
+}
+
+.toShow {
+  display: inline-flex;
+  align-items: center;
+  gap: dp(10);
+  margin-left: dp(-12);
+  padding: dp(5) dp(16) dp(5) dp(8);
+  border: none;
+  border-radius: var(--px-radius-pill);
+  background: transparent;
+  color: var(--px-color-text);
+  font-family: var(--px-font-book);
+  font-size: inherit;
+  transition: background var(--px-dur-fast), color var(--px-dur-fast);
+
+  .chevron {
+    width: dp(18);
+    height: dp(18);
+    filter: var(--px-icon-light);
+    opacity: .55;
+  }
+
+  .thumb {
+    width: dp(24);
+    height: dp(36);
+    border-radius: var(--px-radius-xs);
+    object-fit: cover;
+    box-shadow: var(--px-shadow-icon);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .chevron {
+      filter: none;
+      opacity: 1;
+    }
+  }
+}
+
 .position {
   font-family: var(--px-font-light);
-  opacity: .6;
+  color: var(--px-color-text-muted);
 }
 
 .episodeHeader {
-  padding-top: dp(30);
+  padding-top: dp(4);
   max-width: dp(820);
 }
 
@@ -28,7 +79,7 @@
 
 // the bar is tighter here, its labels wider ("Resume (12 min left)")
 .actions {
-  --px-action-bar-margin: #{dp(20)} 0;
+  --px-action-bar-margin: #{dp(22)} 0 #{dp(8)};
   --px-action-label-width: #{dp(130)};
 }
 
@@ -51,19 +102,34 @@
 .rowHeader {
   display: flex;
   align-items: center;
-  gap: dp(40);
-  margin: 1em 0;
+  gap: dp(32);
+  margin: dp(10) 0 dp(14);
 
   .sectionTitle { margin: 0; }
+
+  px-spinner {
+    --px-spinner-size: #{dp(22)};
+  }
 }
 
 // Rows are px-card-rows (pxRows, src/app/movement): they scroll natively
+// the show page's season chips: focusing one shows its episodes below
+.seasons {
+  --px-row-gap: #{dp(12)};
+  --px-row-gutter-block: #{dp(8)};
+  @include chips.season-chips;
+}
+
 .episodes {
   --px-row-gap: #{dp(20)};
   --px-row-gutter-block: #{dp(12)};
 }
 
-.guests {
+.cast, .guests {
   --px-row-gap: #{dp(20)};
 }
 
+// as on the show page
+.similar {
+  --px-row-gap: #{dp(21)};
+}

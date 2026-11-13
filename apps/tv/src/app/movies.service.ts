@@ -145,6 +145,16 @@ export class MoviesService {
     return this.http.get<CatalogSeason>(`${this.base}/titles/tv/${tmdbId}/seasons/${season}`);
   }
 
+  // A show's regular cast (its guest stars are each episode's)
+  getTvCredits(tmdbId:number | string):Observable<CatalogCredits> {
+    return this.http.get<CatalogCredits>(`${this.base}/titles/tv/${tmdbId}/credits`);
+  }
+
+  // Shows like this one (the server's: TMDB's recommendations, else its similar shows)
+  getSimilarShows(tmdbId:number | string):Observable<CatalogPage> {
+    return this.http.get<CatalogPage>(`${this.base}/titles/tv/${tmdbId}/similar`);
+  }
+
 
 
   // ****RXJS Subjects for sharing data between components****

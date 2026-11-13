@@ -1,10 +1,19 @@
 <!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
-     season's episodes row, the guest stars row. The title block above them
-     stands in for <movie-description>, which movies-page hides here. -->
+     seasons row, a season's episodes, the cast, the guest stars, similar shows.
+     The title block above them stands in for <movie-description>, which
+     movies-page hides here. -->
 <div class="episodePageContainer" pxSection="episodePage" [leaveFor]="{ left: '@menu' }">
-  <px-title-info class="episodeHeader" *ngIf="episode" [info]="titleInfo" layout="episode">
-    <span pxEyebrow class="position">Season {{seasonNumber}}, episode {{episode.episodeNumber}}</span>
-  </px-title-info>
+  <!-- where the episode is: its show (the way back to the show page, Up from
+       the buttons) and its place in the show -->
+  <div class="trail" *ngIf="show && episode">
+    <button class="toShow focusable" pxItem pxItemKey="show" (pxSelect)="openShow()" [attr.aria-label]="'Go to ' + show.title">
+      <img class="chevron" src="assets/icons/back.svg" alt="">
+      <img class="thumb" *ngIf="show.posterPath" [src]="thumbBase + show.posterPath" alt="">
+      <span class="name">{{show.title}}</span>
+    </button>
+    <span class="position">Season {{seasonNumber}} · Episode {{episode.episodeNumber}}</span>
+  </div>
+  <px-title-info class="episodeHeader" *ngIf="episode" [info]="titleInfo" layout="episode"></px-title-info>
 
   <!-- the episode page's bar is tighter and its labels wider ("Resume (12 min left)") -->
   <px-action-bar class="actions">
@@ -21,18 +30,33 @@
     <px-slot name="core.episode.actions" [context]="slotContext"></px-slot>
   </px-action-bar>
 
-  <px-card-row class="episodes" *ngIf="episodes.length" pxStackItem rowKey="seasonEpisodes" tone="detail" align="third"
+  <!-- as on the show page: a focused season shows its episodes in the row below -->
+  <px-card-row class="seasons" *ngIf="seasons.length > 1" pxStackItem rowKey="seasons" title="Seasons" tone="detail" align="third">
+    <ng-container *ngFor="let season of seasons; trackBy: bySeason">
+      <button class="season focusable" pxItem [pxItemKey]="season.seasonNumber"
+        [class.selected]="season.seasonNumber === rowSeason" [attr.data-season]="season.seasonNumber"
+        (pxSelect)="enterEpisodes()">
+        {{season.name}}
+        <span class="seasonRating" *ngIf="seasonRating(season.seasonNumber) as rating">{{rating | number:'1.1-1'}}</span>
+        <span class="seasonOnServer" *ngIf="seasonOnServer(season.seasonNumber) as n"
+          [attr.aria-label]="n + ' on this server'"><img src="assets/icons/server.svg" alt="">{{n}}</span>
+      </button>
+    </ng-container>
+  </px-card-row>
+
+  <px-card-row class="episodes" *ngIf="rowEpisodes.length" pxStackItem rowKey="seasonEpisodes" tone="detail" align="third"
     variant="still">
     <!-- the row's title, with the season's ratings beside it -->
     <div pxRowHeader class="rowHeader">
       <h3 class="sectionTitle">
-        {{seasonName}}
-        <span class="count">{{episodes.length}} episodes</span>
+        {{rowSeasonName}}
+        <span class="count">{{rowEpisodes.length}} episodes</span>
+        <px-spinner *ngIf="loadingRow"></px-spinner>
       </h3>
-      <season-curve [episodes]="episodes" [imdb]="seasonImdb"
-        [current]="episode?.episodeNumber" [highlight]="focusedEpisode"></season-curve>
+      <season-curve [episodes]="rowEpisodes" [imdb]="rowSeasonImdb"
+        [current]="rowSeason === seasonNumber ? episode?.episodeNumber : null" [highlight]="focusedEpisode"></season-curve>
     </div>
-    <ng-container *ngFor="let ep of episodes; let i = index; trackBy: byEpisode">
+    <ng-container *ngFor="let ep of rowEpisodes; let i = index; trackBy: byEpisode">
       <px-card variant="still" [key]="ep.episodeNumber" [image]="ep.stillPath ? stillBase + ep.stillPath : null"
         [title]="ep.name" [number]="ep.episodeNumber" [dim]="ep.upcoming && ep !== episode"
         [rating]="episodeRating(ep) ? { source: 'imdb', value: episodeRating(ep) } : null"
@@ -42,11 +66,26 @@
     </ng-container>
   </px-card-row>
 
-  <px-card-row class="guests" *ngIf="guests.length" pxStackItem rowKey="guests" title="Guest stars" tone="detail" align="third"
-   >
+  <!-- the show's regular cast, then this episode's guest stars -->
+  <px-card-row class="cast" *ngIf="cast.length" pxStackItem rowKey="cast" title="Cast" tone="detail" align="third">
+    <ng-container *ngFor="let person of cast; trackBy: byCredit">
+      <px-card variant="portrait" [key]="person.creditId" [image]="profileBase + person.profilePath" [title]="person.name"
+        [subtitle]="person.character || ''"></px-card>
+    </ng-container>
+  </px-card-row>
+
+  <px-card-row class="guests" *ngIf="guests.length" pxStackItem rowKey="guests" title="Guest stars" tone="detail" align="third">
     <ng-container *ngFor="let guest of guests; trackBy: byCredit">
       <px-card variant="portrait" [key]="guest.creditId" [image]="profileBase + guest.profilePath" [title]="guest.name"
         [subtitle]="guest.character || ''"></px-card>
+    </ng-container>
+  </px-card-row>
+
+  <!-- Enter: that show's page, over this one -->
+  <px-card-row class="similar" *ngIf="similar.length" pxStackItem rowKey="similar" title="Similar shows" tone="detail" align="third">
+    <ng-container *ngFor="let title of similar; let i = index; trackBy: byTitle">
+      <px-card variant="compact" [key]="title.tmdbId" [image]="posterBase + title.posterPath" [title]="title.title"
+        [subtitle]="title.year || ''" [data]="{ index: i, id: title.tmdbId }" (pxSelect)="openSimilar(title)"></px-card>
     </ng-container>
   </px-card-row>
 </div>

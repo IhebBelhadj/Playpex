@@ -1,0 +1,60 @@
+// The seasons row's chips (the show page, the episode page): a season's
+// name, its IMDb mean, its episodes on the Playpex server; `.selected` is
+// the season whose episodes the row below shows
+@use 'px' as *;
+
+@mixin season-chips {
+  .season {
+    display: flex;
+    align-items: center;
+    gap: dp(10);
+    flex: none;
+    background: var(--px-surface-tile);
+    color: var(--px-color-text);
+    border: dp(2) solid transparent;
+    border-radius: dp(20);
+    padding: dp(10) dp(22);
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    opacity: .7;
+    transition: all var(--px-dur-fast);
+  }
+
+  .selected {
+    border-color: var(--px-color-line-strong);
+    opacity: 1;
+  }
+
+  // the season's IMDb mean
+  .seasonRating {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-small);
+    opacity: .6;
+  }
+
+  // its episodes on the Playpex server
+  .seasonOnServer {
+    display: inline-flex;
+    align-items: center;
+    gap: dp(4);
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-small);
+    opacity: .6;
+
+    img {
+      width: dp(14);
+      height: dp(14);
+      filter: var(--px-icon-light);
+    }
+  }
+
+  .focused .seasonOnServer img {
+    filter: none;
+  }
+
+  .focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+    opacity: 1;
+  }
+}

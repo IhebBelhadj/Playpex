@@ -5,7 +5,7 @@ import { Component, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
-import { CatalogDetails, EpisodeItem, MoviesService } from '../movies.service';
+import { CatalogCredits, CatalogDetails, CatalogTitle, EpisodeItem, MoviesService } from '../movies.service';
 import { NavigationService } from '../navigation.service';
 import { NotificationService } from '../notification.service';
 import { EpisodeProgress, LibraryService } from '../library.service';
@@ -20,7 +20,8 @@ import { formatDate } from '@angular/common';
 
 // TV show page (/shows/show/:id): Play / Trailer, a seasons row and the
 // selected season's episodes, with IMDb ratings (the series', each season's
-// mean, each episode's). Movement and scrolling are the movement system's:
+// mean, each episode's), then the show's cast and similar shows (Enter: that
+// show's page, over this one). Movement and scrolling are the movement system's:
 // the buttons and rows are entries of the section page's pxStack. Enter on an
 // episode opens its page (core.episode); "Play" plays the season's first
 // aired episode (EpisodePlaybackService). The season shown is kept in the
@@ -42,6 +43,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   private profiles = inject(ProfilesService);
 
   stillBase = tmdbImageBase('still', 270);
+  profileBase = tmdbImageBase('profile', 130);
+  posterBase = tmdbImageBase('poster', 150);
 
   show:CatalogDetails;
   imdbId:string;
@@ -51,6 +54,11 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   seasonName = "";
   episodes:EpisodeItem[] = [];
   loadingEpisodes = false;
+  // the regular cast (with a photo) and similar shows (with a poster); null until loaded
+  cast:CatalogCredits['cast'] | null = null;
+  similar:CatalogTitle[] | null = null;
+  // back on the page: the focus is restored once these rows are drawn
+  private afterRows:(() => void) | null = null;
   focusedEpisode:number = null;      // lights its bar in the season curve
 
   // IMDb ratings of the show, its seasons and episodes (null until loaded / none)
@@ -129,7 +137,9 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
           // back from an episode, the player, a release list: what was
           // focused (else the remembered episode); another season: its first episode
           if (!restore) row?.home();
-          else if (!this.screen.ready() && !row?.focusRemembered('restore')) this.focusPlay();
+          else this.whenRowsLoaded(() => {
+            if (!this.screen.ready() && !this.engine.find('row:episodes')?.focusRemembered('restore')) this.focusPlay();
+          });
         }, 0);
       } , () => {
         this.loadingEpisodes = false;
@@ -160,6 +170,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       this.imdbId = show.imdbId;
       this.updateSlotContext();
       this.loadImdb();
+      this.loadRows(show.tmdbId);
       this.trailer = this.pickTrailer(show.videos || []);
 
       // Regular seasons first, "Specials" (season 0) last
@@ -184,6 +195,40 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     } , () => {
       this.notificationService.sendNotification("error" , "Couldn't load this show");
     })
+  }
+
+  // the cast and similar shows (each an empty row when it fails)
+  private loadRows(id:number | string){
+    this.cast = null;
+    this.similar = null;
+    let done = () => {
+      if (!this.cast || !this.similar || !this.afterRows) return;
+      let fn = this.afterRows;
+      this.afterRows = null;
+      setTimeout(fn, 0);
+    };
+    this.subscriptions.push(this.moviesService.getTvCredits(id).subscribe({
+      next: data => { this.cast = (data.cast || []).filter(c => c.profilePath); done(); },
+      error: () => { this.cast = []; done(); },
+    }));
+    this.subscriptions.push(this.moviesService.getSimilarShows(id).subscribe({
+      next: data => { this.similar = ((data.results || []) as CatalogTitle[]).filter(t => t.posterPath && String(t.tmdbId) != String(id)); done(); },
+      error: () => { this.similar = []; done(); },
+    }));
+  }
+
+  // back from a similar show: its card is focused again once its row is there
+  private whenRowsLoaded(fn:() => void){
+    if (this.cast && this.similar) fn();
+    else this.afterRows = fn;
+  }
+
+  byCredit = (i:number, c:{ creditId:string }) => c.creditId;
+  byTitle = (i:number, t:CatalogTitle) => t.tmdbId;
+
+  // Its own page, over this one (Back comes here)
+  openSimilar(title:CatalogTitle){
+    this.navigator.open({ screen: 'core.show', params: { id: String(title.tmdbId) }, payload: title });
   }
 
   focusPlay(){

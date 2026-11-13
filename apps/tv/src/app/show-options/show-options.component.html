@@ -1,5 +1,5 @@
 <!-- Entries of the section page's pxStack (src/app/movement): the buttons, the
-     seasons row, the episodes row -->
+     seasons row, the episodes row, the cast, similar shows -->
 <div class="showOptionsContainer" pxSection="showOptions" [leaveFor]="{ left: '@menu' }">
   <px-action-bar>
     <px-action key="play" icon="play" [label]="playLabel" [progress]="continueAt?.progress ?? null" (pxSelect)="play()"></px-action>
@@ -47,6 +47,21 @@
         [progress]="progressOf(ep) && !progressOf(ep).finished ? progressOf(ep).ratio : null"
         [busy]="isResolving(ep)" busyLabel="Finding sources…" [data]="{ index: i, episode: ep.episodeNumber }"
         (pxSelect)="openEpisode(ep)"></px-card>
+    </ng-container>
+  </px-card-row>
+
+  <px-card-row class="cast" *ngIf="cast?.length" pxStackItem rowKey="cast" title="Cast" tone="detail" align="third">
+    <ng-container *ngFor="let person of cast; trackBy: byCredit">
+      <px-card variant="portrait" [key]="person.creditId" [image]="profileBase + person.profilePath" [title]="person.name"
+        [subtitle]="person.character || ''"></px-card>
+    </ng-container>
+  </px-card-row>
+
+  <!-- Enter: that show's page, over this one -->
+  <px-card-row class="similar" *ngIf="similar?.length" pxStackItem rowKey="similar" title="Similar shows" tone="detail" align="third">
+    <ng-container *ngFor="let title of similar; let i = index; trackBy: byTitle">
+      <px-card variant="compact" [key]="title.tmdbId" [image]="posterBase + title.posterPath" [title]="title.title"
+        [subtitle]="title.year || ''" [data]="{ index: i, id: title.tmdbId }" (pxSelect)="openSimilar(title)"></px-card>
     </ng-container>
   </px-card-row>
 
