@@ -3203,7 +3203,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Titles like this one */
+        /**
+         * Titles like this one
+         * @description Movies: TMDB's similar titles. Shows: TMDB's recommendations (what people who watched it watched), else its similar titles.
+         */
         get: operations["getCatalogSimilar"];
         put?: never;
         post?: never;
@@ -3256,6 +3259,28 @@ export interface paths {
         };
         /** A season of a show and its episodes */
         get: operations["getCatalogSeason"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/people/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * A person's page
+         * @description Who they are (biography in the catalog's language, else English), and their movies and shows: one entry per title with every role merged (`roles`), appearances as themselves (talk shows, news, award shows, "Self") left out unless that's all they have, titles without a poster last. `knownFor`: the tmdb ids of their best known titles, in order.
+         */
+        get: operations["getCatalogPerson"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6570,6 +6595,12 @@ export interface components {
             name: string;
             profilePath: string | null;
             knownForDepartment: string | null;
+            /** @description Up to three of their best known titles (search results; older servers send none) */
+            knownFor?: {
+                mediaType: components["schemas"]["MediaType"];
+                tmdbId: number;
+                title: string;
+            }[];
         };
         CatalogPage: {
             page: number;
@@ -6688,6 +6719,38 @@ export interface components {
                 job: string | null;
                 department: string | null;
             })[];
+        };
+        /** @description As cast: `character`; as crew: `job` and `department` */
+        CatalogPersonRole: {
+            character?: string | null;
+            job?: string | null;
+            department?: string | null;
+        };
+        /** @description One of a person's titles, every role they had in it */
+        CatalogPersonCredit: components["schemas"]["CatalogTitle"] & {
+            /** @description Characters first */
+            roles: components["schemas"]["CatalogPersonRole"][];
+            /** @description Shows: in how many episodes */
+            episodeCount: number | null;
+            /** @description Their billing as cast (0 = top) */
+            order: number | null;
+        };
+        CatalogPersonDetails: {
+            personId: number;
+            name: string;
+            profilePath: string | null;
+            /** @description Acting, Directing, Writing… */
+            knownForDepartment: string | null;
+            /** @description In the catalog's language */
+            biography: string;
+            /** @description YYYY-MM-DD */
+            birthday: string | null;
+            deathday: string | null;
+            placeOfBirth: string | null;
+            imdbId: string | null;
+            credits: components["schemas"]["CatalogPersonCredit"][];
+            /** @description tmdb ids (of `credits`), best known first, up to eight */
+            knownFor: number[];
         };
         /** @enum {string} */
         MediaType: "movie" | "tv";
@@ -12679,6 +12742,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogSeason"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            502: components["responses"]["Upstream"];
+        };
+    };
+    getCatalogPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The person */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPersonDetails"];
                 };
             };
             400: components["responses"]["Invalid"];

@@ -69,7 +69,13 @@ function person(r) {
     personId: r.id,
     name: r.name || '',
     profilePath: r.profile_path || null,
-    knownForDepartment: r.known_for_department || null
+    knownForDepartment: r.known_for_department || null,
+    // what they're known for, so two people with one name can be told apart
+    knownFor: (r.known_for || []).filter(function (k) {
+      return k && (k.media_type === 'movie' || k.media_type === 'tv');
+    }).slice(0, 3).map(function (k) {
+      return { mediaType: k.media_type, tmdbId: k.id, title: k.title || k.name || '' };
+    })
   };
 }
 
@@ -189,10 +195,10 @@ function optional(value, pattern, message) {
 
 // TMDB's failures in our words: its 404 → NOT_FOUND, anything else UPSTREAM
 // (the message names no URL: it would carry the key)
-function upstream(err) {
+function upstream(err, what) {
   var status = err && err.response && err.response.status;
   if (status === 404) {
-    return errors.notFound('TMDB has no such title');
+    return errors.notFound('TMDB has no such ' + (what || 'title'));
   }
   var e = new Error('TMDB: ' + (status ? 'HTTP ' + status : (err && err.code) || 'no answer'));
   e.code = 'UPSTREAM';
@@ -200,10 +206,10 @@ function upstream(err) {
   return e;
 }
 
-function ask(path, params, ttl) {
+function ask(path, params, ttl, what) {
   var language = settings.get('metadata.language');
   return tmdb.get(path, Object.assign({ language: language }, params), ttl ? { ttl: ttl } : undefined)
-    .catch(function (err) { throw upstream(err); });
+    .catch(function (err) { throw upstream(err, what); });
 }
 
 function region(params) {
@@ -375,6 +381,132 @@ function personCredits(personId) {
   });
 }
 
+// ── a person's page (docs/people-plan.md §3.1) ──────────────────────────────
+
+var TALK_GENRES = [10767, 10763];   // Talk, News: talk shows, news, award shows
+var SELF = /^(self|himself|herself|themselves|themself)\b/i;
+
+// A credit that is someone being themselves (on a talk show, in a
+// documentary, at an award show): kept only when that's all they have
+function appearance(c) {
+  return !!(c.character && SELF.test(String(c.character).trim())) ||
+    (c.genre_ids || []).some(function (g) { return TALK_GENRES.indexOf(g) !== -1; });
+}
+
+/**
+ * Their titles, one entry per title with every role merged (`roles`: the
+ * characters, then the jobs), appearances as themselves left out unless
+ * that's all they have (decision B), titles without a poster last
+ */
+function mergeCredits(combined) {
+  var byKey = new Map();
+  var add = function (c, role, self) {
+    if (c.media_type !== 'movie' && c.media_type !== 'tv') {
+      return;
+    }
+    var key = c.media_type + ':' + c.id,
+      entry = byKey.get(key);
+    if (!entry) {
+      entry = Object.assign(title(c.media_type, c), { roles: [], episodeCount: null, order: null, self: true });
+      byKey.set(key, entry);
+    }
+    var same = entry.roles.some(function (r) {
+      return r.character === role.character && r.job === role.job;
+    });
+    if (!same) {
+      entry.roles.push(role);
+    }
+    entry.self = entry.self && self;
+    if (typeof c.episode_count === 'number') {
+      entry.episodeCount = Math.max(entry.episodeCount || 0, c.episode_count);
+    }
+    if (typeof c.order === 'number' && (entry.order === null || c.order < entry.order)) {
+      entry.order = c.order;
+    }
+  };
+  (combined.cast || []).forEach(function (c) {
+    add(c, { character: c.character || null }, appearance(c));
+  });
+  (combined.crew || []).forEach(function (c) {
+    add(c, { job: c.job || null, department: c.department || null }, (c.genre_ids || []).some(function (g) {
+      return TALK_GENRES.indexOf(g) !== -1;
+    }));
+  });
+  var all = Array.from(byKey.values()),
+    real = all.filter(function (e) { return !e.self; }),
+    kept = real.length ? real : all;
+  kept.forEach(function (e) {
+    e.roles.sort(function (a, b) { return (a.job ? 1 : 0) - (b.job ? 1 : 0); });
+    delete e.self;
+  });
+  // poster first, then the most voted
+  return kept.sort(function (a, b) {
+    return (a.posterPath ? 0 : 1) - (b.posterPath ? 0 : 1) || b.voteCount - a.voteCount;
+  });
+}
+
+/**
+ * Known for (§3.3): their cast credits (crew ones for someone known for
+ * directing, writing…) weighted by votes and billing, the first eight
+ */
+function knownFor(credits, department) {
+  var acting = !department || department === 'Acting';
+  var weight = function (e) {
+    var w = Math.log(1 + e.voteCount);
+    if (acting) {
+      if (e.order !== null && e.order <= 3) {
+        w *= 2;
+      }
+      if (e.mediaType === 'tv' && (e.episodeCount || 0) >= 10) {
+        w *= 2;
+      }
+    }
+    return w;
+  };
+  var pool = credits.filter(function (e) {
+    var cast = e.roles.some(function (r) { return !r.job; }),
+      crew = e.roles.some(function (r) { return r.job && (!department || r.department === department); });
+    return e.posterPath && (acting ? cast : crew);
+  });
+  if (!pool.length) {
+    pool = credits.filter(function (e) { return e.posterPath; });
+  }
+  return pool.map(function (e) { return { e: e, w: weight(e) }; })
+    .sort(function (a, b) { return b.w - a.w; })
+    .slice(0, 8)
+    .map(function (x) { return x.e.tmdbId; });
+}
+
+/** A person's page (CatalogPersonDetails) */
+function personDetails(personId) {
+  var pid = id(personId, 'personId'),
+    path = '/person/' + pid;
+  return ask(path, { append_to_response: 'combined_credits,external_ids' }, null, 'person').then(function (d) {
+    // no biography in the catalog's language: TMDB's English one (decision C)
+    var language = settings.get('metadata.language');
+    var english = d.biography || /^en(-|$)/.test(language || '')
+      ? Promise.resolve(d.biography || '')
+      : tmdb.get(path, { language: 'en-US' }).then(function (en) { return (en && en.biography) || ''; }, function () { return ''; });
+    return english.then(function (biography) {
+      var credits = mergeCredits(d.combined_credits || {}),
+        department = d.known_for_department || null;
+      return {
+        personId: d.id || pid,
+        name: d.name || '',
+        profilePath: d.profile_path || null,
+        knownForDepartment: department,
+        biography: biography,
+        birthday: date(d.birthday),
+        deathday: date(d.deathday),
+        placeOfBirth: d.place_of_birth || null,
+        imdbId: d.imdb_id || (d.external_ids && d.external_ids.imdb_id) || null,
+        credits: credits,
+        knownFor: knownFor(credits, department)
+      };
+    });
+  });
+}
+
 // ── metadata providers (docs/providers-plan.md §7.2, step 7) ────────────────
 
 // Plugin ids in the admin's order (Settings › Metadata: `metadata.order`
@@ -486,6 +618,7 @@ module.exports = {
   similar: similar,
   season: season,
   personCredits: personCredits,
+  person: personDetails,
   providers: providers,
   extras: extras,
   LISTS: LISTS,

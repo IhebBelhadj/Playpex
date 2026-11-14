@@ -18,9 +18,10 @@ Titles are **`(mediaType, tmdbId)`** everywhere in the API (`mediaType` `movie` 
 | Similar titles | `GET /catalog/titles/{mediaType}/{tmdbId}/similar?page=` | `CatalogPage` |
 | A season | `GET /catalog/titles/tv/{tmdbId}/seasons/{n}` | `CatalogSeason`: `episodes: [{ seasonNumber, episodeNumber, name, overview, airDate, runtime, stillPath, voteAverage, crew, guestStars }]` (`airDate` null: not announced yet). Season 0 = specials |
 | What metadata providers add | `GET /catalog/titles/{mediaType}/{tmdbId}/extras?profile=` | `{ providers: [{ plugin, name, ratings: [{ source, value, max, votes, url }], tags, links: [{ label, url }], lines }], errors: [{ plugin, code }] }`: the server's metadata plugins (Trakt…) for that profile, in the admin's order ([below](#metadata-providers)) |
-| A person's titles | `GET /catalog/people/{personId}/credits` | `{ cast: [CatalogTitle + character], crew: [CatalogTitle + job, department] }` |
+| A person's page | `GET /catalog/people/{personId}` | `CatalogPersonDetails`: `personId, name, profilePath, knownForDepartment, biography` (the catalog's language, else English; `''` when none), `birthday, deathday, placeOfBirth, imdbId`, `credits` (one entry per title: `CatalogTitle` + `roles: [{ character } \| { job, department }]`, `episodeCount`, `order`; appearances as themselves on talk shows, news or award shows left out unless that's all they have; titles without a poster last), `knownFor` (tmdb ids of `credits`, best known first, up to eight) |
+| A person's titles (older clients) | `GET /catalog/people/{personId}/credits` | `{ cast: [CatalogTitle + character], crew: [CatalogTitle + job, department] }` (one entry per role: prefer the person's page) |
 
-A **`CatalogTitle`** (an item of a list): `mediaType, tmdbId, title` (in the catalog's language), `originalTitle, releaseDate` (a movie's release, a show's first air date), `year, overview, posterPath, backdropPath, genreIds, voteAverage` (TMDB's score, 0–10), `voteCount, originalLanguage`. A **`CatalogPerson`**: `mediaType: 'person', personId, name, profilePath, knownForDepartment`. Pages: `{ page, totalPages (≤ 500), totalResults, results }`.
+A **`CatalogTitle`** (an item of a list): `mediaType, tmdbId, title` (in the catalog's language), `originalTitle, releaseDate` (a movie's release, a show's first air date), `year, overview, posterPath, backdropPath, genreIds, voteAverage` (TMDB's score, 0–10), `voteCount, originalLanguage`. A **`CatalogPerson`**: `mediaType: 'person', personId, name, profilePath, knownForDepartment`, and on search results `knownFor` (up to three `{ mediaType, tmdbId, title }`: show them beside the name, so two people with one name can be told apart; older servers send none). A person result opens the person's page. Pages: `{ page, totalPages (≤ 500), totalResults, results }`.
 
 ```sh
 curl -s "$S/catalog/search/multi?q=heat" -H "$H" | jq '.results[] | {mediaType, tmdbId, title, year}'
@@ -38,9 +39,9 @@ Image fields are **paths** (`/xyz.jpg`). The URL is `imageBase` + a size + the p
 
 ## Caching, errors, what's left out
 
-- The server caches a title's page, credits and seasons for 6 h, lists, discover and search for 1 h. Clients may cache as long; refetch when the user asks.
+- The server caches a title's or a person's page, credits and seasons for 6 h, lists, discover and search for 1 h. Clients may cache as long; refetch when the user asks.
 - **Never adult titles** (the server never asks for them; `audience: adults` plugins have catalogs of their own).
-- Errors: a bad parameter → **400 `INVALID`** (before any call upstream); a title TMDB doesn't have → **404 `NOT_FOUND`**; TMDB down or refusing → **502 `UPSTREAM`**. Show what you have and let the user retry.
+- Errors: a bad parameter → **400 `INVALID`** (before any call upstream); a title or person TMDB doesn't have → **404 `NOT_FOUND`**; TMDB down or refusing → **502 `UPSTREAM`**. Show what you have and let the user retry.
 - A title's IMDb rating is `GET /imdb/{imdbId}` (and a series' seasons and episodes: `/imdb/{imdbId}/episodes`), with `imdbId` from its page.
 
 ## Before the catalog moved to the server

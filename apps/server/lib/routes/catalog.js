@@ -10,7 +10,8 @@
 //   GET /catalog/titles/:mediaType/:tmdbId             a title's page (+ /credits, /similar)
 //   GET /catalog/titles/:mediaType/:tmdbId/extras?profile=   what metadata providers (plugins) add to it
 //   GET /catalog/titles/tv/:tmdbId/seasons/:season     a season and its episodes
-//   GET /catalog/people/:personId/credits              a person's movies and shows
+//   GET /catalog/people/:personId                      a person's page (credits merged per title, known for)
+//   GET /catalog/people/:personId/credits              a person's movies and shows (older clients)
 
 var express = require('express'),
   handle = require('./handle'),
@@ -79,6 +80,10 @@ router.get('/titles/:mediaType/:tmdbId/extras', handle(function (s, req) {
 
 router.get('/titles/tv/:tmdbId/seasons/:season', handle(function (s, req) {
   return catalog.season(req.params.tmdbId, req.params.season);
+}));
+
+router.get('/people/:personId', handle(function (s, req) {
+  return catalog.person(req.params.personId);
 }));
 
 router.get('/people/:personId/credits', handle(function (s, req) {

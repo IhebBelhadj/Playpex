@@ -3701,6 +3701,28 @@ paths:
         '400': { $ref: '#/components/responses/Invalid' }
         '404': { $ref: '#/components/responses/NotFound' }
         '502': { $ref: '#/components/responses/Upstream' }
+  /catalog/people/{personId}:
+    parameters:
+      - { name: personId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      tags: [catalog]
+      operationId: getCatalogPerson
+      summary: A person's page
+      description: >-
+        Who they are (biography in the catalog's language, else English), and their
+        movies and shows: one entry per title with every role merged (`roles`),
+        appearances as themselves (talk shows, news, award shows, "Self") left out
+        unless that's all they have, titles without a poster last. `knownFor`:
+        the tmdb ids of their best known titles, in order.
+      responses:
+        '200':
+          description: The person
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogPersonDetails' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/Upstream' }
   /catalog/people/{personId}/credits:
     parameters:
       - { name: personId, in: path, required: true, schema: { type: integer, minimum: 1 } }
@@ -7366,6 +7388,17 @@ components:
         name: { type: string }
         profilePath: { type: [string, 'null'] }
         knownForDepartment: { type: [string, 'null'] }
+        knownFor:
+          type: array
+          description: Up to three of their best known titles (search results; older servers send none)
+          maxItems: 3
+          items:
+            type: object
+            required: [mediaType, tmdbId, title]
+            properties:
+              mediaType: { $ref: '#/components/schemas/MediaType' }
+              tmdbId: { type: integer }
+              title: { type: string }
     CatalogPage:
       type: object
       required: [page, totalPages, totalResults, results]
@@ -7532,6 +7565,38 @@ components:
                 properties:
                   job: { type: [string, 'null'] }
                   department: { type: [string, 'null'] }
+    CatalogPersonRole:
+      type: object
+      description: 'As cast: `character`; as crew: `job` and `department`'
+      properties:
+        character: { type: [string, 'null'] }
+        job: { type: [string, 'null'] }
+        department: { type: [string, 'null'] }
+    CatalogPersonCredit:
+      description: One of a person's titles, every role they had in it
+      allOf:
+        - $ref: '#/components/schemas/CatalogTitle'
+        - type: object
+          required: [roles, episodeCount, order]
+          properties:
+            roles: { type: array, items: { $ref: '#/components/schemas/CatalogPersonRole' }, description: Characters first, then jobs }
+            episodeCount: { type: [integer, 'null'], description: 'Shows: in how many episodes' }
+            order: { type: [integer, 'null'], description: Their billing as cast (0 = top) }
+    CatalogPersonDetails:
+      type: object
+      required: [personId, name, profilePath, knownForDepartment, biography, birthday, deathday, placeOfBirth, imdbId, credits, knownFor]
+      properties:
+        personId: { type: integer }
+        name: { type: string }
+        profilePath: { type: [string, 'null'] }
+        knownForDepartment: { type: [string, 'null'], description: 'Acting, Directing, Writing…' }
+        biography: { type: string, description: In the catalog's language, else English; '' when there is none }
+        birthday: { type: [string, 'null'], description: YYYY-MM-DD }
+        deathday: { type: [string, 'null'] }
+        placeOfBirth: { type: [string, 'null'] }
+        imdbId: { type: [string, 'null'] }
+        credits: { type: array, items: { $ref: '#/components/schemas/CatalogPersonCredit' } }
+        knownFor: { type: array, items: { type: integer }, description: 'tmdb ids (of `credits`), best known first, up to eight' }
 
     # ── library
     MediaType:

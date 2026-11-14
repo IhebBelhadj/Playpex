@@ -60,7 +60,8 @@ var ANSWERS = {
   '/search/multi': list([
     Object.assign({ media_type: 'movie' }, HEAT),
     Object.assign({ media_type: 'tv' }, BREAKING_BAD),
-    { media_type: 'person', id: 1158, name: 'Al Pacino', profile_path: '/al.jpg', known_for_department: 'Acting' },
+    { media_type: 'person', id: 1158, name: 'Al Pacino', profile_path: '/al.jpg', known_for_department: 'Acting',
+      known_for: [Object.assign({ media_type: 'movie' }, HEAT), { media_type: 'collection', id: 5 }] },
     { media_type: 'collection', id: 5 }
   ]),
   '/movie/949': Object.assign({}, HEAT, {
@@ -86,6 +87,26 @@ var ANSWERS = {
       guest_stars: [{ id: 1, name: 'Someone', character: 'Krazy-8', credit_id: 'g1', order: 500 }]
     }, { season_number: 1, episode_number: 2, name: 'TBA', air_date: null }]
   },
+  '/person/17419': {
+    id: 17419, name: 'Bryan Cranston', profile_path: '/bc.jpg', known_for_department: 'Acting', biography: '',
+    birthday: '1956-03-07', deathday: null, place_of_birth: 'Hollywood, California, USA', imdb_id: 'nm0186505',
+    combined_credits: {
+      cast: [
+        Object.assign({ media_type: 'tv', character: 'Walter White', episode_count: 62, order: 0 }, BREAKING_BAD),
+        Object.assign({ media_type: 'movie', character: 'Someone', order: 12 }, HEAT),
+        { media_type: 'tv', id: 2, name: 'Late Night', genre_ids: [10767], character: 'Self', poster_path: '/ln.jpg', vote_count: 900 },
+        { media_type: 'movie', id: 3, title: 'No Poster', genre_ids: [18], character: 'Bob', vote_count: 1 }
+      ],
+      crew: [
+        Object.assign({ media_type: 'tv', job: 'Director', department: 'Directing', episode_count: 3 }, BREAKING_BAD),
+        Object.assign({ media_type: 'tv', job: 'Producer', department: 'Production' }, BREAKING_BAD)
+      ]
+    }
+  },
+  '/person/99': {
+    id: 99, name: 'A Host', profile_path: null, known_for_department: 'Acting', biography: 'Hosts things.',
+    combined_credits: { cast: [{ media_type: 'tv', id: 2, name: 'Late Night', genre_ids: [10767], character: 'Self - Host', poster_path: '/ln.jpg' }], crew: [] }
+  },
   '/person/1158/combined_credits': {
     cast: [Object.assign({ media_type: 'movie', character: 'Vincent Hanna' }, HEAT)],
     crew: [Object.assign({ media_type: 'tv', job: 'Producer', department: 'Production' }, BREAKING_BAD)]
@@ -94,7 +115,10 @@ var ANSWERS = {
 
 tmdb.get = function (apiPath, params, options) {
   calls.push({ path: apiPath, params: params, options: options });
-  if (apiPath === '/movie/404') {
+  if (apiPath === '/person/17419' && params.language === 'en-US' && settings.get('metadata.language') !== 'en-US') {
+    return Promise.resolve({ id: 17419, biography: 'Bryan Lee Cranston is an American actor.' });
+  }
+  if (apiPath === '/movie/404' || apiPath === '/person/404') {
     return Promise.reject(Object.assign(new Error('Request failed with status code 404'), { response: { status: 404 } }));
   }
   if (apiPath === '/movie/500') {
@@ -159,7 +183,10 @@ test('lists, genres, search: our shapes, cached an hour, in the catalog\'s langu
   }).then(function (body) {
     conforms('CatalogPage', body);
     assert.deepEqual(body.results.map(function (r) { return r.mediaType; }), ['movie', 'tv', 'person'], 'a collection is left out');
-    assert.deepEqual(body.results[2], { mediaType: 'person', personId: 1158, name: 'Al Pacino', profilePath: '/al.jpg', knownForDepartment: 'Acting' });
+    assert.deepEqual(body.results[2], {
+      mediaType: 'person', personId: 1158, name: 'Al Pacino', profilePath: '/al.jpg', knownForDepartment: 'Acting',
+      knownFor: [{ mediaType: 'movie', tmdbId: 949, title: 'Heat' }]
+    });
     assert.equal(body.results[1].title, 'Breaking Bad');
     assert.deepEqual(last().params, { language: 'en-US', query: 'heat', page: 1, include_adult: false });
   });
@@ -212,6 +239,37 @@ test('a title\'s page, credits, similar titles, a season, a person', function ()
     conforms('CatalogPersonCredits', credits);
     assert.equal(credits.cast[0].character, 'Vincent Hanna');
     assert.deepEqual([credits.crew[0].mediaType, credits.crew[0].job], ['tv', 'Producer']);
+  });
+});
+
+test('a person\'s page: roles merged per title, appearances as themselves left out, known for', function () {
+  return get('/catalog/people/17419').then(function (p) {
+    conforms('CatalogPersonDetails', p);
+    assert.deepEqual(last().params, { language: 'en-US', append_to_response: 'combined_credits,external_ids' });
+    assert.deepEqual([p.name, p.birthday, p.deathday, p.placeOfBirth, p.imdbId], ['Bryan Cranston', '1956-03-07', null, 'Hollywood, California, USA', 'nm0186505']);
+    assert.equal(p.biography, '', 'English already: no second call');
+    assert.deepEqual(p.credits.map(function (c) { return c.mediaType + ':' + c.tmdbId; }), ['tv:1396', 'movie:949', 'movie:3'],
+      'one entry per title, the talk show left out, no poster last');
+    assert.deepEqual(p.credits[0].roles, [
+      { character: 'Walter White' }, { job: 'Director', department: 'Directing' }, { job: 'Producer', department: 'Production' }
+    ]);
+    assert.deepEqual([p.credits[0].episodeCount, p.credits[0].order], [62, 0]);
+    assert.deepEqual(p.knownFor, [1396, 949]);
+    settings.update({ metadata: { language: 'fr-FR' } });
+    return get('/catalog/people/17419');
+  }).then(function (p) {
+    assert.equal(p.biography, 'Bryan Lee Cranston is an American actor.', 'English when the language has none (decision C)');
+    assert.equal(last().params.language, 'en-US');
+    settings.update({ metadata: { language: 'en-US' } });
+    return get('/catalog/people/99');
+  }).then(function (p) {
+    conforms('CatalogPersonDetails', p);
+    assert.deepEqual(p.credits.map(function (c) { return c.tmdbId; }), [2], 'a host\'s page isn\'t empty');
+    return get('/catalog/people/404', 404);
+  }).then(function (body) {
+    assert.equal(body.code, 'NOT_FOUND');
+    assert.match(body.error, /person/);
+    return get('/catalog/people/abc', 400);
   });
 });
 
