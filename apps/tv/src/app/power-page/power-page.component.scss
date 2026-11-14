@@ -1,20 +1,136 @@
+// The power screen (core.power): the lights come up. A column at the left
+// over the last title's backdrop (the shell's, left showing at the right):
+// who's watching and that their places are kept, then the ways out in order
+// of how far they go (Playpex, then this computer). An option is a line of
+// large type; the focused one is the app's white pill and says what it does.
 @use 'px' as *;
 
-.pageContainer {
-  background: var(--px-surface-bg);
-  width: 100vw;
-  height: 100vh;
+.powerPage {
   position: fixed;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  // over the page, under the shell's Back button
+  inset: 0;
+  // over the page, under the shell's Back button and the clock
   z-index: var(--px-z-page-cover);
-  padding-top: dp(50);
+  display: flex;
+  align-items: center;
+  padding: var(--px-safe-y) var(--px-safe-x);
+  padding-left: calc(var(--px-safe-x) + #{dp(120)});
+  background: var(--px-gradient-power);
+}
 
-  .powerSection {
-    display: flex;
-    flex-direction: column;
-    gap: dp(20);
+.column {
+  display: flex;
+  flex-direction: column;
+  width: dp(560);
+}
+
+// ── who's watching ─────────────────────────────────────────────────────────
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: dp(18);
+  margin-bottom: dp(44);
+}
+
+.avatar {
+  width: dp(56);
+  height: dp(56);
+  border-radius: var(--px-radius-m);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--px-font-bold);
+  font-weight: normal;
+  font-size: var(--px-text-title);
+  color: var(--px-color-text);
+}
+
+.saved {
+  margin: dp(4) 0 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  color: var(--px-color-text-muted);
+}
+
+// ── the ways out ───────────────────────────────────────────────────────────
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: dp(6);
+}
+
+// what the next ones act on: the computer, not Playpex
+.group {
+  margin: dp(26) 0 dp(8) dp(22);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}
+
+.option {
+  display: grid;
+  grid-template-columns: dp(32) 1fr;
+  grid-template-rows: auto auto;
+  column-gap: dp(18);
+  align-items: center;
+  // room for the second line, shown only when focused: nothing moves as focus does
+  min-height: dp(72);
+  padding: dp(10) dp(22);
+  border: none;
+  border-radius: var(--px-radius-xl);
+  background: transparent;
+  color: var(--px-color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--px-dur-fast), color var(--px-dur-fast);
+
+  .glyph {
+    grid-row: 1 / span 2;
+    width: dp(28);
+    height: dp(28);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .label {
+    font-family: var(--px-font-bold);
+    font-size: var(--px-text-headline);
+    line-height: 1.2;
+  }
+
+  // what it does: only on the focused one
+  .does {
+    grid-column: 2;
+    display: none;
+    font-family: var(--px-font-book);
+    font-size: var(--px-text-label);
+    color: var(--px-color-on-focus-muted);
+  }
+
+  &.focused {
+    background: var(--px-color-focus);
+    color: var(--px-color-on-focus);
+
+    .does {
+      display: block;
+    }
+  }
+}
+
+.hint {
+  margin: dp(40) 0 0 dp(22);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-small);
+  color: var(--px-color-text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option {
+    transition: none;
   }
 }

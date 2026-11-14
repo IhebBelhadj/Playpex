@@ -1,8 +1,36 @@
-<div class="pageContainer">
-  <div class="powerSection" pxSection="powerControls" pxGrid>
-    <px-button key="quit" variant="plate" [width]="width" label="Quit" (pxSelect)="send('quit')"></px-button>
-    <px-button key="sleep" variant="plate" [width]="width" label="Sleep" (pxSelect)="send('sleep')"></px-button>
-    <px-button key="shutdown" variant="plate" [width]="width" label="Shutdown" (pxSelect)="send('shutdown')"></px-button>
-    <px-button key="restart" variant="plate" [width]="width" label="Restart" (pxSelect)="send('restart')"></px-button>
+<!-- The lights come up: who's watching and that nothing is lost, then what to
+     turn off, in order of how far it goes. The last backdrop stays at the right. -->
+<div class="powerPage">
+  <div class="column">
+    <header class="who" *ngIf="profile">
+      <img class="avatar" [src]="avatarUrl" alt="">
+      <div>
+        <h1 class="name">{{ profile.name }}</h1>
+        <p class="saved">Everything you were watching keeps its place.</p>
+      </div>
+    </header>
+
+    <div class="options" pxSection="powerControls" pxGrid>
+      <ng-container *ngFor="let o of options; trackBy: byKey">
+        <p class="group" *ngIf="o.key == 'sleep'">This computer</p>
+        <button type="button" class="option focusable" pxItem [pxItemKey]="o.key" (pxSelect)="send(o.key)"
+          [attr.aria-label]="o.label + ': ' + o.does">
+          <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" [ngSwitch]="o.key">
+            <!-- close: a door left through -->
+            <g *ngSwitchCase="'quit'"><path d="M14 4H6v16h8" /><path d="M11 12h10M17 8l4 4-4 4" /></g>
+            <!-- sleep: the moon -->
+            <path *ngSwitchCase="'sleep'" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+            <!-- restart: round and back -->
+            <g *ngSwitchCase="'restart'"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></g>
+            <!-- shut down: the power mark -->
+            <g *ngSwitchCase="'shutdown'"><path d="M12 3v8" /><path d="M6.3 6.8a8 8 0 1 0 11.4 0" /></g>
+          </svg>
+          <span class="label">{{ o.label }}</span>
+          <span class="does">{{ o.does }}</span>
+        </button>
+      </ng-container>
+    </div>
+
+    <p class="hint">Back to keep watching</p>
   </div>
 </div>

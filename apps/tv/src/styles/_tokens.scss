@@ -164,6 +164,7 @@
   --px-gradient-shimmer: linear-gradient(90deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .06) 50%, rgba(255, 255, 255, 0) 70%);   // px-skeleton
   --px-gradient-panel-end: linear-gradient(270deg, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 60%);   // a panel docked at the right edge
   --px-gradient-player-controls: linear-gradient(0deg, var(--px-black) 0%, rgba(0, 0, 0, .6) 49%, rgba(0, 0, 0, 0) 65%);
+  --px-gradient-power: linear-gradient(90deg, var(--px-ink) 0%, rgba(20, 20, 20, .94) 34%, rgba(20, 20, 20, .62) 70%, rgba(20, 20, 20, .45) 100%);   // the power screen: the column solid, the last backdrop showing at the right
   --px-gradient-trailer: linear-gradient(39deg, var(--px-black) 0%, rgba(0, 0, 0, .94) 55%, rgba(0, 0, 0, .76) 78%, rgba(0, 0, 0, .48) 89%);
 
   // ── shadows, rings, icon filters ───────────────────────────────────────────
