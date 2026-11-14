@@ -18,8 +18,11 @@
 
 // ── title info (as <movie-description>; not called .description: the menu hides every .description in the document) ────────────────────────────────────
 
+// the title's capitals centred on the masthead, level with the clock (the
+// section layout's title, and px-empty's, start .67em down: a margin, it
+// comes out a little negative)
 .titleInfo {
-  padding-top: dp(40);
+  margin-top: calc(var(--px-masthead) - (var(--px-masthead-bd) + .67) * var(--px-text-hero));
 }
 
 // The rest mirrors movie-description: year, chips, score, genres, overview

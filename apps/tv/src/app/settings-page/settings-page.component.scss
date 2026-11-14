@@ -19,7 +19,8 @@
 }
 
 .settingsPage {
-  --px-rail-padding: #{dp(90)} #{dp(60)} 0 #{dp(30)};
+  // the heading's capitals centred on the masthead, level with the clock
+  --px-rail-padding: calc(var(--px-masthead) - var(--px-masthead-bd) * var(--px-text-title)) #{dp(60)} 0 #{dp(30)};
   --px-rail-gap: #{dp(56)};
 }
 

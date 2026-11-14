@@ -10,16 +10,24 @@
 // .pageContainer is a <px-detail-layout> (a scrolling pxStack): the list's
 // toolbar, description and rows, or a title page's
 
+// the title first on the page (a movie's / show's page, Home): the middle of
+// its capitals on the masthead, level with the clock
+.pageContainer > movie-description:first-child {
+  padding-top: calc(var(--px-masthead) - var(--px-masthead-bd) * var(--px-text-hero));
+}
+
 // ── list page: the section's search bar (styled like the 18+ toolbar's) ────
 
 .sectionToolbar {
   display: flex;
   align-items: center;
   gap: dp(12);
-  padding: dp(26) dp(170) 0 0;     // the shell's clock on the right
+  // centred on the masthead, level with the clock (its fields are 44 tall)
+  padding: calc(var(--px-masthead) - #{dp(22)}) dp(170) 0 0;     // the shell's clock on the right
 
   // the description follows right under it, the rows stay at the bottom
   & + movie-description {
+    margin-top: dp(18);
     margin-bottom: auto;
   }
 }

@@ -34,9 +34,11 @@
   filter: blur(dp(5)) ;
 }
 
+// the middle of its capitals on the masthead (--px-masthead): the line every
+// page's first line shares
 .clock {
   position: fixed;
-  top: calc(var(--px-safe-y) + #{dp(20)});
+  top: calc(var(--px-safe-y) + var(--px-masthead) - var(--px-masthead-bk) * 1em);
   right: calc(var(--px-safe-x) + #{dp(32)});
   z-index: var(--px-z-clock);
   font-family: var(--px-font-book);

@@ -21,7 +21,8 @@
   display: flex;
   align-items: center;
   gap: dp(16);
-  padding-top: dp(18);
+  // centred on the masthead, level with the clock (the trail is 46 tall)
+  padding-top: calc(var(--px-masthead) - #{dp(23)});
   font-size: var(--px-text-lead);
 }
 

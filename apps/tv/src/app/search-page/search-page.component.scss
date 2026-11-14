@@ -23,7 +23,7 @@
 .searchContainer {
   // left: the menu's column is empty here (search hides the menu) but holds
   // the shell's Back button; content lines up with the other pages' (85px)
-  padding: dp(40) dp(15) dp(40) dp(85);
+  padding: 0 dp(15) dp(40) dp(85);
   width: var(--px-screen-w);
   height: var(--px-screen-h);
   box-sizing: border-box;
@@ -34,8 +34,9 @@
 
 // ── the query ──────────────────────────────────────────────────────────────
 
+// the field centred on the masthead, level with the clock (it's 52 tall)
 .searchHead {
-  padding-top: dp(24);
+  padding-top: calc(var(--px-masthead) - #{dp(26)});
 }
 
 .headLine {

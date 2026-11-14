@@ -213,6 +213,14 @@
   --px-space-7: #{dp(32)};   // stable
   --px-space-8: #{dp(40)};   // stable
   --px-page-gutter: #{dp(35)};          // stable · left edge of a page next to the menu
+  // The masthead: one line through the middle of the capitals of the clock and
+  // of every page's first line (a title, the episode's trail; boxes such as the
+  // list's search bar are centred on it), from the top inside the screen edges.
+  // NetflixBd / NetflixBk: capitals 0.71 em tall; with line-height normal the
+  // middle of the capitals is 0.649 em (Bd) / 0.655 em (Bk) under the line's top
+  --px-masthead: #{dp(56)};
+  --px-masthead-bd: .649;               // a NetflixBd line's top → the middle of its capitals, in em
+  --px-masthead-bk: .655;               // the same for NetflixBk
 
   // ── screen edges (docs/ui-system-plan.md §13.1) ────────────────────────────
   // What a TV may crop at each edge (overscan), from the device setting
