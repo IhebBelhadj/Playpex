@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { FocusEngine, PositionStore } from '../../movement/movement';
+import { NavigationService } from '../../navigation.service';
 import { Navigator } from '../../nav/public-api';
 import { formatBytes } from '../../torrent-picker.service';
 import { PluginClient } from '../plugin-client.service';
@@ -31,7 +32,7 @@ interface ReleasesState {
   templateUrl: './plugin-releases.component.html',
   styleUrls: ['../../releases-page/releases-page.component.scss'],
 })
-export class PluginReleasesComponent extends PluginScreen implements OnInit {
+export class PluginReleasesComponent extends PluginScreen implements OnInit, AfterViewInit, OnDestroy {
 
   state:ReleasesState;
   loading = false;
@@ -41,8 +42,25 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit {
   readonly loadAhead = 8;
   private loadSub:Subscription;
 
-  constructor(client:PluginClient, readonly navigator:Navigator, private engine:FocusEngine, private positions:PositionStore) {
+  constructor(client:PluginClient, readonly navigator:Navigator, private engine:FocusEngine, private positions:PositionStore,
+    private navigation:NavigationService) {
     super(client);
+  }
+
+  // the menu's section, with Right back into the rail: the title pages remove
+  // theirs when they close, and without it neither Left nor the mouse reach the menu
+  ngAfterViewInit(): void {
+    this.navigation.updateNavigation('add', {
+      id: 'menu',
+      selector: '.menuContainer .element',
+      restrict: 'self-only',
+      leaveFor: { right: this.engine.target(['@pluginReleasesRail']) },
+    });
+  }
+
+  override ngOnDestroy(): void {
+    super.ngOnDestroy();
+    this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
   get heading():string {

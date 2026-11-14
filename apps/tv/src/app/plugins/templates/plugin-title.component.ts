@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { BackgroundService } from '../../background.service';
+import { FocusEngine } from '../../movement/movement';
+import { NavigationService } from '../../navigation.service';
 import { Navigator } from '../../nav/public-api';
 import { ActionModel, CardModel, RowModel, TitleInfoModel } from '../../ui/public-api';
 import { PluginClient } from '../plugin-client.service';
@@ -25,7 +27,7 @@ interface RowState {
   templateUrl: './plugin-title.component.html',
   styleUrls: ['./plugin-title.component.scss'],
 })
-export class PluginTitleComponent extends PluginScreen implements OnInit {
+export class PluginTitleComponent extends PluginScreen implements OnInit, AfterViewInit, OnDestroy {
 
   info:TitleInfoModel | null = null;
   actions:ActionModel[] = [];
@@ -33,8 +35,26 @@ export class PluginTitleComponent extends PluginScreen implements OnInit {
   error = '';
   private loadSub:Subscription;
 
-  constructor(client:PluginClient, private background:BackgroundService, readonly navigator:Navigator) {
+  constructor(client:PluginClient, private background:BackgroundService, readonly navigator:Navigator,
+    private navigation:NavigationService, private engine:FocusEngine) {
     super(client);
+  }
+
+  // the menu's section, with Right back into this page: the title pages remove
+  // theirs when they close, and without it neither Left nor the mouse reach the menu
+  ngAfterViewInit(): void {
+    this.navigation.updateNavigation('add', {
+      id: 'menu',
+      selector: '.menuContainer .element',
+      restrict: 'self-only',
+      leaveFor: { right: this.engine.target(['@pluginTitle']) },
+    });
+  }
+
+  override ngOnDestroy(): void {
+    super.ngOnDestroy();
+    this.loadSub?.unsubscribe();
+    this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
   ngOnInit(): void {
