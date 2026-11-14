@@ -43,6 +43,9 @@ modules/expo-mpv      libmpv as an Expo view: expo-mpv 0.1.21 vendored (GPL-3.0;
 modules/playpex-device  local Expo module (Kotlin): discovery (NsdManager mDNS + UDP `PLAYPEX_DISCOVER 1`, every address
                       confirmed with GET /server; ported from apps/manager's PlaypexDiscovery.java), probe(address), codecs()
                       (MediaCodecList: the hardware decoders, for the device's `maxHeight`)
+src/app/person/[id].tsx  a person's page (docs/people-plan.md §6; `usePerson`, `openPerson` in lib/catalog.ts): face, name, the biography
+                      (a tap shows it all), rows Known for / Movies / Shows / one per crew department; opened from a title's Cast row
+                      and Search's People row (before the titles when the best match is a person)
 src/app/plugin/[plugin]/[screen].tsx  a plugin's screen: the catalog, title and list templates (releases and guide: "on the TV")
 src/ui/               theme.ts ("the lights go down": warm auditorium blacks, the mark's champagne as the one accent, Futura display +
                       Hanken Grotesk text, the type scale, motion), brand.tsx (the mark from assets/brand/mark.svg, the wordmark;

@@ -17,7 +17,7 @@ src/main.tsx            QueryClient (a 401 anywhere → session cleared → /log
 src/router.tsx          routes: /setup, /login, /docs (public, lazy: DocsLayout → /docs = guide index, /docs/:page = a chapter,
                         /docs/reference = the API reference), then RequireAdmin + AppLayout: / (Overview), /activity, /devices,
                         /link (pairing's verification_uri; ?user_code= from the client's QR code), /library (?file= opens a
-                        library file's sheet), /downloads (?hash= opens a download's sheet; ?filter=direct: direct downloads), /search (Search), /storage (→ /library, its query kept), /logs,
+                        library file's sheet), /downloads (?hash= opens a download's sheet; ?filter=direct: direct downloads), /search (Search), /people/:personId (a person's page), /storage (→ /library, its query kept), /logs,
                         /settings[/:tab] (tabs = settings groups + desktop app (desktop host only) + account), /plugins, /plugins/:pluginId,
                         /profiles, /about, /remote (the devices that can be controlled: GET /remote/targets) and /remote/:deviceId (the controller:
                         lib/remote.ts's socket to /api/v1/remote?role=controller, components/remote-touchpad.tsx, a D-pad, keyboard capture;
@@ -73,7 +73,7 @@ src/lib/search.ts       Search's data (docs/search-plan.md): useSearchSources(ki
                         `release-providers`; stream plugins GET /search/providers, key `search-providers`; live plugins GET /live, key `live`),
                         usePaged (every source at once, page 1, more pages per source on demand, merged and deduped), useTorrentSearch (GET
                         /releases/browse, key `release-search`), useStreamSearch (GET /search/sources, key `stream-search`), useCatalogSearch (GET
-                        /catalog/search/{multi|movie|tv}, key `catalog-search`), useLiveSearch (GET /live/{plugin}/channels?q=, key `live-search`),
+                        /catalog/search/{multi|movie|tv}, key `catalog-search`: `{titles, people, peopleFirst}`), useLiveSearch (GET /live/{plugin}/channels?q=, key `live-search`),
                         isLink (a URL, magnet or info hash: read it), holds / squash (the dashboard's own lists matched like the server's)
 src/lib/direct.ts       useDirectDownloads (GET /downloads/direct, key `direct-downloads`; patched by `direct.updated`, `direct.removed`),
                         useDirectActions (add a ref, start, pause, remove with its file)
@@ -86,7 +86,11 @@ src/pages/search.tsx    /search (?q=&kind=all|movie|tv&view=all|server|titles|st
                         above the list, "Show n near matches"; Streams leaves out a both-kind plugin's torrents (its Torrents list has them); the
                         torrent table from RAIL_WIDTH, rows below. Before a search: what is asked, recent searches (localStorage
                         `playpex.dashboard.recentSearches`), a hint when no source plugin is installed. A link in the field → components/search/link.tsx
-src/components/search/  parts.tsx (Filters / keep / FilterBar for torrents and streams alike, Seeds signal bars, SourcesSummary, SectionHead,
+src/pages/person.tsx    /people/:personId (docs/people-plan.md §5; key `catalog-person` + id): portrait, department and birth, the biography
+                        (More), IMDb; poster grids Known for, Movies, Shows, one per crew department, each with the role; a title opens
+                        TitleSourcesSheet (its sources, Add download)
+src/components/search/  people.tsx (PeopleFaces: faces, names, known for → /people/:id; Search's People group and tab, Everything only,
+                        before Movies & shows when the best match is a person), parts.tsx (Filters / keep / FilterBar for torrents and streams alike, Seeds signal bars, SourcesSummary, SectionHead,
                         useSearchActions: play a ref, download it (POST /downloads/direct), start a torrent, copy), torrents.tsx (TorrentTable: the
                         DataTable, key `playpex.search.columns`; row menu Add…, Add and start, Copy magnet; kept ones → /downloads?hash=), offers.tsx
                         (StreamRows: Play, Download; TorrentRows: the overview and phones), titles.tsx (TitlePosters; TitleSourcesSheet: details,
