@@ -1,5 +1,16 @@
-<button *ngIf="visible" class="backButton" type="button" tabindex="-1" aria-label="Back" title="Back" (click)="back()">
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
+<button *ngIf="visible" class="backButton" type="button" tabindex="-1" (click)="back()"
+  [style.right.px]="right" [style.top.px]="top" [class.placed]="right !== null"
+  [attr.aria-label]="destination.lead ? destination.lead + ' ' + destination.name : destination.name" [class.hasPicture]="!!picture">
+  <!-- the ticket: where Back lands, darkened under the chevron -->
+  <span class="ticket">
+    <img class="picture" *ngIf="picture" [src]="picture" alt="">
+    <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </span>
+  <!-- where it goes -->
+  <span class="label" aria-hidden="true">
+    <span class="lead" *ngIf="destination.lead">{{ destination.lead }}</span>
+    <span class="name">{{ destination.name }}</span>
+  </span>
 </button>

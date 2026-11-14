@@ -1,33 +1,139 @@
-// Top left, under the menu's logo: where "back" is looked for, in the rail's
-// column (the menu keeps room for it above its items), so it never covers a
-// page's title. Under the modals and the error popup (--px-z-back-button).
+// Top right, just left of the clock: an empty corner of backdrop on every
+// page, so it never covers the menu, a title or the rows. Its `right` / `top`
+// come from the clock's measured box (the component's `place()`); until then
+// it stays hidden. Under the modals and the error popup (--px-z-back-button).
+//
+// A return ticket: "Back to <where>" beside a round picture of it, darkened
+// under the chevron; dark glass at rest, white (the app's focus) hovered.
 @use 'px' as *;
+
+$size: 44;
 
 .backButton {
   position: fixed;
-  top: calc(var(--px-safe-y) + #{dp(68)});
-  left: calc(var(--px-safe-x) + #{dp(18)});
   z-index: var(--px-z-back-button);
-  display: grid;
-  place-items: center;
-  width: dp(42);
-  height: dp(42);
+  display: flex;
+  align-items: center;
+  height: dp($size);
   padding: 0;
   border: none;
-  border-radius: 50%;
-  background: var(--px-surface-1);
+  border-radius: var(--px-radius-pill);
+  overflow: hidden;
+  background: var(--px-surface-raised);
+  box-shadow: var(--px-shadow-capsule);
   color: var(--px-color-text);
+  cursor: pointer;
+  visibility: hidden;
   transition: background var(--px-dur-fast), color var(--px-dur-fast);
 
-  svg {
-    width: dp(22);
-    height: dp(22);
-    margin-left: dp(-2);    // the chevron's optical center
+  &.placed {
+    visibility: visible;
   }
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background: var(--px-color-focus);
     color: var(--px-color-on-focus);
+    outline: none;
+
+    .lead {
+      color: var(--px-color-on-focus-muted);
+    }
+  }
+
+  // over a picture the chevron stays white, the picture a little lighter
+  &.hasPicture:hover,
+  &.hasPicture:focus-visible {
+    .ticket::after {
+      opacity: .4;
+    }
+
+    .chevron {
+      color: var(--px-color-text);
+    }
+  }
+
+  &:active {
+    transform: scale(.96);
+  }
+}
+
+// the round part: the destination's picture under the chevron
+.ticket {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: dp($size);
+  height: dp($size);
+  border-radius: 50%;
+  overflow: hidden;
+
+  // the picture's darkening, so the chevron always reads
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--px-surface-raised);
+    opacity: 0;
+    transition: opacity var(--px-dur-fast);
+  }
+}
+
+.hasPicture .ticket::after {
+  opacity: .62;
+}
+
+.picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  // a poster's upper middle: faces and titles sit there
+  object-position: 50% 30%;
+}
+
+.chevron {
+  position: relative;
+  z-index: var(--px-z-raise);
+  width: dp(22);
+  height: dp(22);
+  margin-left: dp(-2);    // the chevron's optical centre
+}
+
+// "Back to" over the destination's name
+.label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 dp(18) 0 dp(10);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lead {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-tiny);
+  line-height: 1.1;
+  color: var(--px-color-text-muted);
+  transition: color var(--px-dur-fast);
+}
+
+.name {
+  max-width: dp(280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-label);
+  line-height: 1.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backButton,
+  .lead {
+    transition: none;
   }
 }
 
