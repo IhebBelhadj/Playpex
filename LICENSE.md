@@ -4,12 +4,40 @@ Playpex is licensed under the **PolyForm Noncommercial License 1.0.0**, given in
 
 In plain words (the licence text below is what counts): you may use, study, change and share Playpex for any
 noncommercial purpose, and contribute back (see [CONTRIBUTING.md](CONTRIBUTING.md)). You may not sell it or use it
-commercially: no selling copies or changed versions, no paid services or products built on it.
+commercially: no selling copies or changed versions, no paid services or products built on it. Plugins are the
+exception: you may write plugins for Playpex and sell them (see "Plugins" below).
 
 Required Notice: Copyright (c) 2026 Iheb Belhadj (https://github.com/IhebBelhadj/Playpex)
 
 Playpex is an educational project. Streaming copyrighted content you don't have the rights to may be illegal where you
 live.
+
+## Commercial use
+
+Only Iheb Belhadj may use Playpex commercially or license it for commercial use. If you want to use Playpex
+commercially, ask for a commercial licence through https://github.com/IhebBelhadj/Playpex.
+
+## Plugins
+
+Plugins are separate works. As an additional permission from the licensor, on top of the licence below:
+
+1. **A plugin you write is yours.** A plugin here is a package that Playpex loads through its plugin interface (a
+   `.ppx` package with a `playpex-plugin.json` manifest), distributed on its own and not as part of Playpex. This
+   licence doesn't cover your plugin: you may license it however you like, including selling it, selling access to it,
+   or charging for a service it connects to.
+2. **Building a plugin is a permitted purpose.** You may use Playpex to make, test, show and support your plugin, even
+   when the plugin is sold.
+3. **The plugin kit is under the MIT License** (at the end of this file), so a plugin may include or copy it:
+   - `plugins/hello/` (the example plugin: start a plugin from it);
+   - `docs/plugins/` (the plugin author guide);
+   - in `packages/protocol/`: `plugin.schema.json`, `plugin-api.schema.json`, `repository.schema.json`, `plugins.js`,
+     `plugins.d.ts`, `signing.js`, `signing.d.ts`.
+4. **Everything else stays noncommercial.** A plugin may not include any other part of Playpex. You may not sell
+   Playpex, a changed version of it, Playpex bundled with plugins, or a paid service that runs Playpex for others,
+   with or without plugins. The plugins Iheb Belhadj ships in `plugins/` (other than `plugins/hello/`) are under this
+   licence, or under their own where they say so.
+
+People who buy a plugin may use it with Playpex as the licence below allows (personal and other noncommercial use).
 
 ## The Playpex name and logo
 
@@ -19,6 +47,8 @@ is based on Playpex by Iheb Belhadj, with a link to https://github.com/IhebBelha
 version of it, as your own work.
 
 ## What this licence does not cover
+
+The plugin kit (see "Plugins" above) is under the MIT License, at the end of this file.
 
 These parts are other people's work under their own licences, which apply to them instead (each keeps its licence file):
 
@@ -103,3 +133,24 @@ The **licensor** is the individual or entity offering these terms, and the **sof
 **Your licenses** are all the licenses granted to you for the software under these terms.
 
 **Use** means anything you do with the software requiring one of your licenses.
+
+---
+
+# MIT License (the plugin kit)
+
+This applies only to the plugin kit listed under "Plugins" above.
+
+Copyright (c) 2026 Iheb Belhadj
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

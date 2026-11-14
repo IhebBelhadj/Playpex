@@ -44,6 +44,15 @@ You can also publish in a **repository** (a signed index on any HTTPS host, [rep
 
 There is **no TV code** in a plugin. Your screens and contributions are data (the manifest names them, your `server.js` fills them in), and Playpex TV draws them with its own templates and primitives (tv.md). So every client gets your plugin, it looks and moves like the rest of the app, and it can't reach the device's token or the TV's shell.
 
+## Licensing your plugin
+
+A plugin you write is your own work: Playpex's licence doesn't cover it, and you may license it as you like, including
+selling it (see "Plugins" in [LICENSE.md](../../LICENSE.md)). Using Playpex to build and test it is allowed even when the
+plugin is sold. The plugin kit is MIT, so you may copy it into your plugin: the example plugin
+[`plugins/hello/`](../../plugins/hello/), this guide, and in `packages/protocol/` the manifest, API and repository schemas,
+`plugins.js` and `signing.js`. Don't include any other part of Playpex in a plugin, and set your own `license` in its
+manifest.
+
 ## What a plugin can do
 
 | | How | Guide |
