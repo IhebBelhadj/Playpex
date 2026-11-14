@@ -22,6 +22,37 @@ const desktop = (name: string, v: string) => ({
 
 export const RELEASES: Release[] = [
   {
+    version: '0.11.0-beta.1', date: '2026-11-14', dateText: '14 November 2026', title: 'Cast, Home and people',
+    summary: 'Send what you are watching to any screen, a Home made from what each profile watches, Stremio add-ons as plugins, and a page for every actor.',
+    apps: {
+      server: { version: '0.11.0-beta.1', tag: 'server-v0.11.0-beta.1', files: desktop('Playpex-Media-Server', '0.11.0-beta.1'), notes: [
+        'Cast to any Playpex screen from the dashboard, or move what plays in its player to a screen with “Continue on a screen”.',
+        'Playpex screens can show up in the YouTube app’s Cast list (Settings › Casting, off at first).',
+        'Stremio add-ons install by their address and work as plugins: their streams in Play, their subtitles, their catalogs as rows. Your Stremio account’s add-ons can be imported at once.',
+        'The rows of Home, Movies and TV shows are set on the server, for everyone or per profile, with recommendations from what each profile watches.',
+        'Videos stored in rar, zip and tar archives play like any other file.',
+        'People in Search, each with a page of their films and shows by role.',
+      ] },
+      tv: { version: '0.11.0-beta.1', tag: 'tv-v0.11.0-beta.1', files: desktop('Playpex-TV', '0.11.0-beta.1'), notes: [
+        'A Home section, where the app now opens: Continue watching, For you, Because you watched, and the rows you choose.',
+        'Rows can be moved or hidden with the menu key, or in Settings › Rows.',
+        'Every actor has a page: open it from a cast card or a search result.',
+        'Show and episode pages have the cast, every season and similar shows.',
+        'The screen plays what a phone or the dashboard casts to it, and the player can send what plays to another screen.',
+        'With the mouse, Back shows where it goes, beside the clock; page titles line up with the clock; a new power screen.',
+      ] },
+      mobile: { version: '0.11.0-beta.1', tag: 'android-v0.11.0-beta.1', files: { Android: ['Playpex-0.11.0-beta.1-arm64.apk', 'Playpex-0.11.0-beta.1-x86_64.apk'] }, notes: [
+        'Cast to any Playpex screen, with a mini player and a remote; bring it back with “Continue on phone”.',
+        'Share to Playpex from any app: a link, a video or a YouTube video opens on your phone or goes straight to a screen.',
+        'People in search, each with a page of their films and shows.',
+      ] },
+      manager: { version: '0.11.0-beta.1', tag: 'manager-v0.11.0-beta.1', files: { Android: ['Playpex-Server-Manager-0.11.0-beta.1.apk'] }, notes: [
+        'The phone’s volume buttons change the volume of the screen you are controlling.',
+        'When a screen opens a text field, your phone’s own keyboard types into it.',
+      ] },
+    },
+  },
+  {
     version: '0.10.1-alpha.1', date: '2026-11-05', dateText: '5 November 2026', title: 'Remote control',
     summary: 'The dashboard and your phone can now drive any screen in the house, and Server Manager arrives.',
     apps: {

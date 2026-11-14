@@ -1,6 +1,6 @@
 {
   "name": "@playpex/server",
-  "version": "0.10.1-alpha.1",
+  "version": "0.11.0-beta.1",
   "private": true,
   "description": "Playpex Media Server core: streaming API, torrent engine, providers, subtitles",
   "main": "index.js",

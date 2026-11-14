@@ -1,7 +1,7 @@
 {
   "name": "@playpex/tv",
   "productName": "Playpex TV",
-  "version": "0.10.1-alpha.1",
+  "version": "0.11.0-beta.1",
   "private": true,
   "description": "Playpex TV: a 10-foot client of Playpex Media Server",
   "author": "Iheb Belhadj",
