@@ -22,6 +22,24 @@ const desktop = (name: string, v: string) => ({
 
 export const RELEASES: Release[] = [
   {
+    version: '0.11.1-beta.1', date: '2026-11-14', dateText: '14 November 2026', title: 'Menu fix',
+    summary: 'A fix for Playpex TV: plugins’ pages reach the menu again.',
+    apps: {
+      server: { version: '0.11.1-beta.1', tag: 'server-v0.11.1-beta.1', files: desktop('Playpex-Media-Server', '0.11.1-beta.1'), notes: [
+        'No changes: released with the others.',
+      ] },
+      tv: { version: '0.11.1-beta.1', tag: 'tv-v0.11.1-beta.1', files: desktop('Playpex-TV', '0.11.1-beta.1'), notes: [
+        'A plugin’s title page or release list now reaches the menu with the mouse and with Left, also after a show or movie page.',
+      ] },
+      mobile: { version: '0.11.1-beta.1', tag: 'android-v0.11.1-beta.1', files: { Android: ['Playpex-0.11.1-beta.1-arm64.apk', 'Playpex-0.11.1-beta.1-x86_64.apk'] }, notes: [
+        'No changes: released with the others.',
+      ] },
+      manager: { version: '0.11.1-beta.1', tag: 'manager-v0.11.1-beta.1', files: { Android: ['Playpex-Server-Manager-0.11.1-beta.1.apk'] }, notes: [
+        'No changes: released with the others.',
+      ] },
+    },
+  },
+  {
     version: '0.11.0-beta.1', date: '2026-11-14', dateText: '14 November 2026', title: 'Cast, Home and people',
     summary: 'Send what you are watching to any screen, a Home made from what each profile watches, Stremio add-ons as plugins, and a page for every actor.',
     apps: {

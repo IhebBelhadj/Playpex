@@ -11,11 +11,11 @@ export const SITE = {
 };
 
 export const RELEASE = {
-  version: '0.11.0-beta.1',
+  version: '0.11.1-beta.1',
   date: '2026-11-14',
   dateText: '14 November 2026',
   // each app's release on GitHub (one tag per app and version)
-  tags: { server: 'server-v0.11.0-beta.1', tv: 'tv-v0.11.0-beta.1', mobile: 'android-v0.11.0-beta.1', manager: 'manager-v0.11.0-beta.1' },
+  tags: { server: 'server-v0.11.1-beta.1', tv: 'tv-v0.11.1-beta.1', mobile: 'android-v0.11.1-beta.1', manager: 'manager-v0.11.1-beta.1' },
 };
 
 // a file of a GitHub release, downloaded directly
