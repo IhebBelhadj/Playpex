@@ -9,6 +9,7 @@ import { LinkView } from '@/components/search/link'
 import { StreamRows, TorrentRows } from '@/components/search/offers'
 import { FilterBar, keep, NO_FILTERS, sameSource, SectionHead, SourcesSummary, type Filters } from '@/components/search/parts'
 import { LiveResults, ServerResults } from '@/components/search/server'
+import { PeopleFaces } from '@/components/search/people'
 import { TitlePosters, TitleSourcesSheet } from '@/components/search/titles'
 import { TorrentTable } from '@/components/search/torrents'
 import { Button } from '@/components/ui/button'
@@ -45,8 +46,8 @@ import { cn } from '@/lib/utils'
 // them), tabs for the groups that found something, Top results led by what is
 // on this server and the titles, then "Watch now" and "Download" side by side.
 
-type View = 'all' | 'server' | 'titles' | 'streams' | 'torrents' | 'live'
-const VIEWS: View[] = ['all', 'server', 'titles', 'streams', 'torrents', 'live']
+type View = 'all' | 'server' | 'titles' | 'people' | 'streams' | 'torrents' | 'live'
+const VIEWS: View[] = ['all', 'server', 'titles', 'people', 'streams', 'torrents', 'live']
 const KINDS: { id: SearchKind; label: string }[] = [
   { id: 'all', label: 'Everything' },
   { id: 'movie', label: 'Movies' },
@@ -149,7 +150,9 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   const torrentList = allTorrents.filter((t) => keep(t, torrentFilters)).sort((a, b) => b.seeds - a.seeds)
   const streamList = allStreams.filter((s) => keep(s, streamFilters))
   const channels = live.items.filter((c) => !off.includes(c.plugin))
-  const catalog = titles.data ?? []
+  const catalog = titles.data?.titles ?? []
+  // people only for Everything (the Movies / Shows kinds search titles)
+  const people = titles.data?.people ?? []
   const server = {
     titles: words
       ? [...(kind !== 'tv' ? (home.data?.movies ?? []) : []), ...(kind !== 'movie' ? (home.data?.shows ?? []) : [])].filter((e) => holds(e.title, words))
@@ -176,6 +179,7 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
     all: 0,
     server: serverCount,
     titles: catalog.length,
+    people: people.length,
     streams: close(allStreams),
     torrents: close(allTorrents),
     live: channels.length,
@@ -194,6 +198,7 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
   const groups: { id: View; label: string; shown: boolean }[] = [
     { id: 'all', label: 'Top results', shown: true },
     { id: 'titles', label: 'Movies & shows', shown: true },
+    { id: 'people', label: 'People', shown: kind === 'all' },
     { id: 'streams', label: 'Streams', shown: sources.streams.length > 0 },
     { id: 'torrents', label: 'Torrents', shown: sources.torrents.length > 0 },
     { id: 'server', label: 'On this server', shown: true },
@@ -205,11 +210,18 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
     {
       source: { id: 'catalog', name: 'The catalog (TMDB)', group: 'streams' },
       state: !words ? 'idle' : titles.isFetching ? 'searching' : titles.error ? 'failed' : 'done',
-      count: catalog.length,
+      count: catalog.length + people.length,
       loose: 0,
       error: titles.error ?? null,
     },
   ]
+  // a person's name: their faces before the titles (docs/people-plan.md, decision E)
+  const peopleSection = people.length > 0 && (
+    <section className="space-y-3">
+      <SectionHead title="People" count={people.length} onAll={people.length > 8 ? () => onView('people') : undefined} />
+      <PeopleFaces people={people} limit={8} strip />
+    </section>
+  )
   const nothing = !searching && Object.values(counts).every((n) => n === 0)
 
   return (
@@ -339,6 +351,7 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
                     <ServerResults titles={server.titles} downloads={server.downloads} direct={server.direct} limit={3} />
                   </section>
                 )}
+                {titles.data?.peopleFirst && peopleSection}
                 {catalog.length > 0 ? (
                   <section className="space-y-3">
                     <SectionHead title="Movies & shows" count={catalog.length} onAll={catalog.length > 8 ? () => onView('titles') : undefined} />
@@ -347,6 +360,7 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
                 ) : (
                   titles.isFetching && <Asking what="the catalog" />
                 )}
+                {!titles.data?.peopleFirst && peopleSection}
                 {(watchable.length > 0 || torrentList.length > 0) && (
                   <div className={cn('grid items-start gap-x-6 gap-y-10', watchable.length > 0 && torrentList.length > 0 && 'xl:grid-cols-2')}>
                     {watchable.length > 0 && (
@@ -389,6 +403,17 @@ function SearchView({ kind, q, view, onSearch, onView }: { kind: SearchKind; q: 
             ) : (
               <Empty icon={<SearchX />} title={titles.error ? 'The catalog didn’t answer' : 'No movie or show by that name'}>
                 {titles.error ? 'Try again in a moment.' : 'Try fewer words, or the original title.'}
+              </Empty>
+            ))}
+
+          {view === 'people' &&
+            (titles.isPending ? (
+              <Asking what="the catalog" />
+            ) : people.length ? (
+              <PeopleFaces people={people} />
+            ) : (
+              <Empty icon={<SearchX />} title={titles.error ? 'The catalog didn’t answer' : 'Nobody by that name'}>
+                {titles.error ? 'Try again in a moment.' : 'Try the name as it’s usually written.'}
               </Empty>
             ))}
 

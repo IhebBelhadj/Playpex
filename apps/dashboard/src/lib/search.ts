@@ -14,6 +14,7 @@ export type SearchKind = 'all' | 'movie' | 'tv'
 export type Release = Schemas['ReleaseTorrent']
 export type StreamItem = Schemas['SearchSource']
 export type CatalogTitle = Schemas['CatalogTitle']
+export type CatalogPerson = Schemas['CatalogPerson']
 export type LiveChannel = Schemas['LiveChannel'] & { plugin: string }
 
 /** A source of one group, as the sources line and the rail name it */
@@ -150,7 +151,10 @@ export function useStreamSearch(kind: SearchKind, q: string, sources: { id: stri
   )
 }
 
-/** Movies and shows from the catalog (TMDB behind the server) */
+/**
+ * Movies, shows and (Everything only) people from the catalog (TMDB behind the
+ * server); `peopleFirst` when the best match is a person (docs/people-plan.md §5)
+ */
 export function useCatalogSearch(kind: SearchKind, q: string) {
   return useQuery({
     queryKey: ['catalog-search', kind, q],
@@ -159,7 +163,12 @@ export function useCatalogSearch(kind: SearchKind, q: string) {
     retry: false,
     queryFn: async () => {
       const answer = await unwrap(api.GET('/catalog/search/{kind}', { params: { path: { kind: kind === 'all' ? 'multi' : kind }, query: { q } } }))
-      return (answer.results as (CatalogTitle | { mediaType: 'person' })[]).filter((r): r is CatalogTitle => r.mediaType === 'movie' || r.mediaType === 'tv')
+      const results = answer.results as (CatalogTitle | CatalogPerson)[]
+      return {
+        titles: results.filter((r): r is CatalogTitle => r.mediaType === 'movie' || r.mediaType === 'tv'),
+        people: results.filter((r): r is CatalogPerson => r.mediaType === 'person'),
+        peopleFirst: results[0]?.mediaType === 'person',
+      }
     },
   })
 }

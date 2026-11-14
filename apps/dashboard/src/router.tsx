@@ -14,6 +14,7 @@ import { SettingsPage } from '@/pages/settings'
 import { SetupPage } from '@/pages/setup'
 import { DownloadsPage } from '@/pages/downloads'
 import { SearchPage } from '@/pages/search'
+import { PersonPage } from '@/pages/person'
 import { LibraryPage } from '@/pages/library'
 import { PluginPage } from '@/pages/plugin'
 import { PluginsPage } from '@/pages/plugins'
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: 'logs', element: <LogsPage /> },
       { path: 'downloads', element: <DownloadsPage /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'people/:personId', element: <PersonPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'storage', element: <StorageRedirect /> },
       { path: 'plugins', element: <PluginsPage /> },
