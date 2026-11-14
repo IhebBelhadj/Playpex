@@ -556,11 +556,15 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
           this.row('animeMovies' , 'Anime movies' , movies.filter(isAnime) , 'movie'),
         ]));
       default:
-        return this.searchKind('multi' , q).pipe(map(results => [
-          this.row('movies' , 'Movies' , results.filter(r => r.mediaType == 'movie') , 'movie'),
-          this.row('shows' , 'TV shows' , results.filter(r => r.mediaType == 'tv') , 'tv'),
-          this.row('people' , 'People' , results.filter(r => r.mediaType == 'person') , 'person'),
-        ]));
+        return this.searchKind('multi' , q).pipe(map(results => {
+          let rows = [
+            this.row('movies' , 'Movies' , results.filter(r => r.mediaType == 'movie') , 'movie'),
+            this.row('shows' , 'TV shows' , results.filter(r => r.mediaType == 'tv') , 'tv'),
+          ];
+          let people = this.row('people' , 'People' , results.filter(r => r.mediaType == 'person') , 'person');
+          // a person's name: their row first (docs/people-plan.md, decision E)
+          return results[0]?.mediaType == 'person' ? [people , ...rows] : [...rows , people];
+        }));
     }
   }
 
@@ -575,7 +579,8 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   private toItem(r:CatalogTitle | CatalogPerson):SearchItem {
     if (r.mediaType == 'person') {
       return { key : `person-${r.personId}`, kind : 'person', id : r.personId, title : r.name,
-        sub : r.knownForDepartment || '', image : r.profilePath };
+        sub : (r.knownFor || []).map(k => k.title).filter(Boolean).slice(0 , 2).join(', ') || r.knownForDepartment || '',
+        image : r.profilePath };
     }
     return { key : `${r.mediaType}-${r.tmdbId}`, kind : r.mediaType, id : r.tmdbId, title : r.title,
       sub : r.year || '', image : r.posterPath };
@@ -586,39 +591,14 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   open(item:SearchItem){
     if (!item) return;
 
+    // their page, over this one (docs/people-plan.md §4.4)
     if (item.kind == 'person') {
-      this.showCredits(item);
+      this.navigator.open({ screen: 'core.person', params: { id: String(item.id) }, payload: { name: item.title, profilePath: item.image || null } });
     }
     // its page, over this one (the movie page loads the movie's details)
     else {
       this.navigator.open({ screen: item.kind == 'tv' ? 'core.show' : 'core.movie', params: { id: item.id } });
     }
-  }
-
-  // A person: their movies and shows, in a row right under theirs
-  showCredits(person:SearchItem){
-    this.moviesService.getPersonCredits(person.id).pipe(first()).subscribe(data=>{
-      let seen = new Set<string>();
-      let credits = [...(data.cast || []) , ...(data.crew || [])]
-        .sort((a , b) => (b.voteCount || 0) - (a.voteCount || 0))
-        .map(c => ({ ...this.toItem(c) , badge : c.mediaType == 'tv' ? 'TV' : undefined }))
-        .filter(item => item.image && !seen.has(item.key) && seen.add(item.key))
-        .slice(0 , 40);
-
-      let rows = this.state.rows.filter(r => r.key != 'credits');
-      let at = rows.findIndex(r => r.items.some(i => i.key == person.key));
-      rows.splice(at + 1 , 0 , {
-        key : 'credits',
-        title : credits.length ? `With ${person.title}` : `No titles found for ${person.title}`,
-        items : credits,
-      });
-      this.update({ rows });
-
-      setTimeout(()=>{
-        let first = document.querySelector('.searchContainer .resultRow[data-row="credits"] .result') as HTMLElement;
-        if (first) this.engine.focus(first);
-      })
-    })
   }
 
   itemFor(node:HTMLElement):SearchItem {

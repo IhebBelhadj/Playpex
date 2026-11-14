@@ -1,0 +1,58 @@
+<!-- A person's page (docs/people-plan.md §4.2): the portrait and who they are,
+     then the entries of this page's pxStack: the Biography tile (only when it's
+     cut), the rows -->
+<px-detail-layout class="personPage" pxSection="personPage" [leaveFor]="{ left: '@menu' }" pxStack="person">
+
+  <header class="personHeader">
+    <div class="portrait">
+      <img *ngIf="profilePath" [src]="profileBase + profilePath" alt="">
+      <span class="initials" *ngIf="!profilePath">{{ name.slice(0, 1) }}</span>
+    </div>
+    <div class="who">
+      <h1 class="name">{{ name }}<span class="lifespan" *ngIf="lifespan">{{ lifespan }}</span></h1>
+      <p class="line" *ngIf="line">{{ line }}</p>
+      <ng-container *ngIf="person">
+        <p class="biography" *ngIf="person.biography">{{ person.biography }}</p>
+        <p class="biography none" *ngIf="!person.biography">No biography yet.</p>
+      </ng-container>
+      <ng-container *ngIf="!person && loading">
+        <px-skeleton class="bioSkeleton" variant="line" width="70%"></px-skeleton>
+        <px-skeleton class="bioSkeleton" variant="line" width="60%"></px-skeleton>
+      </ng-container>
+    </div>
+  </header>
+
+  <div class="actions" *ngIf="longBiography || error">
+    <px-action-bar>
+      <px-action *ngIf="longBiography" key="biography" icon="opts" label="Biography" (pxSelect)="openBiography()"></px-action>
+      <ng-container *ngIf="error">
+        <px-action key="retry" icon="opts" label="Try again" (pxSelect)="load()"></px-action>
+        <px-action key="back" icon="back" label="Go back" (pxSelect)="navigator.back()"></px-action>
+      </ng-container>
+    </px-action-bar>
+    <p class="error" *ngIf="error">{{ error }}</p>
+  </div>
+
+  <div class="rows">
+    <px-card-row class="row" *ngIf="loading && !rows.length" pxStackItem rowKey="loading" title="Known for" tone="detail"
+      align="third" variant="compact" [items]="[]" [loading]="true"></px-card-row>
+
+    <ng-container *ngFor="let row of rows; trackBy: byRow">
+      <px-card-row class="row" pxStackItem [rowKey]="row.key" [title]="row.title" tone="detail" align="third">
+        <ng-container *ngFor="let card of row.cards; let i = index; trackBy: byCard">
+          <px-card variant="compact" [key]="card.key" [image]="card.credit.posterPath ? posterBase + card.credit.posterPath : null"
+            [title]="card.title" [subtitle]="card.subtitle" [dim]="card.upcoming" [badges]="card.badges"
+            [data]="{ index: i, id: card.credit.tmdbId }" (pxSelect)="open(card)"></px-card>
+        </ng-container>
+      </px-card-row>
+    </ng-container>
+
+    <p class="empty" *ngIf="person && !rows.length">No movies or shows for {{ name }} yet.</p>
+  </div>
+</px-detail-layout>
+
+<!-- the whole biography: a paragraph per stop, so a long one scrolls with the arrows -->
+<px-dialog *ngIf="biographyOpen && person" id="personBiography" [title]="name" [subtitle]="line" [width]="820"
+  (closed)="biographyOpen = false">
+  <p class="bioParagraph" *ngFor="let p of paragraphs; let i = index" pxItem [pxItemKey]="'p' + i">{{ p }}</p>
+</px-dialog>

@@ -1,0 +1,142 @@
+// A person's page: on <px-detail-layout> (a scrolling pxStack) like a plugin's
+// title page; the header is the portrait and who they are, the rows of
+// compact posters below
+@use 'px' as *;
+
+:host {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.personPage {
+  justify-content: flex-start;
+}
+
+// the name's capitals centred on the masthead (level with the clock), the
+// portrait's top on their top
+.personHeader {
+  display: flex;
+  gap: dp(36);
+  align-items: flex-start;
+  padding-top: calc(var(--px-masthead) - var(--px-masthead-bd) * var(--px-text-hero));
+  padding-right: var(--px-page-gutter);
+  margin-bottom: dp(24);
+}
+
+.portrait {
+  flex: none;
+  margin-top: calc((var(--px-masthead-bd) - .355) * var(--px-text-hero));
+  width: dp(170);
+  height: dp(255);
+  border-radius: var(--px-radius-m);
+  overflow: hidden;
+  background: var(--px-surface-card);
+  box-shadow: var(--px-shadow-button);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.initials {
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-display);
+  color: var(--px-color-text-muted);
+}
+
+.who {
+  min-width: 0;
+  max-width: dp(760);
+}
+
+.name {
+  margin: 0 0 dp(8);
+  font-family: var(--px-font-bold);
+  font-size: var(--px-text-hero);
+  color: var(--px-color-text);
+  text-shadow: var(--px-shadow-text);
+}
+
+.lifespan {
+  margin-left: dp(16);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-headline);
+  color: var(--px-color-text-secondary);
+}
+
+.line {
+  margin: 0 0 dp(14);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  color: var(--px-color-text-secondary);
+}
+
+.biography {
+  margin: 0;
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  line-height: 1.45;
+  color: var(--px-color-text-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: var(--px-shadow-text);
+
+  &.none {
+    color: var(--px-color-text-dim);
+  }
+}
+
+.bioSkeleton {
+  display: block;
+  margin-bottom: dp(10);
+}
+
+.actions {
+  --px-action-bar-margin: 0 0 #{dp(18)};
+}
+
+.error {
+  margin: 0 0 dp(30);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  color: var(--px-color-text-muted);
+}
+
+.rows {
+  padding-bottom: dp(60);
+}
+
+.row {
+  --px-row-gap: #{dp(21)};
+  padding-bottom: dp(25);
+}
+
+.empty {
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-body);
+  color: var(--px-color-text-muted);
+}
+
+.bioParagraph {
+  margin: 0;
+  padding: dp(10) dp(14);
+  border-radius: var(--px-radius-s);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-lead);
+  line-height: 1.5;
+  color: var(--px-color-text-secondary);
+
+  &.focused,
+  &:focus {
+    color: var(--px-color-text);
+    background: var(--px-surface-1);
+  }
+}

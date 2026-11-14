@@ -18,10 +18,10 @@
     <px-slot name="core.movie.actions" [context]="slotContext"></px-slot>
   </px-action-bar>
 
-  <px-card-row class="casts" pxStackItem rowKey="cast" title="cast" tone="detail" align="third">
+  <px-card-row class="casts" pxStackItem rowKey="cast" title="Cast" tone="detail" align="third">
     <ng-container *ngFor="let cast of casts; let i = index; trackBy: byCredit">
       <px-card variant="portrait" [key]="cast.creditId" [image]="profileImgBase + cast.profilePath" [title]="cast.name"
-        [data]="{ index: i }"></px-card>
+        [subtitle]="cast.character || ''" [data]="{ index: i }" (pxSelect)="openPerson(cast)"></px-card>
     </ng-container>
   </px-card-row>
 

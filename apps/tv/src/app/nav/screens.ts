@@ -4,6 +4,7 @@ import { EpisodePageComponent } from '../episode-page/episode-page.component';
 import { MovieOptionsComponent } from '../movie-options/movie-options.component';
 import { MoviesPageComponent } from '../movies-page/movies-page.component';
 import { MoviesSliderComponent } from '../movies-slider/movies-slider.component';
+import { PersonPageComponent } from '../person-page/person-page.component';
 import { PlayerPageComponent } from '../player-page/player-page.component';
 import { PowerPageComponent } from '../power-page/power-page.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
@@ -164,6 +165,18 @@ defineScreen({
   frame: SHOWS_FRAME,
   kind: 'detail',
   reuse: true,
+  requires: ['profile'],
+});
+
+// A person's page (docs/people-plan.md §4.1): params { id } (TMDB person id),
+// payload { name, profilePath } (shown while it loads). No frame: it's reached
+// from movies, shows, episodes and search alike; Back from a title lands on
+// the card that opened it (the entry's focus snapshot)
+defineScreen({
+  id: 'core.person',
+  path: 'people/:id',
+  component: PersonPageComponent,
+  kind: 'detail',
   requires: ['profile'],
 });
 

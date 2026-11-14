@@ -26,6 +26,7 @@ import { ScreenEdgesComponent } from './screen-edges/screen-edges.component';
 import { PLUGIN_TEMPLATES } from './plugins/templates/templates';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
+import { PersonPageComponent } from './person-page/person-page.component';
 import { SeasonCurveComponent } from './season-curve/season-curve.component';
 import { RowArrowsComponent } from './row-arrows/row-arrows.component';
 import { CatalogFilterPanelComponent } from './catalog-filter-panel/catalog-filter-panel.component';
@@ -56,6 +57,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
   declarations: [
     AppComponent,
     EpisodePageComponent,
+    PersonPageComponent,
     SeasonCurveComponent,
     RowArrowsComponent,
     CatalogFilterPanelComponent,

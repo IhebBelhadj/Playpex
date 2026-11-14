@@ -53,7 +53,7 @@
   <px-card-row class="cast" *ngIf="cast?.length" pxStackItem rowKey="cast" title="Cast" tone="detail" align="third">
     <ng-container *ngFor="let person of cast; trackBy: byCredit">
       <px-card variant="portrait" [key]="person.creditId" [image]="profileBase + person.profilePath" [title]="person.name"
-        [subtitle]="person.character || ''"></px-card>
+        [subtitle]="person.character || ''" (pxSelect)="openPerson(person)"></px-card>
     </ng-container>
   </px-card-row>
 

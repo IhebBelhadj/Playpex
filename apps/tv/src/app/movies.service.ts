@@ -15,6 +15,8 @@ export type CatalogCredits = Schema<'CatalogCredits'>;
 export type CatalogSeason = Schema<'CatalogSeason'>;
 export type CatalogEpisode = Schema<'CatalogEpisode'>;
 export type CatalogPersonCredits = Schema<'CatalogPersonCredits'>;
+export type CatalogPersonDetails = Schema<'CatalogPersonDetails'>;
+export type CatalogPersonCredit = Schema<'CatalogPersonCredit'>;
 
 // A title as the TV holds it: a list item, completed by its page once read,
 // with its IMDb rating once known
@@ -129,6 +131,11 @@ export class MoviesService {
   // regular titles only (the server never asks for adult ones)
   search(kind:SearchKind , query:string , page = 1):Observable<CatalogPage> {
     return this.http.get<CatalogPage>(`${this.base}/search/${kind}`, { params: { q: query, page } });
+  }
+
+  // A person's page: who they are, their titles with every role merged (docs/people-plan.md)
+  getPerson(personId:number | string):Observable<CatalogPersonDetails> {
+    return this.http.get<CatalogPersonDetails>(`${this.base}/people/${personId}`);
   }
 
   // Movies and shows a person played in or worked on

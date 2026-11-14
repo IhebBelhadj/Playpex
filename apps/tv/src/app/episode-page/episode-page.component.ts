@@ -1,4 +1,6 @@
+import { BACK_TICKET, BackTicket } from '../back-button/back-button.component';
 import { profileContext, titleRef } from '../slot-contexts';
+import { personPayload } from '../person-page/person-page.component';
 import { ProfilesService } from '../profiles.service';
 import { formatDate } from '@angular/common';
 import { MediaKeys } from '../media-keys.service';
@@ -336,6 +338,10 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
       return;
     }
     this.episode = episode;
+    this.screen.setState(BACK_TICKET, {
+      name: `${EpisodePlaybackService.code(this.seasonNumber, episode.episodeNumber)} ${episode.name}`.trim(),
+      image: this.show?.posterPath || null, kind: 'poster',
+    } as BackTicket);
     this.slotContext = this.show ? {
       show: titleRef(this.show, this.show.imdbId), season: this.seasonNumber,
       episode: episode.episodeNumber, profile: profileContext(this.profiles.current.value),
@@ -563,6 +569,11 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   }
 
   // Its own page, over this one (Back comes here)
+  // a cast / guest-star card: that person's page, over this one (docs/people-plan.md §4.3)
+  openPerson(person:{ personId:number, name:string, profilePath:string | null }) {
+    this.navigator.open({ screen: 'core.person', params: { id: String(person.personId) }, payload: personPayload(person) });
+  }
+
   openSimilar(title:CatalogTitle) {
     this.navigator.open({ screen: 'core.show', params: { id: String(title.tmdbId) }, payload: title });
   }

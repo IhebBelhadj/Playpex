@@ -1,4 +1,6 @@
+import { BACK_TICKET, BackTicket } from '../back-button/back-button.component';
 import { ProfilesService } from '../profiles.service';
+import { personPayload } from '../person-page/person-page.component';
 import { profileContext, titleRef } from '../slot-contexts';
 import { MovieContext } from '../ui/public-api';
 import { Toasts } from '../ui/public-api';
@@ -162,6 +164,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   loadMovie(movie:TitleItem | undefined){
     let ready = (data:TitleItem) => {
       this.selectedMovie = data;
+      this.screen.setState(BACK_TICKET, { name: displayTitle(data), image: data.posterPath || null, kind: 'poster' } as BackTicket);
       this.pickTrailer(data);
       this.moviesService.assignSelection(this.selectedMovie);
       this.slotContext = { movie: titleRef(data), profile: profileContext(this.profiles.current.value) };
@@ -355,6 +358,11 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   // Its own page, over this one (Back comes here)
+  // a cast / guest-star card: that person's page, over this one (docs/people-plan.md §4.3)
+  openPerson(person:{ personId:number, name:string, profilePath:string | null }) {
+    this.navigator.open({ screen: 'core.person', params: { id: String(person.personId) }, payload: personPayload(person) });
+  }
+
   openSimilar(movie:CatalogTitle){
     this.navigator.open({ screen: 'core.movie', params: { id: movie.tmdbId }, payload: movie });
   }
