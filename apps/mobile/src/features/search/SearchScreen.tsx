@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons'
 import { formatSize } from '../../core/services/playback'
 import type { Found } from '../../core/services/releases'
 import { isLink, normalizeLink, type LinkInspection, type LinkItem, type LiveChannel } from '../../core/services/search'
-import { useCatalogList } from '../../lib/catalog'
+import { image, openPerson, useCatalogList, useImageBase } from '../../lib/catalog'
 import { useSearchChips, type SearchChip } from '../../lib/plugins'
 import { PluginRowView } from '../../ui/plugin-rows'
 import { titlesOf } from '../../lib/recommend'
@@ -117,7 +117,9 @@ export default function SearchScreen() {
               </Press>
             ))}
           </ScrollView>
+          {scope === 'all' && titles.peopleFirst ? <PeopleSection people={titles.people} /> : null}
           {scope === 'all' || scope === 'titles' ? <TitlesSection q={q} titles={titles.titles} loading={titles.loading} grid={scope === 'titles'} /> : null}
+          {scope === 'all' && !titles.peopleFirst ? <PeopleSection people={titles.people} /> : null}
           {scope === 'all' || scope === 'videos' ? <FoundSection
               title="Videos"
               groups={videoGroups}
@@ -220,6 +222,41 @@ function TitlesSection({ q, titles, loading, grid }: { q: string; titles: Return
           renderItem={({ item }) => <TitleCard title={item} scope="search" />}
         />
       )}
+    </Section>
+  )
+}
+
+/** People (docs/people-plan.md §6): faces, names, what each is known for; a tap opens their page */
+function PeopleSection({ people }: { people: ReturnType<typeof useTitleResults>['people'] }) {
+  const base = useImageBase()
+  if (!people.length) return null
+  return (
+    <Section title="People" count={people.length}>
+      <FlatList
+        {...ROW_LIST}
+        horizontal
+        data={people}
+        keyExtractor={(p) => String(p.personId)}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+        renderItem={({ item }) => (
+          <Press onPress={() => openPerson(item.personId, item)} style={{ width: 96 }} accessibilityRole="button" accessibilityLabel={item.name}>
+            <View style={styles.person}>
+              {item.profilePath ? (
+                <Image source={image(base, item.profilePath, 'w185')} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <Ionicons name="person" size={28} color={color.textDim} />
+              )}
+            </View>
+            <Text style={styles.personName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={text.tiny} numberOfLines={2}>
+              {(item.knownFor ?? []).map((k) => k.title).filter(Boolean).join(', ') || item.knownForDepartment || ''}
+            </Text>
+          </Press>
+        )}
+      />
     </Section>
   )
 }
@@ -519,6 +556,8 @@ const styles = StyleSheet.create({
   section: { marginTop: space.xl },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: space.l, marginBottom: space.m },
   count: { ...text.small, fontVariant: ['tabular-nums'] },
+  person: { width: 96, height: 128, borderRadius: radius.m, overflow: 'hidden', backgroundColor: color.surface2, alignItems: 'center', justifyContent: 'center' },
+  personName: { fontFamily: font.semibold, fontSize: 13, lineHeight: 17, color: color.textSoft, marginTop: space.s },
   row: { paddingHorizontal: space.l, gap: space.s },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s, rowGap: space.l, paddingHorizontal: space.l },
   item: { paddingHorizontal: space.l, marginBottom: space.s },

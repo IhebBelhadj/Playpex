@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { PlaybackSession } from '../core/playback/session'
-import { titlesOf } from '../core/services/catalog'
+import { peopleOf, titlesOf } from '../core/services/catalog'
 import type { Found } from '../core/services/releases'
 import {
   channelSource,
@@ -26,7 +26,7 @@ import { pushPlayer } from './navigation'
 
 const MINUTE = 60 * 1000
 
-/** Movies and shows of the catalog */
+/** Movies, shows and people of the catalog; `peopleFirst` when the best match is a person */
 export function useTitleResults(q: string) {
   const client = useClient()
   const answer = useQuery({
@@ -36,7 +36,12 @@ export function useTitleResults(q: string) {
     placeholderData: keepPreviousData,
     staleTime: 10 * MINUTE,
   })
-  return { titles: titlesOf(answer.data), loading: answer.isFetching && !answer.data }
+  return {
+    titles: titlesOf(answer.data),
+    people: peopleOf(answer.data),
+    peopleFirst: answer.data?.results[0]?.mediaType === 'person',
+    loading: answer.isFetching && !answer.data,
+  }
 }
 
 export type Group<T> = { provider: string; name: string; items: T[]; loading: boolean; error: string | null }

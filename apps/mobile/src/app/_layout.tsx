@@ -51,6 +51,7 @@ function Screens() {
         <Stack.Screen name="(tabs)" />
         {/* A fade, short: the poster's own morph carries the move */}
         <Stack.Screen name="title/[mediaType]/[id]" options={{ animation: 'fade', animationDuration: MORPH_SCREEN_FADE }} />
+        <Stack.Screen name="person/[id]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="plugin/[plugin]/[screen]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="browse/[mediaType]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="releases" options={{ animation: 'slide_from_right' }} />

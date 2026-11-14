@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import Animated, { FadeIn, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { unwrap, type Schemas } from '../../../lib/api'
-import { image, useCredits, useDetails, useImageBase, useImdbRating, useSeason, type Details, type MediaType } from '../../../lib/catalog'
+import { image, openPerson, useCredits, useDetails, useImageBase, useImdbRating, useSeason, type Details, type MediaType } from '../../../lib/catalog'
 import { formatTime, openPlay, playTitle } from '../../../lib/playback'
 import { useCanFindReleases, useSlotRows } from '../../../lib/plugins'
 import { useHistory, unseen, useSimilar } from '../../../lib/recommend'
@@ -475,7 +475,7 @@ function Cast({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: space.l, gap: space.m }}
         renderItem={({ item }) => (
-          <View style={{ width: 84 }}>
+          <Press onPress={() => openPerson(item.personId, item)} style={{ width: 84 }} accessibilityRole="button" accessibilityLabel={item.name}>
             <View style={styles.face}>
               {item.profilePath ? (
                 <Image source={image(base, item.profilePath, 'w185')} style={StyleSheet.absoluteFill} contentFit="cover" transition={motion.base} />
@@ -491,7 +491,7 @@ function Cast({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
                 {item.character}
               </Text>
             ) : null}
-          </View>
+          </Press>
         )}
       />
     </View>

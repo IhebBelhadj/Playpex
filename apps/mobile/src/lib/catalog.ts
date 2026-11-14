@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { router } from 'expo-router'
 import { unwrap, type Schemas } from './api'
 import { useApi, useSession } from './session'
 
@@ -9,6 +10,9 @@ export type Title = Schemas['CatalogTitle']
 export type Details = Schemas['CatalogDetails']
 export type Season = Schemas['CatalogSeason']
 export type Episode = Schemas['CatalogEpisode']
+export type Person = Schemas['CatalogPerson']
+export type PersonDetails = Schemas['CatalogPersonDetails']
+export type PersonCredit = Schemas['CatalogPersonCredit']
 export type MediaType = 'movie' | 'tv'
 
 const HOUR = 60 * 60 * 1000
@@ -72,6 +76,22 @@ export function useCredits(mediaType: MediaType, tmdbId: number) {
       unwrap(api.GET('/catalog/titles/{mediaType}/{tmdbId}/credits', { params: { path: { mediaType, tmdbId } } })),
     staleTime: 6 * HOUR,
   })
+}
+
+/** A person's page (docs/people-plan.md §3.1): who they are, their titles with every role merged */
+export function usePerson(personId: number) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['catalog', 'person', personId],
+    queryFn: () => unwrap(api.GET('/catalog/people/{personId}', { params: { path: { personId } } })),
+    enabled: personId > 0,
+    staleTime: 6 * HOUR,
+  })
+}
+
+/** Opens a person's page; their name and face, drawn at once while it loads */
+export function openPerson(personId: number, from?: { name?: string; profilePath?: string | null }) {
+  router.push({ pathname: '/person/[id]', params: { id: String(personId), name: from?.name ?? '', face: from?.profilePath ?? '' } })
 }
 
 export function useImdbRating(imdbId: string | null | undefined) {

@@ -29,6 +29,13 @@ export async function genres(client: ApiClient, mediaType: 'movie' | 'tv'): Prom
   return (await unwrap(client.api.GET('/catalog/genres/{mediaType}', { params: { path: { mediaType } } }))).genres
 }
 
+export type CatalogPerson = Schemas['CatalogPerson']
+
+/** The people of a page (search results, docs/people-plan.md §6) */
+export function peopleOf(page: CatalogPage | undefined): CatalogPerson[] {
+  return (page?.results ?? []).filter((r): r is CatalogPerson => r.mediaType === 'person')
+}
+
 /** The titles of a page: people left out */
 export function titlesOf(page: CatalogPage | undefined): CatalogTitle[] {
   return (page?.results ?? []).filter((r): r is CatalogTitle => r.mediaType === 'movie' || r.mediaType === 'tv')
