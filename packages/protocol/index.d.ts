@@ -24,6 +24,9 @@ export declare const AUTH: {
   readonly DEVICE_TOKEN_PATH: '/auth/device/token';
   readonly DEVICE_GRANT_TYPE: 'urn:ietf:params:oauth:grant-type:device_code';
   readonly TOKEN_PARAM: 'access_token';
+  readonly DEVICE_COOKIE: 'playpex_device';
+  readonly DEVICE_LOGOUT_PATH: '/auth/device/logout';
+  readonly WEB_CLIENT_ID: 'playpex-web';
 };
 export type SessionCommandAction = 'pause' | 'resume' | 'toggle' | 'seek' | 'seekBy' | 'stop';
 export declare const REMOTE: {

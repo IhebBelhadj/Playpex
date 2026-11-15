@@ -33,7 +33,7 @@ The server is the unchanged headless entry; when `process.parentPort` exists, `a
 ## Gotchas
 - **No windows**: `window-all-closed` is handled so nothing quits; dialogs (`dialog.showMessageBox`) and notifications work without a window.
 - **Graceful stop matters**: the server destroys its torrent engines and closes SQLite; `before-quit` waits for `server.stop()`. Killing the main process with SIGKILL leaves the child to the OS.
-- The packaged app reads nothing from the repo: dashboard from the asar (`@playpex/server/public`, build it before packaging), migrations from the asar, ffmpeg from `resources/ffmpeg`. `npm run dist` builds the dashboard first.
+- The packaged app reads nothing from the repo: dashboard from the asar (`@playpex/server/public`, build it before packaging), Playpex TV for the web too (`@playpex/server/public-tv`, `npm run build:web -w apps/tv`), migrations from the asar, ffmpeg from `resources/ffmpeg`. `npm run dist` builds the dashboard and the TV web build first.
 - Unsigned builds: Windows SmartScreen warns, macOS Gatekeeper blocks (signing is §14.4). Auto-update needs published GitHub releases (none yet: the updater reports "No published versions on GitHub").
 - Linux GNOME needs the AppIndicator extension for the tray icon.
 - Until plan step 9 the TV app embeds its own server: whichever starts first holds port 28470 (the desktop app then shows "Another Playpex server is running").

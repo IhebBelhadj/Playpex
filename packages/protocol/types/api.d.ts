@@ -115,6 +115,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/device/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forget this device (browsers' "Forget this browser"; any paired device may call it)
+         * @description The calling device (its `playpex_device` cookie, or its Bearer token) is revoked, like the admin's Revoke on the dashboard, and the cookie is cleared (`Set-Cookie: playpex_device=; Max-Age=0`). Answers `{ ok: true }` also when the caller is no device. With the cookie, send `X-Playpex-Client`.
+         */
+        post: operations["deviceLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sign-in/username": {
         parameters: {
             query?: never;
@@ -4492,7 +4512,7 @@ export interface components {
              * @description Stable code (HTTP status in parentheses)
              * @enum {string}
              */
-            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "CAST_REFUSED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
+            code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "CAST_REFUSED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "CLIENT_HEADER_REQUIRED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
@@ -7037,7 +7057,10 @@ export interface components {
             /** @constant */
             grant_type: "urn:ietf:params:oauth:grant-type:device_code";
             device_code: string;
+            /** @description The app: playpex-tv, playpex-web (a browser), playpex-mobile… */
             client_id: string;
+            /** @description Browsers: answer the token as the HttpOnly cookie playpex_device (a DeviceCookie body) instead of in the body */
+            cookie?: boolean;
         };
         DeviceToken: {
             /** @description Keep it secret (OS keychain / encrypted storage) */
@@ -7045,6 +7068,14 @@ export interface components {
             /** @constant */
             token_type: "Bearer";
             /** @description Seconds; renewed while the device is used */
+            expires_in: number;
+            scope?: string;
+        };
+        /** @description The token route's answer with `cookie: true`: the token is in the Set-Cookie header only */
+        DeviceCookie: {
+            /** @constant */
+            token_type: "cookie";
+            /** @description Seconds; renewed (and the cookie set again) while the device is used */
             expires_in: number;
             scope?: string;
         };
@@ -7942,17 +7973,40 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Approved; the token is given once */
+            /** @description Approved; the token is given once. With `cookie: true` (browsers) it is set as the HttpOnly cookie `playpex_device` (`Set-Cookie: playpex_device=…; Path=/; Max-Age=…; HttpOnly; SameSite=Strict`, + `Secure` over HTTPS) and the body is a `DeviceCookie` without it */
             200: {
                 headers: {
+                    /** @description With `cookie: true` only: the device cookie */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeviceToken"];
+                    "application/json": components["schemas"]["DeviceToken"] | components["schemas"]["DeviceCookie"];
                 };
             };
             400: components["responses"]["OAuthError"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    deviceLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            /** @description Cookie without `X-Playpex-Client` (`CLIENT_HEADER_REQUIRED`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     adminSignIn: {

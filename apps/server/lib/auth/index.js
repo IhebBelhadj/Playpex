@@ -12,11 +12,22 @@
 // same request, databaseHooks below), which is what makes it a device.
 //
 // Callers (identify(req) → req.auth):
-//   { kind: 'device', device }  Authorization: Bearer <token>, or ?access_token= (media elements)
+//   { kind: 'device', device }  Authorization: Bearer <token>, or ?access_token= (media elements),
+//                               or the httpOnly cookie playpex_device (browsers: Playpex TV on the
+//                               web, docs/web-client-plan.md §5.2; via: 'cookie')
 //   { kind: 'admin', session }  Better Auth's signed session cookie (the dashboard), not a device's
 //   { kind: 'local' }           loopback, unless security.requirePairingOnLoopback
 //   { kind: 'internal' }        ffmpeg / ffprobe reading a file through our own routes (internalUrlToken)
 //   null                        → 401 PAIRING_REQUIRED on client routes
+//
+// A browser may hold both cookies (the admin signed in on the dashboard, and
+// this browser paired as a device). The device is used when the request names
+// a Playpex client (X-Playpex-Client: the TV web app sends it on every API
+// call); without it (the dashboard sends none; media elements, WebSockets)
+// the admin. Either way the other one rides along (who.admin / who.device),
+// and lib/auth/http.js#requireAdmin always uses the admin. A device cookie
+// wins over loopback trust, so a paired browser keeps its identity on the
+// server machine too.
 //
 // Better Auth is ESM-only; Node ≥ 22.12 (Electron 44 = Node 24) require()s it.
 // It is loaded on first use (~300 ms), not when the server is required.
@@ -49,6 +60,10 @@ var OWNER_EMAIL = 'admin@playpex.local',
 // (rate limits, session ipAddress). Any incoming copy is overwritten: clients
 // can't choose their address.
 var ADDRESS_HEADER = 'x-playpex-remote-address';
+
+// The browser device cookie (docs/web-client-plan.md §5.2): the device
+// session's token, HttpOnly, SameSite=Strict, never readable by the page
+var DEVICE_COOKIE = protocol.AUTH.DEVICE_COOKIE;
 
 // client_id of the device flow: names the app ('playpex-tv', …). Public
 // clients, so not a secret; only its shape is checked.
@@ -105,6 +120,24 @@ function betterAuthLogger() {
   };
 }
 
+var WEB_CLIENT_ID = protocol.AUTH.WEB_CLIENT_ID;
+
+// "Chrome on Windows" from a User-Agent, or null
+function browserName(ua) {
+  if (typeof ua !== 'string' || !ua) {
+    return null;
+  }
+  var browser = /Edg(e|A|iOS)?\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' :
+      /Firefox\/|FxiOS\//.test(ua) ? 'Firefox' : /Chrome\/|CriOS\//.test(ua) ? 'Chrome' :
+      /Safari\//.test(ua) ? 'Safari' : null,
+    os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' :
+      /CrOS/.test(ua) ? 'ChromeOS' : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : null;
+  if (!browser) {
+    return null;
+  }
+  return os ? browser + ' on ' + os : browser;
+}
+
 // Rows of `devices` are made with the session the device flow creates
 function deviceSessionCreated(db, session, ctx) {
   if (!ctx || ctx.path !== '/device/token') {
@@ -119,6 +152,8 @@ function deviceSessionCreated(db, session, ctx) {
       clientId: String(ctx.body && ctx.body.client_id || ''),
       client: client && client.name ? client.name + (client.version ? '/' + client.version : '') : null,
       address: headers ? headers.get(ADDRESS_HEADER) : null,
+      // A browser's name until it (or the admin) gives one: "Chrome on Windows"
+      name: ctx.body && ctx.body.client_id === WEB_CLIENT_ID ? browserName(headers && headers.get('user-agent')) : null,
       createdAt: now,
       lastSeenAt: now
     };
@@ -308,7 +343,9 @@ function fromToken(s, token, req) {
       var now = Date.now(), writes = [],
         expiresIn = SESSION_DAYS * 24 * 3600 * 1000;
       // sliding expiry, like Better Auth's own updateAge
+      var renewed = false;
       if (new Date(session.expiresAt).getTime() - now < expiresIn - UPDATE_AGE_S * 1000) {
+        renewed = true;
         session.expiresAt = new Date(now + expiresIn);
         writes.push(s.ctx.internalAdapter.updateSession(token, { expiresAt: session.expiresAt }));
       }
@@ -320,7 +357,7 @@ function fromToken(s, token, req) {
           .where(orm.eq(schema.devices.id, row.id)));
       }
       return Promise.all(writes).then(function () {
-        return { device: row, session: session };
+        return { device: row, session: session, renewed: renewed };
       });
     });
   });
@@ -348,6 +385,26 @@ function fromCookie(s, req) {
   }, function () { return null; });
 }
 
+// The playpex_device cookie's value, or null
+function deviceCookie(req) {
+  var header = req.headers.cookie;
+  if (!header) {
+    return null;
+  }
+  var parts = String(header).split(';');
+  for (var i = 0; i < parts.length; i++) {
+    var eq = parts[i].indexOf('=');
+    if (eq > 0 && parts[i].slice(0, eq).trim() === DEVICE_COOKIE) {
+      var value = parts[i].slice(eq + 1).trim();
+      try {
+        value = decodeURIComponent(value);
+      } catch (e) { /* kept as sent */ }
+      return value || null;
+    }
+  }
+  return null;
+}
+
 /**
  * Who is calling: resolves req.auth (see the top of this file). Never rejects
  * the request itself; requireClient / requireAdmin do.
@@ -360,12 +417,27 @@ function identify(req) {
     var token = bearerToken(req);
     if (token) {
       return fromToken(s, token, req).then(function (found) {
-        return found ? { kind: 'device', device: found.device, session: found.session } : null;
+        return found ? { kind: 'device', device: found.device, session: found.session, via: 'bearer' } : null;
       });
     }
-    return fromCookie(s, req).then(function (found) {
-      if (found) {
-        return { kind: 'admin', session: found.session, user: found.user };
+    var cookieToken = deviceCookie(req);
+    return Promise.all([
+      cookieToken ? fromToken(s, cookieToken, req) : null,
+      fromCookie(s, req)
+    ]).then(function (found) {
+      var device = found[0] ? { kind: 'device', device: found[0].device, session: found[0].session, via: 'cookie',
+          renewed: found[0].renewed } : null,
+        admin = found[1] ? { kind: 'admin', session: found[1].session, user: found[1].user } : null;
+      if (device && admin) {
+        if (req.headers[protocol.CLIENT_HEADER.toLowerCase()]) {
+          device.admin = admin;
+          return device;
+        }
+        admin.device = device;
+        return admin;
+      }
+      if (device || admin) {
+        return device || admin;
       }
       if (isLoopback(req) && !settings.get('security.requirePairingOnLoopback')) {
         return { kind: 'local' };
@@ -642,7 +714,11 @@ function signOutAdmins(s) {
 
 module.exports = {
   ADDRESS_HEADER: ADDRESS_HEADER,
+  DEVICE_COOKIE: DEVICE_COOKIE,
+  SESSION_SECONDS: SESSION_DAYS * 24 * 3600,
   EXPOSED: EXPOSED,
+  browserName: browserName,
+  deviceCookie: deviceCookie,
   ready: ready,
   close: close,
   identify: identify,

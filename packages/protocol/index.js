@@ -28,7 +28,12 @@ var AUTH = {
   DEVICE_CODE_PATH: '/auth/device/code',
   DEVICE_TOKEN_PATH: '/auth/device/token',
   DEVICE_GRANT_TYPE: 'urn:ietf:params:oauth:grant-type:device_code',
-  TOKEN_PARAM: 'access_token'
+  TOKEN_PARAM: 'access_token',
+  // Browsers (docs/web-client-plan.md §5.2): POST DEVICE_TOKEN_PATH with
+  // { cookie: true } sets this httpOnly cookie instead of answering the token
+  DEVICE_COOKIE: 'playpex_device',
+  DEVICE_LOGOUT_PATH: '/auth/device/logout',
+  WEB_CLIENT_ID: 'playpex-web'
 };
 
 // Control from the server (docs/remote-control-plan.md): the admin's commands
@@ -106,6 +111,7 @@ var ERROR_CODES = {
   FORBIDDEN: 403,                // e.g. wrong profile PIN
   HOST_NOT_ALLOWED: 403,         // Host header isn't this server (DNS rebinding defence)
   ORIGIN_NOT_ALLOWED: 403,       // state-changing request from a web origin that isn't allowed
+  CLIENT_HEADER_REQUIRED: 403,   // a state-changing request authenticated by the device cookie without X-Playpex-Client (CSRF)
   NOT_FOUND: 404,
   CONFLICT: 409,
   CAST_REFUSED: 403,             // a cast the server won't deliver (docs/cast-plan.md §4.4): casting off, a profile, an adults source

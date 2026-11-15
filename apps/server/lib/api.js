@@ -796,6 +796,33 @@ v1.use(function (req, res) {
   fail(res, 'NOT_FOUND', 'No route ' + req.method + ' ' + protocol.API_PREFIX + req.path);
 });
 
+// Playpex TV for the web (docs/web-client-plan.md §5.1; `npm run build:web
+// -w apps/tv` builds it into apps/server/public-tv with base href /tv/):
+// files with a content hash in their name (main.<hash>.js) cached for a
+// year, other files an hour, every other GET under /tv (the app's routes)
+// answers its index.html. Before the dashboard's fallback.
+var TV_WEB = process.env.PLAYPEX_TV_WEB_DIR || path.join(__dirname, '..', 'public-tv');
+var HASHED = /\.[0-9a-f]{16,}\./;
+api.get(/^\/tv$/, function (req, res) {
+  var q = req.originalUrl.indexOf('?');
+  res.redirect(301, '/tv/' + (q >= 0 ? req.originalUrl.slice(q) : ''));
+});
+api.use('/tv', express.static(TV_WEB, {
+  index: false,
+  redirect: false,
+  setHeaders: function (res, file) {
+    res.set('Cache-Control', HASHED.test(path.basename(file)) ? 'public, max-age=31536000, immutable' : 'public, max-age=3600');
+  }
+}));
+api.get(/^\/tv(\/[^.]*)?$/, function (req, res) {
+  var index = path.join(TV_WEB, 'index.html');
+  if (!fs.existsSync(index)) {
+    return res.status(404).type('text/plain').send('Playpex TV for the web is not built: run `npm run build:web -w apps/tv`');
+  }
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(index);
+});
+
 // The dashboard (apps/dashboard, built into apps/server/public): hashed
 // assets cached for a year, every other GET page answers index.html (SPA
 // routes such as /link?user_code=…, the verification_uri of pairing)

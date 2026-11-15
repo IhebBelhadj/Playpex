@@ -128,6 +128,31 @@ or `?device=<deviceId>` on media URLs. Without either, the server uses the clien
 
 Probe loopback first when your client may run on the server machine, and use the loopback URL for it.
 
+## Browsers
+
+A web page can't keep a token away from its own scripts, and `<video>`, `hls.js`, `<track>` and WebSockets can't send an `Authorization` header (tokens in URLs end up in logs and history). So a browser client (Playpex TV on the web, served by every server at `/tv/`; `client_id` `playpex-web`) is a device known by a **cookie** instead:
+
+1. Pair as above: `POST /api/v1/auth/device/code` `{ "client_id": "playpex-web" }`, show the code, poll.
+2. Poll with **`"cookie": true`** in the token request's body. Once the admin approved, the answer sets the token as a cookie and leaves it out of the body:
+
+   ```http
+   HTTP/1.1 200 OK
+   Set-Cookie: playpex_device=<token>; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict
+   Cache-Control: no-store
+
+   { "token_type": "cookie", "expires_in": 31536000, "scope": "" }
+   ```
+
+   `Secure` is added when the page is served over HTTPS. Pending, slow-down and denied answers are the usual RFC 8628 errors.
+3. From then on the browser sends the cookie with every request to the server (the page and the API share an origin): fetches, media elements, `<track>`, the events and remote WebSockets. Nothing else to do: no `Authorization`, no `?access_token=`. While the device is used, its session's expiry slides and the cookie is set again with it (at most once a day).
+4. **CSRF**: a request the cookie authenticates that changes something (`POST`, `PUT`, `PATCH`, `DELETE`) must carry the `X-Playpex-Client` header (`playpex-web/<version>; api=1`), else **`403 CLIENT_HEADER_REQUIRED`**. Another site can't send a custom header without a CORS preflight the server doesn't grant; `SameSite=Strict` and the `Origin` check (`403 ORIGIN_NOT_ALLOWED`) come on top. Send the header on every API call.
+5. **Forget this browser**: `POST /api/v1/auth/device/logout` (with `X-Playpex-Client`) revokes the device, as the admin's Revoke would, and clears the cookie; it answers `{ "ok": true }` even when there was nothing to forget. Any paired device may call it with its Bearer token too.
+6. **Revoked** on the dashboard: `401 PAIRING_REQUIRED` (the server clears the dead cookie in that answer); pair again.
+
+The device's name starts as the browser and its system ("Chrome on Windows"), until `PUT /devices/me` or the admin renames it. A browser on the server machine needs no pairing (loopback, below); a paired browser there keeps its device identity.
+
+**The admin's cookie and a device cookie in one browser** (the admin signed in on the dashboard, and the same browser paired as a TV): a request that sends `X-Playpex-Client` is the device's, one without it (the dashboard's, a media element's, a WebSocket's) is the admin's, and admin routes always use the admin.
+
 ## The admin (dashboard) is not a client role
 
 The dashboard signs in as the server's single admin (`POST /api/v1/auth/sign-in/username` → an HttpOnly cookie). Admin routes (`/api/v1/admin/*`, `GET /api/v1/sessions`) answer `401 ADMIN_REQUIRED` to device tokens: **a device token never grants admin**. Clients have no reason to call them; they are in the spec for the dashboard.
@@ -138,6 +163,6 @@ Everything under `/api/v1` except the admin routes: torrents and streams, catalo
 
 ## Reference
 
-- Constants: `AUTH` (`DEVICE_CODE_PATH`, `DEVICE_TOKEN_PATH`, `DEVICE_GRANT_TYPE`, `TOKEN_PARAM`), `DEVICE_HEADER`, `DEVICE_PARAM` in `@playpex/protocol`.
-- Spec: `requestDeviceCode`, `requestDeviceToken`, `getMyDevice`, `describeMyDevice`; schemas `DeviceAuthorization`, `DeviceToken`, `DeviceDescription`, `Device`.
+- Constants: `AUTH` (`DEVICE_CODE_PATH`, `DEVICE_TOKEN_PATH`, `DEVICE_GRANT_TYPE`, `TOKEN_PARAM`, `DEVICE_COOKIE`, `DEVICE_LOGOUT_PATH`, `WEB_CLIENT_ID`), `DEVICE_HEADER`, `DEVICE_PARAM` in `@playpex/protocol`.
+- Spec: `requestDeviceCode`, `requestDeviceToken`, `deviceLogout`, `getMyDevice`, `describeMyDevice`; schemas `DeviceAuthorization`, `DeviceToken`, `DeviceCookie`, `DeviceDescription`, `Device`; security scheme `deviceCookie`.
 - Server side: `apps/server/lib/auth/` (Better Auth with its device-authorization plugin; plan §6.3).

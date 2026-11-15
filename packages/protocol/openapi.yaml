@@ -54,6 +54,14 @@ info:
     - Device-flow errors follow RFC 8628 / RFC 6749: `{ error, error_description }` with 400
       (`authorization_pending`, `slow_down`, `expired_token`, `access_denied`, `invalid_grant`,
       `invalid_client`). Better Auth's other routes (`/auth/sign-in/…`) answer `{ message, code }`.
+    - **Browsers** (Playpex TV on the web, served by the server at `/tv/`): poll the token route with
+      `cookie: true`; the approved answer sets the HttpOnly cookie `playpex_device` (SameSite=Strict, a
+      year) instead of giving the token, and every request of the page then carries it (fetch, media
+      elements, WebSockets). Requests it authenticates that change something (POST, PUT, PATCH,
+      DELETE) must send `X-Playpex-Client`, else **403 `CLIENT_HEADER_REQUIRED`** (CSRF).
+      `POST /auth/device/logout` forgets the device and clears the cookie. A browser holding both the
+      admin's cookie and a device cookie is the device on requests that send `X-Playpex-Client`, the
+      admin on the others; admin routes always use the admin.
 
     **Events**: `GET /events` upgrades to a WebSocket of JSON messages `{ topic, time, data }`
     (see `Event`); same auth (`?access_token=` for clients that can't set headers).
@@ -85,6 +93,7 @@ servers:
 security:
   - deviceToken: []
   - accessTokenParam: []
+  - deviceCookie: []
   - adminSession: []
   - {}   # loopback clients, unless the server requires pairing there too
 
@@ -231,12 +240,42 @@ paths:
             schema: { $ref: '#/components/schemas/DeviceTokenRequest' }
       responses:
         '200':
-          description: Approved; the token is given once
+          description: >-
+            Approved; the token is given once. With `cookie: true` (browsers) it is set as the HttpOnly cookie
+            `playpex_device` (`Set-Cookie: playpex_device=…; Path=/; Max-Age=…; HttpOnly; SameSite=Strict`, + `Secure`
+            over HTTPS) and the body is a `DeviceCookie` without it
+          headers:
+            Set-Cookie:
+              description: 'With `cookie: true` only: the device cookie'
+              schema: { type: string }
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/DeviceToken' }
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DeviceToken'
+                  - $ref: '#/components/schemas/DeviceCookie'
         '400': { $ref: '#/components/responses/OAuthError' }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/device/logout:
+    post:
+      tags: [auth]
+      operationId: deviceLogout
+      summary: Forget this device (browsers' "Forget this browser"; any paired device may call it)
+      description: >-
+        The calling device (its `playpex_device` cookie, or its Bearer token) is revoked, like the admin's
+        Revoke on the dashboard, and the cookie is cleared (`Set-Cookie: playpex_device=; Max-Age=0`).
+        Answers `{ ok: true }` also when the caller is no device. With the cookie, send `X-Playpex-Client`.
+      security:
+        - deviceCookie: []
+        - deviceToken: []
+        - {}
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403':
+          description: Cookie without `X-Playpex-Client` (`CLIENT_HEADER_REQUIRED`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /auth/sign-in/username:
     post:
       tags: [auth]
@@ -5182,6 +5221,13 @@ components:
       in: query
       name: access_token
       description: The same token, for media elements that can't set headers
+    deviceCookie:
+      type: apiKey
+      in: cookie
+      name: playpex_device
+      description: >-
+        A browser's device token (POST /auth/device/token with cookie true), HttpOnly, SameSite=Strict.
+        State-changing requests it authenticates must send X-Playpex-Client (else 403 CLIENT_HEADER_REQUIRED)
     adminSession:
       type: apiKey
       in: cookie
@@ -5362,6 +5408,7 @@ components:
             - FORBIDDEN                # 403
             - HOST_NOT_ALLOWED         # 403
             - ORIGIN_NOT_ALLOWED       # 403
+            - CLIENT_HEADER_REQUIRED   # 403
             - NOT_FOUND                # 404
             - CONFLICT                 # 409
             - DEVICE_OFFLINE           # 409
@@ -7887,7 +7934,10 @@ components:
       properties:
         grant_type: { const: 'urn:ietf:params:oauth:grant-type:device_code' }
         device_code: { type: string }
-        client_id: { type: string }
+        client_id: { type: string, description: 'The app: playpex-tv, playpex-web (a browser), playpex-mobile…' }
+        cookie:
+          type: boolean
+          description: 'Browsers: answer the token as the HttpOnly cookie playpex_device (a DeviceCookie body) instead of in the body'
     DeviceToken:
       type: object
       required: [access_token, token_type, expires_in]
@@ -7895,6 +7945,14 @@ components:
         access_token: { type: string, description: 'Keep it secret (OS keychain / encrypted storage)' }
         token_type: { const: Bearer }
         expires_in: { type: integer, description: 'Seconds; renewed while the device is used' }
+        scope: { type: string }
+    DeviceCookie:
+      type: object
+      description: 'The token route''s answer with `cookie: true`: the token is in the Set-Cookie header only'
+      required: [token_type, expires_in]
+      properties:
+        token_type: { const: cookie }
+        expires_in: { type: integer, description: 'Seconds; renewed (and the cookie set again) while the device is used' }
         scope: { type: string }
     OAuthError:
       type: object

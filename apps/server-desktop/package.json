@@ -14,11 +14,11 @@
     "icons": "node build/make-icons.js",
     "fetch-ffmpeg": "node build/fetch-ffmpeg.js",
     "linux-scripts": "node build/linux-scripts.js",
-    "prepack": "npm run build --prefix ../dashboard && node build/fetch-ffmpeg.js && node build/linux-scripts.js",
+    "prepack": "npm run build --prefix ../dashboard && npm run build:web --prefix ../tv && node build/fetch-ffmpeg.js && node build/linux-scripts.js",
     "pack": "npm run prepack && electron-builder --dir",
     "dist": "npm run prepack && electron-builder",
     "dist:linux": "npm run prepack && electron-builder --linux",
-    "dist:win": "node build/fetch-ffmpeg.js --platform win32 && npm run build --prefix ../dashboard && electron-builder --win",
+    "dist:win": "node build/fetch-ffmpeg.js --platform win32 && npm run build --prefix ../dashboard && npm run build:web --prefix ../tv && electron-builder --win",
     "dist:mac": "npm run prepack && electron-builder --mac"
   },
   "dependencies": {
