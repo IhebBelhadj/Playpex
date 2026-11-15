@@ -652,11 +652,15 @@ test('profiles', function () {
     .then(function () { return call('PUT', '/profiles/' + id, { preferences: { anything: true } }, { expect: 200 }); })
     .then(function (res) { assert.deepEqual(res.body.preferences, {}, 'deprecated: ignored, always {}'); })
     .then(function () { return call('PUT', '/profiles/' + id, { preferences: 'x' }, { expect: 400 }); })
+    .then(function () { return call('POST', '/profiles/' + id + '/resume', undefined, { expect: 200 }); })
+    .then(function () { return call('POST', '/profiles/nope/resume', undefined, { expect: 404 }); })
     .then(function () { return call('PUT', '/profiles/' + id + '/pin', { pin: '1234' }, { expect: 200 }); })
     .then(function () { return call('PUT', '/profiles/' + id + '/pin', { pin: '12' }, { expect: 400 }); })
+    .then(function () { return call('POST', '/profiles/' + id + '/resume', undefined, { expect: 403 }); })
     .then(function () { return call('POST', '/profiles/' + id + '/unlock', { pin: '0000' }, { expect: 403 }); })
     .then(function () { return call('POST', '/profiles/' + id + '/unlock', { pin: '1234' }, { expect: 200 }); })
     .then(function (res) { assert.ok(res.body.lastUsedAt); })
+    .then(function () { return call('POST', '/profiles/' + id + '/resume', undefined, { expect: 200 }); })
     .then(function () { return call('DELETE', '/profiles/' + id, undefined, { expect: 200 }); });
 });
 

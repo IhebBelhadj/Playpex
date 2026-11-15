@@ -4097,6 +4097,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/profiles/{profileId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profileId: components["parameters"]["ProfileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open the profile again after the client reloaded
+         * @description A client that reloaded (a browser's refresh) opens the profile it was on without the
+         *     picker. A profile without a PIN is answered at once; one with a PIN only when this device
+         *     unlocked it in the last 12 hours, else `403 FORBIDDEN` (show the picker). Not recorded as
+         *     last used.
+         */
+        post: operations["resumeProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profiles/{profileId}/pin": {
         parameters: {
             query?: never;
@@ -14012,6 +14037,30 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["NotFound"];
             429: components["responses"]["Error"];
+        };
+    };
+    resumeProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profileId: components["parameters"]["ProfileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["NotFound"];
         };
     };
     setProfilePin: {

@@ -5,7 +5,8 @@
 // (ServiceError → its status, anything else → 500).
 
 var express = require('express'),
-  handle = require('./handle');
+  handle = require('./handle'),
+  errors = require('../services/errors');
 
 var router = express.Router();
 
@@ -38,6 +39,18 @@ router.delete('/:id', handle(function (s, req) {
 router.post('/:id/unlock', handle(function (s, req) {
   return s.profiles.unlock(req.params.id, req.body && req.body.pin).then(function (profile) {
     require('../cast').unlocked(require('../sessions').device(req).id, profile.id);
+    return profile;
+  });
+}));
+
+// A client reloaded (a browser's refresh, Electron's Ctrl+R) and opens the
+// profile it was on again: no PIN → the profile; a PIN → only when this device
+// opened it within the last 12 h (lib/cast keeps those), else 403 FORBIDDEN
+router.post('/:id/resume', handle(function (s, req) {
+  return s.profiles.get(req.params.id).then(function (profile) {
+    if (profile.hasPin && !require('../cast').isUnlocked(require('../sessions').device(req).id, profile.id)) {
+      throw errors.forbidden('Enter the PIN again');
+    }
     return profile;
   });
 }));

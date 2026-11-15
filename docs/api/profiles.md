@@ -16,6 +16,7 @@ GET /api/v1/profiles
 
 - Show them; focus `lastUsedId` first.
 - Picking one: `POST /api/v1/profiles/{id}/unlock` with `{ "pin": "1234" }` for a locked profile (`hasPin`), `{}` otherwise. Answer: the profile (and the server records it as last used). Wrong PIN `403 FORBIDDEN`; after 5 failures `429 TOO_MANY_ATTEMPTS` for 30 s.
+- After a reload (a browser's refresh), opening the profile the client was on again without the picker: `POST /api/v1/profiles/{id}/resume` (no body). A profile without a PIN is answered at once, one with a PIN only if this device unlocked it in the last 12 hours, else `403 FORBIDDEN`: show the picker. Not recorded as last used.
 - Keep the chosen profile **in memory** for the session: the TV app asks again at every start.
 - `avatar` is an id, `avatar-01` … `avatar-12` (the server accepts any string up to 200 characters; stick to those ids so every client can draw it). The TV app's images are `apps/tv/src/assets/avatars/avatar-NN.svg`; a client may ship its own set under the same ids.
 

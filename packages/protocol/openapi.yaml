@@ -4657,6 +4657,26 @@ paths:
         '403': { $ref: '#/components/responses/Error' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/Error' }
+  /profiles/{profileId}/resume:
+    parameters:
+      - $ref: '#/components/parameters/ProfileId'
+    post:
+      tags: [profiles]
+      operationId: resumeProfile
+      summary: Open the profile again after the client reloaded
+      description: |
+        A client that reloaded (a browser's refresh) opens the profile it was on without the
+        picker. A profile without a PIN is answered at once; one with a PIN only when this device
+        unlocked it in the last 12 hours, else `403 FORBIDDEN` (show the picker). Not recorded as
+        last used.
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /profiles/{profileId}/pin:
     parameters:
       - $ref: '#/components/parameters/ProfileId'

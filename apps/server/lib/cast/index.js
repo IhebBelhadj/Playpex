@@ -18,6 +18,7 @@
 //   cast.command(req, castId, body)     → { delivered }
 //   cast.maySend(req, sessionId)        the sender of the session's cast may command it
 //   cast.unlocked(deviceId, profileId)  a device opened that profile (its PIN): it may cast as it
+//   cast.isUnlocked(deviceId, profileId) that device opened it in the last 12 h (a reload resumes it)
 
 var crypto = require('crypto'),
   protocol = require('@playpex/protocol'),
@@ -626,6 +627,10 @@ module.exports = {
     if (deviceId && profileId) {
       unlocks.set(deviceId + '\n' + profileId, now());
     }
+  },
+  isUnlocked: function (deviceId, profileId) {
+    var at = deviceId && profileId ? unlocks.get(deviceId + '\n' + profileId) : undefined;
+    return at !== undefined && now() - at <= UNLOCK_MS;
   },
   // tests
   reset: function () {
