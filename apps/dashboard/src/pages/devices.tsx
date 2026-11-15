@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Gamepad2, KeyRound, MonitorSmartphone, Pencil, Trash2, X } from 'lucide-react'
+import { Check, Gamepad2, KeyRound, MonitorPlay, MonitorSmartphone, Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -145,11 +145,19 @@ export function DevicesPage() {
         title="Devices"
         description="Clients on your network pair with this server once; clients on this machine don't need to."
         actions={
-          <Button asChild variant="outline">
-            <Link to="/link">
-              <KeyRound /> Enter a code
-            </Link>
-          </Button>
+          <>
+            {/* Playpex TV in a browser, served by this server (docs/web-client-plan.md §5): it pairs like a device */}
+            <Button asChild variant="outline">
+              <a href="/tv/" target="_blank" rel="noopener">
+                <MonitorPlay /> Open Playpex TV in a browser
+              </a>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/link">
+                <KeyRound /> Enter a code
+              </Link>
+            </Button>
+          </>
         }
       />
       <Card>
