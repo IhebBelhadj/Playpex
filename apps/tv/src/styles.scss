@@ -24,20 +24,33 @@
 }
 
 // 1rem = 16px on the 1440 × 810 design (src/styles/_px.scss, dp()) and grows or
-// shrinks with the window: the screen always shows the same layout. Bounded by
-// height too, so a wider than 16:9 screen doesn't push the rows off the bottom.
+// shrinks with the screen area (--px-screen-w / -h: the window inside the
+// screen edges, narrowed to the chosen shape; ui/display.ts applyFrame): the
+// whole UI scales evenly, live while the window is resized, as YouTube's TV
+// app does (docs/web-client-plan.md §3). Bounded by height too, so a wider
+// than 16:9 area doesn't push the rows off the bottom.
 // --px-ui-scale (_tokens.scss) makes everything smaller or bigger than that.
-// Floor: 12 real pixels (the one px value on purpose: a readability limit of
-// the screen, not a design length), so the smallest text (dp(12)) never goes
-// under 9px on a small window.
+// No floor: a small window gets a smaller UI, never a cut-off one
+// (ui/frame-guard says when it gets too small to read).
 html {
-  font-size: max(12px, calc(min(100vw / 90, 100vh / 50.625) * var(--px-ui-scale)));   // ui-check: allow (the root size, floored in real pixels)
+  font-size: calc(min(var(--px-screen-w) / 90, var(--px-screen-h) / 50.625) * var(--px-ui-scale));   // ui-check: allow (the root size every dp() follows)
+  // the bands around the screen area
+  background: var(--px-color-band);
 }
 
+// The page is the screen area (ui/display.ts applyFrame): placed and sized to
+// it, and the containing block of every fixed element (contain), so nothing
+// is drawn in the bands
 body {
+  position: fixed;
+  left: var(--px-frame-x);
+  top: var(--px-frame-y);
+  width: var(--px-screen-w);
+  height: var(--px-screen-h);
   margin: 0;
   color: var(--px-color-text);
   overflow: hidden;
+  contain: layout paint;
 }
 
 // Form controls don't inherit the font size: the browser gives them a fixed

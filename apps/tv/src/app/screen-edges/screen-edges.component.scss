@@ -1,6 +1,6 @@
 @use 'px' as *;
 
-// the frame follows --px-safe-x / -y (ui/display.ts applySafeArea), set live
+// the frame follows --px-safe-x / -y (ui/display.ts applyFrame), set live
 .edges {
   position: fixed;
   inset: var(--px-safe-y) var(--px-safe-x);
@@ -41,8 +41,33 @@
   color: var(--px-color-text-muted);
 }
 
-.control {
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: dp(18);
   text-align: left;
+
+  px-slider {
+    margin: 0 dp(-16);
+  }
+}
+
+.groupLabel {
+  margin: 0 0 dp(10);
+  font-family: var(--px-font-book);
+  font-size: var(--px-text-label);
+  color: var(--px-color-text-secondary);
+}
+
+.chips,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: dp(10);
+}
+
+.actions {
+  margin-top: dp(8);
 }
 
 .keys {

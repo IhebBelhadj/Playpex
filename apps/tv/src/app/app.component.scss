@@ -17,7 +17,7 @@
     position: fixed;
     z-index: var(--px-z-backdrop-image);
     min-width: 100%;
-    min-height: 100vh;
+    min-height: var(--px-screen-h);
     top: 0;
     filter: blur(dp(5)) saturate(0.9) contrast(0.8) brightness(0.9);
 }
@@ -54,7 +54,7 @@
 .youtubePage {
   z-index: var(--px-z-page-layer);
   position: fixed;
-  width: 100vw;
+  width: var(--px-screen-w);
   height: 100%;
   top: 0;
   left: 0;

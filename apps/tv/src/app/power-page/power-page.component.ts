@@ -1,9 +1,12 @@
 import { PowerService } from './../power.service';
 import { Component, AfterViewInit } from '@angular/core';
 import { Profile, ProfilesService } from '../profiles.service';
+import { Navigator } from '../nav/public-api';
+import { isWeb } from '../web/web-client';
+import { desktop } from '../desktop';
 
 interface PowerOption {
-  key:'quit' | 'sleep' | 'restart' | 'shutdown';
+  key:'quit' | 'sleep' | 'restart' | 'shutdown' | 'profiles' | 'fullscreen';
   label:string;
   does:string;
 }
@@ -14,6 +17,13 @@ const OPTIONS:PowerOption[] = [
   { key: 'sleep', label: 'Sleep', does: 'Playpex is here when the computer wakes' },
   { key: 'restart', label: 'Restart', does: 'Turns the computer off and on again' },
   { key: 'shutdown', label: 'Shut down', does: 'Turns the computer off' },
+];
+
+// In a browser (docs/web-client-plan.md §5.3): nothing to quit or turn off
+// from a page; the profile picker and the browser's full screen instead
+const WEB_OPTIONS:PowerOption[] = [
+  { key: 'profiles', label: 'Switch profile', does: 'Back to Who\'s watching?' },
+  { key: 'fullscreen', label: 'Full screen', does: 'Use the whole screen' },
 ];
 
 // Close Playpex / Sleep / Restart / Shut down (core.power, src/app/nav): the
@@ -28,11 +38,11 @@ const OPTIONS:PowerOption[] = [
 })
 export class PowerPageComponent implements AfterViewInit {
 
-  readonly options = OPTIONS;
+  readonly options = isWeb && !desktop() ? WEB_OPTIONS : OPTIONS;
   readonly profile:Profile | null;
   readonly avatarUrl:string;
 
-  constructor(private power:PowerService, profiles:ProfilesService) {
+  constructor(private power:PowerService, profiles:ProfilesService, private navigator:Navigator) {
     this.profile = profiles.current.value;
     this.avatarUrl = ProfilesService.avatarUrl(this.profile?.avatar ?? null);
   }
@@ -45,7 +55,20 @@ export class PowerPageComponent implements AfterViewInit {
   }
 
   send(instruction:PowerOption['key']) {
+    if (instruction == 'profiles') {
+      this.navigator.reset({ screen: 'core.profiles' });
+      return;
+    }
+    if (instruction == 'fullscreen') {
+      let request = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      request?.catch?.(() => { });
+      return;
+    }
     this.power.sendPowerInstruction(instruction).subscribe();
+  }
+
+  label(o:PowerOption):string {
+    return o.key == 'fullscreen' && document.fullscreenElement ? 'Exit full screen' : o.label;
   }
 
   byKey = (i:number, o:PowerOption) => o.key;

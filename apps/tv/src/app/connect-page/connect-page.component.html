@@ -41,6 +41,21 @@
       </ng-container>
 
       <ng-template #browser>
+        <ng-container *ngIf="web; else devBrowser">
+          <p class="browserNote">{{ webNote }}</p>
+          <div class="actions" pxGrid>
+            <px-button *ngIf="webCandidate && (state?.reason == 'pairing' || state?.reason == 'revoked')" key="pair" variant="filled"
+              size="l" [round]="true" label="Pair this browser" (pxSelect)="leaving || startPairing(webCandidate)"></px-button>
+            <px-button *ngIf="state?.reason == 'unreachable' || state?.reason == 'incompatible'" key="retry" variant="filled" size="l"
+              [round]="true" label="Try again" (pxSelect)="webRetry()"></px-button>
+            <px-button *ngIf="server.connected" key="profiles" variant="filled" size="l" [round]="true" label="Back to profiles"
+              (pxSelect)="leaving || webProfiles()"></px-button>
+            <px-button *ngIf="server.connected && state?.server?.paired" key="forget" size="l" [round]="true"
+              label="Forget this browser" (pxSelect)="leaving || webForget()"></px-button>
+          </div>
+        </ng-container>
+      </ng-template>
+      <ng-template #devBrowser>
         <p class="browserNote">Finding and pairing servers needs the Playpex TV app. Here the UI uses <b>{{ server.url || 'no server' }}</b>; enter another address to switch.</p>
         <div class="actions" pxGrid>
           <px-button key="address" size="l" [round]="true" label="Enter address"></px-button>
@@ -69,7 +84,7 @@
   <!-- Pairing: the code, where to approve it, a QR code for a phone -->
   <px-panel *ngIf="pairing" id="pairing" [restoreFocus]="false" focus="[data-px-key=&quot;cancel&quot;]" (back)="leaving || cancelPairing()">
     <div class="pairingPanel">
-      <p class="panelTitle">Pair this TV with {{ pairing.server.name }}</p>
+      <p class="panelTitle">Pair this {{ device }} with {{ pairing.server.name }}</p>
 
       <ng-container *ngIf="pairing.code; else requesting">
         <div class="codeCells" [class.dim]="pairing.state == 'expired' || pairing.state == 'denied' || pairing.state == 'error'"
@@ -87,7 +102,7 @@
           <ol class="steps">
             <li>On a phone or computer, open <b>{{ pairing.code.verificationUri }}</b>, or scan the QR code.</li>
             <li>Sign in as the server's admin and check that the code matches this screen.</li>
-            <li>Approve it. This TV connects by itself. You can also approve it from the Playpex Media Server tray icon.</li>
+            <li>Approve it. This {{ device }} connects by itself. You can also approve it from the Playpex Media Server tray icon.</li>
           </ol>
           <img class="qr" *ngIf="pairing.code.qr" [src]="pairing.code.qr" alt="QR code of the approval page">
         </div>
@@ -95,7 +110,7 @@
         <p class="pairStatus" [ngSwitch]="pairing.state">
           <span *ngSwitchCase="'waiting'">{{ pairing.message || 'Waiting for approval' }}, {{ timeLeft(pairing.secondsLeft) }} left</span>
           <span *ngSwitchCase="'approved'" class="good">Approved. Connecting…</span>
-          <span *ngSwitchCase="'denied'" class="bad">The server's admin refused this TV.</span>
+          <span *ngSwitchCase="'denied'" class="bad">The server's admin refused this {{ device }}.</span>
           <span *ngSwitchCase="'expired'" class="bad">The code expired. Get a new one to try again.</span>
           <span *ngSwitchCase="'error'" class="bad">{{ pairing.message || 'Pairing failed.' }}</span>
         </p>

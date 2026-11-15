@@ -5,7 +5,12 @@ export type SettingScope = 'device' | 'profile';
 /** Value type of every registered key */
 export interface SettingValues {
   'display.uiScale': 0.7 | 0.8 | 0.9 | 1 | 1.15;
+  /** the left and right edges' inset, a fraction of the width (0–0.1); top and bottom too while safeAreaY is null */
   'display.safeArea': number;
+  /** the top and bottom edges' inset, a fraction of the height (0–0.1); null: as display.safeArea */
+  'display.safeAreaY': number | null;
+  /** the screen area's shape: the client's own (auto), the whole window inside the edges, or the largest area of that shape */
+  'display.shape': 'auto' | 'fill' | '16:9' | '21:9' | '4:3';
   'player.volume': number;
   'subtitles.size': 'small' | 'medium' | 'large' | 'largest';
   /** 'auto' or a height ('1080p'): what a stream with several qualities starts at */

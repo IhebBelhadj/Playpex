@@ -15,10 +15,10 @@
         </section>
 
         <section class="setting" pxStackItem>
-          <header class="head"><h2 class="label">Screen edges</h2><span class="scope">On this device</span></header>
-          <p class="help">If this TV cuts off the edges of the picture, bring everything in a little.
-            Now: {{ edgesText(settings.value('display.safeArea')) }}.</p>
-          <px-button key="edges" label="Adjust screen edges" (pxSelect)="edgesOpen = true"></px-button>
+          <header class="head"><h2 class="label">Screen area</h2><span class="scope">On this device</span></header>
+          <p class="help">If this TV cuts off the edges of the picture, bring everything in a little; on a very wide or
+            tall screen, keep the picture to one shape. Now: {{ frameText }}.</p>
+          <px-button key="edges" label="Adjust the screen area" (pxSelect)="edgesOpen = true"></px-button>
         </section>
 
         <section class="setting" pxStackItem *ngIf="remoteCapable">
@@ -148,5 +148,5 @@
   </div>
 </px-rail-layout>
 
-<screen-edges *ngIf="edgesOpen" [value]="settings.value('display.safeArea')"
+<screen-edges *ngIf="edgesOpen" [value]="frame"
   (done)="keepEdges($event)" (cancelled)="closeEdges()"></screen-edges>

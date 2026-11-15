@@ -3,7 +3,7 @@
 .overlay {
   position: fixed;
   z-index: var(--px-z-backdrop-overlay);
-  height: 100vh;
+  height: var(--px-screen-h);
   width: 100%;
   top: 0;
   background: var(--px-gradient-backdrop-overlay);
@@ -13,7 +13,7 @@
   position: fixed;
   z-index: var(--px-z-backdrop);
   min-width: 100%;
-  min-height: 100vh;
+  min-height: var(--px-screen-h);
   top: 0;
   background: var(--px-gradient-backdrop);
 

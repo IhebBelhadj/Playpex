@@ -102,8 +102,10 @@ export class BackButtonComponent implements AfterViewInit, OnDestroy {
     let rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || DESIGN_PX_PER_REM;
     let height = BUTTON_DP * rem / DESIGN_PX_PER_REM, gap = 16 * rem / DESIGN_PX_PER_REM;
     // the clock hidden (no box): the corner itself
-    let right = Math.round(box.width ? window.innerWidth - box.left + gap : 2 * gap);
-    let top = Math.round(box.height ? box.top + box.height / 2 - height / 2 : gap);
+    // fixed elements are placed in the page, which is the screen area (styles.scss)
+    let page = document.body.getBoundingClientRect();
+    let right = Math.round(box.width ? page.right - box.left + gap : 2 * gap);
+    let top = Math.round(box.height ? box.top - page.top + box.height / 2 - height / 2 : gap);
     if (right === this.right && top === this.top) return;
     this.right = right;
     this.top = top;

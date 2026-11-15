@@ -48,7 +48,9 @@ contextBridge.exposeInMainWorld('playpex', {
   },
   display: {
     get: () => ipcRenderer.invoke('display:get'),
-    set: scale => ipcRenderer.invoke('display:set', scale)
+    set: scale => ipcRenderer.invoke('display:set', scale),
+    // the window keeps the screen area's shape while resized ('fill': free)
+    shape: shape => ipcRenderer.invoke('display:shape', shape)
   },
   // remote control from the server (remote.js): what the admin types and points, into this window
   remote: {

@@ -5,7 +5,7 @@ import { BackgroundService } from './background.service';
 import { AfterViewInit, Component, OnInit } from '@angular/core';
 import * as spatialNavigation from '../plugins/spacialNavigation.js'
 import { gsap } from 'gsap'
-import { actionForKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
+import { actionForKey, isRealKey, SPATIAL_NAVIGATION_KEYS } from './keymap';
 import { PointerService } from './pointer.service';
 import { FocusEngine } from './movement/movement';
 import { InputDispatcher, Navigator } from './nav/public-api';
@@ -138,9 +138,9 @@ export class AppComponent implements AfterViewInit , OnInit{
       if (action == 'select') {
         // the select key would also "click" the focused <button> natively
         e.preventDefault();
-        this.dispatcher.dispatch('select', e.isTrusted ? 'key' : 'pointer');
+        this.dispatcher.dispatch('select', isRealKey(e) ? 'key' : 'pointer');
       }
-      if (action == 'back') this.dispatcher.dispatch('back', e.isTrusted ? 'key' : 'pointer');
+      if (action == 'back') this.dispatcher.dispatch('back', isRealKey(e) ? 'key' : 'pointer');
     })
   }
 

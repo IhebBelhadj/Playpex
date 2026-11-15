@@ -17,7 +17,14 @@
 
 var SETTINGS = {
   'display.uiScale': { scope: 'device', type: 'number', enum: [0.7, 0.8, 0.9, 1, 1.15], default: 0.8 },
-  'display.safeArea': { scope: 'device', type: 'number', min: 0, max: 0.06, step: 0.005, default: 0 },
+  // The screen area (docs/web-client-plan.md §3.2): the edges' inset, a fraction of the
+  // width (left and right; also top and bottom while safeAreaY is null) and of the
+  // height, and the area's shape ('fill': the whole window inside the edges). The app
+  // lives inside it; the bands around are black
+  'display.safeArea': { scope: 'device', type: 'number', min: 0, max: 0.1, step: 0.005, default: 0 },
+  'display.safeAreaY': { scope: 'device', type: 'number', nullable: true, min: 0, max: 0.1, step: 0.005, default: null },
+  // 'auto': the client's own (Playpex TV in a browser: 16:9, like YouTube's TV app; its desktop app: fill)
+  'display.shape': { scope: 'device', type: 'string', enum: ['auto', 'fill', '16:9', '21:9', '4:3'], default: 'auto' },
   'player.volume': { scope: 'device', type: 'number', min: 0, max: 100, step: 5, default: 100 },
   'subtitles.size': { scope: 'device', type: 'string', enum: ['small', 'medium', 'large', 'largest'], default: 'medium' },
   // A stream with several qualities (a plugin's HLS): the player's choice (auto) or the

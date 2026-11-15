@@ -23,6 +23,8 @@ import { DisplaySizeComponent } from './display-size/display-size.component';
 import { DisplaySetupComponent } from './display-setup/display-setup.component';
 import { SettingsPageComponent } from './settings-page/settings-page.component';
 import { ScreenEdgesComponent } from './screen-edges/screen-edges.component';
+import { FrameGuardComponent } from './frame-guard/frame-guard.component';
+import { WebClientInterceptor } from './web/web-client.interceptor';
 import { PLUGIN_TEMPLATES } from './plugins/templates/templates';
 import { ShowOptionsComponent } from './show-options/show-options.component';
 import { EpisodePageComponent } from './episode-page/episode-page.component';
@@ -81,6 +83,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     DisplaySetupComponent,
     SettingsPageComponent,
     ScreenEdgesComponent,
+    FrameGuardComponent,
     ...PLUGIN_TEMPLATES,
     ShowOptionsComponent,
     TorrentPickerComponent,
@@ -109,6 +112,7 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
   ],
   providers: [
     MoviesService,
+    { provide: HTTP_INTERCEPTORS, useClass: WebClientInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: ServerErrorsInterceptor, multi: true },
     { provide: RouteReuseStrategy, useClass: NavReuseStrategy },
   ],

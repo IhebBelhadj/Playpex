@@ -18,7 +18,10 @@
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "outputPath": "dist/playpex",
-            "allowedCommonJsDependencies": ["@playpex/protocol/settings"],
+            "allowedCommonJsDependencies": [
+              "@playpex/protocol/settings",
+              "qrcode"
+            ],
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -67,6 +70,29 @@
               "extractLicenses": false,
               "sourceMap": true,
               "namedChunks": true
+            },
+            "web": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2mb",
+                  "maximumError": "4mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "200kb",
+                  "maximumError": "400kb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.web.ts"
+                }
+              ],
+              "outputHashing": "all",
+              "outputPath": "../server/public-tv",
+              "baseHref": "/tv/"
             }
           },
           "defaultConfiguration": "production"
@@ -116,6 +142,6 @@
     }
   },
   "cli": {
-    "analytics": "e2e5a20f-9b32-413a-99cd-9060391bd1b4"
+    "analytics": false
   }
 }

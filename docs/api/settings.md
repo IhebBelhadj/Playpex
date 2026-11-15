@@ -8,7 +8,7 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 
 | Scope | Owner | Keys | Why |
 |---|---|---|---|
-| `device` | the calling device | `display.uiScale`, `display.safeArea`, `player.volume`, `player.streamQuality`, `subtitles.size`, `remote.allowed` | depend on the screen, its distance, its speakers |
+| `device` | the calling device | `display.uiScale`, `display.safeArea`, `display.safeAreaY`, `display.shape`, `player.volume`, `player.streamQuality`, `subtitles.size`, `remote.allowed` | depend on the screen, its distance, its speakers |
 | `profile` | a profile | `subtitles.provider`, `player.autoplayNext`, `player.preferLocalFiles`, `player.autoplayKind`, `player.audioLanguage`, `player.subtitleLanguage`, `player.subtitleForcedOnly` | depend on the person |
 
 **Which device**: a paired client is the device its token names, keyed by the `deviceId` it sent with `PUT /devices/me` (send it right after pairing; an `X-Playpex-Device` header is ignored for paired clients, so one device can't write another's settings). A client on the server machine (no token) is its `X-Playpex-Device` header or `?device=` (letters, digits and `._:-`, up to 64). Without one, the settings routes answer `400 DEVICE_REQUIRED`. Revoking a device deletes its settings.
@@ -18,7 +18,9 @@ Playpex is an educational project; streaming copyrighted content via torrents ma
 | Key | Scope | Type | Values | Default |
 |---|---|---|---|---|
 | `display.uiScale` | device | number | 0.7, 0.8, 0.9, 1, 1.15 | 0.8 |
-| `display.safeArea` | device | number | 0 – 0.06, step 0.005 (of each dimension) | 0 |
+| `display.safeArea` | device | number | 0 – 0.1, step 0.005: the left and right edges' inset, a fraction of the width (also top and bottom while `display.safeAreaY` is null) | 0 |
+| `display.safeAreaY` | device | number or null | 0 – 0.1, step 0.005: the top and bottom edges' inset, a fraction of the height; null = as `display.safeArea` | null |
+| `display.shape` | device | string | `auto` (the client's own: Playpex TV in a browser 16:9, its desktop app `fill`), `fill` (the window inside the edges), `16:9`, `21:9`, `4:3` (the largest area of that shape inside it, centred). Clients draw everything inside the area, black around it | `auto` |
 | `player.volume` | device | number | 0 – 100, step 5 | 100 |
 | `subtitles.size` | device | string | small, medium, large, largest | medium |
 | `player.streamQuality` | device | `auto` or a height (`1080p`) | a stream with several qualities (a plugin's HLS stream) starts at that one, or the nearest below it; `auto`: the player chooses by bandwidth | `auto` |

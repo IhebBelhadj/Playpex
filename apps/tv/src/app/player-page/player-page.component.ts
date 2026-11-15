@@ -125,6 +125,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   private released = false;     // a source's lease was let go
   playback:PlaybackRequest;
   playerReady = false;
+  inPip = false;
   controlsVisible = false;
   moviePlayer:HTMLVideoElement;
   link:string;                // the file's stream path: /media/{ref} (TorrentFile.ref); URLs: server.media()
@@ -1107,7 +1108,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     else {
       this.moviePlayer.src = this.playback.devSrc && !environment.production ? this.link
         : this.transcoding ? this.streamUrl(0) : this.server.media(this.link);
-      this.moviePlayer.play()?.catch(() => {});
+      this.startPlay();
     }
     // the dashboard's Activity follows play / pause / seeks within a second
     ['play', 'pause', 'seeked'].forEach(name => on(name, () => { if (this.playerReady) { this.keepaliveSoon(); this.castState(); } }));
@@ -1144,6 +1145,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     on('play', () => { this.paused = false; this.updateClock(); this.poke(); this.mediaState(); });
     on('pause', () => { this.paused = true; this.updateClock(); this.saveProgress(); this.mediaState(); });
+    // picture in picture: the browser's own small window (the button says which way it goes)
+    on('enterpictureinpicture', () => this.inPip = true);
+    on('leavepictureinpicture', () => this.inPip = false);
 
     // fires again each time the transcoded stream restarts
     on('loadedmetadata', () => {
@@ -1191,7 +1195,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   togglePlay() {
     if (!this.moviePlayer) return;
-    if (this.moviePlayer.paused) this.moviePlayer.play()?.catch(() => {});
+    if (this.moviePlayer.paused) this.startPlay();
     else this.moviePlayer.pause();
   }
 
@@ -1221,7 +1225,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
             this.offset = data['time'];
             this.pendingSeek = null;
             this.moviePlayer.src = this.streamUrl(this.offset);
-            this.moviePlayer.play()?.catch(() => {});
+            this.startPlay();
             this.applyCueShift();
           }));
       } , 500);
@@ -1616,7 +1620,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       // back to the file itself, where it was
       this.seekAfterLoad = at;
       this.moviePlayer.src = this.server.media(this.link);
-      this.moviePlayer.play()?.catch(() => {});
+      this.startPlay();
       this.applyCueShift();
     }
     else {
@@ -1822,7 +1826,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       }));
       hls.loadSource(this.server.media(`${this.link}/index.m3u8`));
       hls.attachMedia(this.moviePlayer);
-      this.moviePlayer.play()?.catch(() => {});
+      this.startPlay();
     }, () => this.cantPlay("The stream player couldn't be loaded"));
   }
 
@@ -1910,6 +1914,47 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   toggleMute() {
     this.volumeControl.setMuted(!this.muted);
+  }
+
+  // play(), and in a browser that refuses sound before any click or key press
+  // (its autoplay policy: something cast to a tab nobody touched yet,
+  // docs/web-client-plan.md §5.4) muted instead, with the sound back on the
+  // next key press or click
+  private startPlay() {
+    let video = this.moviePlayer;
+    if (!video) return;
+    video.play()?.catch(err => {
+      if (err?.name != 'NotAllowedError' || this.destroyed || this.moviePlayer !== video || video.muted) return;
+      video.muted = true;
+      video.play()?.catch(() => {});
+      this.toasts.show({ text: 'Sound is off', detail: 'Press any key to turn it on.', key: 'autoplay', durationMs: 6000 });
+      let unmute = () => {
+        window.removeEventListener('keydown', unmute, true);
+        window.removeEventListener('pointerdown', unmute, true);
+        if (!this.destroyed && this.moviePlayer === video) this.applyVolume();
+      };
+      window.addEventListener('keydown', unmute, true);
+      window.addEventListener('pointerdown', unmute, true);
+    });
+  }
+
+  // Picture in picture (docs/web-client-plan.md §5.4): the video in the
+  // browser's floating window, above other windows; Playpex TV in Electron
+  // too. Not for embeds (YouTube draws its own player in a frame). Leaving
+  // the player closes it: the video goes with the page
+  get pipAvailable():boolean {
+    return !!(document as any).pictureInPictureEnabled && this.format != 'embed' && this.playerReady
+      && !!this.moviePlayer && !(this.moviePlayer as any).disablePictureInPicture;
+  }
+
+  togglePip() {
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(() => { });
+      return;
+    }
+    this.moviePlayer?.requestPictureInPicture?.().catch(() => {
+      this.toasts.show({ text: "Picture in picture didn't start", tone: 'error', key: 'pip' });
+    });
   }
 
   private applyVolume() {

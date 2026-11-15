@@ -52,7 +52,10 @@ export class RemoteOverlayComponent implements OnInit, OnDestroy {
     let img = this.pointer.nativeElement;
     img.hidden = !p.visible;
     if (!p.visible) return;
-    img.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    // the pointer is in window coordinates; fixed elements in the page, which
+    // is the screen area (styles.scss)
+    let page = document.body.getBoundingClientRect();
+    img.style.transform = `translate(${p.x - page.left}px, ${p.y - page.top}px)`;
     if (p.pressed !== this.pressed) {
       this.pressed = p.pressed;
       img.src = p.pressed ? POINTER_PRESSED : POINTER;

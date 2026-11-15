@@ -20,8 +20,8 @@ $inset-x: calc(var(--px-safe-x) + #{dp($side)});
   // the whole screen, over the shell's screen-edge padding
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: var(--px-screen-w);
+  height: var(--px-screen-h);
   overflow: hidden;
   background: var(--px-black);
   color: var(--px-color-text);

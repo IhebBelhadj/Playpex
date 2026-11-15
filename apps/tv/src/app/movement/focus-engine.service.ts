@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import * as spatialNavigation from '../../plugins/spacialNavigation.js';
-import { actionForKey } from '../keymap';
+import { actionForKey, isRealKey } from '../keymap';
 import { Direction } from './moves';
 import type { PxContainer } from './px-container';
 
@@ -246,7 +246,7 @@ export class FocusEngine {
   private onKeyDown = (e:KeyboardEvent) => {
     let action = actionForKey(e);
     if (action == 'select' && document.activeElement) this.selected(document.activeElement as HTMLElement);
-    if (!e.isTrusted) return;           // the pointer's synthetic keys
+    if (!isRealKey(e)) return;          // the pointer's synthetic keys
     if (action == 'up' || action == 'down' || action == 'left' || action == 'right') {
       this.handoff = this.handoff || this.input.value == 'pointer';
     }

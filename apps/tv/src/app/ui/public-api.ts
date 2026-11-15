@@ -39,7 +39,7 @@ export const UI_API_VERSION = 1;
 export { GalleryComponent };
 export { dp, dur, DurationToken, DESIGN_PX_PER_REM } from './units';
 export { tmdbImageBase, TmdbImageKind } from './images';
-export { display, UI_SCALES, DEFAULT_UI_SCALE, UiScaleOption, previewUiScale, saveUiScale, applySafeArea, saveSafeArea } from './display';
+export { display, UI_SCALES, DEFAULT_UI_SCALE, UiScaleOption, previewUiScale, saveUiScale, applyFrame, saveFrame, normalFrame, frameText, ScreenFrame, ScreenShape, SCREEN_SHAPES, NO_FRAME, MAX_EDGE, effectiveShape } from './display';
 
 // view models (§5.5)
 export {

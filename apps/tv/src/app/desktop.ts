@@ -115,6 +115,8 @@ export interface PlaypexBridge {
     get():Promise<{ scale:number | null }>;
     /** stores it in client.json; resolves with the stored value */
     set(scale:number):Promise<number>;
+    /** the window keeps this shape while resized ('fill': free); older shells lack it */
+    shape?(shape:string):Promise<boolean>;
   };
   /** remote control from the server (apps/tv/electron/remote.js): injected into this window as real input */
   remote?:{

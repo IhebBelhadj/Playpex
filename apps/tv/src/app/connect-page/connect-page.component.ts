@@ -7,6 +7,7 @@ import {
   ConnectedServer, ConnectionState, desktop, DiscoveredServer, LocalServerStatus, PairingCode, PairingUpdate, UpdaterState
 } from '../desktop';
 import { Navigator, useScreen } from '../nav/public-api';
+import { cancelPairing as cancelWebPairing, forgetBrowser, isWeb, reloadWeb, startPairing as startWebPairing } from '../web/web-client';
 
 const DOWNLOAD_URL = 'github.com/IhebBelhadj/Playpex/releases';
 const API_VERSION = 1;   // @playpex/protocol API_VERSION
@@ -48,6 +49,10 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly downloadUrl = DOWNLOAD_URL;
   readonly bridge = desktop();
+  // served by the server for browsers (docs/web-client-plan.md §5): the page's
+  // server only; pairing from here, its cookie set by the server
+  readonly web = isWeb && !this.bridge;
+  readonly device = this.web ? 'browser' : 'TV';
   readonly state:ConnectionState = connection;
 
   servers:DiscoveredServer[] = [];
@@ -96,7 +101,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
       case 'incompatible':
         return s.detail == 'SERVER_TOO_OLD' ? `Update ${s.candidate?.name || 'the server'}` : 'Update Playpex TV';
     }
-    return 'Choose a Playpex server';
+    return this.web ? (this.server.connected ? this.server.name : 'Playpex') : 'Choose a Playpex server';
   }
 
   get hint():string {
@@ -104,15 +109,50 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     switch (s?.reason) {
       case 'unreachable': return 'It may be off, or on another network. Choose it again once it\'s back, or pick another server.';
       case 'revoked': return 'Its admin removed it from the server\'s devices. Pair it again to keep watching.';
-      case 'pairing': return 'This device needs the server admin\'s approval once.';
+      case 'pairing': return `This ${this.device} needs the server admin\'s approval once.`;
       case 'incompatible':
         return s.detail == 'SERVER_TOO_OLD'
           ? 'This app needs a newer Playpex Media Server. Update it from its tray icon or its dashboard, then choose it again.'
           : `${s.candidate?.name || 'This server'} needs a newer version of this app.`;
     }
+    if (this.web) return this.server.connected ? `Watching from ${this.server.name}.` : '';
     return this.server.connected
       ? `Watching from ${this.server.name}. Pick another server, or go back.`
       : 'Pick the Playpex Media Server this TV plays from.';
+  }
+
+  // ── a browser (served by the server) ───────────────────────────────────
+
+  /** The server this page came from, to pair with */
+  get webCandidate():ConnectedServer | null {
+    return this.state?.candidate || this.state?.server || null;
+  }
+
+  get webNote():string {
+    let name = this.webCandidate?.name || window.location.host;
+    switch (this.state?.reason) {
+      case 'unreachable': return `${name} didn't answer. Check that it is running, then try again.`;
+      case 'incompatible': return 'This page and the server don\'t match: reload the page.';
+      case 'pairing':
+      case 'revoked': return `${name}'s admin approves this browser once. Then it opens by itself.`;
+    }
+    return this.state?.server?.paired
+      ? `This browser is paired with ${name}. Forget it to remove it from the server's devices.`
+      : `This browser watches from ${name}, on this computer: no pairing needed.`;
+  }
+
+  webProfiles() {
+    this.navigator.reset({ screen: 'core.profiles' });
+  }
+
+  webRetry() {
+    reloadWeb();
+  }
+
+  webForget() {
+    this.leaving = true;
+    this.message = 'Forgetting this browser…';
+    forgetBrowser();
   }
 
   get needsAppUpdate():boolean {
@@ -253,6 +293,10 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     if (!this.bridge) {
       this.scanning = false;
+      // a browser that isn't paired (or was removed) pairs with the page's server at once
+      if (this.web && this.webCandidate && (this.state?.reason == 'pairing' || this.state?.reason == 'revoked')) {
+        this.startPairing(this.webCandidate);
+      }
       return;
     }
     const inZone = <T>(fn:(value:T) => void) => (value:T) => this.zone.run(() => fn(value));
@@ -314,6 +358,7 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
       this.bridge.discovery.stop();
       if (this.pairing) this.bridge.pairing.cancel();
     }
+    if (this.web) cancelWebPairing();
   }
 
   // ── servers ─────────────────────────────────────────────────────────────
@@ -429,11 +474,14 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── pairing ─────────────────────────────────────────────────────────────
 
   startPairing(server:ConnectedServer) {
-    if (!this.bridge) return;
+    if (!this.bridge && !this.web) return;
     clearInterval(this.countdown);
     this.pairing = { server, code: null, state: 'requesting', message: null, secondsLeft: 0 };
     this.focusPairing('cancel');
-    this.bridge.pairing.start({ id: server.id, name: server.name, url: server.url }).then(code => this.zone.run(() => {
+    let started = this.web
+      ? startWebPairing(server, update => this.zone.run(() => this.onPairingUpdate(update)))
+      : this.bridge.pairing.start({ id: server.id, name: server.name, url: server.url });
+    started.then(code => this.zone.run(() => {
       if (!this.pairing || this.pairing.server.id != server.id) return;
       this.pairing = Object.assign({}, this.pairing, { code, state: 'waiting', secondsLeft: code.expiresIn });
       this.countdown = setInterval(() => this.zone.run(() => {
@@ -451,6 +499,12 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pairing = Object.assign({}, this.pairing, { state: update.state, message: update.message });
     if (update.state == 'approved') {
       clearInterval(this.countdown);
+      // a browser: the server set its cookie; the app starts again, connected
+      if (this.web) {
+        this.leaving = true;
+        reloadWeb();
+        return;
+      }
       this.connect(this.pairing.server);
     } else if (update.state != 'waiting') {
       clearInterval(this.countdown);
@@ -464,6 +518,11 @@ export class ConnectPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pairing = null;
     clearInterval(this.countdown);
     this.bridge?.pairing.cancel();
+    if (this.web) {
+      cancelWebPairing();
+      this.focusDefault('[data-px-key="pair"]');
+      return;
+    }
     this.focusServer(id);
   }
 

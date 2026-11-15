@@ -1,12 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, Subscription } from 'rxjs';
+import { BehaviorSubject, combineLatest, distinctUntilChanged, map, Observable, Subscription } from 'rxjs';
 import { defaults, SETTINGS, validate } from '@playpex/protocol/settings';
 import type { SettingKey, SettingScope, SettingValues } from '@playpex/protocol/settings';
 import { ProfilesService } from './profiles.service';
 import { ServerEvents } from './server-events.service';
 import { ServerService } from './server.service';
-import { applySafeArea, display, saveUiScale, Toasts } from './ui/public-api';
+import { applyFrame, display, saveUiScale, ScreenShape, Toasts } from './ui/public-api';
+import { PENDING_FRAME_KEYS } from './ui/display';
 
 type Values = { [key:string]:unknown };
 
@@ -22,8 +23,10 @@ const LEGACY:{ storage:string, key:SettingKey, parse:(raw:string) => unknown }[]
   { storage: 'playpex.subtitleSize', key: 'subtitles.size', parse: raw => raw },
   { storage: 'playpex.volumePercent', key: 'player.volume', parse: raw => Number(raw) },
   { storage: 'playpex.subtitleProvider', key: 'subtitles.provider', parse: raw => raw || null },
-  // the first start's screen edges (ui/display.ts saveSafeArea), before any server
-  { storage: 'playpex.safeArea', key: 'display.safeArea', parse: raw => Number(raw) },
+  // the first start's screen area (ui/display.ts saveFrame), before any server
+  { storage: PENDING_FRAME_KEYS.x, key: 'display.safeArea', parse: raw => Number(raw) },
+  { storage: PENDING_FRAME_KEYS.y, key: 'display.safeAreaY', parse: raw => raw === '' ? null : Number(raw) },
+  { storage: PENDING_FRAME_KEYS.shape, key: 'display.shape', parse: raw => raw },
 ];
 
 // The user's settings (docs/settings-plan.md, docs/api/settings.md): stored on
@@ -68,7 +71,13 @@ export class SettingsService {
       // a key being written from here wins over the echo of an older write
       if (mine && !e.data.keys.some(k => this.pending.has(k))) this.load();
     });
-    this.changes('display.safeArea').subscribe(f => applySafeArea(f));
+    // the screen area (docs/web-client-plan.md §3): applied while the server's
+    // values come in; ui/display.ts keeps the last one as the boot cache
+    combineLatest([this.changes('display.safeArea'), this.changes('display.safeAreaY'), this.changes('display.shape'), this.loaded$])
+      .subscribe(([x, y, shape, loaded]) => {
+        // before the server answers, the boot cache stays (the defaults would undo it)
+        if (loaded) applyFrame({ x, y, shape: shape as ScreenShape });
+      });
   }
 
   value<K extends SettingKey>(key:K):SettingValues[K] {

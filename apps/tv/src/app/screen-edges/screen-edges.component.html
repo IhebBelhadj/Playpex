@@ -1,16 +1,30 @@
 <px-panel id="screenEdges" [restoreFocus]="false" (back)="cancel()">
-  <!-- the inset frame: its corner marks must be fully visible -->
+  <!-- the screen area: its corner marks must be fully visible -->
   <div class="edges" aria-hidden="true">
     <span class="corner tl"></span><span class="corner tr"></span>
     <span class="corner bl"></span><span class="corner br"></span>
   </div>
 
   <div class="body">
-    <h2 class="title">Screen edges</h2>
-    <p class="help">Some TVs cut off the edges of the picture. Move the frame in until you can see all four corner marks, whole.</p>
-    <div class="control" pxGrid>
-      <px-slider key="edges" label="Frame inset" [min]="0" [max]="6" [step]="0.5" [value]="percent" [format]="format"
-        (valueChange)="preview($event)" (pxSelect)="keep()"></px-slider>
+    <h2 class="title">Screen area</h2>
+    <p class="help">Move the edges in until you can see all four corner marks, whole. Pick a shape to keep the picture
+      from spreading across a very wide or tall screen.</p>
+    <div class="controls" pxStack="screenArea" align="nearest">
+      <px-slider key="edgesX" label="Left and right" [min]="0" [max]="maxPercent" [step]="0.5" [value]="x" [format]="format"
+        (valueChange)="setX($event)" (pxSelect)="keep()"></px-slider>
+      <px-slider key="edgesY" label="Top and bottom" [min]="0" [max]="maxPercent" [step]="0.5" [value]="y" [format]="format"
+        (valueChange)="setY($event)" (pxSelect)="keep()"></px-slider>
+      <div class="group">
+        <p class="groupLabel">Shape</p>
+        <div class="chips" pxGrid="screenShape" enter="selected">
+          <px-chip *ngFor="let s of shapes" [key]="'shape:' + s.value" [label]="s.label" [selected]="s.value == shape"
+            (pxSelect)="setShape(s.value)"></px-chip>
+        </div>
+      </div>
+      <div class="actions" pxGrid="screenAreaActions">
+        <px-button key="done" variant="filled" [round]="true" label="Done" (pxSelect)="keep()"></px-button>
+        <px-button key="reset" [round]="true" label="Reset" (pxSelect)="reset()"></px-button>
+      </div>
     </div>
     <p class="keys">OK keeps it · Back cancels</p>
   </div>

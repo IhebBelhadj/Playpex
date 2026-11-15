@@ -1,8 +1,9 @@
 'use strict';
 
 // The UI system's stylesheet rules (docs/ui-system-plan.md §9), checked:
-// no colour, font, stacking or px literal outside src/styles/_tokens.scss, and
-// every font size from the type scale (--px-text-*).
+// no colour, font, stacking or px literal outside src/styles/_tokens.scss,
+// every font size from the type scale (--px-text-*), and no page sized by the
+// whole window (100vw / 100vh) instead of the screen area.
 //
 //   npm run check:ui -w apps/tv          exits 1 and lists the offending lines
 //
@@ -21,6 +22,10 @@ const RULES = [
   { name: 'font family literal (use --px-font-*)', re: /font-family:\s*['"]/, unlessFontFace: true },
   { name: 'z-index literal (use --px-z-*)', re: /z-index:\s*-?\d/ },
   { name: 'px length (use dp(n))', re: /\b\d*\.?\d+px\b/ },
+  // docs/web-client-plan.md §4: the app lives in the screen area (the window
+  // inside the screen edges, narrowed to its shape; the bands around it are
+  // black), so nothing is sized by the whole window: --px-screen-w / -h
+  { name: 'whole-window length (use --px-screen-w / -h: the screen area)', re: /\b100v[wh]\b/ },
   { name: 'font size outside the type scale (use --px-text-*)', re: /font-size:(?!\s*(?:var\(--px-text-|var\(--px-[\w-]+,\s*var\(--px-text-|inherit\b|\d+%|\d*\.?\d+em\b))/ },
 ];
 

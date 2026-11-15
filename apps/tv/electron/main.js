@@ -58,12 +58,21 @@ function load() {
   }
 }
 
+const MIN_WIDTH = 640, MIN_HEIGHT = 360;
+// The screen area's shape (display.shape): a window that isn't full screen
+// keeps it while it's resized (0: free)
+const SHAPE_RATIOS = { '16:9': 16 / 9, '21:9': 21 / 9, '4:3': 4 / 3 };
+
 function createWindow() {
   const options = {
     fullscreen: true,
     frame: false,
     height: 780,
     width: 1270,
+    // the UI scales evenly with the window (styles.scss); under this it is too
+    // small to read (docs/web-client-plan.md §3.3, the renderer's frame guard)
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     backgroundColor: '#000',
     icon: path.join(__dirname, '..', 'favicon.ico'),
     webPreferences: {
@@ -74,7 +83,7 @@ function createWindow() {
     }
   };
   if (SHOT_SIZE) {
-    Object.assign(options, { fullscreen: false, show: false, useContentSize: true, enableLargerThanScreen: true, width: +SHOT_SIZE[1], height: +SHOT_SIZE[2] });
+    Object.assign(options, { minWidth: 0, minHeight: 0, fullscreen: false, show: false, useContentSize: true, enableLargerThanScreen: true, width: +SHOT_SIZE[1], height: +SHOT_SIZE[2] });
     options.webPreferences.offscreen = true;
   }
   win = new BrowserWindow(options);
@@ -167,6 +176,10 @@ function connectIpc() {
 
   handle('display:get', () => ({ scale: config.uiScale() }));
   handle('display:set', scale => config.setUiScale(scale));
+  handle('display:shape', shape => {
+    win.setAspectRatio(SHAPE_RATIOS[shape] || 0);
+    return true;
+  });
 
   handle('discovery:start', () => {
     if (!picker) {

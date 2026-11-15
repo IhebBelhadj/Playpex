@@ -18,6 +18,8 @@
     "check:plugins": "npm run check:plugins -w apps/tv",
     "electron": "npm run electron -w apps/tv",
     "electron:last": "npm run electron:last -w apps/tv",
+    "tv-web": "npm run web -w apps/tv",
+    "tv-web:last": "npm run web:last -w apps/tv --",
     "server": "npm start -w apps/server",
     "install:engine": "npm run install:engine -w apps/server --",
     "pack:plugin": "npm run pack:plugin -w apps/server --",
@@ -37,7 +39,8 @@
     "android:mobile": "npm run android -w apps/mobile",
     "release:mobile": "npm run release:android -w apps/mobile",
     "website": "npm run dev -w apps/website",
-    "build:website": "npm run build -w apps/website"
+    "build:website": "npm run build -w apps/website",
+    "build:tv-web": "npm run build:web -w apps/tv"
   },
   "overrides": {
     "react": "19.3.0",

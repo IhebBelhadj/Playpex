@@ -3,11 +3,11 @@ import { FocusEngine } from '../movement/movement';
 import { Navigator, useScreen } from '../nav/public-api';
 import { SettingsService } from '../settings.service';
 import { SplashService } from '../splash.service';
-import { display, saveSafeArea } from '../ui/public-api';
+import { display, saveFrame, ScreenFrame } from '../ui/public-api';
 
 // First start on this device (core.display, DisplayGuard): how big the UI is
 // on this screen, before "Who's watching?". Moving over a size shows it on the
-// whole screen; Enter keeps it and goes on. Then the screen edges are offered
+// whole screen; Enter keeps it and goes on. Then the screen area is offered
 // (decision K, docs/ui-system-plan.md §13.1): "It fits" goes on, "Adjust"
 // opens the calibration. Settings changes both later.
 @Component({
@@ -22,7 +22,7 @@ export class DisplaySetupComponent {
 
   step:'size' | 'edges' = 'size';
   adjusting = false;
-  safeArea = display.safeArea;
+  frame:ScreenFrame = display.frame;
 
   private screen = useScreen();
 
@@ -46,11 +46,13 @@ export class DisplaySetupComponent {
   }
 
   // kept on this device until a server has it (SettingsService adopts it)
-  edgesChosen(fraction:number) {
+  edgesChosen(frame:ScreenFrame) {
     this.adjusting = false;
-    this.safeArea = fraction;
-    saveSafeArea(fraction);
-    this.settings.set('display.safeArea', fraction);
+    this.frame = frame;
+    saveFrame(frame);
+    this.settings.set('display.safeArea', frame.x);
+    this.settings.set('display.safeAreaY', frame.y);
+    this.settings.set('display.shape', frame.shape);
     this.done();
   }
 

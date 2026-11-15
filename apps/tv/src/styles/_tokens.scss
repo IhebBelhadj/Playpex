@@ -223,15 +223,23 @@
   --px-masthead-bd: .649;               // a NetflixBd line's top → the middle of its capitals, in em
   --px-masthead-bk: .655;               // the same for NetflixBk
 
-  // ── screen edges (docs/ui-system-plan.md §13.1) ────────────────────────────
-  // What a TV may crop at each edge (overscan), from the device setting
-  // display.safeArea (ui/display.ts): everything you read or focus stays inside;
-  // backdrops, the video and scrims go to the edge.
+  // ── the screen area (docs/web-client-plan.md §3, ui-system-plan §13.1) ─────
+  // The whole app lives in the screen area: the window inside the calibrated
+  // edges (overscan), narrowed to the chosen shape (ui/display.ts applyFrame
+  // sets these on :root). The page (body) is placed and sized to it, so
+  // backdrops, the video and everything else stay inside, and the bands
+  // around it are black (--px-color-band), like YouTube's TV app; the root
+  // size follows it, so the UI scales evenly with the window.
+  --px-frame-x: 0px;   // ui-check: allow (where the area starts in the window, set by applyFrame)
+  --px-frame-y: 0px;   // ui-check: allow (the same)
+  // the area's size: what a page's own height / width is (never 100vh)
+  --px-screen-w: 100vw;   // stable
+  --px-screen-h: 100vh;   // stable
+  // insets inside the area: none since the page itself is the area (kept for
+  // plugins and older stylesheets)
   --px-safe-x: 0rem;   // stable
   --px-safe-y: 0rem;   // stable
-  // the screen inside them: what a page's own height / width is (never 100vh)
-  --px-screen-h: calc(100vh - 2 * var(--px-safe-y));   // stable
-  --px-screen-w: calc(100vw - 2 * var(--px-safe-x));   // stable
+  --px-color-band: var(--px-black);      // around the screen area
 
   // ── focus zoom (primitives, from step 3) ───────────────────────────────────
   --px-zoom-card: 1.1;   // stable

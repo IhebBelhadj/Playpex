@@ -3,11 +3,14 @@
 //   Electron: the shell resolves it (apps/tv/electron/connection.js: the last
 //             server used, found again by id, or one on this machine) and
 //             hands it over through window.playpex
+//   web (served by the server at /tv/, docs/web-client-plan.md §5): the
+//             server that served the page (web/web-client.ts webConnection)
 //   browser dev (`ng serve`): ?server=<url> (remembered), else
 //             localStorage['playpex.server'], else http://localhost:28470
 // Switching servers = the shell stores the new one and reloads the app, so
 // every catalog and subscription starts clean (docs/server-separation-plan.md §10.2).
 import { ConnectionState, desktop } from './desktop';
+import { isWeb, webConnection } from './web/web-client';
 
 const DEFAULT_SERVER = 'http://localhost:28470';
 const STORAGE_KEY = 'playpex.server';
@@ -63,6 +66,9 @@ function browserConnection():ConnectionState {
 
 export function resolveServer():Promise<void> {
   const bridge = desktop();
+  if (!bridge && isWeb) {
+    return webConnection().then(state => { connection = state; });
+  }
   if (!bridge) {
     connection = browserConnection();
     return Promise.resolve();

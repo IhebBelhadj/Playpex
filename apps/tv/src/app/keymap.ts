@@ -3,6 +3,8 @@
 // binding (or a future input source like the cursor / a phone remote) only has
 // to be wired here. Values are `KeyboardEvent.key` names.
 
+import { isWeb } from './web/web-client';
+
 // `options`: what can be done with the focused thing (a row's Move / Hide): a remote's menu key
 export type NavInputAction = 'select' | 'back' | 'up' | 'down' | 'left' | 'right' | 'options';
 
@@ -15,7 +17,7 @@ export type InputAction = NavInputAction | MediaAction;
 
 export const KEY_BINDINGS: Record<InputAction, string[]> = {
   select : ['Enter'],
-  // not Backspace: the text keyboard and fields use it
+  // not Backspace: the text keyboard and fields use it (a browser: see actionForKey)
   back   : ['Escape', 'BrowserBack', 'GoBack'],
   up     : ['ArrowUp'],
   down   : ['ArrowDown'],
@@ -34,8 +36,27 @@ export const KEY_BINDINGS: Record<InputAction, string[]> = {
 
 export const MEDIA_ACTIONS:MediaAction[] = ['playPause', 'play', 'pause', 'stop', 'forward', 'rewind', 'next', 'previous'];
 
+// Keys the remote control dispatched in a browser (web/web-remote.ts): not
+// trusted events, but keys all the same (the pointer's synthetic keys aren't)
+export const remoteKeyEvents = new WeakSet<Event>();
+
+/** A key someone pressed: the keyboard, a remote, the admin's remote control */
+export function isRealKey(e:KeyboardEvent):boolean {
+  return e.isTrusted || remoteKeyEvents.has(e);
+}
+
 export function actionForKey(e:KeyboardEvent): InputAction | undefined {
+  if (e.key == 'Backspace' && isWeb && backspaceIsBack(e)) return 'back';
   return (Object.keys(KEY_BINDINGS) as InputAction[]).find(action => KEY_BINDINGS[action].includes(e.key));
+}
+
+// In a browser (docs/web-client-plan.md §5.4) Backspace is Back too, as on
+// web TV apps, except while text is typed: the on-screen keyboard and the PIN
+// pad delete with it, and so do real text fields
+function backspaceIsBack(e:KeyboardEvent):boolean {
+  let target = e.target as HTMLElement | null;
+  if (target?.closest?.('input, textarea, [contenteditable="true"]')) return false;
+  return !document.querySelector('text-keyboard, pin-pad');
 }
 
 export function isMediaAction(action:InputAction | undefined): action is MediaAction {

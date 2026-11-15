@@ -1,4 +1,6 @@
 import { VolumeControl } from '../volume.service';
+import { isWeb } from '../web/web-client';
+import { injectWebInput } from '../web/web-remote';
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import type { RemoteMessage } from '@playpex/protocol';
@@ -83,7 +85,8 @@ export class RemoteControl implements OnDestroy {
 
   // AppComponent, once
   start() {
-    if (!this.server.connected || !desktop()?.remote || typeof WebSocket == 'undefined') return;
+    // the shell injects real input; a browser dispatches DOM events (web/web-remote.ts)
+    if (!this.server.connected || !(desktop()?.remote || isWeb) || typeof WebSocket == 'undefined') return;
     this.settings.changes('remote.allowed').subscribe(allowed => {
       this.wanted = allowed !== false;
       if (this.wanted) this.open();
@@ -150,7 +153,9 @@ export class RemoteControl implements OnDestroy {
   }
 
   private input(input:RemoteInput) {
-    desktop()?.remote?.input(input);
+    let bridge = desktop();
+    if (bridge?.remote) bridge.remote.input(input);
+    else if (isWeb) injectWebInput(input);
   }
 
   private receive(msg:RemoteMessage) {

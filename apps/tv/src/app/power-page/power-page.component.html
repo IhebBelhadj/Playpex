@@ -24,8 +24,12 @@
             <g *ngSwitchCase="'restart'"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></g>
             <!-- shut down: the power mark -->
             <g *ngSwitchCase="'shutdown'"><path d="M12 3v8" /><path d="M6.3 6.8a8 8 0 1 0 11.4 0" /></g>
+            <!-- switch profile: a head and shoulders -->
+            <g *ngSwitchCase="'profiles'"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></g>
+            <!-- full screen: four corners -->
+            <g *ngSwitchCase="'fullscreen'"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></g>
           </svg>
-          <span class="label">{{ o.label }}</span>
+          <span class="label">{{ label(o) }}</span>
           <span class="does">{{ o.does }}</span>
         </button>
       </ng-container>

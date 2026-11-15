@@ -121,6 +121,8 @@
           <px-button variant="icon" *ngIf="upNext" key="next" icon="next" [label]="upNextLooking ? 'Finding a release…' : 'Next episode'"
             (pxSelect)="playNext()"></px-button>
           <px-button variant="icon" *ngIf="castScreens.length && !playback?.channel" key="cast" icon="cast" label="Play on another screen" (pxSelect)="openCastPanel()"></px-button>
+          <px-button variant="icon" *ngIf="pipAvailable" key="pip" icon="pip"
+            [label]="inPip ? 'Back from picture in picture' : 'Picture in picture'" (pxSelect)="togglePip()"></px-button>
           <px-button variant="icon" key="settings" icon="opts" label="Settings" (pxSelect)="openSettings()"></px-button>
         </div>
       </div>

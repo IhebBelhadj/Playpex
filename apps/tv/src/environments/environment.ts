@@ -3,7 +3,9 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  // served by the server for browsers (environment.web.ts)
+  web: false,
 };
 
 /*

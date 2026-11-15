@@ -9,7 +9,7 @@ import { RemotePlugins } from '../plugins/remote';
 import { ProfilesService } from '../profiles.service';
 import { SettingsService } from '../settings.service';
 import { SubtitleProvider, SubtitlesService } from '../subtitles.service';
-import { Dialogs, TabModel } from '../ui/public-api';
+import { Dialogs, frameText, ScreenFrame, TabModel } from '../ui/public-api';
 import { ServerService } from '../server.service';
 import { SectionId } from '../catalog';
 import { SectionRowsService } from '../sections.service';
@@ -30,7 +30,7 @@ const SUBTITLE_SIZES:{ key:SettingValues['subtitles.size'], label:string }[] = [
 
 // Settings (core.settings, docs/settings-plan.md §7), a section beside the
 // menu on the rail layout: the groups on the left (moving onto one shows it),
-// its settings on the right. Display (size, screen edges) and the volume /
+// its settings on the right. Display (size, screen area) and the volume /
 // subtitle size are this device's; the subtitle source and autoplay are the
 // profile's. Plugins' options are set on the server's dashboard. Every change is saved
 // at once (SettingsService; sliders once they stop).
@@ -49,6 +49,7 @@ const AUTOPLAY_KINDS = [
 ];
 
 import { desktop } from '../desktop';
+import { isWeb } from '../web/web-client';
 import { connection } from '../server-config';
 @Component({
   selector: 'app-settings-page',
@@ -70,13 +71,25 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   autoplayKinds = AUTOPLAY_KINDS;
   // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
   // the Electron shell can inject the admin's input (remote/remote-control.service.ts); a browser can't
-  readonly remoteCapable = !!desktop()?.remote;
+  readonly remoteCapable = !!desktop()?.remote || isWeb;
   // About: this app's version (the Electron shell's; none in a browser)
   readonly version = connection?.version || '';
   readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
   readonly subtitleLanguages = [{ key: 'off', label: 'Off' }, ...LANGUAGES];
   readonly volumeText = (v:number) => v + ' %';
-  readonly edgesText = (f:number) => f ? (Math.round(f * 1000) / 10) + ' %' : 'None';
+  // the screen area (docs/web-client-plan.md §3.2): three device settings
+  get frame():ScreenFrame {
+    return {
+      x: this.settings.value('display.safeArea'),
+      y: this.settings.value('display.safeAreaY'),
+      shape: this.settings.value('display.shape'),
+    };
+  }
+
+  get frameText():string {
+    let frame = this.frame;
+    return frame.x == 0 && (frame.y || 0) == 0 && (frame.shape == 'auto' || frame.shape == 'fill') ? 'the whole screen' : frameText(frame);
+  }
 
   private subs:Subscription[] = [];
   private http = inject(HttpClient);
@@ -174,8 +187,10 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
     return this.settings.value('subtitles.provider');
   }
 
-  keepEdges(fraction:number) {
-    this.settings.set('display.safeArea', fraction);
+  keepEdges(frame:ScreenFrame) {
+    this.settings.set('display.safeArea', frame.x);
+    this.settings.set('display.safeAreaY', frame.y);
+    this.settings.set('display.shape', frame.shape);
     this.closeEdges();
   }
 
