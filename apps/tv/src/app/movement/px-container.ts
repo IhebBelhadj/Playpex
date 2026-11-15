@@ -18,6 +18,7 @@ export type EnterMode = 'remembered' | 'nearest' | 'selected';
 
 const NEAR_END_THROTTLE = 300;   // ms between two nearEnd emissions
 const SAVE_DELAY = 150;          // ms after the last scroll event before saving the offsets
+const REALIGN_SETTLE = 150;      // ms after the last resize before realigning again
 
 // What pxRow, pxGrid and pxStack share: their entries (items, or nested
 // containers) in DOM order, the remembered entry, alignment, paging
@@ -52,6 +53,9 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
   private saveTimer:any;
   private itemsSub:Subscription;
   private resizeObserver:ResizeObserver;
+  private realignFrame = 0;
+  private realignTimer:any;
+  private lastSize:string | null = null;
   protected mover:Motion;
 
   constructor(
@@ -91,9 +95,12 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     this.engine.register(this);
     this.zone.runOutsideAngular(() => {
       host.addEventListener('scroll', this.onScroll, { passive: true });
-      // a resized container changes what is cut off (translated ones fire no scroll events)
-      this.resizeObserver = new ResizeObserver(() => this.updateEdges());
+      // a resized container changes what is cut off (translated ones fire no
+      // scroll events), and its offsets, kept in pixels, no longer point at
+      // the same entry: realigned once the size settles (resized)
+      this.resizeObserver = new ResizeObserver(() => this.resized());
       this.resizeObserver.observe(host);
+      window.addEventListener('resize', this.resized);
     });
   }
 
@@ -108,6 +115,9 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
     clearTimeout(this.saveTimer);
     this.host.removeEventListener('scroll', this.onScroll);
     this.resizeObserver?.disconnect();
+    window.removeEventListener('resize', this.resized);
+    cancelAnimationFrame(this.realignFrame);
+    clearTimeout(this.realignTimer);
     this.engine.unregister(this);
   }
 
@@ -323,6 +333,54 @@ export abstract class PxContainer implements OnInit, AfterContentInit, OnDestroy
   }
 
   protected beforeReveal() { }
+
+  // ── resizing ──────────────────────────────────────────────────────────────
+
+  // The window or the container changed size (a resized window, full screen,
+  // another UI size or screen area: the root size follows, so every dp()
+  // length does). Offsets are pixels: realign at once on the next frame
+  // (nothing drifts while dragging a window edge) and again once it settles
+  // (images and fonts laid out at the new size).
+  private resized = () => {
+    let size = `${window.innerWidth}x${window.innerHeight}:${this.host.clientWidth}x${this.host.clientHeight}`;
+    if (size == this.lastSize) return;
+    // the first observation (on attach) is not a resize
+    let first = this.lastSize === null;
+    this.lastSize = size;
+    this.updateEdges();
+    if (first) return;
+    cancelAnimationFrame(this.realignFrame);
+    this.realignFrame = requestAnimationFrame(() => this.realign());
+    clearTimeout(this.realignTimer);
+    this.realignTimer = setTimeout(() => this.realign(), REALIGN_SETTLE);
+  }
+
+  // Put the entry the offsets were about back where its alignment wants it,
+  // without a glide: the entry holding the focus, else the remembered one
+  // (a row the focus isn't in), else the start stays the start and the rest
+  // is clamped to the new content
+  realign() {
+    let host = this.host;
+    if (!host.isConnected || !host.clientWidth || !host.clientHeight) return;
+    let entries = this.navigableEntries();
+    let active = document.activeElement;
+    let anchor = active && active !== document.body ? entries.find(e => e.contains(active)) : undefined;
+    if (!anchor) {
+      let atStart = this.scrollAxes().every(axis => this.mover.offset(host, axis) <= 1);
+      let i = atStart ? -1 : rememberedIndex(this.positions.get(this.storeKey), entries.map(e => this.entryKey(e)));
+      anchor = i >= 0 ? entries[i] : undefined;
+    }
+    if (anchor) {
+      this.reveal(anchor, true);
+      return;
+    }
+    let target:{ left?:number, top?:number } = {};
+    this.scrollAxes().forEach(axis => {
+      let view = this.mover.viewport(host, axis);
+      target[axis] = Math.max(0, Math.min(view.scroll, maxScroll(view)));
+    });
+    this.moveTo(target, true);
+  }
 
   // ── scrolling ─────────────────────────────────────────────────────────────
 
