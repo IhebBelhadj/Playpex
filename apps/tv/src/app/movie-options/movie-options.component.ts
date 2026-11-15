@@ -6,7 +6,7 @@ import { MovieContext } from '../ui/public-api';
 import { Toasts } from '../ui/public-api';
 import { MediaKeys } from '../media-keys.service';
 import { NotificationService } from './../notification.service';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, Subject, takeUntil } from 'rxjs';
 import { CatalogCredits, CatalogTitle, MoviesService, TitleItem, displayTitle } from './../movies.service';
 import { NavigationService } from './../navigation.service';
 import { Component, OnInit, AfterViewInit, OnDestroy, inject } from '@angular/core';
@@ -71,6 +71,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   // a remote's Play key = the Play button (§13.2)
   private mediaSub = inject(MediaKeys).for(this.screen).subscribe(a => (a == 'playPause' || a == 'play') && this.onPlay());
   private subscriptions:Subscription[] = [];
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
 
   constructor(
     private navigation:NavigationService,
@@ -136,7 +138,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       return;
     }
     if (!movie?.tmdbId) return;
-    this.sources.choose(this.sourcesQuery(), displayTitle(movie), { kind: 'download', only: ['torrent'] }).subscribe(source => {
+    this.sources.choose(this.sourcesQuery(), displayTitle(movie), { kind: 'download', only: ['torrent'] }).pipe(takeUntil(this.destroy$)).subscribe(source => {
       let title = displayTitle(movie) + (movie.year ? ` (${movie.year})` : '');
       this.downloads.add(source.magnet, { mediaType: 'movie', tmdbId: Number(movie.tmdbId) }, title)
         .subscribe({
@@ -150,6 +152,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.downloadSub?.unsubscribe();
     this.mediaSub.unsubscribe();
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'});
@@ -188,14 +192,14 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
   getPageData(id){
 
     this.moviesService.getCredits(id)
-    .subscribe(data =>{
+    .pipe(takeUntil(this.destroy$)).subscribe(data =>{
       // people with a photo only
       this.casts = (data.cast || []).filter(c => c.profilePath);
       this.restoreInRows();
     })
 
     this.moviesService.getSimilarMovies(id)
-    .subscribe(data =>{
+    .pipe(takeUntil(this.destroy$)).subscribe(data =>{
       // titles with a poster, in English
       this.similar = (data.results as CatalogTitle[] || []).filter(m => m.posterPath && m.originalLanguage == 'en');
       this.restoreInRows();
@@ -257,8 +261,8 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     this.resume = null;
     if (!this.selectedMovie) return;
     let ref = this.movieRef();
-    this.library.inWatchlist(ref).subscribe({ next: r => this.inWatchlist = r.inWatchlist, error: () => {} });
-    this.library.state(ref).subscribe({
+    this.library.inWatchlist(ref).pipe(takeUntil(this.destroy$)).subscribe({ next: r => this.inWatchlist = r.inWatchlist, error: () => {} });
+    this.library.state(ref).pipe(takeUntil(this.destroy$)).subscribe({
       next: state => {
         this.watched = state.finished;
         this.resume = state.resume;
@@ -322,7 +326,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
       this.chooseSourceAndPlay();
       return;
     }
-    this.playChoice.choose(displayTitle(this.selectedMovie) , resume).subscribe(choice => {
+    this.playChoice.choose(displayTitle(this.selectedMovie) , resume).pipe(takeUntil(this.destroy$)).subscribe(choice => {
       if (choice == 'restart') this.chooseSourceAndPlay(0);
       // same file / release as last time, so the saved position matches
       else if (resume.fileId) this.chooseSourceAndPlay(resume.positionS, source => source.ref == 'f_' + resume.fileId);
@@ -350,7 +354,7 @@ export class MovieOptionsComponent implements AfterViewInit , OnDestroy {
     if (this.findingTorrents) return;
     this.findingTorrents = true;
     this.sources.choose(this.sourcesQuery(), displayTitle(movie), { prefer, looked: () => this.findingTorrents = false })
-      .subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
+      .pipe(takeUntil(this.destroy$)).subscribe(source => this.playback.playMovieFrom(movie, PlaybackService.target(source), startAt));
   }
 
   startPlayer(torrent , startAt?:number){

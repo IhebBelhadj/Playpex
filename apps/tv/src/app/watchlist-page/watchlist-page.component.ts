@@ -2,7 +2,7 @@ import { profileContext } from '../slot-contexts';
 import { ProfilesService } from '../profiles.service';
 import { MetaItem, TitleInfoModel, WatchlistContext } from '../ui/public-api';
 import { AfterViewInit, Component, OnDestroy, OnInit, inject } from '@angular/core';
-import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
+import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { FocusEngine } from '../movement/movement';
 import { BackgroundService } from '../background.service';
@@ -73,6 +73,8 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   private detailCache = new Map<string, Details>();
   private detailRequests = new Subject<Card>();
   private detailSub:Subscription;
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
 
   private cards = new Map<string, Card>();
   private focusListener;
@@ -128,6 +130,8 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.detailSub?.unsubscribe();
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
@@ -135,7 +139,7 @@ export class WatchlistPageComponent implements OnInit, AfterViewInit, OnDestroy 
 
   load() {
     this.loadError = '';
-    this.library.library().subscribe({
+    this.library.library().pipe(takeUntil(this.destroy$)).subscribe({
       next: lib => {
         this.build(lib);
         this.loaded = true;

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { catchError, defaultIfEmpty, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, defaultIfEmpty, finalize, map, Observable, of, switchMap, takeUntil } from 'rxjs';
+import { Navigator } from './nav/navigator.service';
 import { CatalogDetails, EpisodeItem, MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
 import { PlaybackService, PlaybackSource } from './playback.service';
@@ -42,6 +43,7 @@ export class EpisodePlaybackService {
     private playback:PlaybackService,
     private movies:MoviesService,
     private sources:PlaySourcesService,
+    private navigator:Navigator,
   ) { }
 
   static code(season:number, episode:number):string {
@@ -68,17 +70,21 @@ export class EpisodePlaybackService {
     }
 
     let key = { mediaType: 'tv' as const, tmdbId: Number(target.show.tmdbId), season: target.season, episode: ep.episodeNumber };
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
+    let resolvingKey = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
+    this.resolving = resolvingKey;
+    // looked up from this screen: left before the answer, nothing plays
+    let left = this.navigator.left(), answered = false;
     // no current profile: state() completes empty → play as usual
-    this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false })).subscribe({
+    this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), takeUntil(left), finalize(() => answered || this.done(resolvingKey))).subscribe({
       next: state => {
+        answered = true;
         this.resolving = null;
         let resume = state.resume;
         if (!resume) {
           this.findAndPlay(target, code);
           return;
         }
-        this.playChoice.choose(`${target.show.title} ${code}`, resume).subscribe(choice => {
+        this.playChoice.choose(`${target.show.title} ${code}`, resume).pipe(takeUntil(left)).subscribe(choice => {
           if (choice == 'restart') this.findAndPlay(target, code, 0);
           // same file / release as last time, so the saved position matches
           else if (resume.fileId) this.findAndPlay(target, code, resume.positionS, source => source.ref == 'f_' + resume.fileId);
@@ -88,6 +94,7 @@ export class EpisodePlaybackService {
       },
       // no saved state (or no server): play as usual
       error: () => {
+        answered = true;
         this.resolving = null;
         this.findAndPlay(target, code);
       },
@@ -145,12 +152,19 @@ export class EpisodePlaybackService {
   playNext(next:NextEpisode) {
     if (!next.source) return;
     let key = { mediaType: 'tv' as const, tmdbId: Number(next.show.tmdbId), season: next.season, episode: next.episode.episodeNumber };
+    // in place of the player that asked: left meanwhile (Back), nothing replaces the screen shown then
+    let left = this.navigator.left();
     // through the server's plugins first (they may ask, refuse, or give a stream)
-    this.sources.start(next.source).subscribe(source => {
-      this.library.state(key).pipe(defaultIfEmpty({ resume: null, finished: false }), catchError(() => of({ resume: null }))).subscribe(state => {
-        let resume = state.resume;
-        this.start(next, next.code, PlaybackService.target(source), resume ? resume.positionS : 0, true);
-      });
+    this.sources.start(next.source).pipe(
+      switchMap(source => this.library.state(key).pipe(
+        defaultIfEmpty({ resume: null, finished: false }),
+        catchError(() => of({ resume: null })),
+        map(state => ({ source, state })),
+      )),
+      takeUntil(left),
+    ).subscribe(({ source, state }) => {
+      let resume = state.resume;
+      this.start(next, next.code, PlaybackService.target(source), resume ? resume.positionS : 0, true);
     });
   }
 
@@ -167,9 +181,19 @@ export class EpisodePlaybackService {
   }
 
   private findAndPlay(target:EpisodeTarget, code:string, startAt?:number, prefer?:(source:PlaySource) => boolean) {
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, target.episode.episodeNumber);
-    this.sources.choose(EpisodePlaybackService.query(target), `${target.show.title} ${code}`, { prefer, looked: () => this.resolving = null })
+    let key = EpisodePlaybackService.keyOf(target.show, target.season, target.episode.episodeNumber);
+    this.resolving = key;
+    this.sources.choose(EpisodePlaybackService.query(target), `${target.show.title} ${code}`, { prefer, looked: () => this.done(key) })
+      .pipe(takeUntil(this.navigator.left()), finalize(() => this.done(key)))
       .subscribe(source => this.start(target, code, PlaybackService.target(source), startAt));
+  }
+
+  // the lookup of `key` is over (answered, or given up when its screen was
+  // left): Play works again. Not only when it answers: an unsubscribed lookup
+  // never calls `looked`, and every Play after it did nothing
+  private done(key:{ tmdbId:number, season:number, episode:number } | string) {
+    let id = typeof key == 'string' ? key : EpisodePlaybackService.keyOf(key, key.season, key.episode);
+    if (this.resolving === id) this.resolving = null;
   }
 
   /**
@@ -179,9 +203,11 @@ export class EpisodePlaybackService {
    */
   chooseRelease(target:EpisodeTarget):Observable<PlaySource> {
     let ep = target.episode, code = EpisodePlaybackService.code(target.season, ep.episodeNumber);
-    this.resolving = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
+    let key = EpisodePlaybackService.keyOf(target.show, target.season, ep.episodeNumber);
+    this.resolving = key;
     return this.sources.choose(EpisodePlaybackService.query(target), `${target.show.title} ${code}`,
-      { kind: 'download', only: ['torrent'], looked: () => this.resolving = null });
+      { kind: 'download', only: ['torrent'], looked: () => this.done(key) })
+      .pipe(finalize(() => this.done(key)));
   }
 
   private start(target:EpisodeTarget, code:string, what:{ magnet?:string, source?:PlaybackSource, bingeGroup?:string }, startAt?:number, replace = false) {

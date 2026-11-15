@@ -2,9 +2,10 @@ import { ProfilesService } from '../profiles.service';
 import { NavigationService } from './../navigation.service';
 import { BackgroundService } from './../background.service';
 import { MoviesService, TitleItem, displayTitle } from './../movies.service';
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { filter, map } from 'rxjs/operators';
+import { filter, map, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 import { MetaItem, TitleInfoModel, TitleMetaContext } from '../ui/public-api';
 import { ContinueAt, episodeCode, timeLeft } from '../catalog';
 
@@ -24,9 +25,11 @@ import { profileContext } from '../slot-contexts';
   templateUrl: './movie-description.component.html',
   styleUrls: ['./movie-description.component.scss']
 })
-export class MovieDescriptionComponent implements OnInit {
+export class MovieDescriptionComponent implements OnInit, OnDestroy {
 
   private profiles = inject(ProfilesService);
+  // its subscriptions end with it (the services outlive every section page)
+  private destroy$ = new Subject<void>();
 
   selectedMovie:Partial<TitleItem>;
   year;
@@ -38,7 +41,7 @@ export class MovieDescriptionComponent implements OnInit {
   slotContext:TitleMetaContext | null = null;
 
   ngOnInit(): void {
-    this.moviesService.checkSelection().subscribe(movie=>{
+    this.moviesService.checkSelection().pipe(takeUntil(this.destroy$)).subscribe(movie=>{
 
       if(!movie) return;
       if (Object.keys(movie).length == 0) return;
@@ -47,7 +50,7 @@ export class MovieDescriptionComponent implements OnInit {
 
     })
 
-    this.navigation.onDescriptionUpdate().subscribe(movie => {
+    this.navigation.onDescriptionUpdate().pipe(takeUntil(this.destroy$)).subscribe(movie => {
       this.dataUpdate(movie);
     })
 
@@ -63,8 +66,14 @@ export class MovieDescriptionComponent implements OnInit {
           this.fullDescription = false;
         }
 
-      })
+      }),
+      takeUntil(this.destroy$),
     ).subscribe()
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   constructor(

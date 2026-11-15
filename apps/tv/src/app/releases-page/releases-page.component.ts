@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, map, of, Subject, Subscription, switchMap } from 'rxjs';
+import { catchError, map, of, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { NavigationService } from '../navigation.service';
 import { PlaybackRequest, PlaybackService } from '../playback.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
@@ -69,6 +69,8 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private requests = new Subject<Request>();
   private requestSub:Subscription;
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
   private screen = useScreen<{}, ReleasesOrigin>();
 
   constructor(
@@ -147,7 +149,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
       this.updateMaxSeeds();
     });
 
-    this.releases.providers(this.kind).subscribe(providers => {
+    this.releases.providers(this.kind).pipe(takeUntil(this.destroy$)).subscribe(providers => {
       this.providers = providers;
       if (!providers.length) {
         this.loadError = "Couldn't load the sources. Check that the Playpex server is running, then try again.";
@@ -180,6 +182,8 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.requestSub?.unsubscribe();
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
@@ -227,7 +231,7 @@ export class ReleasesPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadError = '';
     if (!this.providers.length) {
       // the sources failed to load: try them again first
-      this.releases.providers(this.kind).subscribe(providers => {
+      this.releases.providers(this.kind).pipe(takeUntil(this.destroy$)).subscribe(providers => {
         this.providers = providers;
         if (providers.length) {
           this.setState({ provider: (providers.find(p => p.default) || providers[0]).id });

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, EMPTY, map, Observable, of, Subject, tap, throwError } from 'rxjs';
 import { DownloadRef, DownloadsService } from '../downloads.service';
-import { Navigator } from '../nav/public-api';
+import { Entry, Navigator } from '../nav/public-api';
 import { PlaybackRequest, PlaybackService } from '../playback.service';
 import { ProfilesService } from '../profiles.service';
 import { ServerService } from '../server.service';
@@ -51,8 +51,10 @@ export class PluginClient {
 
   /** A `call` (an action, a card, a list item, a confirm's `then`): its effects performed, its data passed on */
   call<T = unknown>(scope:PluginScope, call:PluginCall, extra:Record<string, unknown> = {}):Observable<T | null> {
+    // the screen it was asked from: an answer after it was left opens and plays nothing
+    let from = this.navigator.current;
     return this.data<T>(scope.id, call.data, { ...(call.args || {}), ...extra }).pipe(
-      tap(answer => this.perform(scope, answer.effects)),
+      tap(answer => this.perform(scope, answer.effects, from)),
       map(answer => answer.data),
       catchError(err => {
         this.failed(scope, err);
@@ -78,8 +80,12 @@ export class PluginClient {
 
   // ── effects ─────────────────────────────────────────────────────────────
 
-  perform(scope:PluginScope, effects:PluginEffect[] | null | undefined) {
+  // `from`: the screen that asked; once it isn't the one shown, effects that
+  // change the screen (open, play, confirm) are dropped, the rest still happen
+  perform(scope:PluginScope, effects:PluginEffect[] | null | undefined, from?:Entry | null) {
+    let moved = from !== undefined && !this.navigator.showing(from);
     for (let effect of effects || []) {
+      if (moved && (effect.type == 'open' || effect.type == 'play' || effect.type == 'confirm')) continue;
       switch (effect.type) {
         case 'open': this.open(scope, effect.intent); break;
         case 'play': this.play(scope, effect.request); break;
@@ -91,7 +97,7 @@ export class PluginClient {
             .subscribe(yes => {
               if (!yes) return;
               if (then.type == 'call') this.run(scope, (then as { call:PluginCall }).call);
-              else this.perform(scope, [then as PluginEffect]);
+              else this.perform(scope, [then as PluginEffect], this.navigator.current);
             });
           break;
         }

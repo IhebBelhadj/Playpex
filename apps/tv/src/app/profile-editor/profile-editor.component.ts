@@ -1,5 +1,5 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { concatMap, Observable, of } from 'rxjs';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { concatMap, Observable, of, Subject, takeUntil } from 'rxjs';
 import { NotificationService } from '../notification.service';
 import { AVATARS, Profile, ProfilesService } from '../profiles.service';
 import { Navigator, useScreen } from '../nav/public-api';
@@ -19,7 +19,10 @@ const NAME_MAX = 30;
   templateUrl: './profile-editor.component.html',
   styleUrls: ['./profile-editor.component.scss']
 })
-export class ProfileEditorComponent implements OnInit, AfterViewInit {
+export class ProfileEditorComponent implements OnInit, AfterViewInit, OnDestroy {
+
+  // its reads end with it: a late failure would send whatever is shown to the picker
+  private destroy$ = new Subject<void>();
 
   id:string | null = null;
   ready = false;
@@ -49,11 +52,16 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
     return this.pendingPin === undefined ? this.hasPin : this.pendingPin !== null;
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   ngOnInit(): void {
     this.id = this.screen.params.id || null;
 
     if (this.id) {
-      this.profilesService.get(this.id).subscribe({
+      this.profilesService.get(this.id).pipe(takeUntil(this.destroy$)).subscribe({
         next: p => this.fill(p),
         error: err => {
           this.notification.sendNotification('error', ProfilesService.errorMessage(err));
@@ -62,7 +70,7 @@ export class ProfileEditorComponent implements OnInit, AfterViewInit {
       });
     } else {
       // New profile: first avatar nobody uses yet
-      this.profilesService.list().subscribe({
+      this.profilesService.list().pipe(takeUntil(this.destroy$)).subscribe({
         next: data => {
           let used = data.profiles.map(p => p.avatar);
           this.avatar = AVATARS.find(a => !used.includes(a)) || AVATARS[0];

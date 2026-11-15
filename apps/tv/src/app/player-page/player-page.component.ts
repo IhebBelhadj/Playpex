@@ -5,9 +5,9 @@ import { Subtitle, SubtitleProvider, SubtitlesService } from './../subtitles.ser
 import { PlaybackRequest, PlaybackService } from './../playback.service';
 import { TorrentService } from './../torrent.service';
 import { Component, OnInit, OnDestroy, ElementRef, NgZone, inject } from '@angular/core';
-import { repeat, switchMap, filter, catchError } from "rxjs/operators";
+import { repeat, switchMap, filter, catchError, takeUntil } from "rxjs/operators";
 import { gsap } from 'gsap'
-import { EMPTY, Subscription, timer, merge, map } from 'rxjs';
+import { EMPTY, Subject, Subscription, timer, merge, map } from 'rxjs';
 import type { SessionCommandEvent } from '@playpex/protocol';
 import { ServerEvents } from '../server-events.service';
 import { ServerService } from '../server.service';
@@ -31,6 +31,7 @@ import { CastScreen, CastSender } from '../cast/cast-sender.service';
 import { VolumeControl } from '../volume.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { LiveChannel, LiveService, NowNext } from '../live/live.service';
+import { onSessionSave } from '../session-restore';
 
 const SAVE_EVERY_MS = 15000;
 // Keeps this device's lease on the torrent while the player is open (the
@@ -267,6 +268,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   pointerIdle;
   controlsIdle;
   keepaliveTimer;
+  private unhookSave:() => void;
   private keepaliveSoonTimer:any;
   // this player's session on the server (Session.id), from the keepalive's answer
   private sessionId:string | null = null;
@@ -288,13 +290,19 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   castPanelOpen = false;
   castSending = false;
   private castScreensTimer:any = null;
-  private mediaSub = inject(MediaKeys).for(this.screen).subscribe(action => this.onMedia(action));
   private lastMedia:{ action:MediaAction | null, at:number } = { action: null, at: 0 };
   // Set first in ngOnDestroy: work that finishes later (a probe, the torrent's
   // answer, a seek's keyframe, Up next) must not start a video nobody sees
   private destroyed = false;
+  // Every subscription of this player ends with it (takeUntil): an answer or
+  // an event after it closed must reach nothing (the lease's release excepted:
+  // it must reach the server)
+  private destroy$ = new Subject<void>();
+  private mediaSub = inject(MediaKeys).for(this.screen).pipe(takeUntil(this.destroy$)).subscribe(action => this.onMedia(action));
   // the <video>'s listeners, removed together on destroy
   private videoListeners = new AbortController();
+  // what it listens to on the window, all let go with it
+  private windowListeners = new AbortController();
   private readyTimer:any;
   private registerSub:Subscription;
   private keyDown = (e:KeyboardEvent) => this.onKeyDown(e);
@@ -342,15 +350,20 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.castScreensTimer = setInterval(ask, 30000);
     }
 
-    let asked = this.playback.startAt !== undefined;
+    // the page reloaded while it played (session-restore.ts): on from there
+    let reloadAt = this.screen.entry?.state['reloadAt'];
+    let asked = this.playback.startAt !== undefined || typeof reloadAt == 'number';
     if (asked) {
       // chosen on the detail page: resume at this point, or 0 = from the beginning
-      this.resumeAt = this.playback.startAt || null;
+      this.resumeAt = (typeof reloadAt == 'number' ? reloadAt : this.playback.startAt) || null;
       this.resumeDecided = true;
     }
+    this.unhookSave = onSessionSave(() => {
+      if (this.playerReady && !this.live) this.screen.setState('reloadAt', this.position());
+    });
     // the saved state: where to resume (unless asked), and the tracks chosen last time
     if (this.playback.tmdbId && this.playback.tracking != 'none') {
-      this.stateSub = this.library.state(this.libraryKey()).subscribe({
+      this.stateSub = this.library.state(this.libraryKey()).pipe(takeUntil(this.destroy$)).subscribe({
         next: state => {
           let r = state.resume;
           if (r) this.savedTracks = { audio: r.audioTrack || null, subtitle: r.subtitleTrack || null, fileId: r.fileId, infoHash: r.infoHash, filePath: r.filePath };
@@ -378,7 +391,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.volumeSub = merge(
       this.settings.changes('player.volume').pipe(map(v => () => this.volume = v)),
       this.volumeControl.muted$.pipe(map(m => () => this.muted = m)),
-    ).subscribe(apply => { apply(); this.applyVolume(); });
+    ).pipe(takeUntil(this.destroy$)).subscribe(apply => { apply(); this.applyVolume(); });
     this.applySubtitleSize();
 
     // capture: before the spatial-navigation library moves the focus
@@ -391,7 +404,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     // Mouse: moving it shows the controls; the wheel scrolls panels natively
     this.pointer.wheelNavigation = false;
-    this.pointerSub = this.pointer.moved.subscribe(() => this.onPointerMove());
+    this.pointerSub = this.pointer.moved.pipe(takeUntil(this.destroy$)).subscribe(() => this.onPointerMove());
     this.pointerIdle = setTimeout(() => this.onPointerIdle() , POINTER_IDLE_MS);
 
     // development: a video file, no torrent (window.playpexDev.player())
@@ -464,7 +477,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     let reps = 0;
     let p = this.playback;
     let hint = { season: p.season || undefined, episode: p.season ? p.episode : undefined, fileIndex: p.file?.index, fileName: p.file?.name };
-    this.playerSub = this.torrentService.getTorrent(hash, hint).pipe(repeat({ delay: 4000 })).subscribe({
+    this.playerSub = this.torrentService.getTorrent(hash, hint).pipe(repeat({ delay: 4000 }), takeUntil(this.destroy$)).subscribe({
       error: e => this.cantStart(e),
       next: data => {
         reps += 1;
@@ -499,20 +512,27 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   }
 
   ngOnDestroy(): void {
+    // A throw here would stop the router halfway: the URL already the next
+    // screen's, this player still shown. Each step on its own
+    let safely = (fn:() => void) => { try { fn(); } catch (e) { console.error('Player teardown', e); } };
+    this.unhookSave?.();
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.windowListeners.abort();
     // last position, while the <video> still has it
-    this.saveProgress();
+    safely(() => this.saveProgress());
     this.destroyed = true;
     clearInterval(this.castScreensTimer);
     // every way out lets go of the lease (beforeLeave did already, but not
     // every exit runs it); does nothing the second time
-    this.releaseTorrent();
+    safely(() => this.releaseTorrent());
     this.mediaSub?.unsubscribe();
     this.serverSub?.unsubscribe();
     clearTimeout(this.keepaliveSoonTimer);
     clearInterval(this.castTimer);
-    this.castReport('ended');
+    safely(() => this.castReport('ended'));
     this.volumeSub?.unsubscribe();
-    this.stopMediaSession();
+    safely(() => this.stopMediaSession());
     clearTimeout(this.seekTimer);
     clearTimeout(this.scrubTimer);
     clearTimeout(this.controlsIdle);
@@ -532,10 +552,16 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.playerSub?.unsubscribe();
     this.statsSub?.unsubscribe();
     clearInterval(this.keepaliveTimer);
-    gsap.killTweensOf('.clock');
-    gsap.set('.clock' , { clearProps : 'opacity' });
+    safely(() => {
+      gsap.killTweensOf('.clock');
+      gsap.set('.clock' , { clearProps : 'opacity' });
+    });
 
-    this.stopVideo();
+    // its floating window goes with it (a video taken out of the page may stay in it)
+    safely(() => {
+      if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => { });
+    });
+    safely(() => this.stopVideo());
     window.removeEventListener('keydown', this.keyDown, true);
     window.removeEventListener('keyup', this.keyUp, true);
   }
@@ -848,7 +874,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       this.serverEvents.on<SessionCommandEvent>('session.command').pipe(map(e => ({ command: e.data, ended: null }))),
       this.serverEvents.on<{ id:string, deviceId:string, infoHash:string | null, ref:string | null }>('session.ended')
         .pipe(map(e => ({ command: null, ended: e.data }))),
-    ).subscribe(({ command, ended }) => {
+    ).pipe(takeUntil(this.destroy$)).subscribe(({ command, ended }) => {
       if (this.destroyed || !this.screen.active) return;
       if (command && this.ownsSession(command.sessionId, command.infoHash, command.ref, command.castId)) this.obey(command);
       // a session.ended for this player's own session: it was cut (not one it let go itself: a
@@ -965,8 +991,11 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     }
   }
 
-  // Back to where the user came from (the lease goes in beforeLeave)
+  // Back to where the user came from (the lease goes in beforeLeave). Only
+  // while this player is the screen shown: a late answer (an error, a server
+  // event) after it was left must not take the user off another screen
   leavePlayer() {
+    if (this.destroyed || !this.screen.active) return;
     this.navigator.back();
   }
 
@@ -1445,7 +1474,9 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
   // Peers / speed / downloaded under the spinner, polled while it's shown
   pollStats(){
+    this.statsSub?.unsubscribe();
     this.statsSub = timer(0 , 1000).pipe(
+      takeUntil(this.destroy$),
       filter(() => !!this.torrentHash && (!this.playerReady || this.buffering || this.statsVisible || (this.settingsOpen && this.tab == 'stats'))),
       switchMap(() => this.torrentService.getStats(this.torrentHash).pipe(catchError(() => EMPTY))),
     ).subscribe(stats => {
@@ -1515,7 +1546,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       ...(episode ? { season: p.season, episode: p.episode } : {}),
       duration: Math.round(duration),
       ...(fileName ? { fileName } : {}),
-    }).subscribe(markers => this.markers = markers);
+    }).pipe(takeUntil(this.destroy$)).subscribe(markers => this.markers = markers);
   }
 
   // ── up next ───────────────────────────────────────────────────────────────
@@ -1524,7 +1555,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   findNextEpisode() {
     let p = this.playback;
     if (!p.season || !p.episode || !p.tmdbId || p.tracking == 'none') return;
-    this.nextSub = this.episodes.next(p.tmdbId, p.season, p.episode, p.imdbId).subscribe(next => this.upNext = next);
+    this.nextSub = this.episodes.next(p.tmdbId, p.season, p.episode, p.imdbId).pipe(takeUntil(this.destroy$)).subscribe(next => this.upNext = next);
   }
 
   lookUpNextRelease(then?:() => void) {
@@ -1532,7 +1563,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.upNextLooking = true;
     let next = this.upNext;
     // the same add-on and release style as this episode's, when its source has a group (a Stremio add-on's)
-    this.episodes.bestSource(next, this.playback.bingeGroup).subscribe(source => {
+    this.episodes.bestSource(next, this.playback.bingeGroup).pipe(takeUntil(this.destroy$)).subscribe(source => {
       this.upNextLooking = false;
       next.source = source;
       if (source) then?.();
@@ -1686,7 +1717,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
     this.banner = { channel, logo, onAir: this.banner?.channel?.id == channel.id ? this.banner.onAir : null };
     this.bannerSub?.unsubscribe();
     if (this.liveTv.lineup?.guide !== false) {
-      this.bannerSub = this.liveTv.nowNext(plugin, [channel.id]).subscribe(found => {
+      this.bannerSub = this.liveTv.nowNext(plugin, [channel.id]).pipe(takeUntil(this.destroy$)).subscribe(found => {
         if (this.banner?.channel?.id == channel.id) this.banner = { ...this.banner, onAir: found[channel.id] || null };
       });
     }
@@ -1778,7 +1809,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
       let at = Math.max(0, lineup.channels.findIndex(c => c.id == this.playback.channel.id));
       let from = Math.max(0, Math.min(at - 100, lineup.channels.length - 200));
       this.channelGuideSub = this.liveTv.nowNext(lineup.plugin, lineup.channels.slice(from, from + 200).map(c => c.id))
-        .subscribe(found => this.channelGuide = found);
+        .pipe(takeUntil(this.destroy$)).subscribe(found => this.channelGuide = found);
     }
   }
 
@@ -1933,8 +1964,8 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
         window.removeEventListener('pointerdown', unmute, true);
         if (!this.destroyed && this.moviePlayer === video) this.applyVolume();
       };
-      window.addEventListener('keydown', unmute, true);
-      window.addEventListener('pointerdown', unmute, true);
+      window.addEventListener('keydown', unmute, { capture: true, signal: this.windowListeners.signal });
+      window.addEventListener('pointerdown', unmute, { capture: true, signal: this.windowListeners.signal });
     });
   }
 
@@ -1974,7 +2005,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
   // ── subtitles ─────────────────────────────────────────────────────────────
 
   fetchSubs(){
-    this.subtitlesService.getProviders().subscribe(providers => {
+    this.subtitlesService.getProviders().pipe(takeUntil(this.destroy$)).subscribe(providers => {
       let kind = this.playback.season ? 'episode' : 'movie';
       this.subtitleProviders = providers.filter(p => p.enabled && p.supports[kind]);
       let preferred = this.subtitleProviders.find(p => p.id == this.settings.value('subtitles.provider'));
@@ -2005,7 +2036,7 @@ export class PlayerPageComponent implements OnInit ,OnDestroy{
 
     // the file playing: providers match that release by its name, size and hash
     let query = { imdbId: this.playback.imdbId, season: this.playback.season, episode: this.playback.episode, ref: this.ref || undefined };
-    this.subtitlesService.search(provider , query).subscribe(result => {
+    this.subtitlesService.search(provider , query).pipe(takeUntil(this.destroy$)).subscribe(result => {
       if (provider != this.subtitleProvider) return;
       this.subtitles = result.subtitles;
     } , () => {

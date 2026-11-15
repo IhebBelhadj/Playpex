@@ -60,6 +60,8 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit, Aft
 
   override ngOnDestroy(): void {
     super.ngOnDestroy();
+    // a page answering after it closed would perform its effects over another screen
+    this.loadSub?.unsubscribe();
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
   }
 
@@ -82,11 +84,16 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit, Aft
     return this.state.data?.empty || 'No releases.';
   }
 
+  private reloaded = false;
+
   ngOnInit(): void {
-    this.state = this.kept<ReleasesState>(() => ({ query: '', filters: null, data: null, releases: [], page: 0, last: false, loaded: false }));
+    this.state = this.kept<ReleasesState>(() => ({ ...this.keptChoices(), data: null, releases: [], page: 0, last: false, loaded: false }));
     if (this.state.loaded && this.state.releases.length) {
       setTimeout(() => this.engine.restore(`grid:${this.listId}`) || this.focusFirst(), 0);
     } else {
+      // shown again without what it had loaded (the page reloaded,
+      // session-restore.ts): back to the release it was on once it's there
+      this.reloaded = this.screen.returning;
       this.load();
     }
   }
@@ -115,10 +122,13 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit, Aft
           page, last: !!data.last || !data.releases.length, loaded: true,
         });
         if (first) {
-          this.positions.clear(`grid:${this.listId}`);
+          let reloaded = this.reloaded;
+          this.reloaded = false;
+          if (!reloaded) this.positions.clear(`grid:${this.listId}`);
           setTimeout(() => {
             let active = document.activeElement as HTMLElement;
-            if (!active?.closest('.pluginReleases .rail')) this.focusFirst();
+            if (active?.closest('.pluginReleases .rail')) return;
+            if (!(reloaded && this.engine.restore(`grid:${this.listId}`))) this.focusFirst();
           }, 0);
         }
       },
@@ -232,5 +242,6 @@ export class PluginReleasesComponent extends PluginScreen implements OnInit, Aft
   private set(patch:Partial<ReleasesState>) {
     this.state = { ...this.state, ...patch };
     this.screen.setState('plugin', this.state);
+    this.keepChoices(this.state);
   }
 }

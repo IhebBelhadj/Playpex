@@ -9,6 +9,7 @@ import { ServerService } from '../server.service';
 import { CONTRIBUTIONS, defineContribution, Toasts } from '../ui/public-api';
 import { NotificationService } from '../notification.service';
 import { RemotePlugins } from '../plugins/remote';
+import { Navigator } from '../nav/public-api';
 
 export type LiveChannel = Schema<'LiveChannel'>;
 export type LiveChannels = Schema<'LiveChannels'>;
@@ -77,6 +78,7 @@ export class LiveService {
     private toasts:Toasts,
     private notifications:NotificationService,
     private plugins:RemotePlugins,
+    private navigator:Navigator,
   ) { }
 
   /** From AppComponent: the search chips of the live plugins, and the caches' lifetime */
@@ -183,10 +185,13 @@ export class LiveService {
    */
   play(plugin:string, channel:LiveChannel, options:{ lineup?:Lineup, replace?:boolean, list?:boolean } = {}):Observable<boolean> {
     if (options.lineup) this.lineup = options.lineup;
+    // the screen it was asked from (the guide, search, the player for a flip):
+    // left before the answer, no player opens over the screen shown then
+    let from = this.navigator.current;
     return this.http.post<{ channel:LiveChannel, source:{ ref:string, format:'hls' | 'live', label:string } }>(
       `${this.server.api}/live/${plugin}/channels/${encodeURIComponent(channel.id)}/play`, {}, { params: this.params() },
     ).pipe(
-      tap(answer => this.playback.play({
+      tap(answer => this.navigator.showing(from) && this.playback.play({
         title: answer.channel.name,
         subtitle: [String(answer.channel.number), answer.channel.group].filter(Boolean).join(' · '),
         source: { ref: answer.source.ref, format: answer.source.format },

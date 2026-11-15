@@ -4,7 +4,7 @@ import { personPayload } from '../person-page/person-page.component';
 import { ProfilesService } from '../profiles.service';
 import { MediaKeys } from '../media-keys.service';
 import { Component, AfterViewInit, OnDestroy, inject } from '@angular/core';
-import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map } from 'rxjs';
+import { distinctUntilChanged, Observable, Subject, Subscription, switchMap, map, takeUntil } from 'rxjs';
 import { gsap, Power1 } from 'gsap'
 import { MenuServiceService } from '../menu-service.service';
 import { CatalogCredits, CatalogDetails, CatalogTitle, EpisodeItem, MoviesService } from '../movies.service';
@@ -76,6 +76,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
 
   private seasonRequests = new Subject<{ showId:number , season:number }>();
   private subscriptions:Subscription[] = [];
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
   private focusListener;
   private today = new Date().toISOString().slice(0, 10);
   private restoreEpisode = false;    // back on the show: focus the remembered episode
@@ -155,6 +157,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.mediaSub.unsubscribe();
     this.onServerSub?.unsubscribe();
     this.subscriptions.forEach(s => s.unsubscribe());
@@ -167,7 +171,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   loadShow(id){
     let lastSeason = this.screen.returning ? this.screen.entry?.state['season'] : undefined;
     this.imdb = null;
-    this.moviesService.getTvDetails(id).subscribe(show => {
+    this.moviesService.getTvDetails(id).pipe(takeUntil(this.destroy$)).subscribe(show => {
       this.show = show;
       this.screen.setState(BACK_TICKET, { name: show.title, image: show.posterPath || null, kind: 'poster' } as BackTicket);
       this.imdbId = show.imdbId;
@@ -247,7 +251,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   loadImdb(){
     let show = this.show;
     if (!this.imdbId) return;
-    this.imdbService.episodes(this.imdbId).subscribe(series => {
+    this.imdbService.episodes(this.imdbId).pipe(takeUntil(this.destroy$)).subscribe(series => {
       if (!series || show !== this.show) return;
       this.imdb = series;
       if (series.rating) {
@@ -282,7 +286,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
   private loadContinue(){
     let show = this.show;
     this.continueAt = null;
-    this.library.library().subscribe({
+    this.library.library().pipe(takeUntil(this.destroy$)).subscribe({
       next : lib => {
         if (this.show !== show) return;
         let at = (lib.continueWatching || []).find(c => c.mediaType == 'tv' && c.tmdbId == Number(show.tmdbId));
@@ -292,7 +296,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
           return;
         }
         // finished an episode: the one after it
-        this.episodePlayback.next(Number(show.tmdbId) , at.season , at.episode , this.imdbId).subscribe(next => {
+        this.episodePlayback.next(Number(show.tmdbId) , at.season , at.episode , this.imdbId).pipe(takeUntil(this.destroy$)).subscribe(next => {
           if (!next || this.show !== show) return;
           this.continueAt = { season : next.season , episode : next.episode.episodeNumber , label : `Play S${next.season} E${next.episode.episodeNumber}` , progress : null , target : next };
         });
@@ -310,8 +314,8 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
       this.onServer = ServerLibraryService.episodesOf(title);
     });
     let ref = { mediaType : 'tv' as const , tmdbId : Number(this.show.tmdbId) };
-    this.library.inWatchlist(ref).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
-    this.library.episodesProgress(ref).subscribe({
+    this.library.inWatchlist(ref).pipe(takeUntil(this.destroy$)).subscribe({ next : r => this.inWatchlist = r.inWatchlist , error : () => {} });
+    this.library.episodesProgress(ref).pipe(takeUntil(this.destroy$)).subscribe({
       next : list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}` , p)),
       error : () => {},
     });
@@ -362,7 +366,7 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
         return;
       }
       let show = this.show;
-      this.moviesService.getTvSeason(show.tmdbId , at.season).subscribe({
+      this.moviesService.getTvSeason(show.tmdbId , at.season).pipe(takeUntil(this.destroy$)).subscribe({
         next : season => {
           let ep = (season.episodes || []).find(e => e.episodeNumber == at.episode);
           if (ep) this.episodePlayback.play({ show , imdbId : this.imdbId , season : at.season , episode : ep });

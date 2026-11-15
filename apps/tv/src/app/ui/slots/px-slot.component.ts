@@ -97,6 +97,9 @@ export class PxSlotComponent implements OnChanges, OnDestroy {
     else if (card.intent) this.open(card.intent);
   }
 
+  // the first page of each paged row, asked once it's drawn
+  private firstPages:any[] = [];
+
   more(row:RowState) {
     let source = row.model.source;
     if (!('page' in source) || row.last || row.loading) return;
@@ -131,24 +134,28 @@ export class PxSlotComponent implements OnChanges, OnDestroy {
     else if (this.kind == 'meta') this.meta = all;
     else {
       let previous = new Map(this.rows.map(r => [r.model.key, r]));
-      this.rows = (all as RowModel[]).map(model => {
+      let rows = (all as RowModel[]).map(model => {
         let kept = previous.get(model.key);
         if (kept && kept.model.source === model.source) return kept;
-        kept?.sub?.unsubscribe();
         let state:RowState = { model, items: [], page: 0, last: false, loading: false };
         if ('items' in model.source) {
           state.items = model.source.items;
           state.last = true;
         } else {
-          setTimeout(() => this.more(state));
+          this.firstPages.push(setTimeout(() => this.rows.includes(state) && this.more(state)));
         }
         return state;
       });
+      // rows gone or replaced: their page requests end with them
+      this.rows.filter(r => !rows.includes(r)).forEach(r => r.sub?.unsubscribe());
+      this.rows = rows;
     }
     this.cdr.markForCheck();
   }
 
   private clear() {
+    this.firstPages.forEach(clearTimeout);
+    this.firstPages = [];
     this.subs.forEach(s => s.unsubscribe());
     this.subs = [];
     this.rows.forEach(r => r.sub?.unsubscribe());

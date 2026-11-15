@@ -5,7 +5,7 @@ import { ProfilesService } from '../profiles.service';
 import { formatDate } from '@angular/common';
 import { MediaKeys } from '../media-keys.service';
 import { Component, AfterViewInit, OnDestroy, inject } from '@angular/core';
-import { forkJoin, map, Observable, Subject, Subscription, switchMap } from 'rxjs';
+import { forkJoin, map, Observable, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { MenuServiceService } from '../menu-service.service';
 import { CatalogCredits, CatalogDetails, CatalogEpisode, CatalogTitle, EpisodeItem, MoviesService } from '../movies.service';
 import { NavigationService } from '../navigation.service';
@@ -100,6 +100,8 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
   private loaded:{ showId:string, season:number } = null;
   private subscriptions:Subscription[] = [];
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
   private focusListener;
   private today = new Date().toISOString().slice(0, 10);
   // params { id, season, episode }; another episode replaces the entry (`reuse`)
@@ -257,7 +259,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     }
     let ref = this.downloadRef();
     this.episodePlayback.chooseRelease({ show: this.show, imdbId: this.imdbId, season: this.seasonNumber, episode: this.episode })
-      .subscribe(torrent => this.downloads.add(torrent.magnet, ref, title).subscribe({
+      .pipe(takeUntil(this.destroy$)).subscribe(torrent => this.downloads.add(torrent.magnet, ref, title).subscribe({
         next: added => this.toasts.show({
           text: added.state === 'queued' ? 'Queued on the server' : 'Downloading on the server',
           detail: title, tone: 'success', key: 'download',
@@ -267,6 +269,8 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.downloadSub?.unsubscribe();
     this.onServerSub?.unsubscribe();
     this.mediaSub.unsubscribe();
@@ -306,7 +310,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
       error: () => {},
     }));
     forkJoin([this.moviesService.getTvDetails(showId), this.moviesService.getTvSeason(showId, season)])
-      .subscribe(([show, seasonData]) => {
+      .pipe(takeUntil(this.destroy$)).subscribe(([show, seasonData]) => {
         this.show = show;
         this.imdbId = show.imdbId;
         this.seasonNumber = season;
@@ -406,7 +410,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
   loadImdb() {
     let show = this.show;
     if (!this.imdbId) return;
-    this.imdbService.episodes(this.imdbId).subscribe(series => {
+    this.imdbService.episodes(this.imdbId).pipe(takeUntil(this.destroy$)).subscribe(series => {
       if (show !== this.show) return;
       this.imdb = series;
       this.updateImdb();
@@ -457,7 +461,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
 
   loadSeasonProgress() {
     this.episodeProgress.clear();
-    this.library.episodesProgress({ mediaType: 'tv', tmdbId: Number(this.show.tmdbId) }).subscribe({
+    this.library.episodesProgress({ mediaType: 'tv', tmdbId: Number(this.show.tmdbId) }).pipe(takeUntil(this.destroy$)).subscribe({
       next: list => list.forEach(p => this.episodeProgress.set(`${p.season}x${p.episode}`, p)),
       error: () => {},
     });
@@ -468,7 +472,7 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     this.resumeLabel = '';
     this.resumeRatio = 0;
     let episode = this.episode;
-    this.library.state(this.key()).subscribe({
+    this.library.state(this.key()).pipe(takeUntil(this.destroy$)).subscribe({
       next: (state:PlaybackState) => {
         if (episode !== this.episode) return;
         this.watched = state.finished;

@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap } from 'rxjs';
+import { catchError, debounceTime, map, Observable, of, Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { BackgroundService } from '../background.service';
 import { FocusEngine } from '../movement/movement';
 import { MoviesService } from '../movies.service';
@@ -63,6 +63,8 @@ export class LibraryPageComponent implements OnInit, AfterViewInit, OnDestroy {
   private detailCache = new Map<string, Details>();
   private detailRequests = new Subject<Card>();
   private subscriptions:Subscription[] = [];
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
   private focusListener;
   private screen = useScreen();
 
@@ -122,6 +124,8 @@ export class LibraryPageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy():void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.subscriptions.forEach(s => s.unsubscribe());
     window.removeEventListener('sn:focused', this.focusListener);
     this.navigation.updateNavigation('remove', { sectionId: 'menu' });
@@ -129,7 +133,7 @@ export class LibraryPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   load(focus = true) {
     this.loadError = '';
-    this.serverLibrary.home().subscribe({
+    this.serverLibrary.home().pipe(takeUntil(this.destroy$)).subscribe({
       next: library => {
         this.build(library);
         this.loaded = true;
