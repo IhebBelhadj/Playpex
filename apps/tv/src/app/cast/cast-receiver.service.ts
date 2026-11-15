@@ -73,6 +73,8 @@ export class CastReceiver implements OnDestroy {
       catch (e) {
         return this.report(cast.castId, 'failed', { error: 'That profile isn’t on this server any more' });
       }
+      // the profile it plays as, not only the one shown: a kids profile never gets an adults cast
+      if (profile?.isKid && cast.adults) return this.report(cast.castId, 'failed', { error: 'That’s a kids profile' });
       this.profiles.current.next(profile);
     }
     if (!profile) return this.report(cast.castId, 'failed', { error: 'Choose who’s watching on the screen first' });
