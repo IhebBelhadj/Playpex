@@ -2,7 +2,7 @@ import { Inject, Injectable, Injector, NgZone } from '@angular/core';
 import {
   ActivatedRoute, GuardsCheckEnd, NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router,
 } from '@angular/router';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, Subject, take } from 'rxjs';
 import * as spatialNavigation from '../../plugins/spacialNavigation.js';
 import { FocusEngine } from '../movement/focus-engine.service';
 import { PositionStore } from '../movement/position-store.service';
@@ -50,6 +50,9 @@ export class Navigator {
   private pending:Plan & { cancelled:boolean } | null = null;
   private routing:{ ours:boolean, plan:Plan | null, trigger:string, replaceUrl:boolean, redirect:Plan | null } | null = null;
   private refs:ScreenRef[] = [];
+  // the stack before a reload (session-restore.ts), taken by the first
+  // navigation when it lands on its top's URL
+  private primed:Entry[] | null = null;
 
   constructor(
     private router:Router,
@@ -79,6 +82,18 @@ export class Navigator {
 
   get current$():Observable<Entry | null> {
     return this.stack$.pipe(map(stack => stack[stack.length - 1] || null), distinctUntilChanged());
+  }
+
+  // Emits once `entry` (the one shown now) no longer is: what a screen started
+  // (a lookup before Play, a plugin's answer) ends there and never opens
+  // something over the screen the user went to (takeUntil(navigator.left()))
+  left(entry:Entry | null = this.current):Observable<unknown> {
+    return this.current$.pipe(filter(e => e !== entry), take(1));
+  }
+
+  // Still showing `entry` (no screen opened, popped or replaced since)
+  showing(entry:Entry | null):boolean {
+    return !!entry && this.current === entry;
   }
 
   // the root of the stack: a section, the picker, /connect
@@ -193,6 +208,34 @@ export class Navigator {
       ? items.find(item => item.getAttribute('data-px-key') === snapshot.key)
       : items[Math.min(snapshot.index, items.length - 1)];
     return !!el && this.engine.focus(el, 'restore');
+  }
+
+  // ── reloads (session-restore.ts) ──────────────────────────────────────────
+
+  // Entries built from a saved stack; ids are kept (positions are scoped by them)
+  restoredEntry(saved:{ id:number, screen:string, params?:Record<string, any>, payload?:unknown,
+    state?:Record<string, any>, focus?:FocusSnapshot }):Entry | null {
+    if (!this.registry.has(saved.screen)) return null;
+    let screen = this.registry.get(saved.screen);
+    return {
+      id: saved.id, screen, params: saved.params || {}, payload: saved.payload, state: saved.state || {},
+      // with a focus to come back to: shown again, not opened (ScreenRef.ready())
+      left: !!saved.focus, focus: saved.focus,
+    };
+  }
+
+  // The stack the boot's navigation adopts (it renders the top's URL)
+  prime(stack:Entry[]) {
+    this.primed = stack.length ? stack : null;
+    // the ones below the top were covered: Back to them is a return
+    stack.slice(0, -1).forEach(e => e.left = true);
+    stack.forEach(e => this.nextId = Math.max(this.nextId, e.id + 1));
+  }
+
+  // What the top entry has focused now (before the page goes away)
+  saveFocus() {
+    let top = this.current;
+    if (top) top.focus = this.snapshotFocus() || top.focus;
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
@@ -323,6 +366,13 @@ export class Navigator {
     let match = this.registry.match(url);
     if (!match) return null;
     let routing = this.routing;
+
+    // the first navigation after a reload: the stack it had
+    let primed = this.primed;
+    this.primed = null;
+    if (primed && !this.entries.length && this.entryUrl(primed[primed.length - 1]) == url.split(/[?#]/)[0]) {
+      return { stack: primed, entry: primed[primed.length - 1] };
+    }
 
     // the browser went back (devtools, a mouse button Chromium handled): to
     // that entry if it's below

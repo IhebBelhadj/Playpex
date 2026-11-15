@@ -74,6 +74,10 @@ export interface ScreenDef<P = any, D = any> {
   // another visit with other params keeps the component (ScreenRef.entry$
   // emits) instead of re-creating it (nav/reuse-strategy.ts)
   reuse?: boolean;
+  // kept in the stack a reload brings back (session-restore.ts); default:
+  // sections and detail screens yes, roots, system and full-screen ones no
+  // (the player can't start again without a click, and its session is gone)
+  restore?: boolean;
   title?: (params:P, payload:D) => string;
   beforeLeave?: (ctx:LeaveContext) => void | Promise<void>;
 }

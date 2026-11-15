@@ -105,6 +105,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   searchSub:Subscription;
   private searches = new Subject<{query:string , filter:string}>();
+  private reloadPositions:[string, any][] | null = null;
   private screen = useScreen();
 
   constructor(
@@ -137,6 +138,15 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
 
   ngOnInit(): void {
     this.state = this.moviesService.searchData.value;
+    // the page reloaded (session-restore.ts): its query and chip again, its
+    // results asked again, the rows' positions kept for when they're back
+    let before = this.screen.entry?.state['search'];
+    let reloaded = !this.state.query && !!before?.query;
+    if (reloaded) {
+      this.state = { ...EMPTY_SEARCH , query : before.query , filter : before.filter || 'all' };
+      this.moviesService.searchData.next(this.state);
+      this.reloadPositions = this.positions.all().filter(([key]) => key == STACK || key.startsWith(STACK + '/'));
+    }
     // what was found for this query before the player / a title page
     if (kept.query != this.state.query.trim()) kept = this.kept = NOTHING_KEPT();
     this.rebuild();
@@ -160,7 +170,10 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       // new results: no old position in them
       this.positions.clear(STACK);
       this.update({ rows : (rows || []).filter(r => r.items.length) , searched : true });
+      this.afterReload();
     });
+    // a plugin's chip searches once the chips are there (loadPluginChips)
+    if (reloaded && !this.state.filter.startsWith('plugin:')) this.search();
 
     this.screen.onSelect(active => {
       if (active.classList.contains('px-card')) this.open(this.itemFor(active));
@@ -518,6 +531,7 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
       this.positions.clear(STACK);
       this.pluginRows = rows.filter(r => r && r.items.length);
       this.update({ searched : true });
+      this.afterReload();
     });
   }
 
@@ -614,6 +628,22 @@ export class SearchPageComponent implements OnInit , AfterViewInit , OnDestroy {
   update(changes:Partial<SearchState>){
     this.state = { ...this.state , ...changes };
     this.moviesService.searchData.next(this.state);
+    // what a reload asks again (session-restore.ts): the query and its chip
+    this.screen.setState('search', { query : this.state.query , filter : this.state.filter });
+  }
+
+  // After a reload: once results are on screen, the item it was on
+  private afterReload(){
+    let saved = this.reloadPositions;
+    if (!saved) return;
+    this.reloadPositions = null;
+    this.positions.load(saved);
+    let tries = 20;
+    let attempt = () => setTimeout(() => {
+      if (!this.screen.active || this.typing) return;
+      if (!this.engine.restore(`stack:${STACK}`) && --tries > 0) attempt();
+    } , 100);
+    attempt();
   }
 
   trackRow(index:number , row:SearchRow){ return row.key; }

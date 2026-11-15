@@ -83,6 +83,12 @@ export class ProfilesService {
     return this.http.post<Profile>(`${this.base}/${id}/unlock`, { pin }).pipe(tap(p => this.current.next(p)));
   }
 
+  // The profile this tab was on before a reload (session-restore.ts): a locked
+  // one only if this device opened it lately, else 403 (the picker)
+  resume(id:string):Observable<Profile> {
+    return this.http.post<Profile>(`${this.base}/${encodeURIComponent(id)}/resume`, {});
+  }
+
   private refreshCurrent(profile:Profile) {
     if (this.current.value?.id === profile.id) this.current.next(profile);
   }

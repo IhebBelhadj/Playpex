@@ -250,6 +250,9 @@ defineScreen({
   path: 'player/:session',
   component: PlayerPageComponent,
   kind: 'fullscreen',
+  // a reload plays it again where it was (its entry's state `reloadAt`,
+  // session-restore.ts); muted until a key when the browser wants a gesture
+  restore: true,
   requires: ['profile'],
   chrome: FULL_SCREEN,
 });

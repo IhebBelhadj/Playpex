@@ -9,6 +9,8 @@ export class SplashService {
 
   // true once the intro video has faded out (for pages that open after it)
   cleared = false;
+  // a reload came back to a screen (session-restore.ts): no intro
+  skip = false;
 
   splashAddCommand(instruction){
     if (instruction == 'clearSplash') this.cleared = true;

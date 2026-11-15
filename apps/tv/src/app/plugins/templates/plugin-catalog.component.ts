@@ -174,11 +174,18 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
     return card.info || { title: card.title, meta: card.subtitle ? [{ kind: 'text', text: card.subtitle }] : [] };
   }
 
+  private reloaded = false;
+
   ngOnInit(): void {
-    this.state = this.kept<CatalogState>(() => ({ query: '', filters: null, data: null, rows: [], loaded: false }));
+    this.state = this.kept<CatalogState>(() => ({ ...this.keptChoices(), data: null, rows: [], loaded: false }));
     if (this.state.loaded && !this.loadError) {
       this.spot = this.state.rows.find(r => r.items.length)?.items[0] || null;
       setTimeout(() => this.restoreFocus(), 0);
+    } else if (this.screen.returning) {
+      // shown again without what it had loaded (the page reloaded,
+      // session-restore.ts): loaded again, back to the card it was on
+      this.reloaded = true;
+      this.load(true);
     } else {
       this.positions.clear(this.stackId);
       this.load();
@@ -231,10 +238,14 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
         this.set({ data, rows, loaded: true });
         if (this.pruneNext && this.afterPanelChoice()) return;
         rows.filter(r => !r.last).forEach(r => this.more(r));
+        // after a reload the toolbar only had the focus while the rows were away
+        let reloaded = this.reloaded;
+        this.reloaded = false;
         setTimeout(() => {
           let active = document.activeElement as HTMLElement;
           let kept = active && document.contains(active) && (active.closest('.pluginCatalog .toolbar') || active.classList.contains('menuItem'));
-          if (!kept) this.restoreFocus();
+          if (reloaded) this.restoreWhenThere(30);
+          else if (!kept) this.restoreFocus();
           if (!this.spot) this.spot = this.state.rows.find(r => r.items.length)?.items[0] || null;
         }, 0);
       },
@@ -452,6 +463,20 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
 
   // ── focus ───────────────────────────────────────────────────────────────
 
+  // After a reload: the rows fill in after the page (their own pages), so
+  // the card it was on is waited for, then the usual fallback
+  private restoreWhenThere(tries:number) {
+    setTimeout(() => {
+      if (!this.screen.active || this.panel) return;
+      let active = document.activeElement as HTMLElement;
+      // the user went somewhere in the rows already
+      if (active?.closest('.pluginCatalog .rows')) return;
+      if (this.engine.restore(`stack:${this.stackId}`)) return;
+      if (tries > 0) this.restoreWhenThere(tries - 1);
+      else this.restoreFocus();
+    }, 100);
+  }
+
   private restoreFocus() {
     if (this.panel || this.engine.restore(`stack:${this.stackId}`)) return;
     let target = document.querySelector('.pluginCatalog .titleInfo .focusable') as HTMLElement
@@ -474,6 +499,7 @@ export class PluginCatalogComponent extends PluginScreen implements OnInit, Afte
   private set(patch:Partial<CatalogState>) {
     this.state = { ...this.state, ...patch };
     this.screen.setState('plugin', this.state);
+    this.keepChoices(this.state);
   }
 
   private focusSelector(selector:string) {

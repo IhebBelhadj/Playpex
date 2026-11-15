@@ -32,6 +32,18 @@ export abstract class PluginScreen implements OnDestroy {
     return this.screen.state('plugin', init);
   }
 
+  /** The user's choices on it (its search, its filters) apart from what was
+   *  loaded: plain data, so a reload brings them back (session-restore.ts
+   *  keeps no functions, and the loaded models carry their actions) */
+  protected keepChoices(choices:{ query:string, filters:Record<string, string[]> | null }) {
+    this.screen.setState('pluginChoices', { query: choices.query, filters: choices.filters });
+  }
+
+  protected keptChoices():{ query:string, filters:Record<string, string[]> | null } {
+    let choices = this.screen.entry?.state['pluginChoices'];
+    return { query: choices?.query || '', filters: choices?.filters || null };
+  }
+
   /** Load again (refresh effects, a settings change) */
   protected abstract refresh():void;
 

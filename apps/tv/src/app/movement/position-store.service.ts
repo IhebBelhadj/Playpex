@@ -55,6 +55,15 @@ export class PositionStore {
       .forEach(k => this.positions.delete(k));
   }
 
+  // Every position, to keep across a reload (session-restore.ts)
+  all():[string, Position][] {
+    return Array.from(this.positions.entries());
+  }
+
+  load(list:[string, Position][]) {
+    list.forEach(([key, position]) => this.positions.set(key, position));
+  }
+
   setScope(scope:string) {
     this.scope = scope;
   }

@@ -16,6 +16,14 @@ export class SplashComponent implements AfterViewInit {
 
   ngAfterViewInit(): void {
     var splashVideo = document.querySelector('.splashAnimation') as HTMLVideoElement;
+    if (this.splashService.skip) {
+      this.closed = true;
+      (document.querySelector('.splashContainer') as HTMLElement).style.display = 'none';
+      splashVideo.removeAttribute('src');
+      splashVideo.load();
+      this.splashService.splashAddCommand('clearSplash');
+      return;
+    }
     splashVideo.addEventListener('canplaythrough' , ()=>{
       setTimeout(()=> this.start(splashVideo) , 1000);
     }, { once: true })

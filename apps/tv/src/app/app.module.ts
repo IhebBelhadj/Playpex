@@ -1,5 +1,7 @@
 import { MoviesService } from './movies.service';
-import { NgModule } from '@angular/core';
+import { APP_INITIALIZER, Injector, NgModule } from '@angular/core';
+import { restoreSession } from './session-restore';
+import { browserBack } from './web/browser-back';
 import { HttpClientModule ,HttpClientJsonpModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { BrowserModule } from '@angular/platform-browser';
 
@@ -115,6 +117,10 @@ import { ServerErrorsInterceptor } from './server-errors.interceptor';
     { provide: HTTP_INTERCEPTORS, useClass: WebClientInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: ServerErrorsInterceptor, multi: true },
     { provide: RouteReuseStrategy, useClass: NavReuseStrategy },
+    // a reload comes back where it was (profile, history, positions)
+    { provide: APP_INITIALIZER, useFactory: restoreSession, deps: [Injector], multi: true },
+    // in a browser, its Back button is the app's Back (web/browser-back.ts)
+    { provide: APP_INITIALIZER, useFactory: browserBack, deps: [Injector], multi: true },
   ],
   bootstrap: [AppComponent]
 })

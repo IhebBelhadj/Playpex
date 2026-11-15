@@ -13,7 +13,7 @@ import { EpisodePlaybackService } from '../episode-playback.service';
 import { actionForKey } from '../keymap';
 import { SectionRowsService } from '../sections.service';
 import { Dialogs, Toasts } from '../ui/public-api';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject, takeUntil } from 'rxjs';
 import { SplashService } from '../splash.service';
 import { FocusEngine, PositionStore } from '../movement/movement';
 import { Intent, Navigator, useScreen } from '../nav/public-api';
@@ -38,6 +38,8 @@ const LOAD_AHEAD = 10;         // next page this many cards before a row's end
   styleUrls: ['./movies-slider.component.scss'],
 })
 export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy {
+  // what it asked for ends with it: an answer after it closed changes nothing (writes excepted)
+  private destroy$ = new Subject<void>();
 
   private profiles = inject(ProfilesService);
   // plugins' rows of this section (ui/slots)
@@ -123,6 +125,8 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.navigation.updateNavigation('remove' , {sectionId : 'menu'})
     window.removeEventListener('sn:focused', this.focusListener);
     window.removeEventListener('keydown', this.keyListener, true);
@@ -148,7 +152,10 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
     // Back from a title / the player: the same poster, rows where they were.
     // Opened after the splash (from "Who's watching?") with no row visited
     // yet: the first poster once the rows arrive
-    if (this.positions.get(this.stackId)) setTimeout(() => this.engine.restore(`stack:${this.stackId}`));
+    // (after a reload the rows are still loading: tried again until they're there)
+    if (this.positions.get(this.stackId)) setTimeout(() => {
+      if (!this.engine.restore(`stack:${this.stackId}`)) this.focusFirstWhenReady(50);
+    });
     else if (this.splashService.cleared) this.focusFirstWhenReady(50);
   }
 
@@ -187,7 +194,7 @@ export class MoviesSliderComponent implements OnInit , AfterViewInit , OnDestroy
       else if (at.nextEpisode) episode(at.nextSeason ?? at.season, at.nextEpisode);
       else {
         this.opening = true;
-        this.episodePlayback.next(item.tmdbId, at.season, at.episode).subscribe({
+        this.episodePlayback.next(item.tmdbId, at.season, at.episode).pipe(takeUntil(this.destroy$)).subscribe({
           next: next => {
             this.opening = false;
             if (next) episode(next.season, next.episode.episodeNumber);
