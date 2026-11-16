@@ -1921,7 +1921,9 @@ function seRowPage(args, page) {
 
 var TST_API = "https://thesextube.net/wp-json/wp/v2/";
 
+// LuluStream's players: its domains over time (since Sep 2026 the posts link lplaygo.com: the same packed player, streams on tnmr.org)
 var TST_HOSTS = [
+  "lplaygo.com",
   "luluvid.com",
   "luluvido.com",
   "luluvdoo.com",

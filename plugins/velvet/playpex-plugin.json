@@ -3,7 +3,7 @@
   "id": "velvet",
   "name": "Velvet",
   "description": "Adult films (18+): TMDB or ThePornDB catalogs, studios' scenes, torrents ranked by seeders, films streamed from Sex-Empire, studio videos from TheSexTube, and a Sites view of the sites (xHamster, Sex-Empire, TheSexTube). Never in the official repository.",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "publisher": {
     "name": "Playpex"
   },
@@ -43,6 +43,7 @@
       "luluvdoo.com",
       "luluvdo.com",
       "lulustream.com",
+      "lplaygo.com",
       "*.tnmr.org",
       "*.cdn-tnmr.org",
       "xhamster.com",
