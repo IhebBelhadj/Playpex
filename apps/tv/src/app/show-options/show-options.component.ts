@@ -395,6 +395,14 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.engine.find('row:episodes')?.focusRemembered('key');
   }
 
+  // OK / a click on a season: another one shows its episodes below (the
+  // focus stays on the seasons); the one shown goes into its episodes.
+  // Moving onto a season (keys, hover) only highlights it
+  pickSeason(season:number){
+    if (season === this.selectedSeason) this.enterEpisodes();
+    else if (this.show) this.seasonRequests.next({ showId : this.show.tmdbId , season });
+  }
+
   // Every source plugin's releases of this show (by its IMDb id or its name),
   // most seeded first; an episode played from there still counts as
   // this show's (progress, subtitles)
@@ -454,14 +462,13 @@ export class ShowOptionsComponent implements AfterViewInit , OnDestroy {
     this.navigator.open({ screen: 'core.episode', params: { id: this.show.tmdbId, season: this.selectedSeason, episode: ep.episodeNumber } });
   }
 
-  // A focused season loads its episodes (scrolling is the movement system's)
+  // The focused episode (its bar on the season curve); a season loads on OK
+  // / a click only (pickSeason), not when focused
   onFocus(node:HTMLElement){
     if (!this.screen.active) return;
     this.focusedEpisode = node.dataset['episode'] !== undefined
       ? this.episodes[Number(node.dataset['index'])]?.episodeNumber ?? null
       : null;
-    if (!node.classList.contains('season')) return;
-    this.seasonRequests.next({ showId : this.show.tmdbId , season : Number(node.dataset['season']) });
   }
 
   showYtVid(vidId){

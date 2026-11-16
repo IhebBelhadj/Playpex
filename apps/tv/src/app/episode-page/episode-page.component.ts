@@ -405,6 +405,14 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     this.engine.find('row:seasonEpisodes')?.focusRemembered('key');
   }
 
+  // OK / a click on a season: another one shows its episodes below (the
+  // focus stays on the seasons); the one shown goes into its episodes.
+  // Moving onto a season (keys, hover) only highlights it
+  pickSeason(season:number) {
+    if (season === this.rowSeason) this.enterEpisodes();
+    else if (this.show) this.rowRequests.next(season);
+  }
+
   // ── ratings ───────────────────────────────────────────────────────────────
 
   loadImdb() {
@@ -587,9 +595,5 @@ export class EpisodePageComponent implements AfterViewInit, OnDestroy {
     this.focusedEpisode = node.dataset['episode'] !== undefined
       ? this.rowEpisodes[Number(node.dataset['index'])]?.episodeNumber ?? null
       : null;
-    if (node.classList.contains('season') && this.show) {
-      let season = Number(node.dataset['season']);
-      if (season !== this.rowSeason) this.rowRequests.next(season);
-    }
   }
 }

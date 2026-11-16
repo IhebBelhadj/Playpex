@@ -30,12 +30,12 @@
     <px-slot name="core.episode.actions" [context]="slotContext"></px-slot>
   </px-action-bar>
 
-  <!-- as on the show page: a focused season shows its episodes in the row below -->
+  <!-- as on the show page: OK / a click on a season shows its episodes in the row below -->
   <px-card-row class="seasons" *ngIf="seasons.length > 1" pxStackItem rowKey="seasons" title="Seasons" tone="detail" align="third">
     <ng-container *ngFor="let season of seasons; trackBy: bySeason">
       <button class="season focusable" pxItem [pxItemKey]="season.seasonNumber"
         [class.selected]="season.seasonNumber === rowSeason" [attr.data-season]="season.seasonNumber"
-        (pxSelect)="enterEpisodes()">
+        (pxSelect)="pickSeason(season.seasonNumber)">
         {{season.name}}
         <span class="seasonRating" *ngIf="seasonRating(season.seasonNumber) as rating">{{rating | number:'1.1-1'}}</span>
         <span class="seasonOnServer" *ngIf="seasonOnServer(season.seasonNumber) as n"

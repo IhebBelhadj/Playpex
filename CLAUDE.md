@@ -119,7 +119,7 @@ With a server, the app opens on `/profiles` (Netflix-style picker, under the spl
 ### Play a TV episode
 
 1. Menu "Tv shows" → `/shows/list`: same page/slider components with the TV `Catalog` (`showCategories`).
-2. Enter on a show → `/shows/show/:id` (`ShowOptionsComponent`): seasons row (focusing one loads its episodes), episodes row.
+2. Enter on a show → `/shows/show/:id` (`ShowOptionsComponent`): seasons row (OK / a click on one loads its episodes; moving onto one only highlights it), episodes row.
 3. Enter on an episode → `/shows/show/:id/season/:s/episode/:e` (`EpisodePageComponent`): its overview, IMDb rating + votes, director / writers, the season's episodes and guest stars; Find releases (that episode); Play →
 4. `EpisodePlaybackService.play` → `POST /play/sources` (library files, downloads, plugins' torrents: single episodes first, season packs as fallback) → a lone file on the server plays at once, else the source picker (ranking order, first marked "Best match") → `PlaybackService.play({…, source | magnet, season, episode})` → `/player`. The show page's "Play" button takes the same path for the season's first aired episode.
 
