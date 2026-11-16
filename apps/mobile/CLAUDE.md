@@ -4,6 +4,7 @@ The phone client of Playpex Media Server (plan and status: [`docs/mobile-client-
 React Native 0.88 with **Expo SDK 58**, Expo Router, TanStack Query, **libmpv** (`modules/expo-mpv`) as the player. It follows the client author guide
 ([`docs/api/`](../../docs/api/README.md)) and nothing else: no admin feature (the Server Manager, `apps/manager`, opens the dashboard).
 Android first; iOS later from the same code (the native module has no iOS side yet: discovery is off there, typed addresses work).
+It also runs **in a browser**, served by the server at `/m/` ([`docs/mobile-web-plan.md`](../../docs/mobile-web-plan.md)): see "In a browser" below.
 
 **Expo changes every SDK**: before touching an Expo or React Native API, read the versioned docs
 (`https://docs.expo.dev/versions/v58.0.0/`, index with corrections: `https://docs.expo.dev/llms.txt`), not memory. Add native
@@ -66,6 +67,7 @@ assets/brand/         the mark's SVGs (from apps/tv/app_icon.svg); icon.png, and
 | Build and run on a phone / emulator | `npm run android:mobile` (= `expo run:android`: prebuild, Gradle, install, Metro). Needs JDK 21 (`JAVA_HOME=~/.local/jdk-21`) and the Android SDK (`~/Android/Sdk`; `android/local.properties` `sdk.dir`, recreated by prebuild) |
 | Debug APK without a device | `cd apps/mobile && npx expo prebuild -p android && cd android && ./gradlew assembleDebug` → `android/app/build/outputs/apk/debug/app-debug.apk` (loads JS from Metro) |
 | Typecheck | `npm run typecheck -w apps/mobile` |
+| In a browser | `npm run build:mobile-web` (repo root: `expo export --platform web` into `apps/server/public-m`), then `http://<server>:28470/m/` |
 | Health | `npx expo-doctor` (from `apps/mobile`) |
 
 React is pinned to **19.3.0** for the whole workspace (root `overrides`, dashboard exact): React Native's renderer refuses another
@@ -140,3 +142,23 @@ version, and npm workspaces share one copy.
   change) or the device setting `cast.shareTo` (Settings › Casting › Send shared links to) → `pickFor` (the first item the
   screen takes) → `castShared`, a toast; that screen off, or nothing it takes → the `/share` sheet.
 - Errors: show `ApiError.message` (the server's `error`), branch on `code`.
+
+## In a browser (`/m/`, docs/mobile-web-plan.md)
+- The same screens; what a browser does differently sits behind the existing ports as `<name>.web.ts(x)` (Metro picks it
+  when it bundles for the web): `native/discovery.web.ts` (the page's own server only, `pairingMode` = `playpex-web` with
+  `cookie: true`, the browser's codecs from `web/browser.ts`), `native/serverStore.web.ts` (nothing kept: `GET /devices/me`
+  with the cookie decides; `KnownServer.cookie`, `token: null`), `native/mpvPlayer.web.tsx` (`<video>` + hls.js through
+  `GET /media/{ref}/playback`, WebVTT cues on one text track), `native/profileMemory.web.ts` (a reload keeps the profile:
+  `POST /profiles/{id}/resume`), `native/share.web.ts`, `state/boundary.web.tsx` (no morphs), `state/page.web.ts` (fonts,
+  the page's CSS). Never import a native module outside `src/native` / `modules`: the web bundle would carry it.
+- Small differences in screens use `Platform.OS === 'web'` (Connect, Profiles, Settings). Reanimated CSS animations stay out
+  of `StyleSheet.create` (react-native-web refuses `animationName` there).
+- The player's Turn button (`features/player/frame.web.tsx`, while the window is upright): full screen + an orientation
+  lock where the browser allows it, else the player drawn a quarter turned. Inside the player, measure with
+  `usePlayerFrame()` (`frameContext.ts`), not `useWindowDimensions()`, and read touches through it (a turned box gets
+  screen coordinates: `Timeline`'s `along`, `Surface`'s `pageY`). Never swap the frame's wrapper for the bare player: the
+  remount ends the playback.
+- A browser shares one device with Playpex TV on the web (`localStorage['playpex.deviceId']`, the `playpex_device` cookie).
+- Debugging a web crash: production React only gives an error number. `expo export --platform web --dev --no-minify` ignores
+  `experiments.baseUrl` and names lazy chunks alike: build it without `baseUrl` and with the expo-router plugin's
+  `asyncRoutes: false`, served at a root that proxies `/api` to the server.

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import Ionicons from '@expo/vector-icons/Ionicons'
@@ -68,7 +68,8 @@ export default function ProfilesScreen() {
           <Text style={[text.body, { textAlign: 'center', color: color.textMuted }]}>This server has no profile yet. Create one on the TV or the server’s dashboard.</Text>
         ) : null}
         {unlock.error && !locked ? <Text style={[text.body, { color: color.error, textAlign: 'center' }]}>{unlock.error.message}</Text> : null}
-        <Button kind="quiet" icon="swap-horizontal" label="Change server" onPress={() => session.disconnect()} style={{ marginTop: space.xxl }} />
+        {/* In a browser the server is the page's own (docs/mobile-web-plan.md) */}
+        {Platform.OS !== 'web' ? <Button kind="quiet" icon="swap-horizontal" label="Change server" onPress={() => session.disconnect()} style={{ marginTop: space.xxl }} /> : null}
       </ScrollView>
       {locked ? (
         <PinDialog

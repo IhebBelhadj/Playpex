@@ -4,7 +4,8 @@
     "slug": "playpex-mobile",
     "platforms": [
       "android",
-      "ios"
+      "ios",
+      "web"
     ],
     "scheme": "playpex",
     "version": "0.11.1-beta.1",
@@ -103,7 +104,13 @@
       "./plugins/with-release-signing.js"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/m"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
     }
   }
 }

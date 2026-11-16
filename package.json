@@ -40,7 +40,8 @@
     "release:mobile": "npm run release:android -w apps/mobile",
     "website": "npm run dev -w apps/website",
     "build:website": "npm run build -w apps/website",
-    "build:tv-web": "npm run build:web -w apps/tv"
+    "build:tv-web": "npm run build:web -w apps/tv",
+    "build:mobile-web": "npm run build:web -w apps/mobile"
   },
   "overrides": {
     "react": "19.3.0",

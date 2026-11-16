@@ -25,6 +25,8 @@ import { LoadingView, SkipButton, Stalled, StatsOnScreen, UpNextCard, metaLine }
 import { SettingsPanel, type SettingsTab } from './SettingsPanel'
 import { Timeline } from './Timeline'
 import { TracksPanel } from './TracksPanel'
+import { PlayerFrameView } from './frame'
+import { usePlayerFrame } from './frameContext'
 
 // The player (docs/api/playback.md) on libmpv: every container and codec decoded
 // on the phone, drawn as the TV draws its player: the picture, and over it
@@ -45,7 +47,11 @@ export default function PlayerScreen() {
       </View>
     )
   }
-  return <Player key={id} session={session} />
+  return (
+    <PlayerFrameView>
+      <Player key={id} session={session} />
+    </PlayerFrameView>
+  )
 }
 
 type Open = { panel: 'tracks' } | { panel: 'settings'; tab: SettingsTab } | null
@@ -145,13 +151,13 @@ function Player({ session }: { session: PlaybackSession }) {
  * activated under the buttons and cancelled their presses.
  */
 function Surface({ controller }: { controller: PlayerController }) {
-  const { width } = useWindowDimensions()
+  const { width, turned } = usePlayerFrame(useWindowDimensions())
   const side = (x: number): -1 | 0 | 1 => (x < width / 3 ? -1 : x > (width * 2) / 3 ? 1 : 0)
   const { skip, status } = useStore(controller.state)
   return (
     <Pressable
       style={StyleSheet.absoluteFill}
-      onPress={(e) => controller.press(side(e.nativeEvent.pageX))}
+      onPress={(e) => controller.press(side(turned ? e.nativeEvent.pageY : e.nativeEvent.pageX))}
       accessibilityLabel="Video"
       accessibilityHint="Tap for the controls; double tap a side to skip ten seconds"
     >
@@ -180,6 +186,7 @@ type OverlayProps = { controller: PlayerController; extras: PlayerExtras; sessio
 
 function Overlay({ controller, extras, session, onTracks, onSettings, onCast }: OverlayProps) {
   const insets = useSafeAreaInsets()
+  const frame = usePlayerFrame(useWindowDimensions())
   const ui = useStore(controller.state)
   const { status: phase, downloaded } = useStore(session.state)
   // Skip intro and Up next's window come from the markers: drawn again when they arrive
@@ -235,6 +242,7 @@ function Overlay({ controller, extras, session, onTracks, onSettings, onCast }: 
           <LinearGradient colors={fade.player} style={styles.shadeBottom} pointerEvents="none" />
           <View style={[styles.top, { paddingTop: insets.top + space.m, paddingHorizontal: sideX - space.s }]} pointerEvents="box-none">
             <Control icon="arrow-back" label="Back" onPress={() => router.back()} />
+            {frame.toggle ? <Control icon={frame.turned ? 'phone-portrait-outline' : 'phone-landscape-outline'} label={frame.turned ? 'Upright' : 'Turn'} onPress={frame.toggle} /> : null}
           </View>
           <View style={[styles.bottom, { paddingHorizontal: sideX, paddingBottom: insets.bottom + space.m }]} pointerEvents="box-none">
             <View style={styles.titleBlock} pointerEvents="none">
@@ -312,7 +320,7 @@ const styles = StyleSheet.create({
   endBlock: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end' },
   shadeTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
   shadeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '75%' },
-  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row' },
+  top: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between' },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   titleBlock: { marginBottom: space.s },
   liveMark: {

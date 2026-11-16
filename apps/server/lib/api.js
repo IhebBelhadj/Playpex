@@ -823,6 +823,31 @@ api.get(/^\/tv(\/[^.]*)?$/, function (req, res) {
   res.sendFile(index);
 });
 
+// Playpex Mobile for the web (docs/mobile-web-plan.md; `npm run build:web
+// -w apps/mobile` exports it into apps/server/public-m with base URL /m):
+// the same rules as /tv. Expo names its bundles with a 32-hex content hash.
+var MOBILE_WEB = process.env.PLAYPEX_MOBILE_WEB_DIR || path.join(__dirname, '..', 'public-m');
+var EXPO_HASHED = /-[0-9a-f]{32}\.|\.[0-9a-f]{32}\./;
+api.get(/^\/m$/, function (req, res) {
+  var q = req.originalUrl.indexOf('?');
+  res.redirect(301, '/m/' + (q >= 0 ? req.originalUrl.slice(q) : ''));
+});
+api.use('/m', express.static(MOBILE_WEB, {
+  index: false,
+  redirect: false,
+  setHeaders: function (res, file) {
+    res.set('Cache-Control', EXPO_HASHED.test(path.basename(file)) ? 'public, max-age=31536000, immutable' : 'public, max-age=3600');
+  }
+}));
+api.get(/^\/m(\/[^.]*)?$/, function (req, res) {
+  var index = path.join(MOBILE_WEB, 'index.html');
+  if (!fs.existsSync(index)) {
+    return res.status(404).type('text/plain').send('Playpex Mobile for the web is not built: run `npm run build:mobile-web`');
+  }
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(index);
+});
+
 // The dashboard (apps/dashboard, built into apps/server/public): hashed
 // assets cached for a year, every other GET page answers index.html (SPA
 // routes such as /link?user_code=…, the verification_uri of pairing)

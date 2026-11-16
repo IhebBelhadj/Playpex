@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons'
 import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutRight, useReducedMotion } from 'react-native-reanimated'
 import { useBackPress } from '../../state/hooks'
 import { Press } from '../../ui/press'
+import { usePlayerFrame } from './frameContext'
 import { color, font, motion, radius, space, text } from '../../ui/theme'
 
 // The player's panels, as the TV draws them: a pane docked at the right edge
@@ -13,7 +14,7 @@ import { color, font, motion, radius, space, text } from '../../ui/theme'
 
 export function Panel({ title, onClose, children, width = 440 }: { title: string; onClose: () => void; children: ReactNode; width?: number }) {
   const insets = useSafeAreaInsets()
-  const window = useWindowDimensions()
+  const window = usePlayerFrame(useWindowDimensions())
   const reduced = useReducedMotion()
   useBackPress(true, onClose)
   return (

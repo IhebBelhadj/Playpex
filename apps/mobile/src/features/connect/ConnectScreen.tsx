@@ -17,12 +17,15 @@ import { color, font, radius, space, text } from '../../ui/theme'
 // ones paired before (ServerFinder), or an address typed. A paired one opens at
 // once; another one is paired first (Pair).
 
+// In a browser the server is the one that served the page (docs/mobile-web-plan.md): no other
+// address can be used from here (its device cookie would be another site's)
+const WEB = Platform.OS === 'web'
+
 export default function ConnectScreen() {
   const finder = useServerFinder()
   const { entries, quiet, probing, error } = useStore(finder.state)
   const session = useSession()
   const state = useSessionState()
-  const [address, setAddress] = useState('')
 
   function follow(choice: Choice) {
     if (choice.kind === 'pair') router.push({ pathname: '/pair', params: choice.server })
@@ -33,14 +36,16 @@ export default function ConnectScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Wordmark size={30} />
-          <Text style={[text.hero, { marginTop: space.xxl }]}>Find your server</Text>
+          <Text style={[text.hero, { marginTop: space.xxl }]}>{WEB ? 'Your server' : 'Find your server'}</Text>
           <Text style={[text.body, { marginTop: space.s, color: color.textMuted }]}>
-            Playpex plays what your Playpex Media Server has: pick it from your network, or type its address.
+            {WEB
+              ? 'Playpex plays what this Playpex Media Server has. Pair this browser with it once.'
+              : 'Playpex plays what your Playpex Media Server has: pick it from your network, or type its address.'}
           </Text>
 
           <SessionNotice state={state} onRetry={() => void session.retry()} />
 
-          <Text style={[text.heading, styles.section]}>On this network</Text>
+          <Text style={[text.heading, styles.section]}>{WEB ? 'This server' : 'On this network'}</Text>
           {entries.map((server) => (
             <ServerRow key={server.id} server={server} onPress={async () => follow(await finder.choose(server))} />
           ))}
@@ -48,37 +53,51 @@ export default function ConnectScreen() {
             <Text style={[text.body, { color: color.textMuted }]}>
               {!finder.discoveryAvailable
                 ? 'Enter your server’s address below.'
-                : quiet
+                : WEB
+                  ? quiet
+                    ? 'The server didn’t answer. Reload the page to try again.'
+                    : 'Looking…'
+                  : quiet
                   ? 'No server found yet. Is the server on, and this phone on the same Wi-Fi? Its LAN sharing must be on (dashboard › Settings › Network).'
                   : 'Looking…'}
             </Text>
           ) : null}
 
-          <Text style={[text.heading, styles.section]}>Or type its address</Text>
-          <TextInput
-            value={address}
-            onChangeText={setAddress}
-            placeholder="playpex.local or 192.168.1.20"
-            placeholderTextColor={color.textDim}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            returnKeyType="go"
-            onSubmitEditing={async () => follow(await finder.chooseAddress(address))}
-            cursorColor={color.accent}
-            selectionColor={color.accent}
-            style={styles.input}
-          />
-          <Button
-            label={probing ? 'Connecting…' : 'Connect'}
-            onPress={async () => follow(await finder.chooseAddress(address))}
-            disabled={probing || !address.trim()}
-            style={{ marginTop: space.m }}
-          />
+          {!WEB ? <AddressForm finder={finder} probing={probing} onChoice={follow} /> : null}
           {error ? <Text style={[text.body, { color: color.error, marginTop: space.m }]}>{error}</Text> : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  )
+}
+
+/** "Or type its address": a phone only */
+function AddressForm({ finder, probing, onChoice: follow }: { finder: ReturnType<typeof useServerFinder>; probing: boolean; onChoice: (choice: Choice) => void }) {
+  const [address, setAddress] = useState('')
+  return (
+    <>
+      <Text style={[text.heading, styles.section]}>Or type its address</Text>
+      <TextInput
+        value={address}
+        onChangeText={setAddress}
+        placeholder="playpex.local or 192.168.1.20"
+        placeholderTextColor={color.textDim}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="url"
+        returnKeyType="go"
+        onSubmitEditing={async () => follow(await finder.chooseAddress(address))}
+        cursorColor={color.accent}
+        selectionColor={color.accent}
+        style={styles.input}
+      />
+      <Button
+        label={probing ? 'Connecting…' : 'Connect'}
+        onPress={async () => follow(await finder.chooseAddress(address))}
+        disabled={probing || !address.trim()}
+        style={{ marginTop: space.m }}
+      />
+    </>
   )
 }
 

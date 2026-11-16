@@ -10,6 +10,7 @@ import { AppProvider, useSessionState } from '../state/app'
 import { CastHandoff } from '../state/cast'
 import { ShareReceiver } from '../state/share'
 import { screenBoundary } from '../state/boundary'
+import { usePageReady } from '../state/page'
 import { useHideSplashWhen } from '../state/launch'
 import { Loading } from '../ui/components'
 import { ScreenFailure } from '../ui/failure'
@@ -73,6 +74,8 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Pro
 }
 
 export default function RootLayout() {
+  // In a browser the page and its fonts first (state/page.web.ts); on a phone nothing to wait for
+  if (!usePageReady()) return <View style={{ flex: 1, backgroundColor: color.bg }} />
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

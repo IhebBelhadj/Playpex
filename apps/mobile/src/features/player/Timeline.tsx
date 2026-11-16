@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { useRef, useState } from 'react'
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { GestureDetector, usePanGesture, useTapGesture, useSimultaneousGestures } from 'react-native-gesture-handler'
 import { formatTime } from '../../core/services/playback'
 import { color, font, radius, space } from '../../ui/theme'
+import { usePlayerFrame } from './frameContext'
 
 // The timeline, as on the TV: what has played (gold), what is ready around
 // it (the player's memory, a torrent's downloaded pieces), the rest faint; the
@@ -29,18 +30,26 @@ const TAB_WIDTH = 132
 
 export function Timeline({ position, duration, bufferedTo, downloaded, scrub, hint, onScrub, onRelease }: Props) {
   const [width, setWidth] = useState(1)
+  const { turned } = usePlayerFrame(useWindowDimensions())
+  const hit = useRef<unknown>(null)
+  // where along the bar: a turned player (frame.web.tsx) runs down the screen, and the gesture's x is
+  // measured across it: read from the screen's y instead
+  const along = (e: { x: number; absoluteY: number }) => {
+    const node = hit.current as { getBoundingClientRect?: () => { top: number } } | null
+    return turned && node?.getBoundingClientRect ? e.absoluteY - node.getBoundingClientRect().top : e.x
+  }
   const at = (x: number) => Math.max(0, Math.min(1, x / width)) * duration
   const pan = usePanGesture({
     runOnJS: true,
     minDistance: 0,
-    onActivate: (e) => onScrub(at(e.x)),
-    onUpdate: (e) => onScrub(at(e.x)),
+    onActivate: (e) => onScrub(at(along(e))),
+    onUpdate: (e) => onScrub(at(along(e))),
     onDeactivate: () => onRelease(),
   })
   const tap = useTapGesture({
     runOnJS: true,
     onActivate: (e) => {
-      onScrub(at(e.x))
+      onScrub(at(along(e)))
       onRelease()
     },
   })
@@ -57,7 +66,7 @@ export function Timeline({ position, duration, bufferedTo, downloaded, scrub, hi
   return (
     <View>
       <GestureDetector gesture={gesture}>
-        <View style={styles.hit} onLayout={(e) => setWidth(e.nativeEvent.layout.width || 1)} accessibilityRole="adjustable" accessibilityLabel="Timeline" accessibilityValue={{ text: `${formatTime(position)} of ${formatTime(duration)}` }}>
+        <View ref={hit as never} style={styles.hit} onLayout={(e) => setWidth(e.nativeEvent.layout.width || 1)} accessibilityRole="adjustable" accessibilityLabel="Timeline" accessibilityValue={{ text: `${formatTime(position)} of ${formatTime(duration)}` }}>
           <View style={[styles.track, scrubbing && styles.trackActive]} pointerEvents="none">
             {downloaded ? <Downloaded runs={downloaded} /> : null}
             <View style={[styles.buffered, { left: `${played * 100}%`, width: `${Math.max(0, buffered - played) * 100}%` }]} />

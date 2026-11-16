@@ -21,3 +21,8 @@ export async function unlockProfile(client: ApiClient, profileId: string, pin?: 
     throw e
   }
 }
+
+/** The profile this client was on before it reloaded (a browser's refresh), without the picker; null: show the picker (a PIN not entered lately, a profile gone) */
+export async function resumeProfile(client: ApiClient, profileId: string): Promise<Profile | null> {
+  return unwrap(client.api.POST('/profiles/{profileId}/resume', { params: { path: { profileId } } })).catch(() => null)
+}

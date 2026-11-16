@@ -1,7 +1,8 @@
 import { Platform } from 'react-native'
 import { codecs, hasDiscovery, probe, startDiscovery } from '../../modules/playpex-device'
 import { PLAYER_CAPABILITIES } from '../core/player/capabilities'
-import type { DeviceDescription, Discovery } from '../core/session/ports'
+import { TOKEN_PAIRING } from '../core/session/pairing'
+import type { DeviceDescription, Discovery, PairingMode } from '../core/session/ports'
 
 // The playpex-device module (Kotlin: NsdManager mDNS + UDP, MediaCodecList) as
 // the ports of core/session.
@@ -11,6 +12,9 @@ export const discovery: Discovery = {
   start: startDiscovery,
   probe,
 }
+
+/** A phone pairs for a token, kept in the Keystore / Keychain (native/serverStore.ts) */
+export const pairingMode: PairingMode = TOKEN_PAIRING
 
 /** The video formats this phone decodes in hardware, and the tallest picture */
 export function decoders(): { video: string[]; maxHeight: number } {

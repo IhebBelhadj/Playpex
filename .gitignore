@@ -54,6 +54,7 @@ Thumbs.db
 # Dashboard build (npm run build:dashboard), served by the server
 /apps/server/public/
 /apps/server/public-tv/
+/apps/server/public-m/
 
 # Playpex TV installers (electron-builder)
 apps/tv/release/

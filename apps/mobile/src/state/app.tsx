@@ -7,6 +7,7 @@ import { SessionRegistry } from '../core/playback/registry'
 import type { ApiClient } from '../core/http/client'
 import { SessionController, type Profile, type SessionState } from '../core/session/session'
 import { discovery } from '../native/discovery'
+import { profileMemory } from '../native/profileMemory'
 import { serverStore } from '../native/serverStore'
 import { useStore } from './hooks'
 import { invalidateOnEvents } from './invalidation'
@@ -25,7 +26,7 @@ const CasterContext = createContext<Caster | null>(null)
 
 function createApp(): App {
   return {
-    session: new SessionController(serverStore, discovery),
+    session: new SessionController(serverStore, discovery, profileMemory),
     queryClient: new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } }),
     playbacks: new SessionRegistry(),
     remote: new Emitter(),

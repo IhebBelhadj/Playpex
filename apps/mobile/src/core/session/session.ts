@@ -3,7 +3,8 @@ import { ApiClient } from '../http/client'
 import { Disposer } from '../util/disposer'
 import { Emitter } from '../util/emitter'
 import { Store } from '../util/store'
-import type { Discovery, KnownServer, ServerStore } from './ports'
+import { resumeProfile } from '../services/profiles'
+import type { Discovery, KnownServer, ProfileMemory, ServerStore } from './ports'
 import { answers, FIND_AGAIN_MS, findAgain } from './reach'
 
 // The session: which server this phone uses, its API client, and who is
@@ -16,7 +17,9 @@ import { answers, FIND_AGAIN_MS, findAgain } from './reach'
 //                  ▲
 //             unreachable (the last server didn't answer, nor was it found again)
 //
-// The profile is kept in memory only: "Who's watching?" at every start, as on the TV.
+// The profile is kept in memory only: "Who's watching?" at every start, as on the TV. Where the
+// app reloads (a browser tab) a ProfileMemory keeps it for that tab: the reload opens it again
+// (POST /profiles/{id}/resume) while the server is still being reached.
 
 export type Profile = Schemas['Profile']
 
@@ -45,6 +48,7 @@ export class SessionController {
   constructor(
     private readonly servers: ServerStore,
     private readonly discovery: Discovery,
+    private readonly profiles: ProfileMemory | null = null,
   ) {}
 
   /** This install's id: known once booted */
@@ -72,7 +76,7 @@ export class SessionController {
   async connect(server: KnownServer): Promise<void> {
     this.stop()
     await this.servers.save(server)
-    this.enter(server)
+    await this.enter(server)
   }
 
   /** Back to the server list ("Change server") */
@@ -93,6 +97,7 @@ export class SessionController {
   chooseProfile(profile: Profile): void {
     const current = this.state.get()
     if (current.kind !== 'connected') return
+    this.profiles?.remember(current.server.id, profile.id)
     this.state.set({ ...current, profile })
   }
 
@@ -100,6 +105,7 @@ export class SessionController {
   leaveProfile(): void {
     const current = this.state.get()
     if (current.kind !== 'connected' || !current.profile) return
+    this.profiles?.remember(current.server.id, null)
     this.state.set({ ...current, profile: null })
   }
 
@@ -108,23 +114,28 @@ export class SessionController {
     const attempt = (this.attempt = new Disposer())
     this.state.set({ kind: 'reaching', server })
     if (await answers(server.url, server.id)) {
-      if (!attempt.disposed) this.enter(server)
+      if (!attempt.disposed) await this.enter(server, attempt)
       return
     }
     const url = await findAgain(this.discovery, server.id, FIND_AGAIN_MS, attempt)
     if (attempt.disposed) return
     if (url) {
       await this.servers.move(server.id, url)
-      this.enter({ ...server, url })
+      await this.enter({ ...server, url }, attempt)
     } else {
       this.state.set({ kind: 'unreachable', server })
     }
   }
 
-  private enter(server: KnownServer): void {
+  private async enter(server: KnownServer, attempt?: Disposer): Promise<void> {
     const changed = this.serverId() !== server.id
     const client = new ApiClient(server, this.deviceIdValue, (reason) => this.lose(server, reason))
-    this.state.set({ kind: 'connected', server, client, profile: null })
+    // After a reload: the profile it was on, while "Looking for your server…" still shows
+    const kept = this.profiles?.last(server.id)
+    const profile = kept ? await resumeProfile(client, kept) : null
+    if (attempt?.disposed) return
+    if (kept && !profile) this.profiles?.remember(server.id, null)
+    this.state.set({ kind: 'connected', server, client, profile })
     if (changed) this.events.emit('serverChanged', { serverId: server.id })
   }
 

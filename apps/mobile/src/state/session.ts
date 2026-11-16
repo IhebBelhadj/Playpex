@@ -1,6 +1,6 @@
 import { ServerFinder } from '../core/session/finder'
 import { PairingController, type PairingTarget } from '../core/session/pairing'
-import { describeThisDevice, discovery } from '../native/discovery'
+import { describeThisDevice, discovery, pairingMode } from '../native/discovery'
 import { serverStore } from '../native/serverStore'
 import { useSession } from './app'
 import { useOwned } from './hooks'
@@ -16,5 +16,5 @@ export function useServerFinder(): ServerFinder {
 /** Pair's device flow with `target`: polls while the screen is shown */
 export function usePairing(target: PairingTarget): PairingController {
   const session = useSession()
-  return useOwned(() => new PairingController(target, session, describeThisDevice))
+  return useOwned(() => new PairingController(target, session, describeThisDevice, pairingMode))
 }

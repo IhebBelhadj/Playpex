@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react'
-import { BackHandler } from 'react-native'
+import { BackHandler, Platform } from 'react-native'
 import { router } from 'expo-router'
 import type { Store } from '../core/util/store'
 
@@ -67,11 +67,20 @@ export function useNow(ms: number): number {
   return now
 }
 
-/** Android's Back calls `onBack` while `active` (an open sheet closes instead of the screen) */
+/** Android's Back calls `onBack` while `active` (an open sheet closes instead of the screen); Escape in a browser */
 export function useBackPress(active: boolean, onBack: () => void): void {
   const back = useEffectEvent(onBack)
   useEffect(() => {
     if (!active) return
+    if (Platform.OS === 'web') {
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        back()
+      }
+      window.addEventListener('keydown', onKey)
+      return () => window.removeEventListener('keydown', onKey)
+    }
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       back()
       return true

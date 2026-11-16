@@ -1,7 +1,7 @@
 import { API_PREFIX, ApiError, CLIENT_HEADER_VALUE, CLIENT_ID, authHeaders, type Schemas } from '../http/api'
 import { Disposer } from '../util/disposer'
 import { Store } from '../util/store'
-import type { DeviceDescription } from './ports'
+import type { DeviceDescription, PairingMode } from './ports'
 import type { SessionController } from './session'
 
 // Pairing once with a server (docs/api/auth.md): the RFC 8628 device flow,
@@ -23,18 +23,28 @@ async function post(url: string, body: unknown, headers: Record<string, string> 
   return { status: res.status, json, retryAfter: Number(res.headers.get('X-Retry-After')) || 0 }
 }
 
-export async function requestCode(serverUrl: string): Promise<DeviceCode> {
-  const { status, json, retryAfter } = await post(serverUrl + API_PREFIX + '/auth/device/code', { client_id: CLIENT_ID })
+/** A phone's: the token in the answer */
+export const TOKEN_PAIRING: PairingMode = { clientId: CLIENT_ID, cookie: false }
+
+export async function requestCode(serverUrl: string, mode: PairingMode = TOKEN_PAIRING): Promise<DeviceCode> {
+  const { status, json, retryAfter } = await post(serverUrl + API_PREFIX + '/auth/device/code', { client_id: mode.clientId })
   if (status === 429) throw new ApiError(429, { error: `Too many pairing requests. Try again in ${retryAfter || 60} s.` })
   if (status !== 200) throw new ApiError(status, json)
   return json as DeviceCode
 }
 
-export type PollResult = { state: 'approved'; token: string } | { state: 'pending'; interval: number } | { state: 'expired' } | { state: 'denied' }
+/** `token` null: a browser's, set as its httpOnly cookie */
+export type PollResult = { state: 'approved'; token: string | null } | { state: 'pending'; interval: number } | { state: 'expired' } | { state: 'denied' }
 
 /** One poll of the token route; `interval` is the next wait (5 s more after slow_down) */
-export async function pollToken(serverUrl: string, deviceCode: string, interval: number): Promise<PollResult> {
-  const { status, json } = await post(serverUrl + API_PREFIX + '/auth/device/token', { grant_type: GRANT_TYPE, device_code: deviceCode, client_id: CLIENT_ID })
+export async function pollToken(serverUrl: string, deviceCode: string, interval: number, mode: PairingMode = TOKEN_PAIRING): Promise<PollResult> {
+  const { status, json } = await post(serverUrl + API_PREFIX + '/auth/device/token', {
+    grant_type: GRANT_TYPE,
+    device_code: deviceCode,
+    client_id: mode.clientId,
+    ...(mode.cookie ? { cookie: true } : {}),
+  })
+  if (status === 200 && mode.cookie && json.token_type === 'cookie') return { state: 'approved', token: null }
   if (status === 200 && json.access_token) return { state: 'approved', token: json.access_token }
   switch (json.error) {
     case 'authorization_pending':
@@ -53,7 +63,7 @@ export async function pollToken(serverUrl: string, deviceCode: string, interval:
 }
 
 /** PUT /devices/me: its name and codecs, so the admin knows it and the server can choose how files play */
-export async function describeDevice(serverUrl: string, token: string, deviceId: string, device: DeviceDescription): Promise<void> {
+export async function describeDevice(serverUrl: string, token: string | null, deviceId: string, device: DeviceDescription): Promise<void> {
   await fetch(serverUrl + API_PREFIX + '/devices/me', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders(token, deviceId) },
@@ -84,6 +94,7 @@ export class PairingController {
     private readonly target: PairingTarget,
     private readonly session: SessionController,
     private readonly device: () => DeviceDescription,
+    private readonly mode: PairingMode = TOKEN_PAIRING,
   ) {}
 
   /** Asks for a code and waits for the admin; again after stop() or a failure */
@@ -107,14 +118,14 @@ export class PairingController {
     const { url } = this.target
     this.state.set({ step: 'asking' })
     try {
-      const code = await requestCode(url)
+      const code = await requestCode(url, this.mode)
       if (run.disposed) return
       this.state.set({ step: 'waiting', code, expiresAt: Date.now() + code.expires_in * 1000 })
       let interval = code.interval || 5
       for (;;) {
         await run.sleep(interval * 1000)
         if (run.disposed) return
-        const result = await pollToken(url, code.device_code, interval)
+        const result = await pollToken(url, code.device_code, interval, this.mode)
         if (run.disposed) return
         if (result.state === 'pending') {
           interval = result.interval
@@ -127,7 +138,7 @@ export class PairingController {
         await describeDevice(url, result.token, this.session.deviceId, this.device())
         if (run.disposed) return
         this.state.set({ step: 'approved' })
-        await this.session.connect({ ...this.target, token: result.token, pairedAt: new Date().toISOString() })
+        await this.session.connect({ ...this.target, token: result.token, cookie: result.token == null || undefined, pairedAt: new Date().toISOString() })
         return
       }
     } catch (e) {

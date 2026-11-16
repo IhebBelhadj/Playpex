@@ -1,7 +1,7 @@
 import { API_VERSION } from '../http/api'
 import { Disposer } from '../util/disposer'
 import { Store } from '../util/store'
-import type { Discovery, FoundServer, KnownServer, ServerStore } from './ports'
+import { isPaired, type Discovery, type FoundServer, type KnownServer, type ServerStore } from './ports'
 import { incompatibility } from './reach'
 import type { SessionController } from './session'
 
@@ -71,7 +71,7 @@ export class ServerFinder {
       return { kind: 'refused' }
     }
     const saved = this.known.find((k) => k.id === server.id)
-    if (saved?.token) {
+    if (saved && isPaired(saved)) {
       await this.session.connect({ ...saved, url: server.url, name: server.name || saved.name })
       return { kind: 'connected' }
     }
@@ -93,10 +93,10 @@ export class ServerFinder {
   }
 
   private publish(): void {
-    const found = Object.values(this.found).map((f) => ({ ...f, paired: this.known.some((k) => k.id === f.id && !!k.token), seen: true }))
+    const found = Object.values(this.found).map((f) => ({ ...f, paired: this.known.some((k) => k.id === f.id && isPaired(k)), seen: true }))
     const notSeen = this.known
       .filter((k) => !this.found[k.id])
-      .map((k) => ({ id: k.id, name: k.name, url: k.url, version: '', apiVersion: API_VERSION, minApiVersion: 1, host: null, via: 'manual' as const, paired: !!k.token, seen: false }))
+      .map((k) => ({ id: k.id, name: k.name, url: k.url, version: '', apiVersion: API_VERSION, minApiVersion: 1, host: null, via: 'manual' as const, paired: isPaired(k), seen: false }))
     this.state.patch({ entries: [...found, ...notSeen] })
   }
 }

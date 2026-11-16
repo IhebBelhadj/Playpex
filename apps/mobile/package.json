@@ -10,6 +10,7 @@
     "ios": "expo run:ios",
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web --output-dir ../server/public-m",
     "lint": "eslint src",
     "test": "jest",
     "android:release": "cd android && ./gradlew assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
+    "@expo/metro-runtime": "~58.0.17",
     "@expo/vector-icons": "^15.0.2",
     "@playpex/protocol": "*",
     "@tanstack/react-query": "^5.104.3",
@@ -35,13 +37,16 @@
     "expo-splash-screen": "~58.0.12",
     "expo-status-bar": "~58.0.4",
     "expo-system-ui": "~58.0.6",
+    "hls.js": "1.7.3",
     "openapi-fetch": "^0.17.0",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "0.88.0",
     "react-native-gesture-handler": "3.3.0",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
+    "react-native-web": "^0.21.4",
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {

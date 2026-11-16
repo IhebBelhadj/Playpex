@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
@@ -163,7 +163,8 @@ function ServerGroup({ name, url, onChange }: { name: string; url: string; onCha
       <SettingRow first label="Name" value={name} />
       <SettingRow label="Address" value={info.data?.host ?? url.replace(/^https?:\/\//, '')} />
       <SettingRow label="Version" value={info.data?.version ?? '…'} />
-      <SettingRow label="Choose another server" onPress={onChange} />
+      {/* In a browser the server is the page's own (docs/mobile-web-plan.md) */}
+      {Platform.OS !== 'web' ? <SettingRow label="Choose another server" onPress={onChange} /> : null}
     </SettingsGroup>
   )
 }
@@ -172,9 +173,12 @@ function PhoneGroup() {
   const device = useThisDevice()
   const hardware = [...new Set(device.hardware.map((c) => CODECS[c.toLowerCase()] ?? c.toUpperCase()))]
   return (
-    <SettingsGroup title="This phone" why="It plays every format; these in hardware, the rest in software">
+    <SettingsGroup
+      title={Platform.OS === 'web' ? 'This browser' : 'This phone'}
+      why={Platform.OS === 'web' ? 'It plays these itself; the server converts the rest' : 'It plays every format; these in hardware, the rest in software'}
+    >
       <SettingRow first label="Name" value={device.name} />
-      <SettingRow label="Hardware decoding" value={hardware.join(', ') || 'None'} />
+      <SettingRow label={Platform.OS === 'web' ? 'Plays' : 'Hardware decoding'} value={hardware.join(', ') || 'None'} />
       <SettingRow label="Sharpest picture" value={`${device.maxHeight}p`} />
     </SettingsGroup>
   )

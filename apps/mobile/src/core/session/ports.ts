@@ -8,8 +8,18 @@ export type KnownServer = {
   /** http://<address>:<port>, where it answered last */
   url: string
   token: string | null
+  /** In a browser: the page's own credentials (the httpOnly device cookie, or none on the server's machine), no token */
+  cookie?: boolean
   pairedAt: string
 }
+
+/** Paired: it has a token, or (a browser) the page's own credentials */
+export function isPaired(server: KnownServer): boolean {
+  return !!server.token || !!server.cookie
+}
+
+/** How the device flow asks: a phone gets its token, a browser an httpOnly cookie (docs/api/auth.md) */
+export type PairingMode = { clientId: string; cookie: boolean }
 
 /** A server found on the network or at a typed address, confirmed with GET /api/v1/server */
 export type FoundServer = {
@@ -50,5 +60,12 @@ export interface Discovery {
 export type DeviceDescription = {
   name: string
   platform: string
-  capabilities: { containers: string[]; video: string[]; audio: string[]; maxHeight: number }
+  capabilities: { containers: string[]; video: string[]; audio: string[]; maxHeight: number; hls?: boolean }
+}
+
+/** Who was watching, kept across a reload where the platform reloads (a browser tab); none on a phone */
+export interface ProfileMemory {
+  /** The profile chosen last, for this server */
+  last(serverId: string): string | null
+  remember(serverId: string, profileId: string | null): void
 }
