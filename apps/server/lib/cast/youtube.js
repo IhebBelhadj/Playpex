@@ -310,21 +310,8 @@ function ready() {
 
 // ── which interfaces DIAL announces on ───────────────────────────────────────
 
-var VIRTUAL = /^(lo|docker|br-|veth|virbr|vmnet|vboxnet|incus|lxc|lxd|tun|tap|utun|wg|zt|tailscale|cni|flannel|kube|podman)/i;
-
-/** The machine's LAN interfaces (IPv4, not loopback, not a container or VPN bridge) */
-function lanInterfaces() {
-  var all = os.networkInterfaces(), names = [];
-  Object.keys(all).forEach(function (name) {
-    if (VIRTUAL.test(name)) {
-      return;
-    }
-    if ((all[name] || []).some(function (a) { return (a.family === 'IPv4' || a.family === 4) && !a.internal; })) {
-      names.push(name);
-    }
-  });
-  return names;
-}
+// the machine's LAN interfaces, without container / VPN bridges (shared with the server's own addresses)
+var lanInterfaces = require('../network').lanInterfaces;
 
 // ── announcements ────────────────────────────────────────────────────────────
 

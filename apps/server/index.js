@@ -31,7 +31,7 @@ if (fs.existsSync(DOTENV)) {
 }
 
 var http = require('http'),
-  os = require('os'),
+  network = require('./lib/network'),
   paths = require('./lib/paths'),
   settings = require('./lib/settings'),
   logger = require('./lib/logger'),
@@ -56,15 +56,11 @@ var log = logger.child('server');
 var running = null,   // { server, sockets, info }
   lastOptions = {};   // start()'s options, for restart()
 
-function lanUrls(port) {
-  var nets = os.networkInterfaces();
-  return Object.keys(nets).reduce(function (all, name) {
-    return all.concat(nets[name].filter(function (a) {
-      return a.family === 'IPv4' && !a.internal;
-    }).map(function (a) {
-      return 'http://' + a.address + ':' + port;
-    }));
-  }, []);
+// the LAN addresses others reach this server at (lib/network.js: no container / VPN bridges; the default route's first)
+function lanUrls(port, primary) {
+  return network.lanAddresses(primary).map(function (address) {
+    return 'http://' + address + ':' + port;
+  });
 }
 
 function listen(server, port, host) {
@@ -135,14 +131,20 @@ function start(options) {
     configDir: paths.config
   }, options.torrents));
 
+  var primary = null;
   return torrentsReady.then(function () {
     return listen(server, port, host);
+  }).then(function (bound) {
+    return network.primaryAddress().then(function (address) {
+      primary = address;
+      return bound;
+    });
   }).then(function (bound) {
     var info = Object.assign(identity.info(), {
       startedAt: Date.now(),
       port: bound,
       host: host,
-      urls: ['http://localhost:' + bound].concat(lan && !options.host ? lanUrls(bound) : []),
+      urls: ['http://localhost:' + bound].concat(lan && !options.host ? lanUrls(bound, primary) : []),
       recovery: recovery
     });
     running = { server: server, sockets: sockets, info: info };
