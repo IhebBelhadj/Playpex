@@ -21,6 +21,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The web clients this server serves and what /app/ opens on each kind of device (no auth)
+         * @description Playpex TV at `/tv/` and Playpex Mobile at `/m/` (docs/web-unified-plan.md). `/app/` reads it to open the
+         *     client for the device; a web client's "Switch view" reads it to know whether the other one is there.
+         */
+        get: operations["getWebClients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/openapi.yaml": {
         parameters: {
             query?: never;
@@ -4539,6 +4560,26 @@ export interface components {
              */
             code: "INVALID" | "DEVICE_REQUIRED" | "PAIRING_REQUIRED" | "ADMIN_REQUIRED" | "CAST_REFUSED" | "FORBIDDEN" | "HOST_NOT_ALLOWED" | "ORIGIN_NOT_ALLOWED" | "CLIENT_HEADER_REQUIRED" | "NOT_FOUND" | "CONFLICT" | "DEVICE_OFFLINE" | "GONE" | "CLIENT_TOO_OLD" | "SERVER_TOO_OLD" | "UNSUPPORTED" | "TOO_MANY_ATTEMPTS" | "INTERNAL" | "NOT_SUPPORTED" | "BUSY" | "UPSTREAM" | "PROBE_FAILED" | "PLUGIN_FAILED" | "PROVIDER_NOT_CONFIGURED" | "TRANSCODER_UNAVAILABLE";
         };
+        WebClients: {
+            web: {
+                /** @enum {string} */
+                id: "tv" | "mobile";
+                name: string;
+                /** @description Where it is served (`/tv/`, `/m/`) */
+                path: string;
+                /** @description The admin serves it (`clients.tvWeb` / `clients.mobileWeb`) */
+                enabled: boolean;
+                /** @description Its web build is on the server */
+                built: boolean;
+            }[];
+            /** @description What `/app/` opens on a computer (a mouse) and on a tablet; TVs open `tv`, phones `mobile` */
+            open: {
+                /** @enum {string} */
+                computers: "tv" | "mobile";
+                /** @enum {string} */
+                tablets: "tv" | "mobile";
+            };
+        };
         ServerInfo: {
             /** @description Stable server id (UUID); identify servers by it, not by address */
             id: string;
@@ -7399,6 +7440,23 @@ export interface components {
                 /** @description Metadata providers switched off (their hooks aren't asked for title pages) */
                 disabled: string[];
             };
+            /** @description The web clients (docs/web-unified-plan.md §2) */
+            clients?: {
+                /** @description Playpex TV served at `/tv/` */
+                tvWeb: boolean;
+                /** @description Playpex Mobile served at `/m/` */
+                mobileWeb: boolean;
+                /**
+                 * @description What `/app/` opens on a computer
+                 * @enum {string}
+                 */
+                computers: "tv" | "mobile";
+                /**
+                 * @description What `/app/` opens on a tablet
+                 * @enum {string}
+                 */
+                tablets: "tv" | "mobile";
+            };
             providers: {
                 /** @description Empty = the TMDB app key Playpex ships */
                 tmdbApiKey: string;
@@ -7883,6 +7941,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServerInfo"];
+                };
+            };
+        };
+    };
+    getWebClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The web clients */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebClients"];
                 };
             };
         };

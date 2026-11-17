@@ -60,6 +60,8 @@ function clientVersion(req, res, next) {
 
 // Open to everyone: who this server is (clients probe it before pairing)
 v1.use('/server', require('./routes/server'));
+// Open to everyone: the web clients served here and what /app/ opens (docs/web-unified-plan.md §3)
+v1.use('/clients', require('./routes/clients'));
 // Open to everyone: the API contract, and the client author guide (docs/api,
 // rendered by the dashboard at /docs, plan step 10)
 v1.get('/openapi.yaml', function (req, res) {
@@ -801,8 +803,31 @@ v1.use(function (req, res) {
 // files with a content hash in their name (main.<hash>.js) cached for a
 // year, other files an hour, every other GET under /tv (the app's routes)
 // answers its index.html. Before the dashboard's fallback.
+var webClients = require('./web/clients'),
+  webEntry = require('./web/entry');
+
+// /app/: the client for this device (docs/web-unified-plan.md §4)
+api.get(/^\/app$/, function (req, res) {
+  var q = req.originalUrl.indexOf('?');
+  res.redirect(301, '/app/' + (q >= 0 ? req.originalUrl.slice(q) : ''));
+});
+api.get(/^\/app\/(index\.html)?$/, function (req, res) {
+  webEntry.send(res);
+});
+
+// A web client the admin turned off (clients.tvWeb / clients.mobileWeb): its
+// pages and files answer 403 with a page saying so
+function webClientOn(id) {
+  var client = webClients.byId(id);
+  return function (req, res, next) {
+    if (webClients.enabled(client)) return next();
+    webEntry.off(res, client);
+  };
+}
+
 var TV_WEB = process.env.PLAYPEX_TV_WEB_DIR || path.join(__dirname, '..', 'public-tv');
 var HASHED = /\.[0-9a-f]{16,}\./;
+api.use('/tv', webClientOn('tv'));
 api.get(/^\/tv$/, function (req, res) {
   var q = req.originalUrl.indexOf('?');
   res.redirect(301, '/tv/' + (q >= 0 ? req.originalUrl.slice(q) : ''));
@@ -828,6 +853,7 @@ api.get(/^\/tv(\/[^.]*)?$/, function (req, res) {
 // the same rules as /tv. Expo names its bundles with a 32-hex content hash.
 var MOBILE_WEB = process.env.PLAYPEX_MOBILE_WEB_DIR || path.join(__dirname, '..', 'public-m');
 var EXPO_HASHED = /-[0-9a-f]{32}\.|\.[0-9a-f]{32}\./;
+api.use('/m', webClientOn('mobile'));
 api.get(/^\/m$/, function (req, res) {
   var q = req.originalUrl.indexOf('?');
   res.redirect(301, '/m/' + (q >= 0 ? req.originalUrl.slice(q) : ''));

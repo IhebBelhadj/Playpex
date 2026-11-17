@@ -154,6 +154,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ServerInfo' }
+  /clients:
+    get:
+      tags: [server]
+      operationId: getWebClients
+      summary: The web clients this server serves and what /app/ opens on each kind of device (no auth)
+      description: |
+        Playpex TV at `/tv/` and Playpex Mobile at `/m/` (docs/web-unified-plan.md). `/app/` reads it to open the
+        client for the device; a web client's "Switch view" reads it to know whether the other one is there.
+      security: []
+      responses:
+        '200':
+          description: The web clients
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebClients' }
   /openapi.yaml:
     get:
       tags: [server]
@@ -5446,6 +5461,28 @@ components:
             - PROVIDER_NOT_CONFIGURED  # 503
             - TRANSCODER_UNAVAILABLE   # 503
 
+    WebClients:
+      type: object
+      required: [web, open]
+      properties:
+        web:
+          type: array
+          items:
+            type: object
+            required: [id, name, path, enabled, built]
+            properties:
+              id: { type: string, enum: [tv, mobile] }
+              name: { type: string }
+              path: { type: string, description: 'Where it is served (`/tv/`, `/m/`)' }
+              enabled: { type: boolean, description: 'The admin serves it (`clients.tvWeb` / `clients.mobileWeb`)' }
+              built: { type: boolean, description: 'Its web build is on the server' }
+        open:
+          type: object
+          required: [computers, tablets]
+          description: 'What `/app/` opens on a computer (a mouse) and on a tablet; TVs open `tv`, phones `mobile`'
+          properties:
+            computers: { type: string, enum: [tv, mobile] }
+            tablets: { type: string, enum: [tv, mobile] }
     ServerInfo:
       type: object
       required: [id, name, version, apiVersion, minApiVersion, auth, features]
@@ -8273,6 +8310,15 @@ components:
             region: { type: string, pattern: '^([A-Z]{2})?$', description: 'Region of the movie lists (now playing, upcoming…); empty = the provider''s default' }
             order: { type: array, items: { type: string }, description: 'Metadata providers (plugin ids) whose additions come first, in this order; the others after, by id' }
             disabled: { type: array, items: { type: string }, description: 'Metadata providers switched off (their hooks aren''t asked for title pages)' }
+        clients:
+          type: object
+          description: 'The web clients (docs/web-unified-plan.md §2)'
+          required: [tvWeb, mobileWeb, computers, tablets]
+          properties:
+            tvWeb: { type: boolean, description: 'Playpex TV served at `/tv/`' }
+            mobileWeb: { type: boolean, description: 'Playpex Mobile served at `/m/`' }
+            computers: { type: string, enum: [tv, mobile], description: 'What `/app/` opens on a computer' }
+            tablets: { type: string, enum: [tv, mobile], description: 'What `/app/` opens on a tablet' }
         providers:
           type: object
           required: [tmdbApiKey, openSubtitlesApiKey, wyzieApiKey]

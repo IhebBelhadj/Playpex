@@ -100,6 +100,15 @@ function defaults() {
       // protocol, so off until the admin turns it on); only with LAN sharing
       youtube: false
     },
+    clients: {
+      // the web clients the server serves (docs/web-unified-plan.md §2): Playpex
+      // TV at /tv/, Playpex Mobile at /m/; off: a page saying so
+      tvWeb: true,
+      mobileWeb: true,
+      // what /app/ opens on a computer (a mouse) and on a tablet: tv or mobile
+      computers: 'tv',
+      tablets: 'mobile'
+    },
     plugins: {
       // unsigned plugin packages install (at once), and the folders of
       // <config>/plugins-dev/<id>/ load (authors testing their own; after a
@@ -257,6 +266,9 @@ function coerce(key, value, fromEnv) {
   }
   if (typeof value !== 'string') {
     return { error: key + ' must be a string' };
+  }
+  if ((key === 'clients.computers' || key === 'clients.tablets') && ['tv', 'mobile'].indexOf(value) === -1) {
+    return { error: key + ' must be tv or mobile' };
   }
   if (key === 'plugins.updates' && ['auto', 'notify', 'never'].indexOf(value) === -1) {
     return { error: 'plugins.updates must be auto, notify or never' };

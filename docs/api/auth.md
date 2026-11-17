@@ -101,7 +101,7 @@ All fields are optional; `null` clears one. `name` (≤ 64 chars) is what the ad
 Authorization: Bearer <access_token>
 ```
 
-on **every** request except the public ones: `GET /server`, `GET /openapi.yaml`, `GET /docs`, the two device-flow routes and `/admin/setup` (the dashboard's first run). Without a valid token: **`401 {"code": "PAIRING_REQUIRED"}`** with `WWW-Authenticate: Bearer`.
+on **every** request except the public ones: `GET /server`, `GET /clients` (the web clients served here), `GET /openapi.yaml`, `GET /docs`, the two device-flow routes and `/admin/setup` (the dashboard's first run). Without a valid token: **`401 {"code": "PAIRING_REQUIRED"}`** with `WWW-Authenticate: Bearer`.
 
 - **Media elements that can't set headers** (an HTML `<video>`, some TV players, `<track>`): add `?access_token=<token>` to the URL instead. Prefer the header wherever you can: URLs end up in player logs and history. (The server itself never logs query strings.)
 - **The WebSocket** (`/api/v1/events`) takes the header, or `?access_token=` for clients that can't set headers on a WebSocket (browsers).
@@ -130,7 +130,7 @@ Probe loopback first when your client may run on the server machine, and use the
 
 ## Browsers
 
-A web page can't keep a token away from its own scripts, and `<video>`, `hls.js`, `<track>` and WebSockets can't send an `Authorization` header (tokens in URLs end up in logs and history). So a browser client (Playpex TV on the web, served by every server at `/tv/`; `client_id` `playpex-web`) is a device known by a **cookie** instead:
+A web page can't keep a token away from its own scripts, and `<video>`, `hls.js`, `<track>` and WebSockets can't send an `Authorization` header (tokens in URLs end up in logs and history). So a browser client (Playpex TV on the web at `/tv/` and Playpex Mobile on the web at `/m/`, both behind the one address `/app/` (docs/web-unified-plan.md); `client_id` `playpex-web`) is a device known by a **cookie** instead:
 
 1. Pair as above: `POST /api/v1/auth/device/code` `{ "client_id": "playpex-web" }`, show the code, poll.
 2. Poll with **`"cookie": true`** in the token request's body. Once the admin approved, the answer sets the token as a cookie and leaves it out of the body:
