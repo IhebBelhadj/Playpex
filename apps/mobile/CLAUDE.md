@@ -158,6 +158,7 @@ version, and npm workspaces share one copy.
   `usePlayerFrame()` (`frameContext.ts`), not `useWindowDimensions()`, and read touches through it (a turned box gets
   screen coordinates: `Timeline`'s `along`, `Surface`'s `pageY`). Never swap the frame's wrapper for the bare player: the
   remount ends the playback.
+- **Switch view** (docs/web-unified-plan.md §5): Settings › This browser › Switch to the TV view (`state/views.ts` `useTvView`, `native/viewSwitch(.web).ts`: shown while the server serves Playpex TV, `GET /clients`) → `/app/?view=tv&at=settings`; the profile is kept in `sessionStorage['playpex.web.profile']`, which Playpex TV on the web reads and writes too (`native/profileMemory.web.ts`).
 - A browser shares one device with Playpex TV on the web (`localStorage['playpex.deviceId']`, the `playpex_device` cookie).
 - Debugging a web crash: production React only gives an error number. `expo export --platform web --dev --no-minify` ignores
   `experiments.baseUrl` and names lazy chunks alike: build it without `baseUrl` and with the expo-router plugin's

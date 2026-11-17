@@ -2,6 +2,7 @@ import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
+import { useTvView } from '../../state/views'
 import Constants from 'expo-constants'
 import { SUBTITLE_SCALE } from '../../core/player/preferences'
 import type { Settings, SettingValues } from '../../core/services/settings'
@@ -172,6 +173,8 @@ function ServerGroup({ name, url, onChange }: { name: string; url: string; onCha
 function PhoneGroup() {
   const device = useThisDevice()
   const hardware = [...new Set(device.hardware.map((c) => CODECS[c.toLowerCase()] ?? c.toUpperCase()))]
+  // in a browser: Playpex TV, when the server serves it (its Phone view switches back)
+  const tvView = useTvView()
   return (
     <SettingsGroup
       title={Platform.OS === 'web' ? 'This browser' : 'This phone'}
@@ -180,6 +183,7 @@ function PhoneGroup() {
       <SettingRow first label="Name" value={device.name} />
       <SettingRow label={Platform.OS === 'web' ? 'Plays' : 'Hardware decoding'} value={hardware.join(', ') || 'None'} />
       <SettingRow label="Sharpest picture" value={`${device.maxHeight}p`} />
+      {tvView ? <SettingRow label="Switch to the TV view" onPress={() => tvView.open('settings')} /> : null}
     </SettingsGroup>
   )
 }
