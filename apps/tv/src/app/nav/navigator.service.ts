@@ -127,6 +127,21 @@ export class Navigator {
     });
   }
 
+  // Swap an entry below the top for another without showing it (the player's
+  // next episode: Back then lands on the episode playing, not the one the
+  // player was opened from). Kept as covered (Back is a return) with its
+  // focus; `state` seeds the new entry's. Null when `entry` isn't below the top
+  swapBelow(entry:Entry, intent:Intent, state:Record<string, any> = {}):Entry | null {
+    let i = this.entries.indexOf(entry);
+    if (i < 0 || i == this.entries.length - 1) return null;
+    let next:Entry = { ...this.entry(intent), left: true, focus: entry.focus };
+    Object.assign(next.state, state);
+    let stack = [...this.entries];
+    stack[i] = next;
+    this.commit(stack);
+    return next;
+  }
+
   // Pop n entries; at the root, the root screen's back policy
   back(n = 1):Promise<boolean> {
     return this.enqueue(async () => {

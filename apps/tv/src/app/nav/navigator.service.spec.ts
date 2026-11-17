@@ -145,6 +145,22 @@ describe('nav Navigator', () => {
     expect(ids()).toEqual(['core.movies']);
   });
 
+  it('swaps an entry below the top without showing it; Back lands on the new one', async () => {
+    await nav.reset({ screen: 'core.movies' });
+    await nav.open({ screen: 'core.episode', params: { n: 1 } });
+    await nav.open({ screen: 'core.movie', params: { id: 9 } });
+    let below = nav.stack[1];
+    expect(nav.swapBelow(nav.current, { screen: 'core.episode', params: { n: 2 } })).toBeNull();
+    let swapped = nav.swapBelow(below, { screen: 'core.episode', params: { n: 2 } }, { ticket: 'E2' });
+    expect(router.url).toBe('/movies/movie/9');
+    expect(nav.stack[1]).toBe(swapped);
+    expect(swapped.left).toBeTrue();
+    expect(swapped.state).toEqual({ ticket: 'E2' });
+    await nav.back();
+    expect(nav.current).toBe(swapped);
+    expect(top().screen.params).toEqual({ n: '2' });
+  });
+
   it('applies the root back policy: sections and roots open the power menu', async () => {
     await nav.reset({ screen: 'core.movies' });
     expect(await nav.back()).toBeTrue();

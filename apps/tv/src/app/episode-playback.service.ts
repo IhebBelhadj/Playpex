@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { catchError, defaultIfEmpty, finalize, map, Observable, of, switchMap, takeUntil } from 'rxjs';
 import { Navigator } from './nav/navigator.service';
+import { BACK_TICKET, BackTicket } from './back-button/back-button.component';
 import { CatalogDetails, EpisodeItem, MoviesService } from './movies.service';
 import { NotificationService } from './notification.service';
 import { PlaybackService, PlaybackSource } from './playback.service';
@@ -164,8 +165,24 @@ export class EpisodePlaybackService {
       takeUntil(left),
     ).subscribe(({ source, state }) => {
       let resume = state.resume;
+      this.followBelow(next);
       this.start(next, next.code, PlaybackService.target(source), resume ? resume.positionS : 0, true);
     });
+  }
+
+  // The page under the player follows the episode playing: an episode page of
+  // the show becomes that episode's (Back lands there, not on the episode the
+  // player was opened from), the show page opens on its season
+  private followBelow(next:NextEpisode) {
+    let stack = this.navigator.stack, below = stack[stack.length - 2];
+    let id = String(next.show.tmdbId);
+    if (!below || String(below.params['id']) != id) return;
+    if (below.screen.id == 'core.show') below.state['season'] = next.season;
+    else if (below.screen.id == 'core.episode') {
+      this.navigator.swapBelow(below, { screen: 'core.episode', params: { id, season: next.season, episode: next.episode.episodeNumber } }, {
+        [BACK_TICKET]: { name: `${next.code} ${next.episode.name || ''}`.trim(), image: next.show.posterPath || null, kind: 'poster' } as BackTicket,
+      });
+    }
   }
 
   static query(target:EpisodeTarget):SourcesQuery {
