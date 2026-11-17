@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboard, Download, Gamepad2, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
+import { Activity, AlertTriangle, AppWindow, ArrowDown, ArrowLeftRight, ArrowUp, Clapperboard, Download, Gamepad2, Info, Search, LayoutDashboard, LogOut, Menu, MonitorSmartphone, Puzzle, ScrollText, Settings, Users } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { toast } from 'sonner'
@@ -61,7 +61,12 @@ const NAV: {
   group?: string
   items: { to: string; label: string; icon: typeof Activity; end?: boolean }[]
 }[] = [
-  { items: [{ to: '/', label: 'Overview', icon: LayoutDashboard, end: true }] },
+  {
+    items: [
+      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+      { to: '/clients', label: 'Clients', icon: AppWindow },
+    ],
+  },
   {
     group: 'Media',
     items: [

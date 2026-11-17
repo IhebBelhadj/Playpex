@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, useLocation } from 'react-router'
 import { Spinner } from '@/components/common'
 import { AppLayout, RequireAdmin } from '@/components/layout'
 import { AboutPage } from '@/pages/about'
+import { ClientsPage } from '@/pages/clients'
 import { ActivityPage } from '@/pages/activity'
 import { DevicesPage } from '@/pages/devices'
 import { LinkPage } from '@/pages/link'
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
       { index: true, element: <OverviewPage /> },
       { path: 'activity', element: <ActivityPage /> },
       { path: 'devices', element: <DevicesPage /> },
+      { path: 'clients', element: <ClientsPage /> },
       { path: 'remote', element: <RemoteTargetsPage /> },
       { path: 'remote/:deviceId', element: <RemoteControlPage /> },
       { path: 'link', element: <LinkPage /> },
