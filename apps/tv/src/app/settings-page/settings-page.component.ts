@@ -50,6 +50,7 @@ const AUTOPLAY_KINDS = [
 
 import { desktop } from '../desktop';
 import { isWeb } from '../web/web-client';
+import { phoneViewAvailable, switchToPhoneView } from '../web/switch-view';
 import { connection } from '../server-config';
 @Component({
   selector: 'app-settings-page',
@@ -72,6 +73,8 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
   // player.audioLanguage / player.subtitleLanguage: the tracks a video starts with
   // the Electron shell can inject the admin's input (remote/remote-control.service.ts); a browser can't
   readonly remoteCapable = !!desktop()?.remote || isWeb;
+  // Display › Phone view: a browser, and the server serves Playpex Mobile (docs/web-unified-plan.md §5)
+  phoneView = false;
   // About: this app's version (the Electron shell's; none in a browser)
   readonly version = connection?.version || '';
   readonly audioLanguages = [{ key: 'original', label: 'As released' }, ...LANGUAGES];
@@ -154,6 +157,11 @@ export class SettingsPageComponent implements AfterViewInit, OnDestroy {
       this.rowsFocus = target.row || null;
     }));
     this.subs.push(subtitles.getProviders().subscribe({ next: list => this.subtitleProviders = list.filter(p => p.enabled), error: () => { } }));
+    if (isWeb && !desktop()) phoneViewAvailable().then(ok => this.phoneView = ok);
+  }
+
+  switchToPhone() {
+    switchToPhoneView('settings');
   }
 
   // Sections `settingsRail` and `settings` are pxSections in the template

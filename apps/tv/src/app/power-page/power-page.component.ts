@@ -4,9 +4,10 @@ import { Profile, ProfilesService } from '../profiles.service';
 import { Navigator } from '../nav/public-api';
 import { isWeb } from '../web/web-client';
 import { desktop } from '../desktop';
+import { phoneViewAvailable, placeOf, switchToPhoneView } from '../web/switch-view';
 
 interface PowerOption {
-  key:'quit' | 'sleep' | 'restart' | 'shutdown' | 'profiles' | 'fullscreen';
+  key:'quit' | 'sleep' | 'restart' | 'shutdown' | 'profiles' | 'fullscreen' | 'phone';
   label:string;
   does:string;
 }
@@ -25,6 +26,8 @@ const WEB_OPTIONS:PowerOption[] = [
   { key: 'profiles', label: 'Switch profile', does: 'Back to Who\'s watching?' },
   { key: 'fullscreen', label: 'Full screen', does: 'Use the whole screen' },
 ];
+// while the server serves Playpex Mobile (docs/web-unified-plan.md §5): the same place there
+const PHONE_VIEW:PowerOption = { key: 'phone', label: 'Phone view', does: 'Playpex Mobile in this browser, at the same place' };
 
 // Close Playpex / Sleep / Restart / Shut down (core.power, src/app/nav): the
 // last step back out of a section. Who's watching and that their places are
@@ -38,13 +41,16 @@ const WEB_OPTIONS:PowerOption[] = [
 })
 export class PowerPageComponent implements AfterViewInit {
 
-  readonly options = isWeb && !desktop() ? WEB_OPTIONS : OPTIONS;
+  options = isWeb && !desktop() ? WEB_OPTIONS : OPTIONS;
   readonly profile:Profile | null;
   readonly avatarUrl:string;
 
   constructor(private power:PowerService, profiles:ProfilesService, private navigator:Navigator) {
     this.profile = profiles.current.value;
     this.avatarUrl = ProfilesService.avatarUrl(this.profile?.avatar ?? null);
+    if (this.options == WEB_OPTIONS) {
+      phoneViewAvailable().then(ok => { if (ok) this.options = [...WEB_OPTIONS, PHONE_VIEW]; });
+    }
   }
 
   ngAfterViewInit(): void {
@@ -57,6 +63,12 @@ export class PowerPageComponent implements AfterViewInit {
   send(instruction:PowerOption['key']) {
     if (instruction == 'profiles') {
       this.navigator.reset({ screen: 'core.profiles' });
+      return;
+    }
+    if (instruction == 'phone') {
+      // where Back from here goes: the section (or title) the power menu opened over
+      let stack = this.navigator.stack, below = stack[stack.length - 2];
+      switchToPhoneView(below ? placeOf(this.navigator.urlFor({ screen: below.screen.id, params: below.params })) : 'home');
       return;
     }
     if (instruction == 'fullscreen') {

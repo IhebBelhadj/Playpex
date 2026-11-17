@@ -18,6 +18,9 @@ import { SplashService } from './splash.service';
 
 const KEY = 'playpex.session';
 const LOG_KEY = 'playpex.session.restore';
+// The tab's profile, shared with Playpex Mobile on the web (its profileMemory.web.ts): switching
+// view (/app/?view=…, docs/web-unified-plan.md §5) keeps the profile; the history is this app's own
+const SHARED_KEY = 'playpex.web.profile';
 // ms the boot waits for the server: a second, longer try when it's slow (a
 // stream it's still busy with), before the picker
 const RESUME_TIMEOUTS = [4000, 8000];
@@ -82,7 +85,19 @@ function write(saved:Saved | null) {
   try {
     if (saved) sessionStorage.setItem(KEY, JSON.stringify(saved));
     else sessionStorage.removeItem(KEY);
+    if (saved) sessionStorage.setItem(SHARED_KEY, JSON.stringify({ server: saved.server, profile: saved.profile }));
+    else sessionStorage.removeItem(SHARED_KEY);
   } catch (e) { /* not kept: a reload starts over */ }
+}
+
+// The profile the other web client left in this tab, for this server
+function sharedProfile():string | null {
+  try {
+    let shared = JSON.parse(sessionStorage.getItem(SHARED_KEY) || 'null');
+    return shared && shared.server == serverId() && typeof shared.profile == 'string' ? shared.profile : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 const MAX_STATE = 16 * 1024;        // characters of JSON per state key
@@ -133,8 +148,10 @@ function serverId():string {
 export function restoreSession(injector:Injector):() => Promise<void> {
   return async () => {
     let saved = read();
+    let shared = sharedProfile();
     try {
-      if (!saved) note('nothing saved in this tab');
+      if (shared && (!saved || saved.server != serverId() || saved.profile != shared)) await resumeShared(injector, shared);
+      else if (!saved) note('nothing saved in this tab');
       else if (saved.server != serverId()) note('saved for another server', { saved: saved.server, now: serverId() });
       else await resume(injector, saved);
     } catch (e) {
@@ -194,6 +211,19 @@ async function resume(injector:Injector, saved:Saved) {
   location.replaceState(navigator.urlFor({ screen: top.screen.id, params: top.params }));
   injector.get(SplashService).skip = true;
   note('restored', { stack: stack.map(e => e.screen.id), leftOut: left });
+}
+
+// The phone view's profile (a switch of view, or that view changed it): the profile, at the address
+// opened, without this app's older history (another profile's, or from before the switch)
+async function resumeShared(injector:Injector, id:string) {
+  let profile = await resumeProfile(injector, id);
+  if (!profile) return;
+  injector.get(ProfilesService).current.next(profile);
+  let here = samePath(injector.get(Location).path());
+  if (here.startsWith('/p/')) {
+    await firstValueFrom(injector.get(RemotePlugins).reload().pipe(timeout(PLUGINS_TIMEOUT))).catch(() => null);
+  }
+  note('the other web client\'s profile: the profile only', { here });
 }
 
 // A plugin's address the router can't know yet (a new tab, no profile, the

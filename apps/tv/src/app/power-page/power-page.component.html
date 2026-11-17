@@ -28,6 +28,8 @@
             <g *ngSwitchCase="'profiles'"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></g>
             <!-- full screen: four corners -->
             <g *ngSwitchCase="'fullscreen'"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></g>
+            <!-- phone view: a phone -->
+            <g *ngSwitchCase="'phone'"><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M11 18h2" /></g>
           </svg>
           <span class="label">{{ label(o) }}</span>
           <span class="does">{{ o.does }}</span>

@@ -38,6 +38,12 @@
         </section>
 
         <!-- YouTube's "Link with TV code": a phone on another network casts here (the server's YouTube receiver) -->
+
+        <section class="setting" pxStackItem *ngIf="phoneView">
+          <header class="head"><h2 class="label">Phone view</h2><span class="scope">In this browser</span></header>
+          <p class="help">Playpex Mobile, the touch layout, in this browser. Your profile stays; Settings there switches back.</p>
+          <px-button key="phoneView" label="Switch to the phone view" (pxSelect)="switchToPhone()"></px-button>
+        </section>
         <section class="setting" pxStackItem *ngIf="settings.value('cast.allowed') !== false">
           <header class="head"><h2 class="label">YouTube</h2><span class="scope">On this device</span></header>
           <p class="help">Phones on this network find this screen in the YouTube app’s Cast list. A phone elsewhere links with a code.</p>
