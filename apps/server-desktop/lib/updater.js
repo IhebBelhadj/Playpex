@@ -48,6 +48,10 @@ function init(options) {
   autoUpdater.logger = options.logger || null;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  // Always the repo's Latest release (the server's: published last or marked
+  // --latest). With a pre-release version electron-updater would otherwise scan
+  // the feed for plain semver tags and skip ours (server-v…): no update found
+  autoUpdater.allowPrerelease = false;
   current = Object.assign({}, current, { state: 'idle' });
   autoUpdater.on('checking-for-update', () => update({ state: 'checking', error: null }));
   autoUpdater.on('update-available', info => update({ state: 'available', version: info.version, percent: 0 }));
