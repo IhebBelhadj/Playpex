@@ -22,6 +22,28 @@ const desktop = (name: string, v: string) => ({
 
 export const RELEASES: Release[] = [
   {
+    version: '0.12.0-beta.1', date: '2026-11-18', dateText: '18 November 2026', title: 'Playpex on the web',
+    summary: 'Playpex TV and Playpex Mobile in any browser, one address that opens the right one for each device, and a screen area for every window.',
+    apps: {
+      server: { version: '0.12.0-beta.1', tag: 'server-v0.12.0-beta.1', files: desktop('Playpex-Media-Server', '0.12.0-beta.1'), notes: [
+        'Serves Playpex TV at /tv/ and Playpex Mobile at /m/; browsers pair once with a device cookie.',
+        '/app/ opens the right web client for each device; the dashboard’s Clients page lists the addresses with QR codes.',
+        'A locked profile resumes after a reload; container bridges are left out of the server’s LAN addresses.',
+      ] },
+      tv: { version: '0.12.0-beta.1', tag: 'tv-v0.12.0-beta.1', files: desktop('Playpex-TV', '0.12.0-beta.1'), notes: [
+        'Screen area (edges and shape), picture in picture, and rows that realign after a resize.',
+        'In a browser: a reload comes back where it was, and Switch view moves to the phone view.',
+        'A season’s episodes open on OK or a click; Back after the next episode returns to the episode playing.',
+      ] },
+      mobile: { version: '0.12.0-beta.1', tag: 'android-v0.12.0-beta.1', files: { Android: ['Playpex-0.12.0-beta.1-arm64.apk', 'Playpex-0.12.0-beta.1-x86_64.apk'] }, notes: [
+        'Runs in a browser too, with Switch view to the TV view.',
+      ] },
+      manager: { version: '0.12.0-beta.1', tag: 'manager-v0.12.0-beta.1', files: { Android: ['Playpex-Server-Manager-0.12.0-beta.1.apk'] }, notes: [
+        'No changes: released with the others.',
+      ] },
+    },
+  },
+  {
     version: '0.11.1-beta.1', date: '2026-11-14', dateText: '14 November 2026', title: 'Menu fix',
     summary: 'A fix for Playpex TV: plugins’ pages reach the menu again.',
     apps: {
